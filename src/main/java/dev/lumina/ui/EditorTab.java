@@ -77,7 +77,49 @@ public class EditorTab extends Tab {
             }
         });
 
+        // Ctrl/Cmd+Click on an identifier -> go to its declaration.
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
+            if ((e.isControlDown() || e.isMetaDown()) && navigationHandler != null) {
+                var hit = codeArea.hit(e.getX(), e.getY());
+                String word = wordAt(hit.getInsertionIndex());
+                if (word != null) {
+                    e.consume();
+                    navigationHandler.accept(word);
+                }
+            }
+        });
+
         setContent(new VirtualizedScrollPane<>(codeArea));
+    }
+
+    // ------------------------------------------------------------ navigation
+
+    private java.util.function.Consumer<String> navigationHandler;
+
+    public void setNavigationHandler(java.util.function.Consumer<String> handler) {
+        this.navigationHandler = handler;
+    }
+
+    /** Identifier under the caret, or null. */
+    public String wordAtCaret() {
+        return wordAt(codeArea.getCaretPosition());
+    }
+
+    private String wordAt(int index) {
+        String text = codeArea.getText();
+        if (text.isEmpty()) return null;
+        int i = Math.max(0, Math.min(index, text.length() - 1));
+        if (!isWordChar(text.charAt(i)) && i > 0 && isWordChar(text.charAt(i - 1))) i--;
+        if (!isWordChar(text.charAt(i))) return null;
+        int start = i, end = i;
+        while (start > 0 && isWordChar(text.charAt(start - 1))) start--;
+        while (end < text.length() && isWordChar(text.charAt(end))) end++;
+        String word = text.substring(start, end);
+        return word.isBlank() ? null : word;
+    }
+
+    private static boolean isWordChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     // ---------------------------------------------------------------- state

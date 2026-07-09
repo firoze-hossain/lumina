@@ -31,6 +31,7 @@ public final class JavaSyntaxHighlighter {
     private static final String CONST_PATTERN = "\\b[A-Z][A-Z0-9_]{2,}\\b";
     private static final String TYPE_PATTERN = "\\b[A-Z][A-Za-z0-9_]*\\b";
     private static final String METHOD_PATTERN = "\\b[a-z][A-Za-z0-9_]*(?=\\s*\\()";
+    private static final String FIELD_PATTERN = "\\b[a-z][A-Za-z0-9_]*(?=\\s*\\.)";
     private static final String ANNOTATION_PATTERN = "@[A-Za-z][A-Za-z0-9_]*";
     private static final String NUMBER_PATTERN = "\\b\\d[\\d_]*(\\.\\d+)?([eE][+-]?\\d+)?[fFdDlL]?\\b";
     // NOTE: [\s\S]*? and unrolled string loops — never (.|\R)*?, which
@@ -47,6 +48,7 @@ public final class JavaSyntaxHighlighter {
                     + "|(?<KEYWORD>" + KEYWORD_PATTERN + ")"
                     + "|(?<NUMBER>" + NUMBER_PATTERN + ")"
                     + "|(?<METHOD>" + METHOD_PATTERN + ")"
+                    + "|(?<FIELD>" + FIELD_PATTERN + ")"
                     + "|(?<CONST>" + CONST_PATTERN + ")"
                     + "|(?<TYPE>" + TYPE_PATTERN + ")"
                     + "|(?<PAREN>" + PAREN_PATTERN + ")");
@@ -74,6 +76,7 @@ public final class JavaSyntaxHighlighter {
                             : matcher.group("KEYWORD") != null ? "sx-keyword"
                             : matcher.group("NUMBER") != null ? "sx-number"
                             : matcher.group("METHOD") != null ? "sx-method"
+                            : matcher.group("FIELD") != null ? "sx-field"
                             : matcher.group("CONST") != null ? "sx-const"
                             : matcher.group("TYPE") != null ? "sx-type"
                             : "sx-paren";

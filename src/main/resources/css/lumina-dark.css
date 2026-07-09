@@ -645,3 +645,34 @@
     -fx-border-color: transparent;
 }
 .db-results .placeholder .label { -fx-text-fill: #565D75; }
+
+/* ============================================================
+   Phase 5 — search everywhere, navigation, debug button
+   ============================================================ */
+
+.sx-field { -fx-fill: #9E86C8; }
+
+.se-tab {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-background-radius: 8;
+    -fx-padding: 4 14 4 14;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+.se-tab:hover { -fx-text-fill: #C9CDDC; }
+.se-tab:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+.se-name { -fx-text-fill: #D8DBE6; -fx-font-size: 12px; }
+.se-detail { -fx-text-fill: #565D75; -fx-font-size: 11px; }
+
+.tool-debug {
+    -fx-text-fill: #B4E8B4;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-font-size: 11px;
+}
+.tool-debug:hover { -fx-border-color: #8FCE8F; }

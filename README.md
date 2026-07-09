@@ -4,7 +4,15 @@
 
 Lumina is a lightweight, IntelliJ-inspired Java IDE built with **Java 25**, **JavaFX 25**, and **Maven**. Its identity is a warm amber accent on deep slate — a deliberate step away from the usual grey-on-grey editor look.
 
-## Phase 4 features (new)
+## Phase 5 features (new)
+
+- **Search Everywhere** — press **Shift twice** (or Ctrl/Cmd+Shift+A, or the 🔍 toolbar button): one popup with **All / Classes / Files / Symbols / Actions / Text** tabs like IntelliJ; symbols (classes + methods) are indexed in the background; Actions runs IDE commands (Run, Debug, Commit, panels…); Tab cycles categories
+- **Go to Declaration** — **Ctrl/Cmd+Click** any identifier in the editor (or Ctrl/Cmd+B on the caret word): types resolve to their class file, methods to their declaration line, preferring the current file
+- **Richer highlighting** — qualifier/field references now colored (soft purple), on top of the IntelliJ palette
+- **Visible Debug action** — labelled **Debug 🐞** button in the toolbar next to ▶ (also Run → Debug, Ctrl/Cmd+D)
+- **GitHub sign-in button** — 👤 in the toolbar opens browser sign-in directly (also Git menu)
+
+## Phase 4 features
 
 - **IntelliJ-style highlighting** — retuned palette (orange keywords, green strings, blue method calls, teal numbers, purple constants) plus XML highlighting for `pom.xml`, `.fxml`, `.html`, and friends
 - **Maven tool window** — right-side panel (toolbar ▥ button or View → Tool Windows → Maven / Build) listing lifecycle goals; double-click runs them; switches to Gradle tasks for Gradle projects

@@ -58,6 +58,7 @@ public class LuminaApp extends Application {
 
     private Path projectRoot;
     private int untitledCounter = 1;
+    private long lastShiftPress;
 
     @Override
     public void start(Stage stage) {
@@ -123,6 +124,21 @@ public class LuminaApp extends Application {
         Scene scene = new Scene(root, 1400, 860);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
+
+        // IntelliJ-style double-Shift -> Search Everywhere
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.SHIFT) {
+                long now = System.currentTimeMillis();
+                if (now - lastShiftPress < 350) {
+                    lastShiftPress = 0;
+                    searchEverywhere();
+                } else {
+                    lastShiftPress = now;
+                }
+            } else {
+                lastShiftPress = 0;
+            }
+        });
 
         stage.setTitle("Lumina");
         stage.setScene(scene);
@@ -214,6 +230,13 @@ public class LuminaApp extends Application {
         // ---- Navigate
         Menu navigate = new Menu("Navigate");
         navigate.getItems().addAll(
+                item("Search Everywhere (double Shift)", "Shortcut+Shift+A",
+                        e -> searchEverywhere()),
+                item("Go to Declaration", "Shortcut+B", e -> {
+                    EditorTab tab = currentEditor();
+                    if (tab != null) goToDeclaration(tab.wordAtCaret());
+                }),
+                new SeparatorMenuItem(),
                 item("Go to File\u2026", "Shortcut+P", e -> goToFile()),
                 item("Go to Line\u2026", "Shortcut+G", e -> goToLine()));
 
@@ -327,12 +350,21 @@ public class LuminaApp extends Application {
         runBtn.getStyleClass().add("tool-run");
         runBtn.setOnAction(e -> runSelectedConfig());
 
-        Button debugBtn = toolButton("\uD83D\uDC1E", "Debug (Ctrl/Cmd+D) \u2014 JVM waits on port 5005");
+        Button debugBtn = new Button("Debug \uD83D\uDC1E");
+        debugBtn.getStyleClass().addAll("tool-button", "tool-debug");
+        debugBtn.setTooltip(new Tooltip(
+                "Debug (Ctrl/Cmd+D) \u2014 launches with JDWP on port 5005 and attaches jdb"));
         debugBtn.setOnAction(e -> debugSelectedConfig());
 
         Button stopBtn = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
         stopBtn.getStyleClass().add("tool-stop");
         stopBtn.setOnAction(e -> console.stopProcess());
+
+        Button searchBtn = toolButton("\uD83D\uDD0D", "Search Everywhere (double Shift)");
+        searchBtn.setOnAction(e -> searchEverywhere());
+
+        Button githubBtn = toolButton("\uD83D\uDC64", "Sign in to GitHub (browser)");
+        githubBtn.setOnAction(e -> openBrowser("https://github.com/login"));
 
         Button sideBtn = toolButton("\u25A5", "Maven / Database panel");
         sideBtn.setOnAction(e -> {
@@ -341,7 +373,8 @@ public class LuminaApp extends Application {
         });
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
-                runConfigBox, runBtn, debugBtn, stopBtn, sideBtn);
+                runConfigBox, runBtn, debugBtn, stopBtn,
+                searchBtn, githubBtn, sideBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -538,6 +571,104 @@ public class LuminaApp extends Application {
         console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
     }
 
+    // ------------------------------------------- search everywhere & goto
+
+    private void searchEverywhere() {
+        List<SearchEverywhereDialog.Action> ideActions = List.of(
+                new SearchEverywhereDialog.Action("New Project\u2026", this::showNewProjectDialog),
+                new SearchEverywhereDialog.Action("Open Folder\u2026", this::openFolderDialog),
+                new SearchEverywhereDialog.Action("Save", () -> saveCurrent(false)),
+                new SearchEverywhereDialog.Action("Run", this::runSelectedConfig),
+                new SearchEverywhereDialog.Action("Debug", this::debugSelectedConfig),
+                new SearchEverywhereDialog.Action("Stop", console::stopProcess),
+                new SearchEverywhereDialog.Action("Build Project", this::buildProject),
+                new SearchEverywhereDialog.Action("Clean Project", this::cleanProject),
+                new SearchEverywhereDialog.Action("Terminal", this::showTerminal),
+                new SearchEverywhereDialog.Action("Git: Commit\u2026", this::gitCommit),
+                new SearchEverywhereDialog.Action("Git: Push", () -> gitRun("Push", "push")),
+                new SearchEverywhereDialog.Action("Git: Pull", () -> gitRun("Pull", "pull")),
+                new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
+                new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
+                new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
+                new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(0)),
+                new SearchEverywhereDialog.Action("Database Panel", () -> showRightPanel(1)),
+                new SearchEverywhereDialog.Action("About Lumina", this::showAbout));
+        new SearchEverywhereDialog(stage,
+                projectRoot != null ? projectRoot : fileExplorer.getRootPath(),
+                ideActions, this::openFile, this::openFileAtLine).show();
+    }
+
+    /** Heuristic go-to-declaration: types by name, methods by signature scan. */
+    private void goToDeclaration(String word) {
+        if (word == null || word.isBlank()) return;
+        if (projectRoot == null) {
+            error("No project open", "Go to Declaration needs an open project.");
+            return;
+        }
+        Path currentFile = currentEditor() != null ? currentEditor().getPath() : null;
+        Thread t = new Thread(() -> {
+            int[] hit = new int[]{-1};
+            Path[] hitFile = new Path[]{null};
+            boolean isType = Character.isUpperCase(word.charAt(0));
+            java.util.regex.Pattern pattern = isType
+                    ? java.util.regex.Pattern.compile(
+                    "\\b(class|interface|enum|record)\\s+"
+                            + java.util.regex.Pattern.quote(word) + "\\b")
+                    : java.util.regex.Pattern.compile(
+                    "[\\w>\\]]\\s+" + java.util.regex.Pattern.quote(word) + "\\s*\\(");
+            try (Stream<Path> walk = Files.walk(projectRoot)) {
+                List<Path> javaFiles = new java.util.ArrayList<>(walk
+                        .filter(p -> p.toString().endsWith(".java"))
+                        .filter(p -> !p.toString().contains(File.separator + "target" + File.separator)
+                                && !p.toString().contains(File.separator + "build" + File.separator))
+                        .toList());
+                // search the current file first, then by file-name match, then rest
+                javaFiles.sort((a, b) -> Integer.compare(
+                        declRank(a, word, currentFile), declRank(b, word, currentFile)));
+                outer:
+                for (Path file : javaFiles) {
+                    List<String> lines;
+                    try {
+                        lines = Files.readAllLines(file);
+                    } catch (IOException | java.io.UncheckedIOException e) {
+                        continue;
+                    }
+                    for (int i = 0; i < lines.size(); i++) {
+                        String line = lines.get(i);
+                        if (!pattern.matcher(line).find()) continue;
+                        if (!isType) {
+                            String trimmed = line.strip();
+                            // skip obvious call sites and control keywords
+                            if (trimmed.startsWith(word + "(")
+                                    || trimmed.contains("." + word + "(")
+                                    || trimmed.startsWith("return ")
+                                    || trimmed.endsWith(";")) continue;
+                        }
+                        hitFile[0] = file;
+                        hit[0] = i + 1;
+                        break outer;
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+            Platform.runLater(() -> {
+                if (hitFile[0] != null) {
+                    openFileAtLine(hitFile[0], hit[0]);
+                } else {
+                    console.println("Declaration not found in project: " + word);
+                }
+            });
+        }, "lumina-goto-decl");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private int declRank(Path p, String word, Path currentFile) {
+        if (p.equals(currentFile)) return 0;
+        if (p.getFileName().toString().equals(word + ".java")) return 1;
+        return 2;
+    }
+
     // ------------------------------------------------------- debug & search
 
     private void debugSelectedConfig() {
@@ -708,7 +839,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.4");
+        Label brand = new Label("Lumina 0.5");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1013,6 +1144,7 @@ public class LuminaApp extends Application {
     }
 
     private void addTab(EditorTab tab) {
+        tab.setNavigationHandler(this::goToDeclaration);
         editorTabs.getTabs().add(tab);
         editorTabs.getSelectionModel().select(tab);
         tab.focusEditor();
@@ -1059,15 +1191,14 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.4");
+        alert.setHeaderText("Lumina IDE 0.5");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase 4: IntelliJ-style highlighting (Java + XML),
-                Maven & Database tool windows, Find in Files,
-                debug launch (JDWP + jdb), Git clone, and
-                last-project restore.""");
+                Phase 5: Search Everywhere (double Shift),
+                Ctrl+Click go-to-declaration, richer highlighting,
+                Debug & GitHub toolbar actions.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
