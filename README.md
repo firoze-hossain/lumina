@@ -10,7 +10,9 @@ Lumina is a lightweight, IntelliJ-inspired Java IDE built with **Java 25**, **Ja
 - **Go to Declaration** — **Ctrl/Cmd+Click** any identifier in the editor (or Ctrl/Cmd+B on the caret word): types resolve to their class file, methods to their declaration line, preferring the current file
 - **Richer highlighting** — qualifier/field references now colored (soft purple), on top of the IntelliJ palette
 - **Visible Debug action** — labelled **Debug 🐞** button in the toolbar next to ▶ (also Run → Debug, Ctrl/Cmd+D)
-- **GitHub sign-in button** — 👤 in the toolbar opens browser sign-in directly (also Git menu)
+- **GitHub sign-in (real auth)** — 👤 toolbar button opens a dialog: browser opens a pre-filled token page, paste the token, Lumina verifies it against api.github.com and shows your username. Push / Pull / Fetch / Clone then authenticate automatically (via a GIT_ASKPASS helper — the token never enters git config or remote URLs). Click the button again for profile / sign-out.
+- **Popup polish** — Search Everywhere / Go to File / Find in Files close on Esc from anywhere or when clicking outside, like IntelliJ
+- **Syntax color fix** — token colors were being overridden by the base editor text rule (CSS specificity); all token selectors now scoped under `.code-area`, so the IntelliJ palette actually renders
 
 ## Phase 4 features
 

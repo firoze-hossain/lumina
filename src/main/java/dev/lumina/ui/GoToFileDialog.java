@@ -38,7 +38,7 @@ public class GoToFileDialog {
         this.allFiles = scan(root);
 
         stage.initOwner(owner);
-        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initModality(Modality.NONE);
         stage.initStyle(StageStyle.UNDECORATED);
 
         Label header = new Label("Go to File");
@@ -104,6 +104,17 @@ public class GoToFileDialog {
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
+
+        // IntelliJ popup behavior: Esc anywhere or clicking outside closes it.
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.ESCAPE) {
+                ev.consume();
+                stage.close();
+            }
+        });
+        stage.focusedProperty().addListener((obs, was, focused) -> {
+            if (!focused) stage.close();
+        });
 
         applyFilter("");
         stage.setOnShown(e -> filter.requestFocus());

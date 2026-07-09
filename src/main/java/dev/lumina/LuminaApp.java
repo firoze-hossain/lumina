@@ -1,5 +1,6 @@
 package dev.lumina;
 
+import dev.lumina.git.GitHubAuth;
 import dev.lumina.git.GitService;
 import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
@@ -52,6 +53,7 @@ public class LuminaApp extends Application {
     private IconRail iconRail;
     private Label projectChip;
     private MenuButton branchButton;
+    private Button githubButton;
     private ComboBox<RunConfiguration> runConfigBox;
     private HBox breadcrumbBar;
     private Label statusCaret;
@@ -284,8 +286,7 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(),
                 item("New Branch\u2026", null, e -> gitNewBranch()),
                 new SeparatorMenuItem(),
-                item("Sign in to GitHub (browser)\u2026", null,
-                        e -> openBrowser("https://github.com/login")),
+                item("Sign in to GitHub\u2026", null, e -> onGitHubButton()),
                 item("Open Repository on GitHub", null, e -> openRemote()));
 
         // ---- Tools
@@ -363,8 +364,10 @@ public class LuminaApp extends Application {
         Button searchBtn = toolButton("\uD83D\uDD0D", "Search Everywhere (double Shift)");
         searchBtn.setOnAction(e -> searchEverywhere());
 
-        Button githubBtn = toolButton("\uD83D\uDC64", "Sign in to GitHub (browser)");
-        githubBtn.setOnAction(e -> openBrowser("https://github.com/login"));
+        githubButton = toolButton("\uD83D\uDC64 Sign in",
+                "Sign in to GitHub \u2014 authenticates push/pull/clone in the IDE");
+        githubButton.setOnAction(e -> onGitHubButton());
+        refreshGitHubButton();
 
         Button sideBtn = toolButton("\u25A5", "Maven / Database panel");
         sideBtn.setOnAction(e -> {
@@ -374,7 +377,7 @@ public class LuminaApp extends Application {
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
                 runConfigBox, runBtn, debugBtn, stopBtn,
-                searchBtn, githubBtn, sideBtn);
+                searchBtn, githubButton, sideBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -461,8 +464,21 @@ public class LuminaApp extends Application {
     private void gitRun(String label, String subcommand) {
         if (!requireProject()) return;
         showRunPanel();
-        console.runCommand("git " + label.toLowerCase(),
-                List.of("git", subcommand), projectRoot);
+        console.runSequence("git " + label.toLowerCase(),
+                List.of(List.of("git", subcommand)), projectRoot, gitEnv(), null);
+    }
+
+    /** Extra env so git authenticates with the signed-in GitHub token. */
+    private java.util.Map<String, String> gitEnv() {
+        String token = Settings.get(Settings.GITHUB_TOKEN);
+        if (token == null) return null;
+        Path askpass = GitHubAuth.ensureAskpass();
+        if (askpass == null) return null;
+        java.util.Map<String, String> env = new java.util.HashMap<>();
+        env.put("GIT_ASKPASS", askpass.toString());
+        env.put("LUMINA_GH_TOKEN", token);
+        env.put("GIT_TERMINAL_PROMPT", "0");
+        return env;
     }
 
     private void gitStatus() {
@@ -569,6 +585,101 @@ public class LuminaApp extends Application {
         }
         showRunPanel();
         console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
+    }
+
+    // --------------------------------------------------------- github auth
+
+    private void refreshGitHubButton() {
+        String user = Settings.get(Settings.GITHUB_USER);
+        githubButton.setText(user != null
+                ? "\uD83D\uDC64 " + user : "\uD83D\uDC64 Sign in");
+    }
+
+    private void onGitHubButton() {
+        String user = Settings.get(Settings.GITHUB_USER);
+        if (user == null) {
+            showGitHubSignIn();
+            return;
+        }
+        ContextMenu menu = new ContextMenu(
+                item("Open github.com/" + user, null,
+                        e -> openBrowser("https://github.com/" + user)),
+                item("Sign out", null, e -> {
+                    Settings.put(Settings.GITHUB_TOKEN, null);
+                    Settings.put(Settings.GITHUB_USER, null);
+                    refreshGitHubButton();
+                }));
+        menu.show(githubButton, javafx.geometry.Side.BOTTOM, 0, 4);
+    }
+
+    private void showGitHubSignIn() {
+        Stage dialog = new Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        dialog.setTitle("Sign in to GitHub");
+
+        Label info = new Label(
+                "1. Click below: your browser opens a pre-filled GitHub"
+                + " token page (scope: repo).\n"
+                + "2. Generate the token and paste it here.\n"
+                + "Lumina uses it to authenticate push, pull and clone.");
+        info.getStyleClass().add("form-static");
+        info.setWrapText(true);
+
+        Button open = new Button("Open GitHub token page in browser");
+        open.getStyleClass().add("dialog-secondary");
+        open.setOnAction(e -> openBrowser(GitHubAuth.TOKEN_URL));
+
+        PasswordField tokenField = new PasswordField();
+        tokenField.setPromptText("ghp_\u2026 paste token here");
+
+        Label status = new Label(" ");
+        status.getStyleClass().add("form-error");
+
+        Button signIn = new Button("Sign in");
+        signIn.getStyleClass().add("dialog-primary");
+        signIn.setDefaultButton(true);
+        signIn.setOnAction(e -> {
+            String token = tokenField.getText().trim();
+            if (token.isEmpty()) {
+                status.setText("Paste a token first.");
+                return;
+            }
+            status.setText("Verifying with api.github.com\u2026");
+            signIn.setDisable(true);
+            Thread t = new Thread(() -> {
+                String login = GitHubAuth.validate(token);
+                Platform.runLater(() -> {
+                    signIn.setDisable(false);
+                    if (login == null) {
+                        status.setText("Token rejected \u2014 check it and try again.");
+                        return;
+                    }
+                    Settings.put(Settings.GITHUB_TOKEN, token);
+                    Settings.put(Settings.GITHUB_USER, login);
+                    refreshGitHubButton();
+                    console.println("\u2713 Signed in to GitHub as " + login
+                            + " \u2014 push/pull/clone are now authenticated.");
+                    dialog.close();
+                });
+            }, "lumina-gh-verify");
+            t.setDaemon(true);
+            t.start();
+        });
+
+        Label note = new Label(
+                "Token is stored in ~/.lumina/lumina.properties on this machine.");
+        note.getStyleClass().add("side-subtle");
+
+        VBox box = new VBox(12, info, open, tokenField, signIn, status, note);
+        box.setPadding(new Insets(20));
+        box.getStyleClass().add("app-root");
+
+        Scene scene = new Scene(box, 460, 340);
+        scene.getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.show();
     }
 
     // ------------------------------------------- search everywhere & goto
@@ -761,7 +872,7 @@ public class LuminaApp extends Application {
             showRunPanel();
             console.runSequence("git clone " + url,
                     List.of(List.of("git", "clone", url, target.toString())),
-                    parent.toPath(),
+                    parent.toPath(), gitEnv(),
                     () -> openProject(target));
         });
     }

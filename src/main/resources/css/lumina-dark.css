@@ -141,21 +141,21 @@
 }
 
 /* syntax colors — IntelliJ new-UI inspired palette */
-.sx-keyword    { -fx-fill: #CF8E6D; }
-.sx-type       { -fx-fill: #BCBEC4; }
-.sx-method     { -fx-fill: #56A8F5; }
-.sx-const      { -fx-fill: #C77DBB; -fx-font-style: italic; }
-.sx-string     { -fx-fill: #6AAB73; }
-.sx-number     { -fx-fill: #2AACB8; }
-.sx-comment    { -fx-fill: #7A7E85; -fx-font-style: italic; }
-.sx-annotation { -fx-fill: #B3AE60; }
-.sx-paren      { -fx-fill: #A8AEC4; }
+.code-area .sx-keyword    { -fx-fill: #CF8E6D; }
+.code-area .sx-type       { -fx-fill: #BCBEC4; }
+.code-area .sx-method     { -fx-fill: #56A8F5; }
+.code-area .sx-const      { -fx-fill: #C77DBB; -fx-font-style: italic; }
+.code-area .sx-string     { -fx-fill: #6AAB73; }
+.code-area .sx-number     { -fx-fill: #2AACB8; }
+.code-area .sx-comment    { -fx-fill: #7A7E85; -fx-font-style: italic; }
+.code-area .sx-annotation { -fx-fill: #B3AE60; }
+.code-area .sx-paren      { -fx-fill: #A8AEC4; }
 
 /* xml colors (pom.xml etc.) */
-.xml-tag       { -fx-fill: #E8BF6A; }
-.xml-attr      { -fx-fill: #BCBEC4; }
-.xml-value     { -fx-fill: #6AAB73; }
-.xml-comment   { -fx-fill: #7A7E85; -fx-font-style: italic; }
+.code-area .xml-tag       { -fx-fill: #E8BF6A; }
+.code-area .xml-attr      { -fx-fill: #BCBEC4; }
+.code-area .xml-value     { -fx-fill: #6AAB73; }
+.code-area .xml-comment   { -fx-fill: #7A7E85; -fx-font-style: italic; }
 
 /* --------------------------------------------------------- welcome view */
 
@@ -650,7 +650,7 @@
    Phase 5 — search everywhere, navigation, debug button
    ============================================================ */
 
-.sx-field { -fx-fill: #9E86C8; }
+.code-area .sx-field { -fx-fill: #9E86C8; }
 
 .se-tab {
     -fx-background-color: transparent;

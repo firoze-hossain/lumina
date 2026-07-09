@@ -13,6 +13,8 @@ public final class Settings {
     public static final String LAST_PROJECT = "lastProject";
     public static final String DB_URL = "db.url";
     public static final String DB_USER = "db.user";
+    public static final String GITHUB_TOKEN = "github.token";
+    public static final String GITHUB_USER = "github.user";
 
     private static final Path FILE = Path.of(
             System.getProperty("user.home"), ".lumina", "lumina.properties");

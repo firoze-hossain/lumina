@@ -80,6 +80,12 @@ public class ConsolePane extends BorderPane {
     /** Like runSequence, with a callback on the FX thread after a clean exit. */
     public void runSequence(String header, List<List<String>> commands, Path workDir,
                             Runnable onSuccess) {
+        runSequence(header, commands, workDir, null, onSuccess);
+    }
+
+    /** Full form: optional extra environment variables (e.g. GIT_ASKPASS). */
+    public void runSequence(String header, List<List<String>> commands, Path workDir,
+                            java.util.Map<String, String> env, Runnable onSuccess) {
         stopProcess();
         clear();
         cancelled = false;
@@ -95,6 +101,7 @@ public class ConsolePane extends BorderPane {
                     ProcessBuilder pb = new ProcessBuilder(command)
                             .redirectErrorStream(true);
                     if (workDir != null) pb.directory(workDir.toFile());
+                    if (env != null) pb.environment().putAll(env);
                     Process p = pb.start();
                     process = p;
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(

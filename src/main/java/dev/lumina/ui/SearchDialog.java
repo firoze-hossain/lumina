@@ -51,7 +51,7 @@ public class SearchDialog {
         this.root = root;
 
         stage.initOwner(owner);
-        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initModality(Modality.NONE);
         stage.initStyle(StageStyle.UNDECORATED);
 
         Label header = new Label("Find in Files");
@@ -125,6 +125,17 @@ public class SearchDialog {
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
+
+        // IntelliJ popup behavior: Esc anywhere or clicking outside closes it.
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode() == KeyCode.ESCAPE) {
+                ev.consume();
+                stage.close();
+            }
+        });
+        stage.focusedProperty().addListener((obs, was, focused) -> {
+            if (!focused) stage.close();
+        });
         stage.setOnShown(e -> query.requestFocus());
     }
 
