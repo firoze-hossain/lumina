@@ -106,28 +106,42 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
 
     /** Prefer the project's Maven wrapper, fall back to mvn on PATH. */
     public static List<String> maven(Path root, String... args) {
-        List<String> cmd = new ArrayList<>();
-        if (windows()) {
-            cmd.add("cmd");
-            cmd.add("/c");
-            cmd.add(Files.isRegularFile(root.resolve("mvnw.cmd")) ? "mvnw.cmd" : "mvn");
-        } else {
-            cmd.add(Files.isRegularFile(root.resolve("mvnw"))
-                    ? root.resolve("mvnw").toString() : "mvn");
-        }
-        cmd.addAll(List.of(args));
-        return cmd;
+        return wrapperCommand(root, "mvnw", "mvnw.cmd", "mvn", args);
     }
 
     public static List<String> gradleCmd(Path root, String... args) {
+        return wrapperCommand(root, "gradlew", "gradlew.bat", "gradle", args);
+    }
+
+    /**
+     * Builds the command for a build tool. Uses the project wrapper when
+     * present; on Unix, repairs a missing execute bit (lost by zip
+     * downloads) and, failing that, runs the wrapper through sh.
+     */
+    private static List<String> wrapperCommand(Path root, String unixWrapper,
+                                               String winWrapper, String fallback,
+                                               String... args) {
         List<String> cmd = new ArrayList<>();
         if (windows()) {
             cmd.add("cmd");
             cmd.add("/c");
-            cmd.add(Files.isRegularFile(root.resolve("gradlew.bat")) ? "gradlew.bat" : "gradle");
+            cmd.add(Files.isRegularFile(root.resolve(winWrapper)) ? winWrapper : fallback);
         } else {
-            cmd.add(Files.isRegularFile(root.resolve("gradlew"))
-                    ? root.resolve("gradlew").toString() : "gradle");
+            Path wrapper = root.resolve(unixWrapper);
+            if (Files.isRegularFile(wrapper)) {
+                java.io.File f = wrapper.toFile();
+                if (!f.canExecute()) {
+                    f.setExecutable(true); // zip extraction drops the exec bit
+                }
+                if (f.canExecute()) {
+                    cmd.add(wrapper.toString());
+                } else {
+                    cmd.add("sh");             // filesystem refused chmod: run via sh
+                    cmd.add(wrapper.toString());
+                }
+            } else {
+                cmd.add(fallback);
+            }
         }
         cmd.addAll(List.of(args));
         return cmd;

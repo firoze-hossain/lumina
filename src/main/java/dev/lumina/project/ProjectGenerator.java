@@ -175,6 +175,14 @@ public final class ProjectGenerator {
 
         log.accept("Unpacking " + (response.body().length / 1024) + " KB \u2026");
         unzip(response.body(), dir);
+
+        // ZipInputStream drops Unix permissions: restore the wrappers' exec bit.
+        for (String wrapper : new String[]{"mvnw", "gradlew"}) {
+            Path w = dir.resolve(wrapper);
+            if (Files.isRegularFile(w) && !w.toFile().setExecutable(true)) {
+                log.accept("Note: could not mark " + wrapper + " executable");
+            }
+        }
     }
 
     private static void unzip(byte[] zipBytes, Path target) throws IOException {
