@@ -1,0 +1,460 @@
+/* ============================================================
+   Lumina Dark — warm light on deep slate
+   Palette:
+     slate-deep   #14161E   (side panels, chrome)
+     slate        #191C26   (app base)
+     slate-raised #1F2230   (editor, cards)
+     ink          #D8DBE6   (primary text)
+     ink-muted    #697089   (secondary text)
+     lumen        #E8B450   (signature amber accent)
+     lumen-soft   #3A3122   (amber wash for selections)
+   ============================================================ */
+
+.app-root {
+    -fx-background-color: #191C26;
+    -lumen: #E8B450;
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Inter", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.label { -fx-text-fill: #D8DBE6; }
+
+/* ----------------------------------------------------------- menu bar */
+
+.menu-bar {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent transparent #262A3A transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2 8 2 8;
+}
+.menu-bar .label { -fx-text-fill: #B9BECF; }
+.menu-bar .menu:hover > .label,
+.menu-bar .menu:showing > .label { -fx-text-fill: -lumen; }
+.menu-bar .menu:hover, .menu-bar .menu:showing {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 6;
+}
+
+.context-menu {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 10;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 10;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 24, 0.2, 0, 8);
+}
+.menu-item { -fx-background-radius: 6; -fx-padding: 6 14 6 14; }
+.menu-item .label { -fx-text-fill: #C9CDDC; }
+.menu-item:focused { -fx-background-color: #2A2416; }
+.menu-item:focused .label { -fx-text-fill: -lumen; }
+.menu-item .accelerator-text { -fx-text-fill: #697089; }
+.separator .line { -fx-border-color: #2C3042; -fx-border-width: 0.5; }
+
+/* --------------------------------------------------------- split panes */
+
+.split-pane { -fx-background-color: #191C26; -fx-padding: 0; }
+.split-pane-divider {
+    -fx-background-color: #22263400;
+    -fx-padding: 0 1 0 1;
+}
+.split-pane-divider:hover { -fx-background-color: -lumen; }
+
+/* ------------------------------------------------------- file explorer */
+
+.file-explorer { -fx-background-color: #14161E; }
+
+.panel-header {
+    -fx-text-fill: #697089;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 0.15em;
+}
+
+.project-tree {
+    -fx-background-color: #14161E;
+    -fx-padding: 4;
+}
+.project-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 6 4 6;
+    -fx-background-radius: 6;
+}
+.project-tree .tree-cell:hover { -fx-background-color: #1F2230; }
+.project-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.project-tree .tree-cell .arrow { -fx-background-color: #697089; }
+.project-tree .tree-cell:selected .arrow { -fx-background-color: -lumen; }
+
+.explorer-empty {
+    -fx-text-fill: #565D75;
+    -fx-text-alignment: center;
+    -fx-font-size: 12px;
+}
+
+/* ---------------------------------------------------------- editor tabs */
+
+.editor-tabs { -fx-background-color: #191C26; }
+.editor-tabs .tab-header-area { -fx-padding: 6 8 0 8; }
+.editor-tabs .tab-header-background { -fx-background-color: #191C26; }
+
+.editor-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 6 12 6 12;
+}
+.editor-tabs .tab .tab-label { -fx-text-fill: #848BA3; }
+.editor-tabs .tab:hover .tab-label { -fx-text-fill: #C9CDDC; }
+.editor-tabs .tab:selected {
+    -fx-background-color: #1F2230;
+    -fx-border-color: -lumen transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+}
+.editor-tabs .tab:selected .tab-label { -fx-text-fill: #EDEFF6; }
+.editor-tabs .tab .tab-close-button { -fx-background-color: #697089; }
+.editor-tabs .tab:hover .tab-close-button,
+.editor-tabs .tab:selected .tab-close-button { -fx-background-color: #C9CDDC; }
+.editor-tabs .tab-content-area { -fx-background-color: #1F2230; }
+
+/* ------------------------------------------------------------ code area */
+
+.code-area {
+    -fx-background-color: #1F2230;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 13px;
+}
+.code-area .text { -fx-fill: #D8DBE6; }
+.code-area .caret { -fx-stroke: -lumen; -fx-stroke-width: 1.5; }
+.code-area .selection { -fx-fill: #3A3122; }
+
+.code-area .paragraph-box:has-caret {
+    -fx-background-color: #23273610;
+}
+
+.code-area .lineno {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #4A5068;
+    -fx-padding: 0 12 0 12;
+    -fx-font-size: 12px;
+}
+
+/* syntax colors */
+.sx-keyword    { -fx-fill: #E8B450; -fx-font-weight: bold; }
+.sx-type       { -fx-fill: #7FB4E8; }
+.sx-string     { -fx-fill: #9BC98F; }
+.sx-number     { -fx-fill: #D089C8; }
+.sx-comment    { -fx-fill: #5A6076; -fx-font-style: italic; }
+.sx-annotation { -fx-fill: #C7A6F0; }
+.sx-paren      { -fx-fill: #A8AEC4; }
+
+/* --------------------------------------------------------- welcome view */
+
+.welcome-view { -fx-background-color: #191C26; }
+.welcome-glyph {
+    -fx-text-fill: -lumen;
+    -fx-font-size: 44px;
+    -fx-effect: dropshadow(gaussian, #E8B45066, 30, 0.3, 0, 0);
+}
+.welcome-title {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 34px;
+    -fx-font-weight: bold;
+}
+.welcome-tagline { -fx-text-fill: #697089; -fx-font-size: 14px; }
+
+.welcome-button {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #C9CDDC;
+    -fx-background-radius: 10;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 10;
+    -fx-padding: 8 20 8 20;
+    -fx-cursor: hand;
+}
+.welcome-button:hover {
+    -fx-border-color: -lumen;
+    -fx-text-fill: #F2D9A6;
+}
+
+/* -------------------------------------------------------------- console */
+
+.console-pane { -fx-background-color: #14161E; }
+.console-header {
+    -fx-background-color: #14161E;
+    -fx-border-color: #262A3A transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.console-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 2 12 2 12;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+.console-button:hover { -fx-border-color: -lumen; -fx-text-fill: -lumen; }
+
+.console-output,
+.console-output .content {
+    -fx-background-color: #14161E;
+    -fx-text-fill: #B9BECF;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 12px;
+    -fx-highlight-fill: #3A3122;
+    -fx-prompt-text-fill: #4A5068;
+}
+.console-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
+
+/* ------------------------------------------------------------ status bar */
+
+.status-bar {
+    -fx-background-color: #14161E;
+    -fx-border-color: #262A3A transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.status-bar .label { -fx-text-fill: #697089; -fx-font-size: 11px; }
+.status-brand { -fx-text-fill: -lumen; -fx-font-weight: bold; }
+
+/* ------------------------------------------------------------ scrollbars */
+
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar .track { -fx-background-color: transparent; }
+.scroll-bar .thumb {
+    -fx-background-color: #2C3042;
+    -fx-background-radius: 8;
+}
+.scroll-bar .thumb:hover { -fx-background-color: #3D435C; }
+.scroll-bar .increment-button, .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+}
+
+/* --------------------------------------------------------------- dialogs */
+
+.dialog-pane { -fx-background-color: #1F2230; }
+.dialog-pane .header-panel { -fx-background-color: #14161E; }
+.dialog-pane .header-panel .label { -fx-text-fill: #EDEFF6; -fx-font-size: 15px; }
+.dialog-pane .content { -fx-text-fill: #B9BECF; }
+.dialog-pane .button {
+    -fx-background-color: #2C3042;
+    -fx-text-fill: #D8DBE6;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.dialog-pane .button:hover { -fx-background-color: #3A3122; -fx-text-fill: -lumen; }
+
+.tooltip {
+    -fx-background-color: #2C3042;
+    -fx-text-fill: #D8DBE6;
+    -fx-background-radius: 8;
+    -fx-font-size: 11px;
+}
+
+/* ============================================================
+   Phase 2 — IntelliJ-style shell additions
+   ============================================================ */
+
+/* --------------------------------------------------------------- toolbar */
+
+.tool-bar {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent transparent #262A3A transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.project-chip {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #C9CDDC;
+    -fx-background-radius: 8;
+    -fx-padding: 4 14 4 14;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+.tool-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-background-radius: 8;
+    -fx-padding: 4 10 4 10;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.tool-button:hover { -fx-background-color: #1F2230; }
+.tool-run  { -fx-text-fill: #8FCE8F; }
+.tool-run:hover  { -fx-text-fill: #B4E8B4; }
+.tool-stop { -fx-text-fill: #D08585; }
+.tool-stop:hover { -fx-text-fill: #EAA6A6; }
+
+/* -------------------------------------------------------------- icon rail */
+
+.icon-rail {
+    -fx-background-color: #101219;
+    -fx-border-color: transparent #1E2230 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.rail-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #697089;
+    -fx-background-radius: 8;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+}
+.rail-button:hover { -fx-background-color: #1F2230; -fx-text-fill: #C9CDDC; }
+.rail-button:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: -lumen;
+}
+.rail-run { -fx-text-fill: #8FCE8F; }
+
+/* ------------------------------------------------------------ breadcrumbs */
+
+.crumb { -fx-text-fill: #848BA3; -fx-font-size: 11px; }
+.crumb:hover { -fx-text-fill: #E8B450; }
+.crumb-sep { -fx-text-fill: #4A5068; -fx-font-size: 11px; }
+
+/* ----------------------------------------------------- new project dialog */
+
+.new-project-dialog { -fx-background-color: #191C26; }
+
+.generator-panel {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent #262A3A transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.generator-list {
+    -fx-background-color: #14161E;
+    -fx-padding: 4 8 8 8;
+}
+.generator-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 7 12 7 12;
+    -fx-background-radius: 8;
+}
+.generator-list .list-cell:hover { -fx-background-color: #1F2230; }
+.generator-list .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.generator-list .generator-disabled { -fx-text-fill: #565D75; }
+
+.form-scroll { -fx-background-color: #191C26; -fx-background: #191C26; }
+.form-scroll > .viewport { -fx-background-color: #191C26; }
+
+.form-label { -fx-text-fill: #848BA3; -fx-font-size: 12px; }
+.form-hint  { -fx-text-fill: #565D75; -fx-font-size: 11px; }
+.form-static { -fx-text-fill: #B9BECF; -fx-font-size: 12px; }
+.form-error { -fx-text-fill: #E88A8A; -fx-font-size: 12px; }
+
+.text-field {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #D8DBE6;
+    -fx-prompt-text-fill: #565D75;
+    -fx-background-radius: 8;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-padding: 6 10 6 10;
+    -fx-highlight-fill: #3A3122;
+}
+.text-field:focused { -fx-border-color: -lumen; }
+
+.check-box { -fx-text-fill: #B9BECF; }
+.check-box .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.check-box:selected .box { -fx-background-color: #3A3122; -fx-border-color: -lumen; }
+.check-box:selected .mark { -fx-background-color: -lumen; }
+
+.combo-box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.combo-box .list-cell { -fx-text-fill: #D8DBE6; -fx-background-color: transparent; }
+.combo-box .arrow { -fx-background-color: #848BA3; }
+.combo-box-popup .list-view {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+}
+.combo-box-popup .list-cell { -fx-text-fill: #C9CDDC; -fx-padding: 6 12 6 12; }
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+/* segmented control (Language / Build system) */
+.segmented { -fx-spacing: 0; }
+.segment {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #848BA3;
+    -fx-border-color: #2C3042;
+    -fx-border-width: 1 1 1 0;
+    -fx-padding: 5 16 5 16;
+    -fx-cursor: hand;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+.segment-first {
+    -fx-border-width: 1;
+    -fx-background-radius: 8 0 0 8;
+    -fx-border-radius: 8 0 0 8;
+}
+.segment-last {
+    -fx-background-radius: 0 8 8 0;
+    -fx-border-radius: 0 8 8 0;
+}
+.segment-first.segment-last {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+.segment:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+    -fx-border-color: -lumen;
+}
+
+/* dialog footer buttons */
+.dialog-footer {
+    -fx-background-color: #14161E;
+    -fx-border-color: #262A3A transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.dialog-primary {
+    -fx-background-color: -lumen;
+    -fx-text-fill: #191C26;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 6 22 6 22;
+    -fx-cursor: hand;
+}
+.dialog-primary:hover { -fx-background-color: #F2C875; }
+.dialog-secondary {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #C9CDDC;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6 18 6 18;
+    -fx-cursor: hand;
+}
+.dialog-secondary:hover { -fx-border-color: -lumen; }
+
+/* welcome primary button */
+.welcome-primary {
+    -fx-background-color: #3A3122;
+    -fx-border-color: -lumen;
+    -fx-text-fill: #F2D9A6;
+}
