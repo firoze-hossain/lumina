@@ -74,6 +74,12 @@ public class ConsolePane extends BorderPane {
 
     /** Run commands one after another; stop at the first non-zero exit. */
     public void runSequence(String header, List<List<String>> commands, Path workDir) {
+        runSequence(header, commands, workDir, null);
+    }
+
+    /** Like runSequence, with a callback on the FX thread after a clean exit. */
+    public void runSequence(String header, List<List<String>> commands, Path workDir,
+                            Runnable onSuccess) {
         stopProcess();
         clear();
         cancelled = false;
@@ -103,6 +109,9 @@ public class ConsolePane extends BorderPane {
                 }
                 if (!cancelled) {
                     println("\nProcess finished with exit code " + code);
+                    if (code == 0 && onSuccess != null) {
+                        Platform.runLater(onSuccess);
+                    }
                 }
             } catch (IOException ex) {
                 println("\u2717 " + ex.getMessage());

@@ -4,7 +4,31 @@
 
 Lumina is a lightweight, IntelliJ-inspired Java IDE built with **Java 25**, **JavaFX 25**, and **Maven**. Its identity is a warm amber accent on deep slate — a deliberate step away from the usual grey-on-grey editor look.
 
-## Phase 2 features (new)
+## Phase 4 features (new)
+
+- **IntelliJ-style highlighting** — retuned palette (orange keywords, green strings, blue method calls, teal numbers, purple constants) plus XML highlighting for `pom.xml`, `.fxml`, `.html`, and friends
+- **Maven tool window** — right-side panel (toolbar ▥ button or View → Tool Windows → Maven / Build) listing lifecycle goals; double-click runs them; switches to Gradle tasks for Gradle projects
+- **Database tool window** — JDBC client with bundled PostgreSQL & MySQL drivers: connect, browse tables (double-click for rows), run ad-hoc SQL with a results grid; connection URL/user remembered
+- **Find in Files** — Ctrl/Cmd+Shift+F, live search across the project with jump-to-line
+- **Debug launch** — Debug button/menu (Ctrl/Cmd+D) starts any run configuration with JDWP suspended on port 5005 and auto-attaches `jdb` in the built-in Terminal (`stop in pkg.Class.method`, `cont`, `step`, `locals`); attach IntelliJ/VS Code remote debug to 5005 works too
+- **Git: Clone Repository…** — clone by URL and auto-open when done
+- **Last project restore** — reopens your last project on startup (unless you used File → Close Project); stored in `~/.lumina/lumina.properties`
+
+## Phase 3 features
+
+- **Full IntelliJ-style menu bar** — File, Edit, View, Navigate, Code, Refactor, Build, Run, Git, Tools, Window, Help
+- **Run any project** — toolbar dropdown auto-detects run configurations:
+  - Spring Boot (Maven `spring-boot:run` or Gradle `bootRun`, wrapper-aware: uses `./mvnw` / `gradlew` when present, `cmd /c` on Windows)
+  - Plain Maven/Gradle: ▶ on a class compiles the whole project and runs that class on the project classpath (so cross-file imports work)
+  - Falls back to the single-file source launcher outside build projects
+- **Git integration** — branch chip in the toolbar (click to list & switch branches, like IntelliJ), Git menu with Init, Commit…, Push, Pull, Fetch, Status, New Branch…, "Sign in to GitHub" (opens browser), "Open Repository on GitHub" (parses origin URL)
+- **Built-in Terminal** — bottom tool window next to Run (Ctrl/Cmd+T, Tools menu, icon rail); real system shell (bash/zsh/cmd) with command history (↑/↓); note: piped streams, so TUI apps like vim need an external terminal
+- **IntelliJ-style project tree** — package chains flattened (`dev.lumina`), dimmed project path on the root node, `.class` ⚙ icons
+- **Open .class files** — disassembled with `javap -p -c`, shown read-only
+- **Navigate** — Go to File… (Ctrl/Cmd+P type-ahead popup), Go to Line… (Ctrl/Cmd+G)
+- **Code** — Toggle Line Comment (Ctrl/Cmd+/); **Refactor** — Rename File; **Build** — Build/Clean Project
+
+## Phase 2 features
 
 - **IntelliJ-style shell** — left icon rail (toggle Project/Console, Run, New Project), toolbar with project chip + run/stop controls, breadcrumb status bar
 - **New Project wizard** (`Ctrl/Cmd+Shift+N`) — generator list left, form right, just like IntelliJ:

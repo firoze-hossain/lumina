@@ -5,6 +5,7 @@ import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.run.RunConfiguration;
 import dev.lumina.ui.*;
+import dev.lumina.util.Settings;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -42,6 +43,10 @@ public class LuminaApp extends Application {
     private ConsolePane console;
     private TerminalPane terminal;
     private TabPane bottomTabs;
+    private TabPane rightTabs;
+    private SplitPane outerSplit;
+    private MavenPanel mavenPanel;
+    private DatabasePanel dbPanel;
     private SplitPane verticalSplit;
     private SplitPane horizontalSplit;
     private IconRail iconRail;
@@ -100,7 +105,18 @@ public class LuminaApp extends Application {
         horizontalSplit.setDividerPositions(0.22);
         SplitPane.setResizableWithParent(fileExplorer, false);
 
-        root.setCenter(horizontalSplit);
+        // right tool windows: Maven/Gradle goals + Database (hidden by default)
+        mavenPanel = new MavenPanel(this::runBuildGoal);
+        dbPanel = new DatabasePanel();
+        rightTabs = new TabPane(toolTab("Maven", mavenPanel), toolTab("Database", dbPanel));
+        rightTabs.getStyleClass().add("tool-tabs");
+        rightTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        SplitPane.setResizableWithParent(rightTabs, false);
+
+        outerSplit = new SplitPane(horizontalSplit);
+        outerSplit.setDividerPositions(0.78);
+
+        root.setCenter(outerSplit);
         root.setBottom(buildStatusBar());
         updateEditorVisibility();
 
@@ -113,12 +129,19 @@ public class LuminaApp extends Application {
         stage.setOnCloseRequest(e -> {
             console.shutdown();
             terminal.stop();
+            dbPanel.shutdown();
         });
         stage.show();
 
         terminal.start(Path.of(System.getProperty("user.home")));
         refreshRunConfigs();
         refreshGitInfo();
+
+        // reopen the last project unless it was explicitly closed
+        String last = Settings.get(Settings.LAST_PROJECT);
+        if (last != null && Files.isDirectory(Path.of(last))) {
+            openProject(Path.of(last));
+        }
 
         editorTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
             if (tab instanceof EditorTab et) {
@@ -172,7 +195,9 @@ public class LuminaApp extends Application {
                 item("Cut", "Shortcut+X", e -> withEditor(EditorTab::cut)),
                 item("Copy", "Shortcut+C", e -> withEditor(EditorTab::copy)),
                 item("Paste", "Shortcut+V", e -> withEditor(EditorTab::paste)),
-                item("Select All", "Shortcut+A", e -> withEditor(EditorTab::selectAll)));
+                item("Select All", "Shortcut+A", e -> withEditor(EditorTab::selectAll)),
+                new SeparatorMenuItem(),
+                item("Find in Files\u2026", "Shortcut+Shift+F", e -> findInFiles()));
 
         // ---- View
         Menu toolWindows = new Menu("Tool Windows");
@@ -180,7 +205,9 @@ public class LuminaApp extends Application {
                 item("Project", null, e -> toggleProjectPanel(
                         !horizontalSplit.getItems().contains(fileExplorer))),
                 item("Run", null, e -> showRunPanel()),
-                item("Terminal", null, e -> showTerminal()));
+                item("Terminal", null, e -> showTerminal()),
+                item("Maven / Build", null, e -> showRightPanel(0)),
+                item("Database", null, e -> showRightPanel(1)));
         Menu view = new Menu("View");
         view.getItems().add(toolWindows);
 
@@ -216,6 +243,7 @@ public class LuminaApp extends Application {
         run.getItems().addAll(
                 item("Run", "Shortcut+R", e -> runSelectedConfig()),
                 item("Run Current File", "Shortcut+Shift+R", e -> runCurrentFile()),
+                item("Debug", "Shortcut+D", e -> debugSelectedConfig()),
                 item("Stop", "Shortcut+F2", e -> console.stopProcess()),
                 new SeparatorMenuItem(),
                 item("Clear Run Output", null, e -> console.clear()));
@@ -223,6 +251,7 @@ public class LuminaApp extends Application {
         // ---- Git
         Menu git = new Menu("Git");
         git.getItems().addAll(
+                item("Clone Repository\u2026", null, e -> gitClone()),
                 item("Init Repository", null, e -> gitInit()),
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
                 item("Push", "Shortcut+Shift+K", e -> gitRun("Push", "push")),
@@ -298,12 +327,21 @@ public class LuminaApp extends Application {
         runBtn.getStyleClass().add("tool-run");
         runBtn.setOnAction(e -> runSelectedConfig());
 
+        Button debugBtn = toolButton("\uD83D\uDC1E", "Debug (Ctrl/Cmd+D) \u2014 JVM waits on port 5005");
+        debugBtn.setOnAction(e -> debugSelectedConfig());
+
         Button stopBtn = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
         stopBtn.getStyleClass().add("tool-stop");
         stopBtn.setOnAction(e -> console.stopProcess());
 
+        Button sideBtn = toolButton("\u25A5", "Maven / Database panel");
+        sideBtn.setOnAction(e -> {
+            if (outerSplit.getItems().contains(rightTabs)) toggleRightPanel(false);
+            else showRightPanel(rightTabs.getSelectionModel().getSelectedIndex());
+        });
+
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
-                runConfigBox, runBtn, stopBtn);
+                runConfigBox, runBtn, debugBtn, stopBtn, sideBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -500,6 +538,117 @@ public class LuminaApp extends Application {
         console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
     }
 
+    // ------------------------------------------------------- debug & search
+
+    private void debugSelectedConfig() {
+        RunConfiguration config = runConfigBox.getValue();
+        List<List<String>> commands = null;
+        Path workDir = projectRoot;
+        String label;
+
+        if (config != null && config.commands() != null) {
+            commands = config.commands();
+            workDir = config.workDir();
+            label = config.label();
+        } else {
+            EditorTab tab = currentEditor();
+            if (tab == null) {
+                error("Nothing to debug", "Open a Java file or pick a run configuration.");
+                return;
+            }
+            saveCurrent(false);
+            if (tab.getPath() == null) return;
+            String fqcn = fqcnOf(tab.getPath());
+            if (fqcn != null && projectRoot != null) {
+                commands = RunConfiguration.compileAndRunClass(projectRoot, fqcn);
+            }
+            if (commands == null) {
+                commands = List.of(List.of(RunConfiguration.javaBin(),
+                        tab.getPath().toAbsolutePath().toString()));
+                workDir = tab.getPath().getParent();
+            }
+            label = "Debug " + tab.getPath().getFileName();
+        }
+
+        showRunPanel();
+        console.runSequence(label + " [debug \u2014 JDWP :5005]",
+                RunConfiguration.debugify(commands), workDir);
+        console.println("JVM suspends until a debugger attaches on port 5005.");
+        console.println("Attaching jdb in the Terminal \u2014 useful commands: "
+                + "stop in pkg.Class.method | cont | step | locals | where");
+
+        Thread attach = new Thread(() -> {
+            try {
+                Thread.sleep(4000);
+            } catch (InterruptedException e) {
+                return;
+            }
+            Platform.runLater(() -> {
+                showTerminal();
+                terminal.sendCommand("jdb -attach 5005");
+            });
+        }, "lumina-jdb-attach");
+        attach.setDaemon(true);
+        attach.start();
+    }
+
+    private void findInFiles() {
+        if (!requireProject()) return;
+        new SearchDialog(stage, projectRoot, this::openFileAtLine).show();
+    }
+
+    private void openFileAtLine(Path path, int line) {
+        openFile(path);
+        Platform.runLater(() -> {
+            EditorTab tab = currentEditor();
+            if (tab != null) tab.goToLine(line);
+        });
+    }
+
+    private void runBuildGoal(String goal) {
+        if (projectRoot == null) return;
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? RunConfiguration.maven(projectRoot, goal)
+                : RunConfiguration.gradleCmd(projectRoot, goal);
+        showRunPanel();
+        console.runCommand(goal, cmd, projectRoot);
+    }
+
+    private void gitClone() {
+        prompt("Clone Repository", "Repository URL:",
+                "https://github.com/user/repo.git").ifPresent(raw -> {
+            String url = raw.trim();
+            if (url.isEmpty()) return;
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Clone into folder");
+            File parent = chooser.showDialog(stage);
+            if (parent == null) return;
+
+            String name = url.substring(url.lastIndexOf('/') + 1)
+                    .replace(".git", "");
+            Path target = parent.toPath().resolve(name);
+            showRunPanel();
+            console.runSequence("git clone " + url,
+                    List.of(List.of("git", "clone", url, target.toString())),
+                    parent.toPath(),
+                    () -> openProject(target));
+        });
+    }
+
+    private void showRightPanel(int tabIndex) {
+        toggleRightPanel(true);
+        rightTabs.getSelectionModel().select(tabIndex);
+    }
+
+    private void toggleRightPanel(boolean show) {
+        if (show && !outerSplit.getItems().contains(rightTabs)) {
+            outerSplit.getItems().add(rightTabs);
+            outerSplit.setDividerPositions(0.78);
+        } else if (!show) {
+            outerSplit.getItems().remove(rightTabs);
+        }
+    }
+
     // ---------------------------------------------------------- tool windows
 
     private void showRunPanel() {
@@ -559,7 +708,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.3");
+        Label brand = new Label("Lumina 0.4");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -639,6 +788,8 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
         refreshRunConfigs();
         refreshGitInfo();
+        mavenPanel.setProject(dir);
+        Settings.put(Settings.LAST_PROJECT, dir.toString());
         terminal.start(dir);
 
         try (Stream<Path> walk = Files.walk(dir)) {
@@ -661,6 +812,8 @@ public class LuminaApp extends Application {
         stage.setTitle("Lumina");
         refreshRunConfigs();
         refreshGitInfo();
+        mavenPanel.setProject(null);
+        Settings.put(Settings.LAST_PROJECT, null);
     }
 
     private int rank(Path p) {
@@ -906,14 +1059,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.3");
+        alert.setHeaderText("Lumina IDE 0.4");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase 3: full menu bar, Run/Terminal tool windows,
-                Git branch switching, smart run for Maven / Gradle /
-                Spring Boot projects, Go to File, javap class viewer.""");
+                Phase 4: IntelliJ-style highlighting (Java + XML),
+                Maven & Database tool windows, Find in Files,
+                debug launch (JDWP + jdb), Git clone, and
+                last-project restore.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

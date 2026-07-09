@@ -93,6 +93,29 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
         return null;
     }
 
+    // ------------------------------------------------------------- debugging
+
+    public static final String JDWP =
+            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005";
+
+    /** Rewrite run commands so the launched JVM waits for a debugger on 5005. */
+    public static List<List<String>> debugify(List<List<String>> commands) {
+        List<List<String>> out = new ArrayList<>();
+        for (List<String> command : commands) {
+            List<String> c = new ArrayList<>(command);
+            if (c.contains("spring-boot:run")) {
+                c.add("-Dspring-boot.run.jvmArguments=" + JDWP);
+            } else if (c.contains("bootRun")) {
+                c.add("--debug-jvm");
+            } else if (!c.isEmpty() && (c.get(0).endsWith("java")
+                    || c.get(0).endsWith("java.exe"))) {
+                c.add(1, JDWP);
+            }
+            out.add(c);
+        }
+        return out;
+    }
+
     // ------------------------------------------------------ command builders
 
     private static boolean windows() {

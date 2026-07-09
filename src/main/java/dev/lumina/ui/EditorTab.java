@@ -26,6 +26,21 @@ public class EditorTab extends Tab {
     }
 
     private CaretListener caretListener;
+    private java.util.function.Function<String,
+            org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>> highlighter;
+
+    private static java.util.function.Function<String,
+            org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>>
+            highlighterFor(String fileName) {
+        String n = fileName.toLowerCase();
+        if (n.endsWith(".java")) return JavaSyntaxHighlighter::computeHighlighting;
+        if (n.endsWith(".xml") || n.endsWith(".pom")
+                || n.endsWith(".xsd") || n.endsWith(".html")
+                || n.endsWith(".fxml")) {
+            return dev.lumina.syntax.XmlSyntaxHighlighter::computeHighlighting;
+        }
+        return null;
+    }
 
     public EditorTab(String name, Path path) {
         this.baseName = name;
@@ -35,8 +50,12 @@ public class EditorTab extends Tab {
         codeArea.getStyleClass().add("code-area");
         codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
 
-        // Re-highlight after brief pauses in typing (only for .java files).
-        if (isJava()) {
+        // Re-highlight after brief pauses in typing, per file type.
+        java.util.function.Function<String,
+                org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>> highlighter =
+                highlighterFor(name);
+        if (highlighter != null) {
+            this.highlighter = highlighter;
             codeArea.multiPlainChanges()
                     .successionEnds(Duration.ofMillis(120))
                     .subscribe(ignore -> applyHighlighting());
@@ -61,10 +80,6 @@ public class EditorTab extends Tab {
         setContent(new VirtualizedScrollPane<>(codeArea));
     }
 
-    private boolean isJava() {
-        return baseName.endsWith(".java");
-    }
-
     // ---------------------------------------------------------------- state
 
     public void setEditorText(String text) {
@@ -74,7 +89,7 @@ public class EditorTab extends Tab {
         codeArea.requestFollowCaret();
         dirty = false;
         setText(baseName);
-        if (isJava()) applyHighlighting();
+        applyHighlighting();
     }
 
     public String getEditorText() {
@@ -104,7 +119,8 @@ public class EditorTab extends Tab {
     }
 
     private void applyHighlighting() {
-        codeArea.setStyleSpans(0, JavaSyntaxHighlighter.computeHighlighting(codeArea.getText()));
+        if (highlighter == null) return;
+        codeArea.setStyleSpans(0, highlighter.apply(codeArea.getText()));
     }
 
     // ---------------------------------------------------------------- caret

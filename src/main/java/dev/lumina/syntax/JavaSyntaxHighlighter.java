@@ -8,7 +8,11 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Regex-based Java syntax highlighting producing RichTextFX style spans. */
+/**
+ * Regex-based Java highlighting with an IntelliJ-new-UI-style token set:
+ * keywords, strings, numbers, comments, annotations, method calls,
+ * constants, types, punctuation.
+ */
 public final class JavaSyntaxHighlighter {
 
     private static final String[] KEYWORDS = {
@@ -20,18 +24,19 @@ public final class JavaSyntaxHighlighter {
             "protected", "public", "record", "return", "sealed", "short",
             "static", "strictfp", "super", "switch", "synchronized", "this",
             "throw", "throws", "transient", "try", "var", "void", "volatile",
-            "while", "yield", "permits", "non-sealed"
+            "while", "yield", "permits", "non-sealed", "true", "false", "null"
     };
 
     private static final String KEYWORD_PATTERN = "\\b(" + String.join("|", KEYWORDS) + ")\\b";
+    private static final String CONST_PATTERN = "\\b[A-Z][A-Z0-9_]{2,}\\b";
     private static final String TYPE_PATTERN = "\\b[A-Z][A-Za-z0-9_]*\\b";
+    private static final String METHOD_PATTERN = "\\b[a-z][A-Za-z0-9_]*(?=\\s*\\()";
     private static final String ANNOTATION_PATTERN = "@[A-Za-z][A-Za-z0-9_]*";
     private static final String NUMBER_PATTERN = "\\b\\d[\\d_]*(\\.\\d+)?([eE][+-]?\\d+)?[fFdDlL]?\\b";
-    // IMPORTANT: use [\s\S]*? (single character class) instead of (.|\R)*? —
-    // the alternation form recurses once per character and overflows the
-    // stack on larger files (StackOverflowError in Pattern$LazyLoop).
+    // NOTE: [\s\S]*? and unrolled string loops — never (.|\R)*?, which
+    // recurses per character and overflows the JavaFX thread's stack.
     private static final String STRING_PATTERN =
-            "\"\"\"[\\s\\S]*?\"\"\"|\"[^\"\\\\\\n]*(\\\\.[^\"\\\\\\n]*)*\"|'([^'\\\\]|\\\\.)'";
+            "\"\"\"[\\s\\S]*?\"\"\"|\"[^\"\\\\\n]*(\\\\.[^\"\\\\\n]*)*\"|'([^'\\\\]|\\\\.)'";
     private static final String COMMENT_PATTERN = "//[^\n]*|/\\*[\\s\\S]*?\\*/";
     private static final String PAREN_PATTERN = "[()\\[\\]{}]";
 
@@ -41,14 +46,16 @@ public final class JavaSyntaxHighlighter {
                     + "|(?<ANNOTATION>" + ANNOTATION_PATTERN + ")"
                     + "|(?<KEYWORD>" + KEYWORD_PATTERN + ")"
                     + "|(?<NUMBER>" + NUMBER_PATTERN + ")"
+                    + "|(?<METHOD>" + METHOD_PATTERN + ")"
+                    + "|(?<CONST>" + CONST_PATTERN + ")"
                     + "|(?<TYPE>" + TYPE_PATTERN + ")"
                     + "|(?<PAREN>" + PAREN_PATTERN + ")");
 
-    private JavaSyntaxHighlighter() {
-    }
-
     /** Files above this size are shown without highlighting (safety valve). */
     private static final int MAX_HIGHLIGHT_LENGTH = 400_000;
+
+    private JavaSyntaxHighlighter() {
+    }
 
     public static StyleSpans<Collection<String>> computeHighlighting(String text) {
         StyleSpansBuilder<Collection<String>> spans = new StyleSpansBuilder<>();
@@ -66,6 +73,8 @@ public final class JavaSyntaxHighlighter {
                             : matcher.group("ANNOTATION") != null ? "sx-annotation"
                             : matcher.group("KEYWORD") != null ? "sx-keyword"
                             : matcher.group("NUMBER") != null ? "sx-number"
+                            : matcher.group("METHOD") != null ? "sx-method"
+                            : matcher.group("CONST") != null ? "sx-const"
                             : matcher.group("TYPE") != null ? "sx-type"
                             : "sx-paren";
             spans.add(Collections.emptyList(), matcher.start() - lastEnd);

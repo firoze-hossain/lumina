@@ -141,6 +141,14 @@ public class TerminalPane extends BorderPane {
         Platform.runLater(input::requestFocus);
     }
 
+    /** Programmatically run a command in this terminal (e.g. jdb attach). */
+    public void sendCommand(String command) {
+        Platform.runLater(() -> {
+            input.setText(command);
+            submit();
+        });
+    }
+
     // ---------------------------------------------------------------- input
 
     private void submit() {
