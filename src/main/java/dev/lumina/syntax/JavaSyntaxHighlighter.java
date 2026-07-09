@@ -27,8 +27,12 @@ public final class JavaSyntaxHighlighter {
     private static final String TYPE_PATTERN = "\\b[A-Z][A-Za-z0-9_]*\\b";
     private static final String ANNOTATION_PATTERN = "@[A-Za-z][A-Za-z0-9_]*";
     private static final String NUMBER_PATTERN = "\\b\\d[\\d_]*(\\.\\d+)?([eE][+-]?\\d+)?[fFdDlL]?\\b";
-    private static final String STRING_PATTERN = "\"\"\"(.|\\R)*?\"\"\"|\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)'";
-    private static final String COMMENT_PATTERN = "//[^\n]*|/\\*(.|\\R)*?\\*/";
+    // IMPORTANT: use [\s\S]*? (single character class) instead of (.|\R)*? —
+    // the alternation form recurses once per character and overflows the
+    // stack on larger files (StackOverflowError in Pattern$LazyLoop).
+    private static final String STRING_PATTERN =
+            "\"\"\"[\\s\\S]*?\"\"\"|\"[^\"\\\\\\n]*(\\\\.[^\"\\\\\\n]*)*\"|'([^'\\\\]|\\\\.)'";
+    private static final String COMMENT_PATTERN = "//[^\n]*|/\\*[\\s\\S]*?\\*/";
     private static final String PAREN_PATTERN = "[()\\[\\]{}]";
 
     private static final Pattern PATTERN = Pattern.compile(
@@ -43,10 +47,17 @@ public final class JavaSyntaxHighlighter {
     private JavaSyntaxHighlighter() {
     }
 
+    /** Files above this size are shown without highlighting (safety valve). */
+    private static final int MAX_HIGHLIGHT_LENGTH = 400_000;
+
     public static StyleSpans<Collection<String>> computeHighlighting(String text) {
+        StyleSpansBuilder<Collection<String>> spans = new StyleSpansBuilder<>();
+        if (text.length() > MAX_HIGHLIGHT_LENGTH) {
+            spans.add(Collections.emptyList(), text.length());
+            return spans.create();
+        }
         Matcher matcher = PATTERN.matcher(text);
         int lastEnd = 0;
-        StyleSpansBuilder<Collection<String>> spans = new StyleSpansBuilder<>();
 
         while (matcher.find()) {
             String styleClass =

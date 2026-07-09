@@ -1,6 +1,7 @@
 package dev.lumina.ui;
 
 import javafx.geometry.Insets;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
@@ -14,10 +15,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-/** Left-hand project explorer: a lazy file tree; double-click opens a file. */
+/**
+ * IntelliJ-style project explorer: lazy file tree, flattened package chains
+ * under src/&#42;/java (e.g. "dev.lumina"), dimmed project path on the root.
+ */
 public class FileExplorer extends BorderPane {
 
     private final TreeView<Path> tree = new TreeView<>();
@@ -59,7 +64,12 @@ public class FileExplorer extends BorderPane {
 
     public void setRoot(Path root) {
         this.rootPath = root;
-        TreeItem<Path> rootItem = new LazyPathItem(root);
+        if (root == null) {
+            tree.setRoot(null);
+            setCenter(emptyState);
+            return;
+        }
+        TreeItem<Path> rootItem = new LazyPathItem(root, null);
         rootItem.setExpanded(true);
         tree.setRoot(rootItem);
         setCenter(tree);
@@ -82,41 +92,74 @@ public class FileExplorer extends BorderPane {
 
     // ------------------------------------------------------------ tree cell
 
-    private static class PathCell extends TreeCell<Path> {
+    private class PathCell extends TreeCell<Path> {
         @Override
         protected void updateItem(Path item, boolean empty) {
             super.updateItem(item, empty);
+            setGraphic(null);
             if (empty || item == null) {
                 setText(null);
-                setGraphic(null);
                 return;
             }
-            String name = item.getFileName() != null
-                    ? item.getFileName().toString()
-                    : item.toString();
-            setText(glyphFor(item) + "  " + name);
+            LazyPathItem node = (LazyPathItem) getTreeItem();
+            boolean isRoot = node != null && node.getParent() == null;
+
+            String display = node != null && node.displayName != null
+                    ? node.displayName
+                    : (item.getFileName() != null ? item.getFileName().toString()
+                                                  : item.toString());
+            setText(glyphFor(item, node) + "  " + display);
+
+            if (isRoot) {
+                Label pathLabel = new Label(abbreviate(item));
+                pathLabel.getStyleClass().add("tree-root-path");
+                setGraphic(pathLabel);
+                setContentDisplay(ContentDisplay.RIGHT);
+            }
         }
 
-        private String glyphFor(Path p) {
-            if (Files.isDirectory(p)) return "\uD83D\uDCC1";           // folder
+        private String glyphFor(Path p, LazyPathItem node) {
+            if (Files.isDirectory(p)) {
+                if (node != null && node.isPackage) return "\uD83D\uDDC2\uFE0F"; // card index
+                return "\uD83D\uDCC1";                                            // folder
+            }
             String n = p.getFileName().toString().toLowerCase();
-            if (n.endsWith(".java")) return "\u2615";                   // hot beverage
-            if (n.endsWith(".xml") || n.endsWith(".pom")) return "\uD83D\uDCE6"; // package
-            if (n.endsWith(".md") || n.endsWith(".txt")) return "\uD83D\uDCC4";  // page
+            if (n.endsWith(".java")) return "\u2615";
+            if (n.endsWith(".class")) return "\u2699\uFE0F";
+            if (n.endsWith(".xml") || n.endsWith(".pom")) return "\uD83E\uDDFE";
+            if (n.endsWith(".md") || n.endsWith(".txt")) return "\uD83D\uDCC4";
             if (n.endsWith(".properties") || n.endsWith(".yml")
-                    || n.endsWith(".yaml")) return "\u2699\uFE0F";      // gear
+                    || n.endsWith(".yaml")) return "\u2699\uFE0F";
+            if (n.startsWith(".git")) return "\uD83D\uDD00";
             return "\uD83D\uDCC4";
         }
     }
 
+    private static String abbreviate(Path p) {
+        String home = System.getProperty("user.home");
+        String s = p.toAbsolutePath().toString();
+        return s.startsWith(home) ? "~" + s.substring(home.length()) : s;
+    }
+
     // ------------------------------------------------------- lazy tree item
 
-    /** Loads children only when a directory is first expanded. */
+    /**
+     * Loads children on first expansion. Chains of single-child directories
+     * under a java source root are flattened into one "a.b.c" package node.
+     */
     private static class LazyPathItem extends TreeItem<Path> {
+        final String displayName;   // null -> use file name
+        final boolean isPackage;
         private boolean loaded;
 
-        LazyPathItem(Path path) {
+        LazyPathItem(Path path, String displayName) {
+            this(path, displayName, false);
+        }
+
+        LazyPathItem(Path path, String displayName, boolean isPackage) {
             super(path);
+            this.displayName = displayName;
+            this.isPackage = isPackage;
         }
 
         @Override
@@ -128,17 +171,49 @@ public class FileExplorer extends BorderPane {
         public javafx.collections.ObservableList<TreeItem<Path>> getChildren() {
             if (!loaded && Files.isDirectory(getValue())) {
                 loaded = true;
-                try (Stream<Path> entries = Files.list(getValue())) {
-                    entries.filter(p -> !p.getFileName().toString().startsWith("."))
-                            .sorted(Comparator
-                                    .comparing((Path p) -> !Files.isDirectory(p))
-                                    .thenComparing(p -> p.getFileName().toString().toLowerCase()))
-                            .forEach(p -> super.getChildren().add(new LazyPathItem(p)));
-                } catch (IOException ignored) {
-                    // Unreadable directory: show as empty.
+                for (Path p : listSorted(getValue())) {
+                    super.getChildren().add(createChild(p));
                 }
             }
             return super.getChildren();
+        }
+
+        private static LazyPathItem createChild(Path p) {
+            if (Files.isDirectory(p) && underJavaRoot(p)) {
+                // flatten single-child directory chains into a dotted package
+                StringBuilder name = new StringBuilder(p.getFileName().toString());
+                Path end = p;
+                while (true) {
+                    List<Path> entries = listSorted(end);
+                    if (entries.size() == 1 && Files.isDirectory(entries.get(0))) {
+                        end = entries.get(0);
+                        name.append('.').append(end.getFileName());
+                    } else {
+                        break;
+                    }
+                }
+                return new LazyPathItem(end, name.toString(), true);
+            }
+            return new LazyPathItem(p, null, false);
+        }
+
+        private static boolean underJavaRoot(Path p) {
+            String s = p.toAbsolutePath().toString().replace('\\', '/');
+            return s.contains("/src/main/java/") || s.contains("/src/test/java/");
+        }
+
+        private static List<Path> listSorted(Path dir) {
+            try (Stream<Path> entries = Files.list(dir)) {
+                return entries
+                        .filter(p -> !p.getFileName().toString().equals(".git"))
+                        .filter(p -> !p.getFileName().toString().equals(".DS_Store"))
+                        .sorted(Comparator
+                                .comparing((Path p) -> !Files.isDirectory(p))
+                                .thenComparing(p -> p.getFileName().toString().toLowerCase()))
+                        .toList();
+            } catch (IOException e) {
+                return List.of();
+            }
         }
     }
 }

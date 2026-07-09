@@ -16,17 +16,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
- * Output console. Runs a single .java file with the JDK's
- * source-file launcher ("java File.java") and streams its output.
+ * Run output console. Executes single commands or sequences (e.g. compile
+ * then run) on a background thread, streaming combined stdout/stderr.
  */
 public class ConsolePane extends BorderPane {
 
     private final TextArea output = new TextArea();
-    private final Label title = new Label("CONSOLE");
+    private final Label title = new Label("RUN");
     private volatile Process process;
-    private Thread readerThread;
+    private volatile boolean cancelled;
 
     public ConsolePane() {
         getStyleClass().add("console-pane");
@@ -52,7 +53,7 @@ public class ConsolePane extends BorderPane {
         output.setEditable(false);
         output.setWrapText(true);
         output.getStyleClass().add("console-output");
-        output.setPromptText("Run a file to see its output here  (\u2318R / Ctrl+R)");
+        output.setPromptText("Run a file or project to see output here  (\u2318R / Ctrl+R)");
 
         setTop(header);
         setCenter(output);
@@ -61,52 +62,67 @@ public class ConsolePane extends BorderPane {
 
     /** Compile & run a single Java source file using the source launcher. */
     public void runJavaFile(Path file) {
+        String javaBin = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        runSequence("Running " + file.getFileName(),
+                List.of(List.of(javaBin, file.toAbsolutePath().toString())),
+                file.getParent());
+    }
+
+    public void runCommand(String header, List<String> command, Path workDir) {
+        runSequence(header, List.of(command), workDir);
+    }
+
+    /** Run commands one after another; stop at the first non-zero exit. */
+    public void runSequence(String header, List<List<String>> commands, Path workDir) {
         stopProcess();
         clear();
+        cancelled = false;
+        println("\u25B6 " + header + "\n");
+        setBusy(true);
 
-        String javaHome = System.getProperty("java.home");
-        String javaBin = Path.of(javaHome, "bin", "java").toString();
-
-        appendLine("\u25B6 Running " + file.getFileName() + " \u2026\n");
-        title.setText("CONSOLE \u2014 running");
-
-        ProcessBuilder pb = new ProcessBuilder(javaBin, file.toAbsolutePath().toString());
-        pb.directory(file.getParent() != null ? file.getParent().toFile() : null);
-        pb.redirectErrorStream(true);
-
-        try {
-            process = pb.start();
-        } catch (IOException ex) {
-            appendLine("Could not start java: " + ex.getMessage());
-            title.setText("CONSOLE");
-            return;
-        }
-
-        Process p = process;
-        readerThread = new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    appendLine(line);
+        Thread worker = new Thread(() -> {
+            int code = 0;
+            try {
+                for (List<String> command : commands) {
+                    if (cancelled) break;
+                    println("\u276F " + String.join(" ", command));
+                    ProcessBuilder pb = new ProcessBuilder(command)
+                            .redirectErrorStream(true);
+                    if (workDir != null) pb.directory(workDir.toFile());
+                    Process p = pb.start();
+                    process = p;
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                            p.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            println(line);
+                        }
+                    }
+                    code = p.waitFor();
+                    if (code != 0) break;
                 }
-                int code = p.waitFor();
-                appendLine("\nProcess finished with exit code " + code);
-            } catch (IOException | InterruptedException ignored) {
-                // Stopped by the user or app shutdown.
+                if (!cancelled) {
+                    println("\nProcess finished with exit code " + code);
+                }
+            } catch (IOException ex) {
+                println("\u2717 " + ex.getMessage());
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
             } finally {
-                Platform.runLater(() -> title.setText("CONSOLE"));
+                process = null;
+                setBusy(false);
             }
-        }, "lumina-console-reader");
-        readerThread.setDaemon(true);
-        readerThread.start();
+        }, "lumina-run");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     public void stopProcess() {
+        cancelled = true;
         Process p = process;
         if (p != null && p.isAlive()) {
             p.destroy();
-            appendLine("\n\u25A0 Process stopped");
+            println("\n\u25A0 Process stopped");
         }
         process = null;
     }
@@ -117,15 +133,15 @@ public class ConsolePane extends BorderPane {
     }
 
     public void clear() {
-        output.clear();
+        Platform.runLater(output::clear);
     }
 
-    /** Public logging hook, e.g. for the project generator. */
+    /** Public logging hook, e.g. for the project generator or git. */
     public void println(String line) {
-        appendLine(line);
+        Platform.runLater(() -> output.appendText(line + "\n"));
     }
 
-    private void appendLine(String line) {
-        Platform.runLater(() -> output.appendText(line + "\n"));
+    private void setBusy(boolean busy) {
+        Platform.runLater(() -> title.setText(busy ? "RUN \u2014 running" : "RUN"));
     }
 }

@@ -3,8 +3,8 @@ package dev.lumina.ui;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.Tooltip;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -15,10 +15,11 @@ import java.util.function.Consumer;
 public class IconRail extends VBox {
 
     private final ToggleButton projectToggle;
-    private final ToggleButton consoleToggle;
+    private final ToggleButton bottomToggle;
 
     public IconRail(Consumer<Boolean> onProjectToggle,
-                    Consumer<Boolean> onConsoleToggle,
+                    Consumer<Boolean> onBottomToggle,
+                    Runnable onShowTerminal,
                     Runnable onRun,
                     Runnable onNewProject) {
         getStyleClass().add("icon-rail");
@@ -30,11 +31,14 @@ public class IconRail extends VBox {
         projectToggle.selectedProperty().addListener(
                 (obs, old, v) -> onProjectToggle.accept(v));
 
-        consoleToggle = railToggle("\u276F_", "Console (toggle)", true);
-        consoleToggle.selectedProperty().addListener(
-                (obs, old, v) -> onConsoleToggle.accept(v));
+        bottomToggle = railToggle("\u2B9F", "Run / Terminal panel (toggle)", true);
+        bottomToggle.selectedProperty().addListener(
+                (obs, old, v) -> onBottomToggle.accept(v));
 
-        Button run = railButton("\u25B6", "Run current file (Ctrl/Cmd+R)");
+        Button terminal = railButton("\u276F_", "Terminal");
+        terminal.setOnAction(e -> onShowTerminal.run());
+
+        Button run = railButton("\u25B6", "Run (Ctrl/Cmd+R)");
         run.getStyleClass().add("rail-run");
         run.setOnAction(e -> onRun.run());
 
@@ -44,11 +48,11 @@ public class IconRail extends VBox {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        getChildren().addAll(projectToggle, consoleToggle, spacer, run, newProject);
+        getChildren().addAll(projectToggle, bottomToggle, terminal, spacer, run, newProject);
     }
 
-    public void setConsoleSelected(boolean selected) {
-        consoleToggle.setSelected(selected);
+    public void setBottomSelected(boolean selected) {
+        bottomToggle.setSelected(selected);
     }
 
     private ToggleButton railToggle(String glyph, String tip, boolean selected) {

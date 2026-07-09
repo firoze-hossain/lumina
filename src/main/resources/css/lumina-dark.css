@@ -458,3 +458,130 @@
     -fx-border-color: -lumen;
     -fx-text-fill: #F2D9A6;
 }
+
+/* ============================================================
+   Phase 3 — tool windows, git, terminal, navigation
+   ============================================================ */
+
+/* ------------------------------------------------------------ branch chip */
+
+.branch-chip {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A6ADC4;
+    -fx-background-radius: 8;
+    -fx-padding: 3 12 3 12;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+}
+.branch-chip:hover, .branch-chip:showing {
+    -fx-border-color: -lumen;
+    -fx-text-fill: #F2D9A6;
+}
+.branch-chip .arrow { -fx-background-color: #697089; }
+.branch-chip .label { -fx-text-fill: inherit; }
+
+/* -------------------------------------------------------- run config combo */
+
+.run-config-box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 12px;
+}
+.run-config-box:hover { -fx-border-color: -lumen; }
+.run-config-box .list-cell { -fx-text-fill: #C9CDDC; -fx-background-color: transparent; }
+.run-config-box .arrow { -fx-background-color: #848BA3; }
+
+/* -------------------------------------------------------- bottom tool tabs */
+
+.tool-tabs { -fx-background-color: #14161E; }
+.tool-tabs .tab-header-area { -fx-padding: 2 8 0 8; }
+.tool-tabs .tab-header-background { -fx-background-color: #14161E; }
+.tool-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 4 14 4 14;
+    -fx-background-radius: 8 8 0 0;
+}
+.tool-tabs .tab .tab-label {
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+.tool-tabs .tab:hover .tab-label { -fx-text-fill: #C9CDDC; }
+.tool-tabs .tab:selected {
+    -fx-background-color: #191C26;
+    -fx-border-color: -lumen transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+}
+.tool-tabs .tab:selected .tab-label { -fx-text-fill: #EDEFF6; }
+.tool-tabs .tab-content-area { -fx-background-color: #14161E; }
+
+/* --------------------------------------------------------------- terminal */
+
+.terminal-pane { -fx-background-color: #101219; }
+.terminal-cwd { -fx-text-fill: #565D75; -fx-font-size: 11px; }
+.terminal-output,
+.terminal-output .content {
+    -fx-background-color: #101219;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 12px;
+    -fx-highlight-fill: #3A3122;
+}
+.terminal-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
+.terminal-input-row {
+    -fx-background-color: #101219;
+    -fx-border-color: #1E2230 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.terminal-prompt { -fx-text-fill: -lumen; -fx-font-weight: bold; }
+.terminal-input {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #E4E7F1;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 12px;
+    -fx-prompt-text-fill: #4A5068;
+    -fx-padding: 2 0 2 0;
+}
+.terminal-input:focused { -fx-border-color: transparent; }
+
+/* --------------------------------------------------------- go to file */
+
+.goto-dialog {
+    -fx-border-color: -lumen;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 32, 0.25, 0, 10);
+}
+.goto-filter {
+    -fx-font-size: 14px;
+}
+.goto-list {
+    -fx-background-color: #191C26;
+    -fx-padding: 4 8 8 8;
+}
+.goto-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 8;
+    -fx-font-size: 12px;
+}
+.goto-list .list-cell:hover { -fx-background-color: #1F2230; }
+.goto-list .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+/* -------------------------------------------------------- tree root path */
+
+.tree-root-path {
+    -fx-text-fill: #565D75;
+    -fx-font-size: 11px;
+    -fx-padding: 0 0 0 8;
+}

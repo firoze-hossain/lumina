@@ -133,4 +133,50 @@ public class EditorTab extends Tab {
     public void copy() { codeArea.copy(); }
     public void paste() { codeArea.paste(); }
     public void selectAll() { codeArea.selectAll(); }
+
+    // --------------------------------------------------------- extra tools
+
+    /** Used for decompiled .class views. */
+    public void setReadOnly() {
+        codeArea.setEditable(false);
+    }
+
+    public void goToLine(int line) {
+        int target = Math.max(0, Math.min(line - 1, codeArea.getParagraphs().size() - 1));
+        codeArea.moveTo(target, 0);
+        codeArea.requestFollowCaret();
+        focusEditor();
+    }
+
+    /** Toggle // on the selected lines (or the caret line). */
+    public void toggleComment() {
+        if (!codeArea.isEditable()) return;
+        int start = codeArea.offsetToPosition(
+                codeArea.getSelection().getStart(), org.fxmisc.richtext.model.TwoDimensional.Bias.Forward)
+                .getMajor();
+        int end = codeArea.offsetToPosition(
+                codeArea.getSelection().getEnd(), org.fxmisc.richtext.model.TwoDimensional.Bias.Backward)
+                .getMajor();
+
+        boolean allCommented = true;
+        for (int i = start; i <= end; i++) {
+            String text = codeArea.getParagraph(i).getText();
+            if (!text.isBlank() && !text.stripLeading().startsWith("//")) {
+                allCommented = false;
+                break;
+            }
+        }
+        for (int i = start; i <= end; i++) {
+            String text = codeArea.getParagraph(i).getText();
+            if (text.isBlank()) continue;
+            if (allCommented) {
+                int idx = text.indexOf("//");
+                int removeEnd = idx + 2;
+                if (removeEnd < text.length() && text.charAt(removeEnd) == ' ') removeEnd++;
+                codeArea.replaceText(i, idx, i, removeEnd, "");
+            } else {
+                codeArea.insertText(i, 0, "// ");
+            }
+        }
+    }
 }

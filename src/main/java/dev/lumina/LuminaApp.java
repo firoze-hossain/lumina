@@ -1,7 +1,9 @@
 package dev.lumina;
 
+import dev.lumina.git.GitService;
 import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
+import dev.lumina.run.RunConfiguration;
 import dev.lumina.ui.*;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -18,16 +20,18 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * Lumina IDE — Phase 2.
- * IntelliJ-style shell: icon rail, toolbar with run controls, project
- * explorer, tabbed editor, console, breadcrumb status bar — plus a
- * New Project wizard (Java & Spring Boot).
+ * Lumina IDE — Phase 3.
+ * Full IntelliJ-style menu bar, Run/Terminal tool windows, Git integration
+ * with branch switching, smart run (Java file / Maven / Gradle / Spring
+ * Boot), Go to File, and .class viewing via javap.
  */
 public class LuminaApp extends Application {
 
@@ -36,10 +40,14 @@ public class LuminaApp extends Application {
     private WelcomeView welcomeView;
     private FileExplorer fileExplorer;
     private ConsolePane console;
+    private TerminalPane terminal;
+    private TabPane bottomTabs;
     private SplitPane verticalSplit;
     private SplitPane horizontalSplit;
     private IconRail iconRail;
     private Label projectChip;
+    private MenuButton branchButton;
+    private ComboBox<RunConfiguration> runConfigBox;
     private HBox breadcrumbBar;
     private Label statusCaret;
 
@@ -52,23 +60,18 @@ public class LuminaApp extends Application {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
+        root.setTop(new VBox(buildMenuBar(), buildToolBar()));
 
-        // --- top: menu bar + toolbar ---
-        VBox top = new VBox(buildMenuBar(), buildToolBar());
-        root.setTop(top);
-
-        // --- left rail ---
         iconRail = new IconRail(
                 this::toggleProjectPanel,
-                this::toggleConsole,
-                this::runCurrentFile,
+                this::toggleBottomPanel,
+                this::showTerminal,
+                this::runSelectedConfig,
                 this::showNewProjectDialog);
         root.setLeft(iconRail);
 
-        // --- project explorer ---
         fileExplorer = new FileExplorer(this::openFile);
 
-        // --- editor tabs over welcome view ---
         editorTabs = new TabPane();
         editorTabs.getStyleClass().add("editor-tabs");
         editorTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
@@ -80,12 +83,18 @@ public class LuminaApp extends Application {
         editorTabs.getTabs().addListener(
                 (javafx.collections.ListChangeListener<Tab>) c -> updateEditorVisibility());
 
-        // --- console ---
+        // bottom tool windows: Run + Terminal
         console = new ConsolePane();
+        terminal = new TerminalPane();
+        bottomTabs = new TabPane(
+                toolTab("Run", console),
+                toolTab("Terminal", terminal));
+        bottomTabs.getStyleClass().add("tool-tabs");
+        bottomTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        verticalSplit = new SplitPane(editorArea, console);
+        verticalSplit = new SplitPane(editorArea, bottomTabs);
         verticalSplit.setOrientation(Orientation.VERTICAL);
-        verticalSplit.setDividerPositions(0.72);
+        verticalSplit.setDividerPositions(0.70);
 
         horizontalSplit = new SplitPane(fileExplorer, verticalSplit);
         horizontalSplit.setDividerPositions(0.22);
@@ -95,14 +104,21 @@ public class LuminaApp extends Application {
         root.setBottom(buildStatusBar());
         updateEditorVisibility();
 
-        Scene scene = new Scene(root, 1360, 840);
+        Scene scene = new Scene(root, 1400, 860);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
 
         stage.setTitle("Lumina");
         stage.setScene(scene);
-        stage.setOnCloseRequest(e -> console.shutdown());
+        stage.setOnCloseRequest(e -> {
+            console.shutdown();
+            terminal.stop();
+        });
         stage.show();
+
+        terminal.start(Path.of(System.getProperty("user.home")));
+        refreshRunConfigs();
+        refreshGitInfo();
 
         editorTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
             if (tab instanceof EditorTab et) {
@@ -116,10 +132,16 @@ public class LuminaApp extends Application {
         });
     }
 
-    // ------------------------------------------------------------------ menu
+    private Tab toolTab(String name, javafx.scene.Node content) {
+        Tab t = new Tab(name, content);
+        t.setClosable(false);
+        return t;
+    }
+
+    // ------------------------------------------------------------------ menus
 
     private MenuBar buildMenuBar() {
-        // File > New submenu, IntelliJ-style
+        // ---- File
         Menu newMenu = new Menu("New");
         newMenu.getItems().addAll(
                 item("Project\u2026", "Shortcut+Shift+N", e -> showNewProjectDialog()),
@@ -133,6 +155,7 @@ public class LuminaApp extends Application {
                 newMenu,
                 item("Open File\u2026", "Shortcut+O", e -> openFileDialog()),
                 item("Open Folder\u2026", "Shortcut+Shift+O", e -> openFolderDialog()),
+                item("Close Project", null, e -> closeProject()),
                 new SeparatorMenuItem(),
                 item("Save", "Shortcut+S", e -> saveCurrent(false)),
                 item("Save As\u2026", "Shortcut+Shift+S", e -> saveCurrent(true)),
@@ -140,6 +163,7 @@ public class LuminaApp extends Application {
                 item("Close Tab", "Shortcut+W", e -> closeCurrentTab()),
                 item("Exit", null, e -> Platform.exit()));
 
+        // ---- Edit
         Menu edit = new Menu("Edit");
         edit.getItems().addAll(
                 item("Undo", "Shortcut+Z", e -> withEditor(EditorTab::undo)),
@@ -150,27 +174,92 @@ public class LuminaApp extends Application {
                 item("Paste", "Shortcut+V", e -> withEditor(EditorTab::paste)),
                 item("Select All", "Shortcut+A", e -> withEditor(EditorTab::selectAll)));
 
+        // ---- View
+        Menu toolWindows = new Menu("Tool Windows");
+        toolWindows.getItems().addAll(
+                item("Project", null, e -> toggleProjectPanel(
+                        !horizontalSplit.getItems().contains(fileExplorer))),
+                item("Run", null, e -> showRunPanel()),
+                item("Terminal", null, e -> showTerminal()));
+        Menu view = new Menu("View");
+        view.getItems().add(toolWindows);
+
+        // ---- Navigate
+        Menu navigate = new Menu("Navigate");
+        navigate.getItems().addAll(
+                item("Go to File\u2026", "Shortcut+P", e -> goToFile()),
+                item("Go to Line\u2026", "Shortcut+G", e -> goToLine()));
+
+        // ---- Code
+        Menu code = new Menu("Code");
+        code.getItems().addAll(
+                item("Toggle Line Comment", "Shortcut+Slash",
+                        e -> withEditor(EditorTab::toggleComment)),
+                disabled("Reformat Code (soon)"),
+                disabled("Optimize Imports (soon)"));
+
+        // ---- Refactor
+        Menu refactor = new Menu("Refactor");
+        refactor.getItems().addAll(
+                item("Rename File\u2026", null, e -> renameSelectedFile()),
+                disabled("Rename Symbol (soon)"),
+                disabled("Extract Method (soon)"));
+
+        // ---- Build
+        Menu build = new Menu("Build");
+        build.getItems().addAll(
+                item("Build Project", "Shortcut+F9", e -> buildProject()),
+                item("Clean Project", null, e -> cleanProject()));
+
+        // ---- Run
         Menu run = new Menu("Run");
         run.getItems().addAll(
-                item("Run File", "Shortcut+R", e -> runCurrentFile()),
+                item("Run", "Shortcut+R", e -> runSelectedConfig()),
+                item("Run Current File", "Shortcut+Shift+R", e -> runCurrentFile()),
                 item("Stop", "Shortcut+F2", e -> console.stopProcess()),
                 new SeparatorMenuItem(),
-                item("Clear Console", null, e -> console.clear()));
+                item("Clear Run Output", null, e -> console.clear()));
 
-        Menu view = new Menu("View");
-        CheckMenuItem toggleConsoleItem = new CheckMenuItem("Console");
-        toggleConsoleItem.setSelected(true);
-        toggleConsoleItem.setOnAction(e -> {
-            toggleConsole(toggleConsoleItem.isSelected());
-            iconRail.setConsoleSelected(toggleConsoleItem.isSelected());
-        });
-        view.getItems().add(toggleConsoleItem);
+        // ---- Git
+        Menu git = new Menu("Git");
+        git.getItems().addAll(
+                item("Init Repository", null, e -> gitInit()),
+                item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
+                item("Push", "Shortcut+Shift+K", e -> gitRun("Push", "push")),
+                item("Pull", null, e -> gitRun("Pull", "pull")),
+                item("Fetch", null, e -> gitRun("Fetch", "fetch")),
+                item("Show Status", null, e -> gitStatus()),
+                new SeparatorMenuItem(),
+                item("New Branch\u2026", null, e -> gitNewBranch()),
+                new SeparatorMenuItem(),
+                item("Sign in to GitHub (browser)\u2026", null,
+                        e -> openBrowser("https://github.com/login")),
+                item("Open Repository on GitHub", null, e -> openRemote()));
 
+        // ---- Tools
+        Menu tools = new Menu("Tools");
+        tools.getItems().addAll(
+                item("Terminal", "Shortcut+T", e -> showTerminal()),
+                item("New Project Wizard\u2026", null, e -> showNewProjectDialog()));
+
+        // ---- Window
+        Menu window = new Menu("Window");
+        window.getItems().addAll(
+                item("Toggle Project Panel", null, e -> toggleProjectPanel(
+                        !horizontalSplit.getItems().contains(fileExplorer))),
+                item("Toggle Bottom Panel", null, e -> {
+                    boolean show = !verticalSplit.getItems().contains(bottomTabs);
+                    toggleBottomPanel(show);
+                    iconRail.setBottomSelected(show);
+                }));
+
+        // ---- Help
         Menu help = new Menu("Help");
         help.getItems().add(item("About Lumina", null, e -> showAbout()));
 
-        MenuBar bar = new MenuBar(file, edit, run, view, help);
-        bar.setUseSystemMenuBar(false); // same in-window bar on mac/win/linux
+        MenuBar bar = new MenuBar(file, edit, view, navigate, code, refactor,
+                build, run, git, tools, window, help);
+        bar.setUseSystemMenuBar(false);
         return bar;
     }
 
@@ -182,24 +271,39 @@ public class LuminaApp extends Application {
         return mi;
     }
 
+    private MenuItem disabled(String text) {
+        MenuItem mi = new MenuItem(text);
+        mi.setDisable(true);
+        return mi;
+    }
+
     // --------------------------------------------------------------- toolbar
 
     private HBox buildToolBar() {
         projectChip = new Label("No project");
         projectChip.getStyleClass().add("project-chip");
 
+        branchButton = new MenuButton("\u2387 no vcs");
+        branchButton.getStyleClass().add("branch-chip");
+        branchButton.setOnShowing(e -> populateBranchMenu());
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button runBtn = toolButton("\u25B6", "Run current file (Ctrl/Cmd+R)");
+        runConfigBox = new ComboBox<>();
+        runConfigBox.getStyleClass().add("run-config-box");
+        runConfigBox.setPrefWidth(240);
+
+        Button runBtn = toolButton("\u25B6", "Run selected configuration (Ctrl/Cmd+R)");
         runBtn.getStyleClass().add("tool-run");
-        runBtn.setOnAction(e -> runCurrentFile());
+        runBtn.setOnAction(e -> runSelectedConfig());
 
         Button stopBtn = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
         stopBtn.getStyleClass().add("tool-stop");
         stopBtn.setOnAction(e -> console.stopProcess());
 
-        HBox bar = new HBox(10, projectChip, spacer, runBtn, stopBtn);
+        HBox bar = new HBox(10, projectChip, branchButton, spacer,
+                runConfigBox, runBtn, stopBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -213,6 +317,240 @@ public class LuminaApp extends Application {
         return b;
     }
 
+    // -------------------------------------------------------------- git chip
+
+    private void refreshGitInfo() {
+        String branch = projectRoot != null ? GitService.currentBranch(projectRoot) : null;
+        branchButton.setText(branch != null ? "\u2387 " + branch : "\u2387 no vcs");
+    }
+
+    private void populateBranchMenu() {
+        branchButton.getItems().clear();
+        if (projectRoot == null || !GitService.isRepository(projectRoot)) {
+            MenuItem none = new MenuItem(projectRoot == null
+                    ? "Open a project first" : "Not a git repository \u2014 Git \u2192 Init");
+            none.setDisable(true);
+            branchButton.getItems().add(none);
+            return;
+        }
+        String current = GitService.currentBranch(projectRoot);
+        for (String b : GitService.localBranches(projectRoot)) {
+            MenuItem mi = new MenuItem((b.equals(current) ? "\u2713 " : "    ") + b);
+            mi.setOnAction(e -> checkout(b));
+            branchButton.getItems().add(mi);
+        }
+        branchButton.getItems().addAll(new SeparatorMenuItem(),
+                item("New Branch\u2026", null, e -> gitNewBranch()));
+    }
+
+    private void checkout(String branch) {
+        Thread t = new Thread(() -> {
+            GitService.Result r = GitService.checkout(projectRoot, branch);
+            console.println(r.output().isBlank()
+                    ? "Switched to branch '" + branch + "'" : r.output().trim());
+            Platform.runLater(() -> {
+                refreshGitInfo();
+                fileExplorer.refresh();
+            });
+        }, "lumina-git");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    // -------------------------------------------------------------- git menu
+
+    private boolean requireProject() {
+        if (projectRoot == null) {
+            error("No project open", "Open or create a project first.");
+            return false;
+        }
+        return true;
+    }
+
+    private void gitInit() {
+        if (!requireProject()) return;
+        GitService.Result r = GitService.init(projectRoot);
+        console.println(r.output().trim());
+        refreshGitInfo();
+        fileExplorer.refresh();
+    }
+
+    private void gitCommit() {
+        if (!requireProject()) return;
+        prompt("Commit", "Commit message:", "update").ifPresent(msg -> {
+            if (msg.isBlank()) return;
+            showRunPanel();
+            console.runSequence("git commit",
+                    List.of(List.of("git", "add", "-A"),
+                            List.of("git", "commit", "-m", msg)),
+                    projectRoot);
+        });
+    }
+
+    private void gitRun(String label, String subcommand) {
+        if (!requireProject()) return;
+        showRunPanel();
+        console.runCommand("git " + label.toLowerCase(),
+                List.of("git", subcommand), projectRoot);
+    }
+
+    private void gitStatus() {
+        if (!requireProject()) return;
+        showRunPanel();
+        console.clear();
+        GitService.Result r = GitService.status(projectRoot);
+        console.println("\u25B6 git status\n" + r.output());
+    }
+
+    private void gitNewBranch() {
+        if (!requireProject()) return;
+        prompt("New Branch", "Branch name:", "feature/").ifPresent(name -> {
+            if (name.isBlank()) return;
+            GitService.Result r = GitService.createBranch(projectRoot, name.trim());
+            console.println(r.output().isBlank()
+                    ? "Created and switched to '" + name.trim() + "'" : r.output().trim());
+            refreshGitInfo();
+        });
+    }
+
+    private void openRemote() {
+        if (!requireProject()) return;
+        String url = GitService.remoteBrowserUrl(projectRoot);
+        if (url != null) openBrowser(url);
+        else error("No remote", "This repository has no 'origin' remote yet.");
+    }
+
+    private void openBrowser(String url) {
+        getHostServices().showDocument(url);
+    }
+
+    // ------------------------------------------------------------------- run
+
+    private void refreshRunConfigs() {
+        List<RunConfiguration> configs = RunConfiguration.detect(projectRoot);
+        runConfigBox.getItems().setAll(configs);
+        // prefer a project config over Current File when one exists
+        runConfigBox.getSelectionModel().select(configs.size() > 1 ? 1 : 0);
+    }
+
+    private void runSelectedConfig() {
+        RunConfiguration config = runConfigBox.getValue();
+        if (config == null || config.commands() == null) {
+            runCurrentFile();
+            return;
+        }
+        showRunPanel();
+        console.runSequence(config.label(), config.commands(), config.workDir());
+    }
+
+    private void runCurrentFile() {
+        EditorTab tab = currentEditor();
+        if (tab == null) {
+            error("Nothing to run", "Open a Java file or pick a run configuration.");
+            return;
+        }
+        saveCurrent(false);
+        if (tab.getPath() == null) return;
+        showRunPanel();
+
+        // Inside a Maven/Gradle project: compile the project, run this class
+        // on the project classpath so imports from other files resolve.
+        String fqcn = fqcnOf(tab.getPath());
+        if (fqcn != null && projectRoot != null) {
+            List<List<String>> commands =
+                    RunConfiguration.compileAndRunClass(projectRoot, fqcn);
+            if (commands != null) {
+                console.runSequence("Running " + fqcn, commands, projectRoot);
+                return;
+            }
+        }
+        console.runJavaFile(tab.getPath());
+    }
+
+    /** Fully-qualified class name if the file sits under src/main/java. */
+    private String fqcnOf(Path file) {
+        if (projectRoot == null || !file.getFileName().toString().endsWith(".java")) return null;
+        Path marker = projectRoot.resolve("src/main/java").toAbsolutePath().normalize();
+        Path abs = file.toAbsolutePath().normalize();
+        if (!abs.startsWith(marker)) return null;
+        String rel = marker.relativize(abs).toString()
+                .replace(File.separatorChar, '.').replace('/', '.');
+        return rel.substring(0, rel.length() - ".java".length());
+    }
+
+    private void buildProject() {
+        if (!requireProject()) return;
+        List<List<String>> commands = RunConfiguration.buildProject(projectRoot);
+        if (commands == null) {
+            error("Not a build project", "No pom.xml or build.gradle found.");
+            return;
+        }
+        showRunPanel();
+        console.runSequence("Build " + projectRoot.getFileName(), commands, projectRoot);
+    }
+
+    private void cleanProject() {
+        if (!requireProject()) return;
+        List<List<String>> commands = RunConfiguration.cleanProject(projectRoot);
+        if (commands == null) {
+            error("Not a build project", "No pom.xml or build.gradle found.");
+            return;
+        }
+        showRunPanel();
+        console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
+    }
+
+    // ---------------------------------------------------------- tool windows
+
+    private void showRunPanel() {
+        toggleBottomPanel(true);
+        iconRail.setBottomSelected(true);
+        bottomTabs.getSelectionModel().select(0);
+    }
+
+    private void showTerminal() {
+        toggleBottomPanel(true);
+        iconRail.setBottomSelected(true);
+        bottomTabs.getSelectionModel().select(1);
+        terminal.focusInput();
+    }
+
+    private void toggleBottomPanel(boolean show) {
+        if (show && !verticalSplit.getItems().contains(bottomTabs)) {
+            verticalSplit.getItems().add(bottomTabs);
+            verticalSplit.setDividerPositions(0.70);
+        } else if (!show) {
+            verticalSplit.getItems().remove(bottomTabs);
+        }
+    }
+
+    private void toggleProjectPanel(boolean show) {
+        if (show && !horizontalSplit.getItems().contains(fileExplorer)) {
+            horizontalSplit.getItems().add(0, fileExplorer);
+            horizontalSplit.setDividerPositions(0.22);
+        } else if (!show) {
+            horizontalSplit.getItems().remove(fileExplorer);
+        }
+    }
+
+    // -------------------------------------------------------------- navigate
+
+    private void goToFile() {
+        if (!requireProject()) return;
+        new GoToFileDialog(stage, projectRoot, this::openFile).show();
+    }
+
+    private void goToLine() {
+        EditorTab tab = currentEditor();
+        if (tab == null) return;
+        prompt("Go to Line", "Line number:", "1").ifPresent(text -> {
+            try {
+                tab.goToLine(Integer.parseInt(text.trim()));
+            } catch (NumberFormatException ignored) {
+            }
+        });
+    }
+
     // ------------------------------------------------------------ status bar
 
     private HBox buildStatusBar() {
@@ -221,7 +559,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.2");
+        Label brand = new Label("Lumina 0.3");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -275,6 +613,7 @@ public class LuminaApp extends Application {
     }
 
     private void createProject(ProjectSpec spec) {
+        showRunPanel();
         console.clear();
         console.println("\u25B6 Creating " + spec.name() + " ("
                 + (spec.generator() == ProjectSpec.Generator.SPRING_BOOT
@@ -298,16 +637,30 @@ public class LuminaApp extends Application {
         projectChip.setText("\uD83D\uDCC1 " + dir.getFileName());
         stage.setTitle("Lumina \u2014 " + dir.getFileName());
         updateBreadcrumbs(null, null);
+        refreshRunConfigs();
+        refreshGitInfo();
+        terminal.start(dir);
 
-        // open the most interesting file: *Application.java, else Main.java, else any .java
         try (Stream<Path> walk = Files.walk(dir)) {
             Optional<Path> toOpen = walk
                     .filter(p -> p.toString().endsWith(".java"))
+                    .filter(p -> !p.toString().contains("target")
+                            && !p.toString().contains(File.separator + "build" + File.separator))
                     .sorted((a, b) -> Integer.compare(rank(a), rank(b)))
                     .findFirst();
             toOpen.ifPresent(this::openFile);
         } catch (IOException ignored) {
         }
+    }
+
+    private void closeProject() {
+        projectRoot = null;
+        editorTabs.getTabs().clear();
+        fileExplorer.setRoot(null);
+        projectChip.setText("No project");
+        stage.setTitle("Lumina");
+        refreshRunConfigs();
+        refreshGitInfo();
     }
 
     private int rank(Path p) {
@@ -328,8 +681,7 @@ public class LuminaApp extends Application {
             String pkg = inferPackage(dir);
             String body = (pkg.isEmpty() ? "" : "package " + pkg + ";\n\n")
                     + "public class " + name + " {\n\n}\n";
-            Path file = dir.resolve(name + ".java");
-            writeAndOpen(file, body);
+            writeAndOpen(dir.resolve(name + ".java"), body);
         });
     }
 
@@ -350,7 +702,6 @@ public class LuminaApp extends Application {
 
     private void newFile() {
         if (projectRoot == null && fileExplorer.getRootPath() == null) {
-            // no project open: fall back to an untitled buffer
             addTab(new EditorTab("Untitled-" + untitledCounter++ + ".java", null));
             return;
         }
@@ -363,6 +714,28 @@ public class LuminaApp extends Application {
         });
     }
 
+    private void renameSelectedFile() {
+        Path selected = fileExplorer.getSelectedPath();
+        if (selected == null || !Files.isRegularFile(selected)) {
+            error("Nothing selected", "Select a file in the project tree first.");
+            return;
+        }
+        prompt("Rename File", "New name:", selected.getFileName().toString()).ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            try {
+                Path target = selected.resolveSibling(name);
+                Files.move(selected, target);
+                editorTabs.getTabs().removeIf(t ->
+                        t instanceof EditorTab et && selected.equals(et.getPath()));
+                fileExplorer.refresh();
+                openFile(target);
+            } catch (IOException ex) {
+                error("Could not rename", ex.getMessage());
+            }
+        });
+    }
+
     private Path targetDirectory() {
         Path selected = fileExplorer.getSelectedPath();
         if (selected != null) {
@@ -370,19 +743,18 @@ public class LuminaApp extends Application {
         }
         Path root = fileExplorer.getRootPath();
         if (root == null) {
-            error("No folder open", "Open or create a project first (File \u2192 New \u2192 Project\u2026).");
+            error("No folder open",
+                    "Open or create a project first (File \u2192 New \u2192 Project\u2026).");
             return null;
         }
         return root;
     }
 
-    /** Derive a package from a directory under src/main/java or src/test/java. */
     private String inferPackage(Path dir) {
         Path abs = dir.toAbsolutePath().normalize();
-        String[] roots = {"src/main/java", "src/test/java"};
         Path base = fileExplorer.getRootPath();
         if (base == null) return "";
-        for (String r : roots) {
+        for (String r : new String[]{"src/main/java", "src/test/java"}) {
             Path marker = base.toAbsolutePath().normalize().resolve(r);
             if (abs.startsWith(marker)) {
                 Path rel = marker.relativize(abs);
@@ -451,6 +823,10 @@ public class LuminaApp extends Application {
                 return;
             }
         }
+        if (path.getFileName().toString().endsWith(".class")) {
+            openClassFile(path);
+            return;
+        }
         try {
             String content = Files.readString(path);
             EditorTab tab = new EditorTab(path.getFileName().toString(), path);
@@ -458,6 +834,28 @@ public class LuminaApp extends Application {
             addTab(tab);
         } catch (IOException ex) {
             error("Could not open file", ex.getMessage());
+        }
+    }
+
+    /** Disassemble a .class file with javap and show it read-only. */
+    private void openClassFile(Path path) {
+        try {
+            String javap = Path.of(System.getProperty("java.home"), "bin",
+                    System.getProperty("os.name", "").toLowerCase().contains("win")
+                            ? "javap.exe" : "javap").toString();
+            Process p = new ProcessBuilder(javap, "-p", "-c", path.toString())
+                    .redirectErrorStream(true)
+                    .start();
+            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            p.waitFor();
+            EditorTab tab = new EditorTab(path.getFileName().toString(), path);
+            tab.setEditorText("// Decompiled with javap \u2014 read-only\n\n" + out);
+            tab.setReadOnly();
+            addTab(tab);
+        } catch (IOException ex) {
+            error("Could not disassemble class", ex.getMessage());
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -495,40 +893,6 @@ public class LuminaApp extends Application {
         if (t != null) editorTabs.getTabs().remove(t);
     }
 
-    private void runCurrentFile() {
-        EditorTab tab = currentEditor();
-        if (tab == null) return;
-        saveCurrent(false);
-        if (tab.getPath() == null) return;
-        runVisible();
-        console.runJavaFile(tab.getPath());
-    }
-
-    private void runVisible() {
-        if (!verticalSplit.getItems().contains(console)) {
-            toggleConsole(true);
-            iconRail.setConsoleSelected(true);
-        }
-    }
-
-    private void toggleConsole(boolean show) {
-        if (show && !verticalSplit.getItems().contains(console)) {
-            verticalSplit.getItems().add(console);
-            verticalSplit.setDividerPositions(0.72);
-        } else if (!show) {
-            verticalSplit.getItems().remove(console);
-        }
-    }
-
-    private void toggleProjectPanel(boolean show) {
-        if (show && !horizontalSplit.getItems().contains(fileExplorer)) {
-            horizontalSplit.getItems().add(0, fileExplorer);
-            horizontalSplit.setDividerPositions(0.22);
-        } else if (!show) {
-            horizontalSplit.getItems().remove(fileExplorer);
-        }
-    }
-
     private EditorTab currentEditor() {
         Tab t = editorTabs.getSelectionModel().getSelectedItem();
         return (t instanceof EditorTab et) ? et : null;
@@ -542,14 +906,14 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.2");
+        alert.setHeaderText("Lumina IDE 0.3");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase 2: IntelliJ-style shell, New Project wizard
-                (Java & Spring Boot via start.spring.io), class/package
-                creation, run & console.""");
+                Phase 3: full menu bar, Run/Terminal tool windows,
+                Git branch switching, smart run for Maven / Gradle /
+                Spring Boot projects, Go to File, javap class viewer.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
