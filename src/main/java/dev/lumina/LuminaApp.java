@@ -851,16 +851,17 @@ public class LuminaApp extends Application {
         dialog.setTitle("Sign in to GitHub");
 
         Label info = new Label(
-                "1. Click below: your browser opens a pre-filled GitHub"
-                        + " token page (scope: repo).\n"
-                        + "2. Generate the token and paste it here.\n"
-                        + "Lumina uses it to authenticate push, pull and clone.");
+                "1. Click below: your browser opens the GitHub token page,\n"
+                        + "   pre-filled with a unique name and the 'repo' scope.\n"
+                        + "2. Scroll down, click 'Generate token', copy it, paste here.\n"
+                        + "Already have a Lumina token? Just paste it \u2014 no need to make\n"
+                        + "a new one. Lumina uses it to authenticate push, pull and clone.");
         info.getStyleClass().add("form-static");
         info.setWrapText(true);
 
         Button open = new Button("Open GitHub token page in browser");
         open.getStyleClass().add("dialog-secondary");
-        open.setOnAction(e -> openBrowser(GitHubAuth.TOKEN_URL));
+        open.setOnAction(e -> openBrowser(GitHubAuth.tokenUrl()));
 
         PasswordField tokenField = new PasswordField();
         tokenField.setPromptText("ghp_\u2026 paste token here");
@@ -1527,7 +1528,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.0");
+        Label brand = new Label("Lumina 1.1");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1889,7 +1890,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.0");
+        alert.setHeaderText("Lumina IDE 1.1");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.

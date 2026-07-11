@@ -21,6 +21,21 @@ import java.util.regex.Pattern;
 public final class GitHubAuth {
 
     /** Pre-filled token creation page (repo scope, named for the IDE). */
+    /**
+     * Pre-filled token creation page. The note (description) must be UNIQUE —
+     * GitHub rejects "Note has already been taken" if a token with the same
+     * name exists. We append a timestamp so every sign-in gets a fresh note.
+     */
+    public static String tokenUrl() {
+        String note = "Lumina IDE "
+                + java.time.LocalDate.now()
+                + "-" + (System.currentTimeMillis() % 100000);
+        return "https://github.com/settings/tokens/new?scopes=repo&description="
+                + java.net.URLEncoder.encode(note, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /** @deprecated use {@link #tokenUrl()} for a collision-free note. */
+    @Deprecated
     public static final String TOKEN_URL =
             "https://github.com/settings/tokens/new?scopes=repo&description=Lumina%20IDE";
 
