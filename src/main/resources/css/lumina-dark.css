@@ -676,3 +676,14 @@
     -fx-font-size: 11px;
 }
 .tool-debug:hover { -fx-border-color: #8FCE8F; }
+
+/* ============================================================
+   Phase 6 — blame annotations
+   ============================================================ */
+
+.blame-label {
+    -fx-text-fill: #565D75;
+    -fx-font-size: 10px;
+    -fx-font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+    -fx-padding: 0 4 0 10;
+}

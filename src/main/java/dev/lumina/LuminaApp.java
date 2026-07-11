@@ -78,7 +78,10 @@ public class LuminaApp extends Application {
                 this::showNewProjectDialog);
         root.setLeft(iconRail);
 
-        fileExplorer = new FileExplorer(this::openFile);
+        fileExplorer = new FileExplorer(this::openFile, () -> {
+            EditorTab tab = currentEditor();
+            return tab != null ? tab.getPath() : null;
+        });
 
         editorTabs = new TabPane();
         editorTabs.getStyleClass().add("editor-tabs");
@@ -238,6 +241,10 @@ public class LuminaApp extends Application {
                     EditorTab tab = currentEditor();
                     if (tab != null) goToDeclaration(tab.wordAtCaret());
                 }),
+                item("Find Usages", "Alt+F7", e -> {
+                    EditorTab tab = currentEditor();
+                    if (tab != null) showUsages(tab.wordAtCaret());
+                }),
                 new SeparatorMenuItem(),
                 item("Go to File\u2026", "Shortcut+P", e -> goToFile()),
                 item("Go to Line\u2026", "Shortcut+G", e -> goToLine()));
@@ -247,6 +254,7 @@ public class LuminaApp extends Application {
         code.getItems().addAll(
                 item("Toggle Line Comment", "Shortcut+Slash",
                         e -> withEditor(EditorTab::toggleComment)),
+                item("Generate Test for Current Class", null, e -> generateTest()),
                 disabled("Reformat Code (soon)"),
                 disabled("Optimize Imports (soon)"));
 
@@ -269,6 +277,10 @@ public class LuminaApp extends Application {
                 item("Run", "Shortcut+R", e -> runSelectedConfig()),
                 item("Run Current File", "Shortcut+Shift+R", e -> runCurrentFile()),
                 item("Debug", "Shortcut+D", e -> debugSelectedConfig()),
+                new SeparatorMenuItem(),
+                item("Run All Tests", "Shortcut+Shift+T", e -> runAllTests()),
+                item("Run Current Test Class", null, e -> runCurrentTestClass()),
+                new SeparatorMenuItem(),
                 item("Stop", "Shortcut+F2", e -> console.stopProcess()),
                 new SeparatorMenuItem(),
                 item("Clear Run Output", null, e -> console.clear()));
@@ -283,6 +295,7 @@ public class LuminaApp extends Application {
                 item("Pull", null, e -> gitRun("Pull", "pull")),
                 item("Fetch", null, e -> gitRun("Fetch", "fetch")),
                 item("Show Status", null, e -> gitStatus()),
+                item("Toggle Blame Annotations", "Shortcut+Alt+B", e -> toggleBlame()),
                 new SeparatorMenuItem(),
                 item("New Branch\u2026", null, e -> gitNewBranch()),
                 new SeparatorMenuItem(),
@@ -538,6 +551,10 @@ public class LuminaApp extends Application {
         }
         saveCurrent(false);
         if (tab.getPath() == null) return;
+        if (testFqcnOf(tab.getPath()) != null) {
+            runCurrentTestClass();   // test classes run through the test runner
+            return;
+        }
         showRunPanel();
 
         // Inside a Maven/Gradle project: compile the project, run this class
@@ -585,6 +602,142 @@ public class LuminaApp extends Application {
         }
         showRunPanel();
         console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
+    }
+
+    // ------------------------------------------------- blame, usages, tests
+
+    private void toggleBlame() {
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) return;
+        if (tab.hasBlame()) {
+            tab.setBlame(null);
+            return;
+        }
+        Path file = tab.getPath();
+        Thread t = new Thread(() -> {
+            List<GitService.BlameLine> lines = GitService.blame(file);
+            Platform.runLater(() -> {
+                if (lines != null) {
+                    tab.setBlame(lines);
+                } else {
+                    console.println("Blame unavailable: " + file.getFileName()
+                            + " is not tracked in a git repository yet.");
+                }
+            });
+        }, "lumina-blame");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private boolean isDeclarationLine(String line, String word) {
+        if (line == null || line.strip().endsWith(";")) return false;
+        java.util.regex.Pattern p = Character.isUpperCase(word.charAt(0))
+                ? java.util.regex.Pattern.compile("\\b(class|interface|enum|record)\\s+"
+                        + java.util.regex.Pattern.quote(word) + "\\b")
+                : java.util.regex.Pattern.compile("[\\w>\\]]\\s+"
+                        + java.util.regex.Pattern.quote(word) + "\\s*\\(");
+        return p.matcher(line).find();
+    }
+
+    private void showUsages(String word) {
+        if (word == null || word.isBlank()) return;
+        if (!requireProject()) return;
+        new UsagesDialog(stage, projectRoot, word, this::openFileAtLine).show();
+    }
+
+    private void runAllTests() {
+        if (!requireProject()) return;
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? RunConfiguration.maven(projectRoot, "test")
+                : RunConfiguration.gradleCmd(projectRoot, "test");
+        showRunPanel();
+        console.runCommand("All tests — " + projectRoot.getFileName(),
+                cmd, projectRoot);
+    }
+
+    private void runCurrentTestClass() {
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) {
+            error("No test open", "Open a test class under src/test/java first.");
+            return;
+        }
+        String fqcn = testFqcnOf(tab.getPath());
+        if (fqcn == null) {
+            error("Not a test class",
+                    tab.getPath().getFileName() + " is not under src/test/java.");
+            return;
+        }
+        saveCurrent(false);
+        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple, "test")
+                : RunConfiguration.gradleCmd(projectRoot, "test", "--tests", fqcn);
+        showRunPanel();
+        console.runCommand("Test " + simple, cmd, projectRoot);
+    }
+
+    /** FQCN when the file sits under src/test/java, else null. */
+    private String testFqcnOf(Path file) {
+        if (projectRoot == null || !file.getFileName().toString().endsWith(".java")) return null;
+        Path marker = projectRoot.resolve("src/test/java").toAbsolutePath().normalize();
+        Path abs = file.toAbsolutePath().normalize();
+        if (!abs.startsWith(marker)) return null;
+        String rel = marker.relativize(abs).toString()
+                .replace(File.separatorChar, '.').replace('/', '.');
+        return rel.substring(0, rel.length() - ".java".length());
+    }
+
+    private void generateTest() {
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null || !requireProject()) return;
+        String fqcn = fqcnOf(tab.getPath());
+        if (fqcn == null) {
+            error("Not a main class",
+                    "Generate Test works for classes under src/main/java.");
+            return;
+        }
+        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+        String pkg = fqcn.contains(".") ? fqcn.substring(0, fqcn.lastIndexOf('.')) : "";
+        Path testDir = projectRoot.resolve("src/test/java")
+                .resolve(pkg.replace('.', '/'));
+        Path testFile = testDir.resolve(simple + "Test.java");
+        if (Files.exists(testFile)) {
+            openFile(testFile);
+            return;
+        }
+        boolean springBoot = false;
+        try {
+            springBoot = Files.readString(tab.getPath()).contains("@SpringBootApplication");
+        } catch (IOException ignored) {
+        }
+        StringBuilder body = new StringBuilder();
+        if (!pkg.isEmpty()) {
+            body.append("package ").append(pkg).append(";\n\n");
+        }
+        if (springBoot) {
+            body.append("import org.junit.jupiter.api.Test;\n")
+                    .append("import org.springframework.boot.test.context.SpringBootTest;\n\n")
+                    .append("@SpringBootTest\n")
+                    .append("class ").append(simple).append("Test {\n\n")
+                    .append("    @Test\n")
+                    .append("    void contextLoads() {\n    }\n}\n");
+        } else {
+            body.append("import org.junit.jupiter.api.Test;\n")
+                    .append("import static org.junit.jupiter.api.Assertions.*;\n\n")
+                    .append("class ").append(simple).append("Test {\n\n")
+                    .append("    @Test\n")
+                    .append("    void shouldWork() {\n")
+                    .append("        // TODO: exercise ").append(simple).append("\n")
+                    .append("        assertTrue(true);\n    }\n}\n");
+        }
+        try {
+            Files.createDirectories(testDir);
+            Files.writeString(testFile, body.toString());
+            fileExplorer.refresh();
+            openFile(testFile);
+        } catch (IOException ex) {
+            error("Could not create test", ex.getMessage());
+        }
     }
 
     // --------------------------------------------------------- github auth
@@ -950,7 +1103,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.5");
+        Label brand = new Label("Lumina 0.6");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1255,7 +1408,16 @@ public class LuminaApp extends Application {
     }
 
     private void addTab(EditorTab tab) {
-        tab.setNavigationHandler(this::goToDeclaration);
+        tab.setNavigationHandler(word -> {
+            // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
+            EditorTab current = currentEditor();
+            if (current != null && word != null && isDeclarationLine(
+                    current.currentLineText(), word)) {
+                showUsages(word);
+            } else {
+                goToDeclaration(word);
+            }
+        });
         editorTabs.getTabs().add(tab);
         editorTabs.getSelectionModel().select(tab);
         tab.focusEditor();
@@ -1302,14 +1464,13 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.5");
+        alert.setHeaderText("Lumina IDE 0.6");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase 5: Search Everywhere (double Shift),
-                Ctrl+Click go-to-declaration, richer highlighting,
-                Debug & GitHub toolbar actions.""");
+                Phase 6: git blame annotations, Find Usages,
+                locate-in-tree, and JUnit test running & generation.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

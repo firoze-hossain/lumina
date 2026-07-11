@@ -85,6 +85,23 @@ public final class ProjectGenerator {
                             <maven.compiler.release>%s</maven.compiler.release>
                             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
                         </properties>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter</artifactId>
+                                <version>5.10.2</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                        <build>
+                            <plugins>
+                                <plugin>
+                                    <groupId>org.apache.maven.plugins</groupId>
+                                    <artifactId>maven-surefire-plugin</artifactId>
+                                    <version>3.2.5</version>
+                                </plugin>
+                            </plugins>
+                        </build>
                     </project>
                     """.formatted(spec.group(), spec.artifact(), spec.javaVersion()));
         } else {
@@ -107,6 +124,15 @@ public final class ProjectGenerator {
 
                     repositories {
                         mavenCentral()
+                    }
+
+                    dependencies {
+                        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+                        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                    }
+
+                    test {
+                        useJUnitPlatform()
                     }
 
                     application {

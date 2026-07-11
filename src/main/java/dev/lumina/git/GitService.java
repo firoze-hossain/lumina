@@ -66,6 +66,55 @@ public final class GitService {
         return exec(dir, "status", "--short", "--branch");
     }
 
+    // ----------------------------------------------------------------- blame
+
+    public record BlameLine(String author, String date, String summary) {
+        public String gutter() {
+            String a = author == null ? "" : author;
+            if (a.length() > 14) a = a.substring(0, 13) + "\u2026";
+            return date + "  " + a;
+        }
+    }
+
+    /**
+     * Per-line annotations from `git blame --line-porcelain`, in file order.
+     * Returns null when the file isn't tracked in a git repository.
+     */
+    public static List<BlameLine> blame(Path file) {
+        Path dir = file.getParent();
+        if (dir == null) return null;
+        Result r = exec(dir, "blame", "--line-porcelain", "--",
+                file.getFileName().toString());
+        if (!r.ok()) return null;
+
+        java.time.format.DateTimeFormatter fmt =
+                java.time.format.DateTimeFormatter.ofPattern("M/d/yy");
+        List<BlameLine> out = new ArrayList<>();
+        String author = null, date = null, summary = null;
+        for (String line : r.output().split("\n", -1)) {
+            if (line.startsWith("author ")) {
+                author = line.substring(7);
+            } else if (line.startsWith("author-time ")) {
+                try {
+                    long epoch = Long.parseLong(line.substring(12).trim());
+                    date = java.time.Instant.ofEpochSecond(epoch)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate().format(fmt);
+                } catch (NumberFormatException e) {
+                    date = "";
+                }
+            } else if (line.startsWith("summary ")) {
+                summary = line.substring(8);
+            } else if (line.startsWith("\t")) {
+                out.add(new BlameLine(
+                        author == null ? "" : author,
+                        date == null ? "" : date,
+                        summary == null ? "" : summary));
+            }
+        }
+        return out.isEmpty() ? null : out;
+    }
+
     /** origin URL normalized to https for opening in a browser, or null. */
     public static String remoteBrowserUrl(Path dir) {
         Result r = exec(dir, "remote", "get-url", "origin");

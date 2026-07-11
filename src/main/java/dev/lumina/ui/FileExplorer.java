@@ -30,13 +30,29 @@ public class FileExplorer extends BorderPane {
     private final StackPane emptyState;
     private Path rootPath;
 
-    public FileExplorer(Consumer<Path> onOpenFile) {
+    public FileExplorer(Consumer<Path> onOpenFile,
+                        java.util.function.Supplier<Path> openedFile) {
         this.onOpenFile = onOpenFile;
         getStyleClass().add("file-explorer");
 
-        Label header = new Label("PROJECT");
-        header.getStyleClass().add("panel-header");
-        header.setPadding(new Insets(8, 12, 8, 12));
+        Label headerLabel = new Label("PROJECT");
+        headerLabel.getStyleClass().add("panel-header");
+
+        javafx.scene.control.Button locate = new javafx.scene.control.Button("\u25CE");
+        locate.getStyleClass().add("console-button");
+        locate.setTooltip(new javafx.scene.control.Tooltip("Select Opened File"));
+        locate.setOnAction(e -> {
+            Path current = openedFile.get();
+            if (current != null) selectFile(current);
+        });
+
+        javafx.scene.layout.Region headerSpacer = new javafx.scene.layout.Region();
+        javafx.scene.layout.HBox.setHgrow(headerSpacer,
+                Priority.ALWAYS);
+        javafx.scene.layout.HBox header = new javafx.scene.layout.HBox(
+                8, headerLabel, headerSpacer, locate);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        header.setPadding(new Insets(6, 10, 6, 12));
         header.setMaxWidth(Double.MAX_VALUE);
 
         tree.getStyleClass().add("project-tree");
@@ -88,6 +104,34 @@ public class FileExplorer extends BorderPane {
 
     public Path getRootPath() {
         return rootPath;
+    }
+
+    /** Expand the tree down to a file and select it (like IntelliJ \u25CE). */
+    public void selectFile(Path target) {
+        if (tree.getRoot() == null || target == null) return;
+        Path t = target.toAbsolutePath().normalize();
+        TreeItem<Path> current = tree.getRoot();
+        Path rootValue = current.getValue().toAbsolutePath().normalize();
+        if (!t.startsWith(rootValue)) return;
+
+        boolean progressed = true;
+        while (progressed && !current.getValue()
+                .toAbsolutePath().normalize().equals(t)) {
+            progressed = false;
+            current.setExpanded(true);
+            for (TreeItem<Path> child : current.getChildren()) {
+                Path cv = child.getValue().toAbsolutePath().normalize();
+                if (t.equals(cv) || t.startsWith(cv)) {
+                    current = child;
+                    progressed = true;
+                    break;
+                }
+            }
+        }
+        current.setExpanded(true);
+        tree.getSelectionModel().select(current);
+        int row = tree.getRow(current);
+        if (row >= 0) tree.scrollTo(Math.max(0, row - 5));
     }
 
     // ------------------------------------------------------------ tree cell

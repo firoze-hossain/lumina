@@ -4,7 +4,18 @@
 
 Lumina is a lightweight, IntelliJ-inspired Java IDE built with **Java 25**, **JavaFX 25**, and **Maven**. Its identity is a warm amber accent on deep slate — a deliberate step away from the usual grey-on-grey editor look.
 
-## Phase 5 features (new)
+## Phase 6 features (new)
+
+- **Git blame annotations** — Git → Toggle Blame Annotations (Ctrl/Cmd+Alt+B): every line's gutter shows `7/9/26  firoze-hossain` like IntelliJ's Annotate; hover a line for the commit message. Shows nothing (with a console note) when the file isn't in a git repo yet.
+- **Find Usages** — Alt+F7 on the caret word, or **Ctrl/Cmd+Click smartly**: clicking a *declaration* opens the usages popup (★ marks the declaration, count shown, click to jump); clicking a *usage* jumps to the declaration. Ctrl/Cmd+hover shows a hand cursor.
+- **Select Opened File** — ◎ button in the Project panel header (like IntelliJ's crosshair): expands the tree to the file in the active editor tab and selects it.
+- **Testing like IDEA** —
+  - **Run All Tests** (Ctrl/Cmd+Shift+T) → `mvn test` / `gradle test`
+  - **Run Current Test Class** → `mvn -Dtest=Name test` / `gradle test --tests fqcn`; pressing ▶ on any class under `src/test/java` automatically runs it as a test
+  - **Code → Generate Test for Current Class** → creates `XTest.java` in the mirrored `src/test/java` package — plain JUnit 5 skeleton, or `@SpringBootTest` with `contextLoads()` when the class is a Spring Boot application
+  - New plain-Java projects now ship with JUnit 5 + Surefire (Maven) / `useJUnitPlatform()` (Gradle), so tests run out of the box
+
+## Phase 5 features
 
 - **Search Everywhere** — press **Shift twice** (or Ctrl/Cmd+Shift+A, or the 🔍 toolbar button): one popup with **All / Classes / Files / Symbols / Actions / Text** tabs like IntelliJ; symbols (classes + methods) are indexed in the background; Actions runs IDE commands (Run, Debug, Commit, panels…); Tab cycles categories
 - **Go to Declaration** — **Ctrl/Cmd+Click** any identifier in the editor (or Ctrl/Cmd+B on the caret word): types resolve to their class file, methods to their declaration line, preferring the current file

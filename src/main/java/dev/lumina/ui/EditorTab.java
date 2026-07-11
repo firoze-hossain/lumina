@@ -48,7 +48,12 @@ public class EditorTab extends Tab {
         setText(name);
 
         codeArea.getStyleClass().add("code-area");
-        codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
+        refreshGutter();
+
+        // Ctrl/Cmd + hover -> hand cursor, hinting go-to-declaration.
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e ->
+                codeArea.setCursor(e.isControlDown() || e.isMetaDown()
+                        ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.TEXT));
 
         // Re-highlight after brief pauses in typing, per file type.
         java.util.function.Function<String,
@@ -92,6 +97,43 @@ public class EditorTab extends Tab {
         setContent(new VirtualizedScrollPane<>(codeArea));
     }
 
+    // ---------------------------------------------------------------- blame
+
+    private java.util.List<dev.lumina.git.GitService.BlameLine> blameLines;
+
+    public boolean hasBlame() {
+        return blameLines != null;
+    }
+
+    /** Show (or clear, with null) git blame annotations in the gutter. */
+    public void setBlame(java.util.List<dev.lumina.git.GitService.BlameLine> lines) {
+        this.blameLines = lines;
+        refreshGutter();
+    }
+
+    private void refreshGutter() {
+        java.util.function.IntFunction<javafx.scene.Node> lineNo =
+                LineNumberFactory.get(codeArea);
+        if (blameLines == null) {
+            codeArea.setParagraphGraphicFactory(lineNo);
+            return;
+        }
+        codeArea.setParagraphGraphicFactory(i -> {
+            javafx.scene.control.Label annotation = new javafx.scene.control.Label(
+                    i < blameLines.size() ? blameLines.get(i).gutter() : "");
+            annotation.getStyleClass().add("blame-label");
+            annotation.setPrefWidth(150);
+            if (i < blameLines.size() && !blameLines.get(i).summary().isBlank()) {
+                javafx.scene.control.Tooltip.install(annotation,
+                        new javafx.scene.control.Tooltip(blameLines.get(i).summary()));
+            }
+            javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(
+                    6, annotation, lineNo.apply(i));
+            box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            return box;
+        });
+    }
+
     // ------------------------------------------------------------ navigation
 
     private java.util.function.Consumer<String> navigationHandler;
@@ -103,6 +145,11 @@ public class EditorTab extends Tab {
     /** Identifier under the caret, or null. */
     public String wordAtCaret() {
         return wordAt(codeArea.getCaretPosition());
+    }
+
+    /** Text of the line the caret is on. */
+    public String currentLineText() {
+        return codeArea.getParagraph(codeArea.getCurrentParagraph()).getText();
     }
 
     private String wordAt(int index) {
