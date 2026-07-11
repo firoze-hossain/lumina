@@ -129,8 +129,8 @@
 .code-area .caret { -fx-stroke: -lumen; -fx-stroke-width: 1.5; }
 .code-area .selection { -fx-fill: #3A3122; }
 
-.code-area .paragraph-box:has-caret {
-    -fx-background-color: #23273610;
+.code-area .paragraph-box.has-caret {
+    -fx-background-color: #22273633;
 }
 
 .code-area .lineno {
@@ -693,3 +693,15 @@
     -fx-underline: true;
     -fx-fill: #56A8F5;
 }
+
+/* ============================================================
+   Phase 7 — signed-in GitHub state
+   ============================================================ */
+
+.github-signed-in {
+    -fx-text-fill: #8FCE8F;
+    -fx-border-color: #3D6B3D;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+.github-signed-in:hover { -fx-border-color: #8FCE8F; }

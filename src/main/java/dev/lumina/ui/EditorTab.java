@@ -86,7 +86,10 @@ public class EditorTab extends Tab {
         }
 
         codeArea.textProperty().addListener((obs, old, txt) -> markDirty());
-        codeArea.caretPositionProperty().addListener((obs, old, pos) -> notifyCaret());
+        codeArea.caretPositionProperty().addListener((obs, old, pos) -> {
+            notifyCaret();
+            highlightCurrentLine();
+        });
 
         // Auto-indent: keep leading whitespace of the previous line on Enter.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
@@ -266,6 +269,23 @@ public class EditorTab extends Tab {
     public void setCaretListener(CaretListener listener) {
         this.caretListener = listener;
         notifyCaret();
+    }
+
+    private int currentHighlightedLine = -1;
+
+    /** Tint the caret's paragraph as the current line (IntelliJ-style). */
+    private void highlightCurrentLine() {
+        int line = codeArea.getCurrentParagraph();
+        if (line == currentHighlightedLine) return;
+        if (currentHighlightedLine >= 0
+                && currentHighlightedLine < codeArea.getParagraphs().size()) {
+            codeArea.setParagraphStyle(currentHighlightedLine,
+                    java.util.Collections.emptyList());
+        }
+        if (line >= 0 && line < codeArea.getParagraphs().size()) {
+            codeArea.setParagraphStyle(line, java.util.List.of("has-caret"));
+        }
+        currentHighlightedLine = line;
     }
 
     private void notifyCaret() {

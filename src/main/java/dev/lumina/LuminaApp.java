@@ -744,8 +744,17 @@ public class LuminaApp extends Application {
 
     private void refreshGitHubButton() {
         String user = Settings.get(Settings.GITHUB_USER);
-        githubButton.setText(user != null
-                ? "\uD83D\uDC64 " + user : "\uD83D\uDC64 Sign in");
+        githubButton.getStyleClass().remove("github-signed-in");
+        if (user != null) {
+            githubButton.setText("\uD83D\uDC64 " + user);
+            githubButton.getStyleClass().add("github-signed-in");
+            githubButton.setTooltip(new Tooltip("Signed in to GitHub as " + user
+                    + " \u2014 click for profile / sign out"));
+        } else {
+            githubButton.setText("\uD83D\uDC64 Sign in");
+            githubButton.setTooltip(new Tooltip(
+                    "Sign in to GitHub \u2014 authenticates push/pull/clone in the IDE"));
+        }
     }
 
     private void onGitHubButton() {
@@ -1064,114 +1073,172 @@ public class LuminaApp extends Application {
         return null;
     }
 
-    /** Decompile a library/JDK class from the run classpath, like IntelliJ. */
+    /** Decompile a library/JDK class from the run classpath, like IntelliJ. */    /**
+     * Resolve a library/JDK type like IntelliJ: prefer real *-sources.jar
+     * (actual .java with line numbers), else fall back to javap bytecode.
+     * The classpath is obtained via dependency:build-classpath, which is far
+     * more reliable than copy-dependencies and needs no target/dependency dir.
+     */
     private void openLibraryType(String fqcn, String word) {
-        console.println("Resolving " + fqcn + " from the classpath\u2026");
+        console.println("Resolving " + fqcn + " \u2026");
         Thread t = new Thread(() -> {
-            String javap = Path.of(System.getProperty("java.home"), "bin",
-                    System.getProperty("os.name", "").toLowerCase().contains("win")
-                            ? "javap.exe" : "javap").toString();
-            List<String> cmd = new java.util.ArrayList<>(List.of(
-                    javap, "-p", "-protected"));
-            String cp = classpathFor(projectRoot);
-            if (cp != null) {
-                cmd.add("-classpath");
-                cmd.add(cp);
-            }
-            cmd.add(fqcn);
             try {
-                Process p = new ProcessBuilder(cmd)
-                        .redirectErrorStream(true).start();
-                String out = new String(p.getInputStream().readAllBytes(),
-                        java.nio.charset.StandardCharsets.UTF_8);
-                p.waitFor();
-                final String[] fout = new String[1];
-                if (out.isBlank() || out.contains("Error:")
-                        || out.contains("not found")) {
-                    // Dependencies may not be copied yet: fetch them, then retry once.
-                    if (RunConfiguration.isMavenProject(projectRoot)
-                            && !Files.isDirectory(projectRoot.resolve("target/dependency"))) {
-                        Platform.runLater(() -> console.println(
-                                "Fetching dependencies so " + fqcn
-                                        + " can be resolved (one-time)\u2026"));
-                        try {
-                            Process dep = new ProcessBuilder(RunConfiguration.maven(
-                                    projectRoot, "-q",
-                                    "dependency:copy-dependencies"))
-                                    .directory(projectRoot.toFile())
-                                    .redirectErrorStream(true).start();
-                            dep.getInputStream().readAllBytes();
-                            dep.waitFor();
-                        } catch (IOException | InterruptedException ignored) {
-                        }
-                        List<String> retry = new java.util.ArrayList<>(List.of(
-                                javap, "-p", "-protected"));
-                        String cp2 = classpathFor(projectRoot);
-                        if (cp2 != null) { retry.add("-classpath"); retry.add(cp2); }
-                        retry.add(fqcn);
-                        try {
-                            Process p2 = new ProcessBuilder(retry)
-                                    .redirectErrorStream(true).start();
-                            out = new String(p2.getInputStream().readAllBytes(),
-                                    java.nio.charset.StandardCharsets.UTF_8);
-                            p2.waitFor();
-                        } catch (IOException | InterruptedException ignored) {
-                        }
-                    }
-                }
-                if (out.isBlank() || out.contains("Error:") || out.contains("not found")) {
-                    Platform.runLater(() -> console.println(
-                            "Could not resolve " + fqcn
-                                    + " \u2014 try Build Project first, then Ctrl+Click again."));
+                // 1) Try to open real source from a *-sources.jar in the local repo.
+                String source = findLibrarySource(fqcn);
+                if (source != null) {
+                    Platform.runLater(() -> showLibrarySource(fqcn, source, word));
                     return;
                 }
-                fout[0] = out;
+                // 2) Fall back to javap bytecode using a proper classpath.
+                String cp = ensureClasspath();
+                String javap = Path.of(System.getProperty("java.home"), "bin",
+                        isWindows() ? "javap.exe" : "javap").toString();
+                List<String> cmd = new java.util.ArrayList<>(
+                        List.of(javap, "-p", "-protected"));
+                if (cp != null) { cmd.add("-classpath"); cmd.add(cp); }
+                cmd.add(fqcn);
+                Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
+                String out = new String(p.getInputStream().readAllBytes(),
+                        StandardCharsets.UTF_8);
+                p.waitFor();
+                if (out.isBlank() || out.contains("Error:") || out.contains("not found")) {
+                    Platform.runLater(() -> console.println(
+                            "Could not resolve " + fqcn + ". Run Build Project once so "
+                            + "dependencies are downloaded, then Ctrl+Click again."));
+                    return;
+                }
+                final String bytecode = out;
                 Platform.runLater(() -> {
-                    EditorTab tab = new EditorTab(
-                            fqcn.substring(fqcn.lastIndexOf('.') + 1) + ".class", null);
+                    EditorTab tab = new EditorTab(simpleName(fqcn) + ".class", null);
                     tab.setEditorText("// Decompiled from classpath (javap) \u2014 read-only\n"
-                            + "// " + fqcn + "\n\n" + fout[0]);
+                            + "// " + fqcn + "\n\n" + bytecode);
                     tab.setReadOnly();
                     addTab(tab);
-                    if (Character.isLowerCase(word.charAt(0))) {
-                        EditorTab cur = currentEditor();
-                        if (cur != null) {
-                            int idx = fout[0].indexOf(" " + word + "(");
-                            if (idx >= 0) {
-                                long lineNo = fout[0].substring(0, idx).chars()
-                                        .filter(c -> c == '\n').count() + 4;
-                                cur.goToLine((int) lineNo);
-                            }
-                        }
-                    }
                 });
             } catch (IOException | InterruptedException ex) {
                 Platform.runLater(() -> console.println(
-                        "javap failed: " + ex.getMessage()));
+                        "Resolve failed: " + ex.getMessage()));
             }
-        }, "lumina-javap");
+        }, "lumina-resolve-lib");
         t.setDaemon(true);
         t.start();
     }
 
-    /** Build a classpath string from the project's compiled output + deps. */
-    private String classpathFor(Path root) {
-        java.util.List<String> parts = new java.util.ArrayList<>();
-        Path classes = root.resolve("target/classes");
+    /** Search downloaded *-sources.jar files for fqcn's .java; return its text. */
+    private String findLibrarySource(String fqcn) {
+        String entry = fqcn.replace('.', '/') + ".java";
+        // Ensure sources are downloaded (one-time per project).
+        if (RunConfiguration.isMavenProject(projectRoot)) {
+            Path marker = projectRoot.resolve("target/.lumina-sources");
+            if (!Files.exists(marker)) {
+                Platform.runLater(() -> console.println(
+                        "Downloading dependency sources (one-time)\u2026"));
+                runMavenQuiet(RunConfiguration.maven(projectRoot,
+                        "-q", "dependency:sources"));
+                try { Files.createDirectories(marker.getParent());
+                      Files.writeString(marker, "done"); } catch (IOException ignored) {}
+            }
+        }
+        for (Path jar : sourceJars()) {
+            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(jar.toFile())) {
+                java.util.zip.ZipEntry e = zip.getEntry(entry);
+                if (e != null) {
+                    try (var in = zip.getInputStream(e)) {
+                        return new String(in.readAllBytes(),
+                                StandardCharsets.UTF_8);
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private void showLibrarySource(String fqcn, String source, String word) {
+        EditorTab tab = new EditorTab(simpleName(fqcn) + ".java", null);
+        tab.setEditorText("// Library source \u2014 read-only\n// " + fqcn + "\n\n" + source);
+        tab.setReadOnly();
+        addTab(tab);
+        // Jump to the method/type if we can locate it in the source text.
+        String[] lines = source.split("\n");
+        java.util.regex.Pattern decl = Character.isUpperCase(word.charAt(0))
+                ? java.util.regex.Pattern.compile("\\b(class|interface|enum|record)\\s+"
+                        + java.util.regex.Pattern.quote(word) + "\\b")
+                : java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(word)
+                        + "\\s*\\(");
+        for (int i = 0; i < lines.length; i++) {
+            if (decl.matcher(lines[i]).find()) {
+                final int ln = i + 4; // account for the 3 header lines we prepended
+                Platform.runLater(() -> {
+                    EditorTab cur = currentEditor();
+                    if (cur != null) cur.goToLine(ln);
+                });
+                break;
+            }
+        }
+    }
+
+    /** All *-sources.jar under the Maven local repo referenced by this project. */
+    private List<Path> sourceJars() {
+        List<Path> jars = new java.util.ArrayList<>();
+        Path m2 = Path.of(System.getProperty("user.home"), ".m2", "repository");
+        if (!Files.isDirectory(m2)) return jars;
+        try (Stream<Path> walk = Files.walk(m2)) {
+            walk.filter(p -> p.getFileName().toString().endsWith("-sources.jar"))
+                .forEach(jars::add);
+        } catch (IOException ignored) {
+        }
+        return jars;
+    }
+
+    /**
+     * Reliable classpath via dependency:build-classpath (writes a file we read),
+     * plus the project's own compiled classes. Cached in target/lumina.cp.
+     */
+    private String ensureClasspath() {
+        List<String> parts = new java.util.ArrayList<>();
+        Path classes = projectRoot.resolve("target/classes");
         if (Files.isDirectory(classes)) parts.add(classes.toString());
-        Path gradleClasses = root.resolve("build/classes/java/main");
+        Path gradleClasses = projectRoot.resolve("build/classes/java/main");
         if (Files.isDirectory(gradleClasses)) parts.add(gradleClasses.toString());
-        // Maven dependency jars, if the local repo layout is present
-        Path deps = root.resolve("target/dependency");
-        if (Files.isDirectory(deps)) {
-            try (Stream<Path> jars = Files.list(deps)) {
-                jars.filter(p -> p.toString().endsWith(".jar"))
-                        .forEach(p -> parts.add(p.toString()));
+
+        if (RunConfiguration.isMavenProject(projectRoot)) {
+            Path cpFile = projectRoot.resolve("target/lumina.cp");
+            if (!Files.isRegularFile(cpFile)) {
+                runMavenQuiet(RunConfiguration.maven(projectRoot, "-q",
+                        "dependency:build-classpath",
+                        "-Dmdep.outputFile=target/lumina.cp"));
+            }
+            try {
+                if (Files.isRegularFile(cpFile)) {
+                    String cp = Files.readString(cpFile).trim();
+                    if (!cp.isBlank()) parts.add(cp);
+                }
             } catch (IOException ignored) {
             }
         }
         return parts.isEmpty() ? null : String.join(File.pathSeparator, parts);
     }
+
+    private void runMavenQuiet(List<String> cmd) {
+        try {
+            Process p = new ProcessBuilder(cmd)
+                    .directory(projectRoot.toFile())
+                    .redirectErrorStream(true).start();
+            p.getInputStream().readAllBytes();
+            p.waitFor();
+        } catch (IOException | InterruptedException ignored) {
+        }
+    }
+
+    private boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    private String simpleName(String fqcn) {
+        return fqcn.substring(fqcn.lastIndexOf('.') + 1);
+    }
+
 
 
     private int declRank(Path p, String word, Path currentFile) {
@@ -1350,7 +1417,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.6");
+        Label brand = new Label("Lumina 0.9");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1711,7 +1778,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.6");
+        alert.setHeaderText("Lumina IDE 0.9");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
