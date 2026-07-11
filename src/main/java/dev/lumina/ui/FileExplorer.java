@@ -29,6 +29,55 @@ public class FileExplorer extends BorderPane {
     private final Consumer<Path> onOpenFile;
     private final StackPane emptyState;
     private Path rootPath;
+    private java.util.function.Consumer<Path> onRun;
+    private java.util.function.Consumer<Path> onRunTest;
+    private java.util.function.Consumer<Path> onDelete;
+
+    /** Wire run/test/delete actions used by the tree's right-click menu. */
+    public void setActions(java.util.function.Consumer<Path> run,
+                           java.util.function.Consumer<Path> runTest,
+                           java.util.function.Consumer<Path> delete) {
+        this.onRun = run;
+        this.onRunTest = runTest;
+        this.onDelete = delete;
+    }
+
+    private javafx.scene.control.ContextMenu buildTreeContextMenu() {
+        javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
+        javafx.scene.control.MenuItem open =
+                treeItem("Open", p -> onOpenFile.accept(p));
+        javafx.scene.control.MenuItem run =
+                treeItem("\u25B6  Run", p -> { if (onRun != null) onRun.accept(p); });
+        javafx.scene.control.MenuItem test =
+                treeItem("\u2705  Run Test", p -> { if (onRunTest != null) onRunTest.accept(p); });
+        javafx.scene.control.MenuItem delete =
+                treeItem("Delete\u2026", p -> { if (onDelete != null) onDelete.accept(p); });
+
+        menu.setOnShowing(e -> {
+            TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
+            Path p = sel != null ? sel.getValue() : null;
+            boolean isJava = p != null && p.getFileName().toString().endsWith(".java");
+            boolean isTest = p != null && p.toString().replace('\\', '/')
+                    .contains("/src/test/java/");
+            open.setVisible(p != null && Files.isRegularFile(p));
+            run.setVisible(isJava && !isTest);
+            test.setVisible(isJava && isTest);
+            delete.setVisible(p != null);
+        });
+        menu.getItems().addAll(open, run, test,
+                new javafx.scene.control.SeparatorMenuItem(), delete);
+        return menu;
+    }
+
+    private javafx.scene.control.MenuItem treeItem(String text,
+                                                   java.util.function.Consumer<Path> action) {
+        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(text);
+        item.setOnAction(e -> {
+            TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
+            if (sel != null) action.accept(sel.getValue());
+        });
+        return item;
+    }
 
     public FileExplorer(Consumer<Path> onOpenFile,
                         java.util.function.Supplier<Path> openedFile) {
@@ -66,6 +115,7 @@ public class FileExplorer extends BorderPane {
                 }
             }
         });
+        tree.setContextMenu(buildTreeContextMenu());
 
         Label empty = new Label("No folder open\nFile \u2192 Open Folder\u2026");
         empty.getStyleClass().add("explorer-empty");
@@ -151,7 +201,7 @@ public class FileExplorer extends BorderPane {
             String display = node != null && node.displayName != null
                     ? node.displayName
                     : (item.getFileName() != null ? item.getFileName().toString()
-                                                  : item.toString());
+                    : item.toString());
             setText(glyphFor(item, node) + "  " + display);
 
             if (isRoot) {

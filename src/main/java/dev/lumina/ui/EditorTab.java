@@ -174,6 +174,37 @@ public class EditorTab extends Tab {
         return codeArea.getParagraph(codeArea.getCurrentParagraph()).getText();
     }
 
+    /** Attach a right-click menu to the editor surface. */
+    public void setEditorContextMenu(javafx.scene.control.ContextMenu menu) {
+        codeArea.setContextMenu(menu);
+    }
+
+    /**
+     * If the caret sits inside a @Test method, return its name. Scans upward
+     * from the caret for a method signature preceded (within a few lines) by
+     * a @Test annotation.
+     */
+    public String testMethodAtCaret() {
+        int caretLine = codeArea.getCurrentParagraph();
+        java.util.regex.Pattern methodSig = java.util.regex.Pattern.compile(
+                "(?:public|private|protected)?\\s*(?:void|[A-Za-z0-9_<>\\[\\]]+)\\s+"
+                        + "([a-zA-Z_][A-Za-z0-9_]*)\\s*\\(");
+        for (int i = caretLine; i >= 0; i--) {
+            String line = codeArea.getParagraph(i).getText();
+            java.util.regex.Matcher m = methodSig.matcher(line);
+            if (m.find()) {
+                // look back up to 3 lines for a @Test annotation
+                for (int j = i; j >= Math.max(0, i - 3); j--) {
+                    if (codeArea.getParagraph(j).getText().contains("@Test")) {
+                        return m.group(1);
+                    }
+                }
+                return null; // nearest method isn't a test
+            }
+        }
+        return null;
+    }
+
     private int navFrom = -1, navTo = -1;
 
     /** Underline the identifier spanning the given index (Ctrl+hover hint). */

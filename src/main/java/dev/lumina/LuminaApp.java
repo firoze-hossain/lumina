@@ -82,6 +82,10 @@ public class LuminaApp extends Application {
             EditorTab tab = currentEditor();
             return tab != null ? tab.getPath() : null;
         });
+        fileExplorer.setActions(
+                file -> { openFile(file); Platform.runLater(this::runCurrentFile); },
+                file -> { openFile(file); Platform.runLater(this::runCurrentTestClass); },
+                this::deleteFromTree);
 
         editorTabs = new TabPane();
         editorTabs.getStyleClass().add("editor-tabs");
@@ -676,6 +680,72 @@ public class LuminaApp extends Application {
         console.runCommand("Test " + simple, cmd, projectRoot);
     }
 
+    /** Run a single @Test method (IntelliJ-style), or the whole class if null. */
+    private void runTestMethod(String method) {
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) return;
+        String fqcn = testFqcnOf(tab.getPath());
+        if (fqcn == null) {
+            error("Not a test class",
+                    tab.getPath().getFileName() + " is not under src/test/java.");
+            return;
+        }
+        if (method == null) {
+            runCurrentTestClass();
+            return;
+        }
+        saveCurrent(false);
+        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple + "#" + method, "test")
+                : RunConfiguration.gradleCmd(projectRoot, "test",
+                "--tests", fqcn + "." + method);
+        showRunPanel();
+        console.runCommand("Test " + simple + "." + method + "()", cmd, projectRoot);
+    }
+
+    /** Right-click menu inside the code editor (IntelliJ-style). */
+    private ContextMenu buildEditorContextMenu() {
+        ContextMenu menu = new ContextMenu();
+        MenuItem runTest = item("\u25B6  Run Test", null, e -> {
+            EditorTab t = currentEditor();
+            runTestMethod(t != null ? t.testMethodAtCaret() : null);
+        });
+        MenuItem run = item("\u25B6  Run", null, e -> runCurrentFile());
+        MenuItem debug = item("\uD83D\uDC1E  Debug", null, e -> debugSelectedConfig());
+        MenuItem gotoDecl = item("Go to Declaration", "Shortcut+B", e -> {
+            EditorTab t = currentEditor();
+            if (t != null) goToDeclaration(t.wordAtCaret());
+        });
+        MenuItem usages = item("Find Usages", "Alt+F7", e -> {
+            EditorTab t = currentEditor();
+            if (t != null) showUsages(t.wordAtCaret());
+        });
+        MenuItem genTest = item("Generate Test\u2026", null, e -> generateTest());
+        MenuItem cut = item("Cut", null, e -> withEditor(EditorTab::cut));
+        MenuItem copy = item("Copy", null, e -> withEditor(EditorTab::copy));
+        MenuItem paste = item("Paste", null, e -> withEditor(EditorTab::paste));
+
+        menu.setOnShowing(e -> {
+            EditorTab t = currentEditor();
+            boolean isTest = t != null && t.getPath() != null
+                    && testFqcnOf(t.getPath()) != null;
+            boolean isMain = t != null && t.getPath() != null
+                    && fqcnOf(t.getPath()) != null;
+            String testMethod = (t != null && isTest) ? t.testMethodAtCaret() : null;
+            runTest.setText(testMethod != null
+                    ? "\u25B6  Run '" + testMethod + "()'" : "\u25B6  Run Test");
+            runTest.setVisible(isTest);
+            run.setVisible(isMain);
+            debug.setVisible(isMain);
+            genTest.setVisible(isMain);
+        });
+        menu.getItems().addAll(runTest, run, debug,
+                new SeparatorMenuItem(), gotoDecl, usages, genTest,
+                new SeparatorMenuItem(), cut, copy, paste);
+        return menu;
+    }
+
     /** FQCN when the file sits under src/test/java, else null. */
     private String testFqcnOf(Path file) {
         if (projectRoot == null || !file.getFileName().toString().endsWith(".java")) return null;
@@ -1104,7 +1174,7 @@ public class LuminaApp extends Application {
                 if (out.isBlank() || out.contains("Error:") || out.contains("not found")) {
                     Platform.runLater(() -> console.println(
                             "Could not resolve " + fqcn + ". Run Build Project once so "
-                            + "dependencies are downloaded, then Ctrl+Click again."));
+                                    + "dependencies are downloaded, then Ctrl+Click again."));
                     return;
                 }
                 final String bytecode = out;
@@ -1129,14 +1199,16 @@ public class LuminaApp extends Application {
         String entry = fqcn.replace('.', '/') + ".java";
         // Ensure sources are downloaded (one-time per project).
         if (RunConfiguration.isMavenProject(projectRoot)) {
-            Path marker = projectRoot.resolve("target/.lumina-sources");
+            // Marker lives in ~/.lumina (NOT target/, which `mvn clean` wipes),
+            // keyed by project path so each project downloads sources only once.
+            Path marker = sourcesMarker(projectRoot);
             if (!Files.exists(marker)) {
                 Platform.runLater(() -> console.println(
-                        "Downloading dependency sources (one-time)\u2026"));
+                        "Downloading dependency sources (one-time per project)\u2026"));
                 runMavenQuiet(RunConfiguration.maven(projectRoot,
                         "-q", "dependency:sources"));
                 try { Files.createDirectories(marker.getParent());
-                      Files.writeString(marker, "done"); } catch (IOException ignored) {}
+                    Files.writeString(marker, "done"); } catch (IOException ignored) {}
             }
         }
         for (Path jar : sourceJars()) {
@@ -1163,9 +1235,9 @@ public class LuminaApp extends Application {
         String[] lines = source.split("\n");
         java.util.regex.Pattern decl = Character.isUpperCase(word.charAt(0))
                 ? java.util.regex.Pattern.compile("\\b(class|interface|enum|record)\\s+"
-                        + java.util.regex.Pattern.quote(word) + "\\b")
+                + java.util.regex.Pattern.quote(word) + "\\b")
                 : java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(word)
-                        + "\\s*\\(");
+                + "\\s*\\(");
         for (int i = 0; i < lines.length; i++) {
             if (decl.matcher(lines[i]).find()) {
                 final int ln = i + 4; // account for the 3 header lines we prepended
@@ -1185,7 +1257,7 @@ public class LuminaApp extends Application {
         if (!Files.isDirectory(m2)) return jars;
         try (Stream<Path> walk = Files.walk(m2)) {
             walk.filter(p -> p.getFileName().toString().endsWith("-sources.jar"))
-                .forEach(jars::add);
+                    .forEach(jars::add);
         } catch (IOException ignored) {
         }
         return jars;
@@ -1233,6 +1305,44 @@ public class LuminaApp extends Application {
 
     private boolean isWindows() {
         return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    /** Per-project sources marker in ~/.lumina, surviving `mvn clean`. */
+    private Path sourcesMarker(Path root) {
+        String key = Integer.toHexString(
+                root.toAbsolutePath().toString().hashCode());
+        return Path.of(System.getProperty("user.home"), ".lumina",
+                "sources-" + key + ".done");
+    }
+
+    private void deleteFromTree(Path path) {
+        if (path == null) return;
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete");
+        confirm.setHeaderText("Delete " + path.getFileName() + "?");
+        confirm.setContentText("This cannot be undone.");
+        confirm.initOwner(stage);
+        confirm.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                try {
+                    if (Files.isDirectory(path)) {
+                        try (Stream<Path> walk = Files.walk(path)) {
+                            walk.sorted(java.util.Comparator.reverseOrder())
+                                    .forEach(p -> p.toFile().delete());
+                        }
+                    } else {
+                        Files.deleteIfExists(path);
+                    }
+                    editorTabs.getTabs().removeIf(t ->
+                            t instanceof EditorTab et && path.equals(et.getPath()));
+                    fileExplorer.refresh();
+                } catch (IOException ex) {
+                    error("Could not delete", ex.getMessage());
+                }
+            }
+        });
     }
 
     private String simpleName(String fqcn) {
@@ -1417,7 +1527,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 0.9");
+        Label brand = new Label("Lumina 1.0");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1722,6 +1832,7 @@ public class LuminaApp extends Application {
     }
 
     private void addTab(EditorTab tab) {
+        tab.setEditorContextMenu(buildEditorContextMenu());
         tab.setNavigationHandler(word -> {
             // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
             EditorTab current = currentEditor();
@@ -1778,7 +1889,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 0.9");
+        alert.setHeaderText("Lumina IDE 1.0");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
