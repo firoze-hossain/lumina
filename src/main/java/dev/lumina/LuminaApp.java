@@ -613,8 +613,10 @@ public class LuminaApp extends Application {
     private void toggleBlame() {
         EditorTab tab = currentEditor();
         if (tab == null || tab.getPath() == null) return;
+        // Cycle: full blame -> off (author hints reload on next open).
         if (tab.hasBlame()) {
             tab.setBlame(null);
+            loadAuthorHints(tab);   // fall back to inline author hints
             return;
         }
         Path file = tab.getPath();
@@ -629,6 +631,24 @@ public class LuminaApp extends Application {
                 }
             });
         }, "lumina-blame");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * Load IntelliJ-style inline author hints (author shown next to each
+     * class/method declaration). Runs quietly; does nothing outside a repo.
+     */
+    private void loadAuthorHints(EditorTab tab) {
+        if (tab == null || tab.getPath() == null) return;
+        tab.setOnHintClicked(this::toggleBlame);
+        Path file = tab.getPath();
+        Thread t = new Thread(() -> {
+            List<GitService.BlameLine> lines = GitService.blame(file);
+            if (lines != null) {
+                Platform.runLater(() -> tab.setAuthorHints(lines));
+            }
+        }, "lumina-author-hints");
         t.setDaemon(true);
         t.start();
     }
@@ -1528,7 +1548,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.1");
+        Label brand = new Label("Lumina 1.4");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1834,6 +1854,7 @@ public class LuminaApp extends Application {
 
     private void addTab(EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
+        loadAuthorHints(tab);
         tab.setNavigationHandler(word -> {
             // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
             EditorTab current = currentEditor();
@@ -1890,7 +1911,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.1");
+        alert.setHeaderText("Lumina IDE 1.4");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.

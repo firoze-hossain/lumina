@@ -116,44 +116,166 @@ public class EditorTab extends Tab {
             }
         });
 
-        setContent(new VirtualizedScrollPane<>(codeArea));
+        VirtualizedScrollPane<CodeArea> scroll = new VirtualizedScrollPane<>(codeArea);
+        hintOverlay = new javafx.scene.layout.Pane();
+        hintOverlay.setPickOnBounds(false);   // only the hint labels catch clicks
+        javafx.scene.layout.StackPane stack =
+                new javafx.scene.layout.StackPane(scroll, hintOverlay);
+        // Recompute inline author positions on scroll / resize / edits.
+        codeArea.estimatedScrollYProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.estimatedScrollXProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.widthProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.heightProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.multiPlainChanges()
+                .successionEnds(Duration.ofMillis(150))
+                .subscribe(ignore -> refreshInlineHints());
+        setContent(stack);
     }
 
     // ---------------------------------------------------------------- blame
 
     private java.util.List<dev.lumina.git.GitService.BlameLine> blameLines;
+    private boolean fullBlame;   // true = date+author on every line in the gutter
+    private javafx.scene.layout.Pane hintOverlay;   // holds inline author labels
 
     public boolean hasBlame() {
-        return blameLines != null;
+        return fullBlame;
     }
 
-    /** Show (or clear, with null) git blame annotations in the gutter. */
+    /** Show full per-line blame (date + author on every line), or clear (null). */
     public void setBlame(java.util.List<dev.lumina.git.GitService.BlameLine> lines) {
         this.blameLines = lines;
+        this.fullBlame = lines != null;
         refreshGutter();
+        refreshInlineHints();
+    }
+
+    /**
+     * IntelliJ-style author hints: keep the gutter clean (line numbers only)
+     * and show the author INLINE, just after each class/method declaration.
+     */
+    public void setAuthorHints(java.util.List<dev.lumina.git.GitService.BlameLine> lines) {
+        this.blameLines = lines;
+        this.fullBlame = false;
+        refreshGutter();
+        refreshInlineHints();
+    }
+
+    /** Regex for a class/interface/enum/record or a method declaration line. */
+    private static final java.util.regex.Pattern DECL = java.util.regex.Pattern.compile(
+            "\\b(class|interface|enum|record)\\s+[A-Z]"
+                    + "|(?:public|private|protected|static|final|abstract|default|synchronized)"
+                    + "[\\w<>,\\[\\]\\s]*\\s[a-zA-Z_][A-Za-z0-9_]*\\s*\\("
+                    + "|^\\s*(?!return|throw|new|if|for|while|switch)"
+                    + "[A-Za-z_][\\w<>,\\[\\]]*\\s+[a-zA-Z_][A-Za-z0-9_]*\\s*\\([^;]*\\)\\s*;\\s*$");
+
+    private boolean isDeclarationLine(int paragraph) {
+        if (paragraph >= codeArea.getParagraphs().size()) return false;
+        String text = codeArea.getParagraph(paragraph).getText();
+        return DECL.matcher(text).find();
     }
 
     private void refreshGutter() {
         java.util.function.IntFunction<javafx.scene.Node> lineNo =
                 LineNumberFactory.get(codeArea);
-        if (blameLines == null) {
+        // Author-hints mode keeps the gutter clean; only FULL blame fills it.
+        if (!fullBlame || blameLines == null) {
             codeArea.setParagraphGraphicFactory(lineNo);
             return;
         }
         codeArea.setParagraphGraphicFactory(i -> {
-            javafx.scene.control.Label annotation = new javafx.scene.control.Label(
-                    i < blameLines.size() ? blameLines.get(i).gutter() : "");
+            String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
+            javafx.scene.control.Label annotation = new javafx.scene.control.Label(text);
             annotation.getStyleClass().add("blame-label");
             annotation.setPrefWidth(150);
             if (i < blameLines.size() && !blameLines.get(i).summary().isBlank()) {
                 javafx.scene.control.Tooltip.install(annotation,
-                        new javafx.scene.control.Tooltip(blameLines.get(i).summary()));
+                        new javafx.scene.control.Tooltip(
+                                blameLines.get(i).author() + " \u2014 "
+                                        + blameLines.get(i).date() + "\n"
+                                        + blameLines.get(i).summary()));
             }
             javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(
                     6, annotation, lineNo.apply(i));
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             return box;
         });
+    }
+
+    private Runnable onHintClicked;   // set by LuminaApp to toggle full blame
+
+    public void setOnHintClicked(Runnable handler) {
+        this.onHintClicked = handler;
+    }
+
+    /**
+     * Draw "author" hints pinned to the RIGHT edge of the editor, aligned with
+     * each class/method declaration line (IntelliJ-style). Clicking a hint
+     * toggles full per-line blame.
+     */
+    private void refreshInlineHints() {
+        if (hintOverlay == null) return;
+        hintOverlay.getChildren().clear();
+        if (fullBlame || blameLines == null) return;   // hidden while full blame is on
+
+        for (int i = 0; i < codeArea.getParagraphs().size() && i < blameLines.size(); i++) {
+            if (!isDeclarationLine(i)) continue;
+            java.util.Optional<javafx.geometry.Bounds> bounds = lineBoundsAt(i);
+            if (bounds.isEmpty()) continue;
+            javafx.geometry.Bounds b = bounds.get();
+
+            // person glyph drawn as an SVG path (reliable, unlike an emoji font)
+            javafx.scene.shape.SVGPath icon = new javafx.scene.shape.SVGPath();
+            icon.setContent("M8 8a3 3 0 100-6 3 3 0 000 6zm0 1.5c-2.5 0-6 1.25"
+                    + "-6 3.75V15h12v-1.75C14 10.75 10.5 9.5 8 9.5z");
+            icon.getStyleClass().add("author-hint-icon");
+            icon.setScaleX(0.8);
+            icon.setScaleY(0.8);
+
+            javafx.scene.control.Label name =
+                    new javafx.scene.control.Label(blameLines.get(i).author());
+            name.getStyleClass().add("author-hint");
+
+            javafx.scene.layout.HBox hint =
+                    new javafx.scene.layout.HBox(4, icon, name);
+            hint.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            hint.getStyleClass().add("author-hint-box");
+            hint.setCursor(javafx.scene.Cursor.HAND);
+            if (!blameLines.get(i).summary().isBlank()) {
+                javafx.scene.control.Tooltip.install(hint,
+                        new javafx.scene.control.Tooltip(
+                                blameLines.get(i).author() + " \u2014 "
+                                        + blameLines.get(i).date() + "\n"
+                                        + blameLines.get(i).summary()
+                                        + "\n\nClick to show full blame"));
+            }
+            hint.setOnMouseClicked(e -> {
+                if (onHintClicked != null) onHintClicked.run();
+            });
+
+            // Place just past the end of the code, with a comfortable gap —
+            // matches IntelliJ's "trailing hint" position and never overlaps text.
+            hint.applyCss();
+            hint.layout();
+            hint.setLayoutX(b.getMaxX() + 40);
+            hint.setLayoutY(b.getMinY() + (b.getHeight() - 16) / 2);
+            hintOverlay.getChildren().add(hint);
+        }
+    }
+
+    /** Screen->local bounds of a whole declaration line, if visible. */
+    private java.util.Optional<javafx.geometry.Bounds> lineBoundsAt(int paragraph) {
+        try {
+            String text = codeArea.getParagraph(paragraph).getText();
+            if (text.isBlank()) return java.util.Optional.empty();
+            int start = codeArea.getAbsolutePosition(paragraph, 0);
+            int end = codeArea.getAbsolutePosition(paragraph,
+                    Math.max(1, text.length()));
+            return codeArea.getCharacterBoundsOnScreen(start, end)
+                    .map(screen -> hintOverlay.screenToLocal(screen));
+        } catch (Exception e) {
+            return java.util.Optional.empty();
+        }
     }
 
     // ------------------------------------------------------------ navigation

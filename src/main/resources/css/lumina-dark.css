@@ -705,3 +705,23 @@
     -fx-background-radius: 8;
 }
 .github-signed-in:hover { -fx-border-color: #8FCE8F; }
+
+/* IntelliJ-style inline author hint at declarations */
+
+
+/* IntelliJ-style inline author hints (right-aligned, clickable) */
+.author-hint-box {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4 0 4;
+}
+.author-hint-box:hover .author-hint { -fx-text-fill: #8A8E98; }
+.author-hint-box:hover .author-hint-icon { -fx-fill: #8A8E98; }
+.author-hint {
+    -fx-text-fill: #5A5E68;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Inter", sans-serif;
+}
+.author-hint-icon {
+    -fx-fill: #5A5E68;
+}
