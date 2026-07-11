@@ -31,7 +31,7 @@ public class EditorTab extends Tab {
 
     private static java.util.function.Function<String,
             org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>>
-            highlighterFor(String fileName) {
+    highlighterFor(String fileName) {
         String n = fileName.toLowerCase();
         if (n.endsWith(".java")) return JavaSyntaxHighlighter::computeHighlighting;
         if (n.endsWith(".xml") || n.endsWith(".pom")
@@ -51,9 +51,28 @@ public class EditorTab extends Tab {
         refreshGutter();
 
         // Ctrl/Cmd + hover -> hand cursor, hinting go-to-declaration.
-        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e ->
-                codeArea.setCursor(e.isControlDown() || e.isMetaDown()
-                        ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.TEXT));
+        // Ctrl/Cmd + hover: hand cursor AND underline the identifier, exactly
+        // like IntelliJ's navigation hint.
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_MOVED, e -> {
+            boolean nav = e.isControlDown() || e.isMetaDown();
+            codeArea.setCursor(nav ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.TEXT);
+            if (nav) {
+                var hit = codeArea.hit(e.getX(), e.getY());
+                underlineWordAt(hit.getInsertionIndex());
+            } else {
+                clearNavUnderline();
+            }
+        });
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_EXITED,
+                e -> clearNavUnderline());
+        // Dropping the modifier key removes the underline.
+        codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.CONTROL
+                    || e.getCode() == javafx.scene.input.KeyCode.META) {
+                clearNavUnderline();
+                codeArea.setCursor(javafx.scene.Cursor.TEXT);
+            }
+        });
 
         // Re-highlight after brief pauses in typing, per file type.
         java.util.function.Function<String,
@@ -150,6 +169,36 @@ public class EditorTab extends Tab {
     /** Text of the line the caret is on. */
     public String currentLineText() {
         return codeArea.getParagraph(codeArea.getCurrentParagraph()).getText();
+    }
+
+    private int navFrom = -1, navTo = -1;
+
+    /** Underline the identifier spanning the given index (Ctrl+hover hint). */
+    private void underlineWordAt(int index) {
+        String text = codeArea.getText();
+        if (text.isEmpty()) { clearNavUnderline(); return; }
+        int i = Math.max(0, Math.min(index, text.length() - 1));
+        if (!isWordChar(text.charAt(i)) && i > 0 && isWordChar(text.charAt(i - 1))) i--;
+        if (!isWordChar(text.charAt(i))) { clearNavUnderline(); return; }
+        int start = i, end = i;
+        while (start > 0 && isWordChar(text.charAt(start - 1))) start--;
+        while (end < text.length() && isWordChar(text.charAt(end))) end++;
+        if (start == navFrom && end == navTo) return;   // already underlined
+        clearNavUnderline();
+        navFrom = start; navTo = end;
+        codeArea.setStyleClass(start, end, "nav-underline");
+    }
+
+    private void clearNavUnderline() {
+        if (navFrom >= 0 && navTo > navFrom && navTo <= codeArea.getLength()) {
+            // Re-run the highlighter so the correct token color is restored.
+            if (highlighter != null) {
+                applyHighlighting();
+            } else {
+                codeArea.clearStyle(navFrom, navTo);
+            }
+        }
+        navFrom = navTo = -1;
     }
 
     private String wordAt(int index) {
@@ -257,10 +306,10 @@ public class EditorTab extends Tab {
     public void toggleComment() {
         if (!codeArea.isEditable()) return;
         int start = codeArea.offsetToPosition(
-                codeArea.getSelection().getStart(), org.fxmisc.richtext.model.TwoDimensional.Bias.Forward)
+                        codeArea.getSelection().getStart(), org.fxmisc.richtext.model.TwoDimensional.Bias.Forward)
                 .getMajor();
         int end = codeArea.offsetToPosition(
-                codeArea.getSelection().getEnd(), org.fxmisc.richtext.model.TwoDimensional.Bias.Backward)
+                        codeArea.getSelection().getEnd(), org.fxmisc.richtext.model.TwoDimensional.Bias.Backward)
                 .getMajor();
 
         boolean allCommented = true;

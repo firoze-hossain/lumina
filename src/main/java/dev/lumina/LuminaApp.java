@@ -633,9 +633,9 @@ public class LuminaApp extends Application {
         if (line == null || line.strip().endsWith(";")) return false;
         java.util.regex.Pattern p = Character.isUpperCase(word.charAt(0))
                 ? java.util.regex.Pattern.compile("\\b(class|interface|enum|record)\\s+"
-                        + java.util.regex.Pattern.quote(word) + "\\b")
+                + java.util.regex.Pattern.quote(word) + "\\b")
                 : java.util.regex.Pattern.compile("[\\w>\\]]\\s+"
-                        + java.util.regex.Pattern.quote(word) + "\\s*\\(");
+                + java.util.regex.Pattern.quote(word) + "\\s*\\(");
         return p.matcher(line).find();
     }
 
@@ -773,9 +773,9 @@ public class LuminaApp extends Application {
 
         Label info = new Label(
                 "1. Click below: your browser opens a pre-filled GitHub"
-                + " token page (scope: repo).\n"
-                + "2. Generate the token and paste it here.\n"
-                + "Lumina uses it to authenticate push, pull and clone.");
+                        + " token page (scope: repo).\n"
+                        + "2. Generate the token and paste it here.\n"
+                        + "Lumina uses it to authenticate push, pull and clone.");
         info.getStyleClass().add("form-static");
         info.setWrapText(true);
 
@@ -869,63 +869,310 @@ public class LuminaApp extends Application {
             error("No project open", "Go to Declaration needs an open project.");
             return;
         }
-        Path currentFile = currentEditor() != null ? currentEditor().getPath() : null;
+        // If the click is on a method in a "Qualifier.method(" call, prefer the
+        // qualifier's type: that is what IntelliJ jumps to for library calls.
+        EditorTab editor = currentEditor();
+        String line = editor != null ? editor.currentLineText() : "";
+        String qualifier = qualifierBefore(line, word);
+        boolean looksLikeMethodCall = looksLikeCall(line, word);
+
+        String typeToOpen = null;
+        if (Character.isUpperCase(word.charAt(0))) {
+            typeToOpen = word;                       // clicked a type directly
+        } else if (qualifier != null && Character.isUpperCase(qualifier.charAt(0))) {
+            typeToOpen = qualifier;                  // Type.method(...) -> open Type
+        } else if (qualifier != null) {
+            // instance.method(...) -> infer the variable's declared type, e.g.
+            // "itemRepository" -> "ItemRepository" (fields, params, locals).
+            String inferred = inferVariableType(editor, qualifier);
+            if (inferred != null) typeToOpen = inferred;
+        }
+
+        final String targetType = typeToOpen;
+        final Path currentFile = editor != null ? editor.getPath() : null;
+
         Thread t = new Thread(() -> {
-            int[] hit = new int[]{-1};
-            Path[] hitFile = new Path[]{null};
-            boolean isType = Character.isUpperCase(word.charAt(0));
-            java.util.regex.Pattern pattern = isType
-                    ? java.util.regex.Pattern.compile(
-                    "\\b(class|interface|enum|record)\\s+"
-                            + java.util.regex.Pattern.quote(word) + "\\b")
-                    : java.util.regex.Pattern.compile(
-                    "[\\w>\\]]\\s+" + java.util.regex.Pattern.quote(word) + "\\s*\\(");
-            try (Stream<Path> walk = Files.walk(projectRoot)) {
-                List<Path> javaFiles = new java.util.ArrayList<>(walk
-                        .filter(p -> p.toString().endsWith(".java"))
-                        .filter(p -> !p.toString().contains(File.separator + "target" + File.separator)
-                                && !p.toString().contains(File.separator + "build" + File.separator))
-                        .toList());
-                // search the current file first, then by file-name match, then rest
-                javaFiles.sort((a, b) -> Integer.compare(
-                        declRank(a, word, currentFile), declRank(b, word, currentFile)));
-                outer:
-                for (Path file : javaFiles) {
-                    List<String> lines;
-                    try {
-                        lines = Files.readAllLines(file);
-                    } catch (IOException | java.io.UncheckedIOException e) {
-                        continue;
-                    }
-                    for (int i = 0; i < lines.size(); i++) {
-                        String line = lines.get(i);
-                        if (!pattern.matcher(line).find()) continue;
-                        if (!isType) {
-                            String trimmed = line.strip();
-                            // skip obvious call sites and control keywords
-                            if (trimmed.startsWith(word + "(")
-                                    || trimmed.contains("." + word + "(")
-                                    || trimmed.startsWith("return ")
-                                    || trimmed.endsWith(";")) continue;
-                        }
-                        hitFile[0] = file;
-                        hit[0] = i + 1;
-                        break outer;
-                    }
-                }
-            } catch (IOException ignored) {
-            }
-            Platform.runLater(() -> {
+            // (1) method declaration inside the project (only for real methods)
+            if (!looksLikeMethodCall || qualifier == null) {
+                Path[] hitFile = new Path[]{null};
+                int[] hit = new int[]{-1};
+                findInProject(word, currentFile, hitFile, hit);
                 if (hitFile[0] != null) {
-                    openFileAtLine(hitFile[0], hit[0]);
-                } else {
-                    console.println("Declaration not found in project: " + word);
+                    final Path f = hitFile[0];
+                    final int ln = hit[0];
+                    Platform.runLater(() -> openFileAtLine(f, ln));
+                    return;
                 }
-            });
+            }
+            // (2) a project type (the clicked type, or the call's qualifier type)
+            if (targetType != null) {
+                Path typeFile = findTypeFile(targetType);
+                if (typeFile != null) {
+                    Platform.runLater(() -> openTypeAndMaybeMethod(typeFile, word));
+                    return;
+                }
+                // (3) library/JDK type -> decompile from the classpath (like IntelliJ)
+                String fqcn = resolveImportedFqcn(currentFile, targetType);
+                Platform.runLater(() -> openLibraryType(fqcn != null ? fqcn : targetType, word));
+                return;
+            }
+            Platform.runLater(() ->
+                    console.println("Declaration not found for: " + word));
         }, "lumina-goto-decl");
         t.setDaemon(true);
         t.start();
     }
+
+    /** The token immediately before ".word" on the line, or null. */
+    /**
+     * Best-effort type inference for an instance qualifier: scans the current
+     * file for a declaration of the variable (field, parameter, or local) and
+     * returns its type's simple name. Mirrors what IntelliJ resolves precisely.
+     */
+    private String inferVariableType(EditorTab editor, String var) {
+        if (editor == null || editor.getPath() == null) return null;
+        // Common Spring pattern: a field like "private final ItemRepository itemRepository;"
+        // or a constructor/method parameter "ItemRepository itemRepository".
+        java.util.regex.Pattern decl = java.util.regex.Pattern.compile(
+                "\\b([A-Z][A-Za-z0-9_]*)(?:<[^>]*>)?\\s+"
+                        + java.util.regex.Pattern.quote(var) + "\\b\\s*[;,)=]");
+        try {
+            for (String line : Files.readAllLines(editor.getPath())) {
+                java.util.regex.Matcher m = decl.matcher(line);
+                if (m.find()) return m.group(1);
+            }
+        } catch (IOException ignored) {
+        }
+        // Fallback: convention "xxxRepository" -> "XxxRepository".
+        if (!var.isEmpty()) {
+            return Character.toUpperCase(var.charAt(0)) + var.substring(1);
+        }
+        return null;
+    }
+
+    private String qualifierBefore(String line, String word) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "([A-Za-z_][A-Za-z0-9_]*)\\s*\\.\\s*"
+                        + java.util.regex.Pattern.quote(word) + "\\b").matcher(line);
+        return m.find() ? m.group(1) : null;
+    }
+
+    private boolean looksLikeCall(String line, String word) {
+        return java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote(word) + "\\s*\\(").matcher(line).find();
+    }
+
+    /** Scan project java files for a method declaration named word. */
+    private void findInProject(String word, Path currentFile, Path[] hitFile, int[] hit) {
+        java.util.regex.Pattern decl = java.util.regex.Pattern.compile(
+                "[\\w>\\]]\\s+" + java.util.regex.Pattern.quote(word) + "\\s*\\(");
+        try (Stream<Path> walk = Files.walk(projectRoot)) {
+            List<Path> files = new java.util.ArrayList<>(walk
+                    .filter(p -> p.toString().endsWith(".java"))
+                    .filter(p -> !inBuildDir(p))
+                    .toList());
+            files.sort((a, b) -> Integer.compare(
+                    declRank(a, word, currentFile), declRank(b, word, currentFile)));
+            for (Path file : files) {
+                List<String> lines;
+                try {
+                    lines = Files.readAllLines(file);
+                } catch (IOException | java.io.UncheckedIOException e) {
+                    continue;
+                }
+                for (int i = 0; i < lines.size(); i++) {
+                    String ln = lines.get(i);
+                    if (!decl.matcher(ln).find()) continue;
+                    String trimmed = ln.strip();
+                    if (trimmed.startsWith(word + "(")
+                            || trimmed.contains("." + word + "(")
+                            || trimmed.startsWith("return ")
+                            || trimmed.endsWith(";")) continue;
+                    hitFile[0] = file;
+                    hit[0] = i + 1;
+                    return;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    /** Find the .java file declaring a type of the given simple name. */
+    private Path findTypeFile(String simpleType) {
+        java.util.regex.Pattern decl = java.util.regex.Pattern.compile(
+                "\\b(class|interface|enum|record)\\s+"
+                        + java.util.regex.Pattern.quote(simpleType) + "\\b");
+        try (Stream<Path> walk = Files.walk(projectRoot)) {
+            return walk.filter(p -> p.toString().endsWith(".java"))
+                    .filter(p -> !inBuildDir(p))
+                    .filter(p -> {
+                        try {
+                            return decl.matcher(Files.readString(p)).find();
+                        } catch (IOException | java.io.UncheckedIOException e) {
+                            return false;
+                        }
+                    })
+                    .findFirst().orElse(null);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private boolean inBuildDir(Path p) {
+        String s = p.toString();
+        return s.contains(File.separator + "target" + File.separator)
+                || s.contains(File.separator + "build" + File.separator);
+    }
+
+    /** Open a project type file and jump to the method line if we can find it. */
+    private void openTypeAndMaybeMethod(Path file, String word) {
+        openFile(file);
+        if (Character.isLowerCase(word.charAt(0))) {
+            try {
+                List<String> lines = Files.readAllLines(file);
+                java.util.regex.Pattern decl = java.util.regex.Pattern.compile(
+                        "[\\w>\\]]\\s+" + java.util.regex.Pattern.quote(word) + "\\s*\\(");
+                for (int i = 0; i < lines.size(); i++) {
+                    if (decl.matcher(lines.get(i)).find()
+                            && !lines.get(i).strip().endsWith(";")) {
+                        final int ln = i + 1;
+                        Platform.runLater(() -> {
+                            EditorTab t = currentEditor();
+                            if (t != null) t.goToLine(ln);
+                        });
+                        return;
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    /** Read imports of the current file to turn a simple type into an FQCN. */
+    private String resolveImportedFqcn(Path currentFile, String simpleType) {
+        if (currentFile == null) return null;
+        try {
+            for (String line : Files.readAllLines(currentFile)) {
+                String s = line.strip();
+                if (s.startsWith("import ") && s.endsWith("." + simpleType + ";")) {
+                    return s.substring("import ".length(), s.length() - 1).trim();
+                }
+                if (!s.startsWith("import") && s.startsWith("public")) break;
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+
+    /** Decompile a library/JDK class from the run classpath, like IntelliJ. */
+    private void openLibraryType(String fqcn, String word) {
+        console.println("Resolving " + fqcn + " from the classpath\u2026");
+        Thread t = new Thread(() -> {
+            String javap = Path.of(System.getProperty("java.home"), "bin",
+                    System.getProperty("os.name", "").toLowerCase().contains("win")
+                            ? "javap.exe" : "javap").toString();
+            List<String> cmd = new java.util.ArrayList<>(List.of(
+                    javap, "-p", "-protected"));
+            String cp = classpathFor(projectRoot);
+            if (cp != null) {
+                cmd.add("-classpath");
+                cmd.add(cp);
+            }
+            cmd.add(fqcn);
+            try {
+                Process p = new ProcessBuilder(cmd)
+                        .redirectErrorStream(true).start();
+                String out = new String(p.getInputStream().readAllBytes(),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                p.waitFor();
+                final String[] fout = new String[1];
+                if (out.isBlank() || out.contains("Error:")
+                        || out.contains("not found")) {
+                    // Dependencies may not be copied yet: fetch them, then retry once.
+                    if (RunConfiguration.isMavenProject(projectRoot)
+                            && !Files.isDirectory(projectRoot.resolve("target/dependency"))) {
+                        Platform.runLater(() -> console.println(
+                                "Fetching dependencies so " + fqcn
+                                        + " can be resolved (one-time)\u2026"));
+                        try {
+                            Process dep = new ProcessBuilder(RunConfiguration.maven(
+                                    projectRoot, "-q",
+                                    "dependency:copy-dependencies"))
+                                    .directory(projectRoot.toFile())
+                                    .redirectErrorStream(true).start();
+                            dep.getInputStream().readAllBytes();
+                            dep.waitFor();
+                        } catch (IOException | InterruptedException ignored) {
+                        }
+                        List<String> retry = new java.util.ArrayList<>(List.of(
+                                javap, "-p", "-protected"));
+                        String cp2 = classpathFor(projectRoot);
+                        if (cp2 != null) { retry.add("-classpath"); retry.add(cp2); }
+                        retry.add(fqcn);
+                        try {
+                            Process p2 = new ProcessBuilder(retry)
+                                    .redirectErrorStream(true).start();
+                            out = new String(p2.getInputStream().readAllBytes(),
+                                    java.nio.charset.StandardCharsets.UTF_8);
+                            p2.waitFor();
+                        } catch (IOException | InterruptedException ignored) {
+                        }
+                    }
+                }
+                if (out.isBlank() || out.contains("Error:") || out.contains("not found")) {
+                    Platform.runLater(() -> console.println(
+                            "Could not resolve " + fqcn
+                                    + " \u2014 try Build Project first, then Ctrl+Click again."));
+                    return;
+                }
+                fout[0] = out;
+                Platform.runLater(() -> {
+                    EditorTab tab = new EditorTab(
+                            fqcn.substring(fqcn.lastIndexOf('.') + 1) + ".class", null);
+                    tab.setEditorText("// Decompiled from classpath (javap) \u2014 read-only\n"
+                            + "// " + fqcn + "\n\n" + fout[0]);
+                    tab.setReadOnly();
+                    addTab(tab);
+                    if (Character.isLowerCase(word.charAt(0))) {
+                        EditorTab cur = currentEditor();
+                        if (cur != null) {
+                            int idx = fout[0].indexOf(" " + word + "(");
+                            if (idx >= 0) {
+                                long lineNo = fout[0].substring(0, idx).chars()
+                                        .filter(c -> c == '\n').count() + 4;
+                                cur.goToLine((int) lineNo);
+                            }
+                        }
+                    }
+                });
+            } catch (IOException | InterruptedException ex) {
+                Platform.runLater(() -> console.println(
+                        "javap failed: " + ex.getMessage()));
+            }
+        }, "lumina-javap");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Build a classpath string from the project's compiled output + deps. */
+    private String classpathFor(Path root) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        Path classes = root.resolve("target/classes");
+        if (Files.isDirectory(classes)) parts.add(classes.toString());
+        Path gradleClasses = root.resolve("build/classes/java/main");
+        if (Files.isDirectory(gradleClasses)) parts.add(gradleClasses.toString());
+        // Maven dependency jars, if the local repo layout is present
+        Path deps = root.resolve("target/dependency");
+        if (Files.isDirectory(deps)) {
+            try (Stream<Path> jars = Files.list(deps)) {
+                jars.filter(p -> p.toString().endsWith(".jar"))
+                        .forEach(p -> parts.add(p.toString()));
+            } catch (IOException ignored) {
+            }
+        }
+        return parts.isEmpty() ? null : String.join(File.pathSeparator, parts);
+    }
+
 
     private int declRank(Path p, String word, Path currentFile) {
         if (p.equals(currentFile)) return 0;

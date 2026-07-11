@@ -687,3 +687,9 @@
     -fx-font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
     -fx-padding: 0 4 0 10;
 }
+
+/* Ctrl/Cmd+hover navigation hint (like IntelliJ) */
+.code-area .nav-underline {
+    -fx-underline: true;
+    -fx-fill: #56A8F5;
+}
