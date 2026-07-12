@@ -43,8 +43,21 @@ public class UsagesDialog {
     private final String word;
     private final Label countLabel = new Label("Searching\u2026");
 
+    /** A precomputed usage row (from the semantic engine). */
+    public record Hit(Path file, int line, String preview, boolean declaration) {
+    }
+
+    private final List<Hit> precomputed;
+
     public UsagesDialog(Stage owner, Path root, String word,
                         BiConsumer<Path, Integer> onOpenAt) {
+        this(owner, root, word, null, onOpenAt);
+    }
+
+    /** Semantic variant: rows are already resolved, no text scan runs. */
+    public UsagesDialog(Stage owner, Path root, String word, List<Hit> hits,
+                        BiConsumer<Path, Integer> onOpenAt) {
+        this.precomputed = hits;
         this.root = root;
         this.word = word;
 
@@ -107,7 +120,17 @@ public class UsagesDialog {
             if (!focused) stage.close();
         });
 
-        scanInBackground();
+        if (precomputed == null) {
+            scanInBackground();
+        } else {
+            List<Usage> rows = precomputed.stream()
+                    .map(h -> new Usage(h.file(), h.line(), h.preview(),
+                            h.declaration()))
+                    .toList();
+            usages.setAll(rows);
+            countLabel.setText(rows.size()
+                    + " usages \u2014 resolved semantically, \u2605 declaration");
+        }
     }
 
     public void show() {

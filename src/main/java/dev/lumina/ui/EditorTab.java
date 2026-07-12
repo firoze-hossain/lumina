@@ -328,6 +328,16 @@ public class EditorTab extends Tab {
         this.navigationHandler = handler;
     }
 
+    /** 1-based caret line, matching the semantic engine's convention. */
+    public int getCaretLine() {
+        return codeArea.getCurrentParagraph() + 1;
+    }
+
+    /** 1-based caret column. */
+    public int getCaretColumn() {
+        return codeArea.getCaretColumn() + 1;
+    }
+
     /** Identifier under the caret, or null. */
     public String wordAtCaret() {
         return wordAt(codeArea.getCaretPosition());

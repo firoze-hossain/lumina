@@ -60,6 +60,7 @@ public class LuminaApp extends Application {
     private TestResultsPanel testsPanel;
     private long testRunStart;
     private Runnable lastTestRun;
+    private volatile dev.lumina.semantics.SemanticEngine semantics;
     private HBox breadcrumbBar;
     private Label statusCaret;
 
@@ -690,7 +691,41 @@ public class LuminaApp extends Application {
     private void showUsages(String word) {
         if (word == null || word.isBlank()) return;
         if (!requireProject()) return;
-        new UsagesDialog(stage, projectRoot, word, this::openFileAtLine).show();
+        EditorTab editor = currentEditor();
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (engine == null || editor == null || editor.getPath() == null) {
+            new UsagesDialog(stage, projectRoot, word, this::openFileAtLine).show();
+            return;
+        }
+        final Path file = editor.getPath();
+        final String text = editor.getEditorText();
+        final int line = editor.getCaretLine();
+        final int column = editor.getCaretColumn();
+        Thread t = new Thread(() -> {
+            List<dev.lumina.semantics.SemanticEngine.Usage> hits = List.of();
+            try {
+                hits = engine.findUsages(file, text, line, column);
+            } catch (Throwable ignored) {
+            }
+            final var resolved = hits;
+            Platform.runLater(() -> {
+                if (resolved.isEmpty()) {
+                    // unresolved symbol: keep the old text scan as safety net
+                    new UsagesDialog(stage, projectRoot, word,
+                            this::openFileAtLine).show();
+                } else {
+                    List<UsagesDialog.Hit> rows = resolved.stream()
+                            .map(u -> new UsagesDialog.Hit(
+                                    u.file(), u.line(), u.preview(),
+                                    u.declaration()))
+                            .toList();
+                    new UsagesDialog(stage, projectRoot, word, rows,
+                            this::openFileAtLine).show();
+                }
+            });
+        }, "lumina-semantic-usages");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void runAllTests() {
@@ -1067,6 +1102,31 @@ public class LuminaApp extends Application {
                 ideActions, this::openFile, this::openFileAtLine).show();
     }
 
+    /**
+     * M1: build the semantic engine in the background. Navigation works via
+     * the old heuristics until it is ready (IntelliJ's "dumb mode" pattern).
+     */
+    private void initSemanticEngine(Path dir) {
+        semantics = null;
+        Thread t = new Thread(() -> {
+            console.println("Semantic engine: indexing project\u2026");
+            String classpath = ensureClasspath();   // cached in target/lumina.cp
+            dev.lumina.semantics.SemanticEngine engine =
+                    dev.lumina.semantics.SemanticEngine.create(
+                            dir, classpath, console::println);
+            if (engine != null && projectRoot != null
+                    && projectRoot.equals(dir)) {
+                semantics = engine;
+                console.println("\u2713 Semantic engine ready \u2014 "
+                        + engine.sourceRoots().size() + " source roots, "
+                        + engine.jarCount() + " dependency jars. Ctrl+Click and "
+                        + "Find Usages are now exact.");
+            }
+        }, "lumina-semantics-init");
+        t.setDaemon(true);
+        t.start();
+    }
+
     /** Heuristic go-to-declaration: types by name, methods by signature scan. */
     private void goToDeclaration(String word) {
         if (word == null || word.isBlank()) return;
@@ -1095,8 +1155,40 @@ public class LuminaApp extends Application {
 
         final String targetType = typeToOpen;
         final Path currentFile = editor != null ? editor.getPath() : null;
+        final String editorText = editor != null ? editor.getEditorText() : null;
+        final int caretLine = editor != null ? editor.getCaretLine() : -1;
+        final int caretColumn = editor != null ? editor.getCaretColumn() : -1;
 
         Thread t = new Thread(() -> {
+            // (0) M1 semantic engine: exact resolution. Falls through to the
+            //     heuristics below whenever the engine is absent or unsure.
+            dev.lumina.semantics.SemanticEngine engine = semantics;
+            if (engine != null && currentFile != null && caretLine > 0) {
+                try {
+                    var res = engine.resolveAt(
+                            currentFile, editorText, caretLine, caretColumn);
+                    switch (res.kind()) {
+                        case PROJECT -> {
+                            var loc = res.location();
+                            Platform.runLater(() ->
+                                    openFileAtLine(loc.file(), loc.line()));
+                            return;
+                        }
+                        case LIBRARY -> {
+                            Platform.runLater(() ->
+                                    openLibraryType(res.libraryFqcn(), word));
+                            return;
+                        }
+                        case DECLARATION -> {
+                            Platform.runLater(() -> showUsages(word));
+                            return;
+                        }
+                        case NONE -> { /* fall through to heuristics */ }
+                    }
+                } catch (Throwable fallThrough) {
+                    // engine hiccup: heuristics still work below
+                }
+            }
             // (1) method declaration inside the project (only for real methods)
             if (!looksLikeMethodCall || qualifier == null) {
                 Path[] hitFile = new Path[]{null};
@@ -1695,7 +1787,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.5");
+        Label brand = new Label("Lumina 1.6");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1777,6 +1869,7 @@ public class LuminaApp extends Application {
         refreshGitInfo();
         mavenPanel.setProject(dir);
         Settings.put(Settings.LAST_PROJECT, dir.toString());
+        initSemanticEngine(dir);
         terminal.start(dir);
 
         try (Stream<Path> walk = Files.walk(dir)) {
@@ -1800,6 +1893,7 @@ public class LuminaApp extends Application {
         refreshRunConfigs();
         refreshGitInfo();
         mavenPanel.setProject(null);
+        semantics = null;
         Settings.put(Settings.LAST_PROJECT, null);
     }
 
@@ -2058,7 +2152,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.5");
+        alert.setHeaderText("Lumina IDE 1.6");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.

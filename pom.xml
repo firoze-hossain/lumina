@@ -35,6 +35,12 @@
             <artifactId>richtextfx</artifactId>
             <version>0.11.5</version>
         </dependency>
+        <!-- M1 semantic engine: exact resolution across sources, JDK and JARs -->
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-symbol-solver-core</artifactId>
+            <version>3.26.2</version>
+        </dependency>
         <!-- JDBC drivers for the built-in Database panel -->
         <dependency>
             <groupId>org.postgresql</groupId>
