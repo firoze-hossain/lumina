@@ -55,6 +55,11 @@ public class LuminaApp extends Application {
     private MenuButton branchButton;
     private Button githubButton;
     private ComboBox<RunConfiguration> runConfigBox;
+    private Button stopButton;
+    private Button restartButton;
+    private TestResultsPanel testsPanel;
+    private long testRunStart;
+    private Runnable lastTestRun;
     private HBox breadcrumbBar;
     private Label statusCaret;
 
@@ -101,9 +106,21 @@ public class LuminaApp extends Application {
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
         terminal = new TerminalPane();
+        testsPanel = new TestResultsPanel();
+        testsPanel.setNavigator(this::openTestSource);
+        testsPanel.setHandlers(
+                () -> { if (lastTestRun != null) lastTestRun.run(); },
+                this::rerunFailedTests);
         bottomTabs = new TabPane(
                 toolTab("Run", console),
+                toolTab("Tests", testsPanel),
                 toolTab("Terminal", terminal));
+        // IntelliJ-style button states: stop is red only while running.
+        console.setOnRunningChanged(running -> {
+            stopButton.setDisable(!running);
+            stopButton.getStyleClass().remove("stop-active");
+            if (running) stopButton.getStyleClass().add("stop-active");
+        });
         bottomTabs.getStyleClass().add("tool-tabs");
         bottomTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
@@ -374,9 +391,16 @@ public class LuminaApp extends Application {
                 "Debug (Ctrl/Cmd+D) \u2014 launches with JDWP on port 5005 and attaches jdb"));
         debugBtn.setOnAction(e -> debugSelectedConfig());
 
-        Button stopBtn = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
-        stopBtn.getStyleClass().add("tool-stop");
-        stopBtn.setOnAction(e -> console.stopProcess());
+        restartButton = toolButton("\u27F3", "Rerun \u2014 restart the last run");
+        restartButton.getStyleClass().add("tool-restart");
+        restartButton.setOnAction(e -> {
+            if (!console.restartLast()) runSelectedConfig();
+        });
+
+        stopButton = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
+        stopButton.getStyleClass().add("tool-stop");
+        stopButton.setDisable(true);   // enabled only while something runs
+        stopButton.setOnAction(e -> console.stopProcess());
 
         Button searchBtn = toolButton("\uD83D\uDD0D", "Search Everywhere (double Shift)");
         searchBtn.setOnAction(e -> searchEverywhere());
@@ -393,7 +417,7 @@ public class LuminaApp extends Application {
         });
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
-                runConfigBox, runBtn, debugBtn, stopBtn,
+                runConfigBox, runBtn, debugBtn, restartButton, stopButton,
                 searchBtn, githubButton, sideBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -674,9 +698,90 @@ public class LuminaApp extends Application {
         List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
                 ? RunConfiguration.maven(projectRoot, "test")
                 : RunConfiguration.gradleCmd(projectRoot, "test");
+        launchTests("All tests — " + projectRoot.getFileName(), cmd,
+                this::runAllTests);
+    }
+
+    /** Run a test command, then parse the reports into the Tests window. */
+    private void launchTests(String label, List<String> cmd, Runnable rerun) {
+        lastTestRun = rerun;
+        testRunStart = System.currentTimeMillis();
+        testsPanel.showRunning(label);
         showRunPanel();
-        console.runCommand("All tests — " + projectRoot.getFileName(),
-                cmd, projectRoot);
+        console.runCommandThen(label, cmd, projectRoot, this::collectTestResults);
+    }
+
+    private void collectTestResults() {
+        final long since = testRunStart - 2000;   // clock skew safety
+        Thread t = new Thread(() -> {
+            List<dev.lumina.run.TestReport.Suite> suites =
+                    dev.lumina.run.TestReport.parse(projectRoot, since);
+            Platform.runLater(() -> {
+                testsPanel.showResults(suites);
+                if (!suites.isEmpty()) {
+                    toggleBottomPanel(true);
+                    iconRail.setBottomSelected(true);
+                    bottomTabs.getSelectionModel().select(1);   // Tests tab
+                }
+            });
+        }, "lumina-test-report");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Open a test class by fully-qualified name and jump to a method. */
+    private void openTestSource(String className, String method) {
+        if (projectRoot == null) return;
+        Path file = projectRoot.resolve("src/test/java")
+                .resolve(className.replace('.', '/') + ".java");
+        if (!Files.isRegularFile(file)) return;
+        openFile(file);
+        try {
+            List<String> lines = Files.readAllLines(file);
+            java.util.regex.Pattern decl = java.util.regex.Pattern.compile(
+                    "\\b" + java.util.regex.Pattern.quote(method) + "\\s*\\(");
+            for (int i = 0; i < lines.size(); i++) {
+                if (decl.matcher(lines.get(i)).find()) {
+                    final int ln = i + 1;
+                    Platform.runLater(() -> {
+                        EditorTab t = currentEditor();
+                        if (t != null) t.goToLine(ln);
+                    });
+                    return;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    /** Rerun only the failed tests (surefire Class#m1+m2 syntax). */
+    private void rerunFailedTests(List<dev.lumina.run.TestReport.Case> failed) {
+        if (failed.isEmpty() || projectRoot == null) return;
+        if (RunConfiguration.isMavenProject(projectRoot)) {
+            java.util.Map<String, List<String>> byClass = new java.util.LinkedHashMap<>();
+            for (var c : failed) {
+                String simple = c.className()
+                        .substring(c.className().lastIndexOf('.') + 1);
+                byClass.computeIfAbsent(simple, k -> new java.util.ArrayList<>())
+                        .add(c.method());
+            }
+            String spec = byClass.entrySet().stream()
+                    .map(e -> e.getKey() + "#" + String.join("+", e.getValue()))
+                    .reduce((a, b) -> a + "," + b).orElse("");
+            List<String> cmd = RunConfiguration.maven(
+                    projectRoot, "-Dtest=" + spec, "test");
+            launchTests("Failed tests (" + failed.size() + ")", cmd,
+                    () -> rerunFailedTests(failed));
+        } else {
+            List<String> cmd = new java.util.ArrayList<>(
+                    RunConfiguration.gradleCmd(projectRoot, "test"));
+            for (var c : failed) {
+                cmd.add("--tests");
+                cmd.add(c.className() + "." + c.method());
+            }
+            launchTests("Failed tests (" + failed.size() + ")", cmd,
+                    () -> rerunFailedTests(failed));
+        }
     }
 
     private void runCurrentTestClass() {
@@ -696,8 +801,7 @@ public class LuminaApp extends Application {
         List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
                 ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple, "test")
                 : RunConfiguration.gradleCmd(projectRoot, "test", "--tests", fqcn);
-        showRunPanel();
-        console.runCommand("Test " + simple, cmd, projectRoot);
+        launchTests("Test " + simple, cmd, this::runCurrentTestClass);
     }
 
     /** Run a single @Test method (IntelliJ-style), or the whole class if null. */
@@ -720,8 +824,9 @@ public class LuminaApp extends Application {
                 ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple + "#" + method, "test")
                 : RunConfiguration.gradleCmd(projectRoot, "test",
                 "--tests", fqcn + "." + method);
-        showRunPanel();
-        console.runCommand("Test " + simple + "." + method + "()", cmd, projectRoot);
+        final String m = method;
+        launchTests("Test " + simple + "." + method + "()", cmd,
+                () -> runTestMethod(m));
     }
 
     /** Right-click menu inside the code editor (IntelliJ-style). */
@@ -1417,6 +1522,13 @@ public class LuminaApp extends Application {
         console.println("Attaching jdb in the Terminal \u2014 useful commands: "
                 + "stop in pkg.Class.method | cont | step | locals | where");
 
+        // Collect breakpoints from the red gutter dots in all open editors.
+        List<String> stops = breakpointStops();
+        if (!stops.isEmpty()) {
+            console.println("Breakpoints: " + stops.size()
+                    + " \u2014 they will be set in jdb automatically.");
+        }
+
         Thread attach = new Thread(() -> {
             try {
                 Thread.sleep(4000);
@@ -1427,9 +1539,44 @@ public class LuminaApp extends Application {
                 showTerminal();
                 terminal.sendCommand("jdb -attach 5005");
             });
+            try {
+                Thread.sleep(2500);   // let jdb finish attaching
+            } catch (InterruptedException e) {
+                return;
+            }
+            for (String stop : stops) {
+                Platform.runLater(() -> terminal.sendCommand(stop));
+                try {
+                    Thread.sleep(180);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+            try {
+                Thread.sleep(400);
+            } catch (InterruptedException e) {
+                return;
+            }
+            // Resume the suspended VM; it will pause at the first breakpoint.
+            Platform.runLater(() -> terminal.sendCommand("cont"));
         }, "lumina-jdb-attach");
         attach.setDaemon(true);
         attach.start();
+    }
+
+    /** Red gutter dots across open editors as jdb "stop at" commands. */
+    private List<String> breakpointStops() {
+        List<String> stops = new java.util.ArrayList<>();
+        for (Tab t : editorTabs.getTabs()) {
+            if (!(t instanceof EditorTab et) || et.getPath() == null) continue;
+            String fqcn = fqcnOf(et.getPath());
+            if (fqcn == null) fqcn = testFqcnOf(et.getPath());
+            if (fqcn == null) continue;
+            for (int line : et.getBreakpoints()) {
+                stops.add("stop at " + fqcn + ":" + line);
+            }
+        }
+        return stops;
     }
 
     private void findInFiles() {
@@ -1500,7 +1647,7 @@ public class LuminaApp extends Application {
     private void showTerminal() {
         toggleBottomPanel(true);
         iconRail.setBottomSelected(true);
-        bottomTabs.getSelectionModel().select(1);
+        bottomTabs.getSelectionModel().select(2);
         terminal.focusInput();
     }
 
@@ -1548,7 +1695,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.4");
+        Label brand = new Label("Lumina 1.5");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -1911,7 +2058,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.4");
+        alert.setHeaderText("Lumina IDE 1.5");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.

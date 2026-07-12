@@ -28,6 +28,34 @@ public class ConsolePane extends BorderPane {
     private final Label title = new Label("RUN");
     private volatile Process process;
     private volatile boolean cancelled;
+    private java.util.function.Consumer<Boolean> runningListener;
+
+    // last run, so the IDE can offer an IntelliJ-style Rerun button
+    private String lastHeader;
+    private List<List<String>> lastCommands;
+    private Path lastWorkDir;
+    private java.util.Map<String, String> lastEnv;
+    private Runnable lastOnSuccess;
+    private Runnable lastOnDone;
+
+    /** Notified with true when a process starts, false when it ends. */
+    public void setOnRunningChanged(java.util.function.Consumer<Boolean> listener) {
+        this.runningListener = listener;
+    }
+
+    /** Re-run the previous command sequence. Returns false if none yet. */
+    public boolean restartLast() {
+        if (lastCommands == null) return false;
+        runSequence(lastHeader, lastCommands, lastWorkDir, lastEnv,
+                lastOnSuccess, lastOnDone);
+        return true;
+    }
+
+    /** Run one command and ALWAYS call onDone afterwards (even on failure). */
+    public void runCommandThen(String header, List<String> command, Path workDir,
+                               Runnable onDone) {
+        runSequence(header, List.of(command), workDir, null, null, onDone);
+    }
 
     public ConsolePane() {
         getStyleClass().add("console-pane");
@@ -86,7 +114,20 @@ public class ConsolePane extends BorderPane {
     /** Full form: optional extra environment variables (e.g. GIT_ASKPASS). */
     public void runSequence(String header, List<List<String>> commands, Path workDir,
                             java.util.Map<String, String> env, Runnable onSuccess) {
+        runSequence(header, commands, workDir, env, onSuccess, null);
+    }
+
+    /** Full form: onSuccess fires only on exit 0; onDone fires regardless. */
+    public void runSequence(String header, List<List<String>> commands, Path workDir,
+                            java.util.Map<String, String> env, Runnable onSuccess,
+                            Runnable onDone) {
         stopProcess();
+        this.lastHeader = header;
+        this.lastCommands = commands;
+        this.lastWorkDir = workDir;
+        this.lastEnv = env;
+        this.lastOnSuccess = onSuccess;
+        this.lastOnDone = onDone;
         clear();
         cancelled = false;
         println("\u25B6 " + header + "\n");
@@ -127,6 +168,7 @@ public class ConsolePane extends BorderPane {
             } finally {
                 process = null;
                 setBusy(false);
+                if (onDone != null) Platform.runLater(onDone);
             }
         }, "lumina-run");
         worker.setDaemon(true);
@@ -158,6 +200,9 @@ public class ConsolePane extends BorderPane {
     }
 
     private void setBusy(boolean busy) {
-        Platform.runLater(() -> title.setText(busy ? "RUN \u2014 running" : "RUN"));
+        Platform.runLater(() -> {
+            title.setText(busy ? "RUN \u2014 running" : "RUN");
+            if (runningListener != null) runningListener.accept(busy);
+        });
     }
 }

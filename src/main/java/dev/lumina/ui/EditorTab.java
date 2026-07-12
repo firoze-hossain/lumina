@@ -132,6 +132,26 @@ public class EditorTab extends Tab {
         setContent(stack);
     }
 
+    // ----------------------------------------------------------- breakpoints
+
+    private final java.util.Set<Integer> breakpoints = new java.util.TreeSet<>();
+    private Runnable onBreakpointsChanged;
+
+    /** 1-based line numbers with an active breakpoint. */
+    public java.util.Set<Integer> getBreakpoints() {
+        return java.util.Set.copyOf(breakpoints);
+    }
+
+    public void setOnBreakpointsChanged(Runnable handler) {
+        this.onBreakpointsChanged = handler;
+    }
+
+    private void toggleBreakpoint(int line) {
+        if (!breakpoints.remove(line)) breakpoints.add(line);
+        refreshGutter();                       // repaint dots
+        if (onBreakpointsChanged != null) onBreakpointsChanged.run();
+    }
+
     // ---------------------------------------------------------------- blame
 
     private java.util.List<dev.lumina.git.GitService.BlameLine> blameLines;
@@ -144,10 +164,14 @@ public class EditorTab extends Tab {
 
     /** Show full per-line blame (date + author on every line), or clear (null). */
     public void setBlame(java.util.List<dev.lumina.git.GitService.BlameLine> lines) {
-        this.blameLines = lines;
-        this.fullBlame = lines != null;
+        if (lines == null) {
+            this.fullBlame = false;          // keep blame data for the hints
+        } else {
+            this.blameLines = lines;
+            this.fullBlame = true;
+        }
         refreshGutter();
-        refreshInlineHints();
+        Platform.runLater(this::refreshInlineHints);   // after gutter re-layout
     }
 
     /**
@@ -158,7 +182,7 @@ public class EditorTab extends Tab {
         this.blameLines = lines;
         this.fullBlame = false;
         refreshGutter();
-        refreshInlineHints();
+        Platform.runLater(this::refreshInlineHints);
     }
 
     /** Regex for a class/interface/enum/record or a method declaration line. */
@@ -178,25 +202,41 @@ public class EditorTab extends Tab {
     private void refreshGutter() {
         java.util.function.IntFunction<javafx.scene.Node> lineNo =
                 LineNumberFactory.get(codeArea);
-        // Author-hints mode keeps the gutter clean; only FULL blame fills it.
-        if (!fullBlame || blameLines == null) {
-            codeArea.setParagraphGraphicFactory(lineNo);
-            return;
-        }
         codeArea.setParagraphGraphicFactory(i -> {
-            String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
-            javafx.scene.control.Label annotation = new javafx.scene.control.Label(text);
-            annotation.getStyleClass().add("blame-label");
-            annotation.setPrefWidth(150);
-            if (i < blameLines.size() && !blameLines.get(i).summary().isBlank()) {
-                javafx.scene.control.Tooltip.install(annotation,
-                        new javafx.scene.control.Tooltip(
-                                blameLines.get(i).author() + " \u2014 "
-                                        + blameLines.get(i).date() + "\n"
-                                        + blameLines.get(i).summary()));
+            // breakpoint dot (click to toggle) — IntelliJ's red circle
+            javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4.5);
+            dot.getStyleClass().add("breakpoint-dot");
+            dot.setVisible(breakpoints.contains(i + 1));
+            javafx.scene.layout.StackPane dotBox =
+                    new javafx.scene.layout.StackPane(dot);
+            dotBox.setPrefWidth(14);
+            dotBox.setMinWidth(14);
+            dotBox.getStyleClass().add("breakpoint-box");
+            dotBox.setCursor(javafx.scene.Cursor.DEFAULT);
+            final int line = i + 1;
+            dotBox.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
+
+            javafx.scene.Node num = lineNo.apply(i);
+            num.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
+
+            javafx.scene.layout.HBox box;
+            if (fullBlame && blameLines != null) {
+                String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
+                javafx.scene.control.Label annotation =
+                        new javafx.scene.control.Label(text);
+                annotation.getStyleClass().add("blame-label");
+                annotation.setPrefWidth(150);
+                if (i < blameLines.size() && !blameLines.get(i).summary().isBlank()) {
+                    javafx.scene.control.Tooltip.install(annotation,
+                            new javafx.scene.control.Tooltip(
+                                    blameLines.get(i).author() + " \u2014 "
+                                            + blameLines.get(i).date() + "\n"
+                                            + blameLines.get(i).summary()));
+                }
+                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num);
+            } else {
+                box = new javafx.scene.layout.HBox(2, dotBox, num);
             }
-            javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(
-                    6, annotation, lineNo.apply(i));
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             return box;
         });
@@ -216,7 +256,7 @@ public class EditorTab extends Tab {
     private void refreshInlineHints() {
         if (hintOverlay == null) return;
         hintOverlay.getChildren().clear();
-        if (fullBlame || blameLines == null) return;   // hidden while full blame is on
+        if (blameLines == null) return;   // hints stay visible in both modes
 
         for (int i = 0; i < codeArea.getParagraphs().size() && i < blameLines.size(); i++) {
             if (!isDeclarationLine(i)) continue;
@@ -247,7 +287,9 @@ public class EditorTab extends Tab {
                                 blameLines.get(i).author() + " \u2014 "
                                         + blameLines.get(i).date() + "\n"
                                         + blameLines.get(i).summary()
-                                        + "\n\nClick to show full blame"));
+                                        + (fullBlame
+                                        ? "\n\nClick to hide per-line blame"
+                                        : "\n\nClick to show per-line blame")));
             }
             hint.setOnMouseClicked(e -> {
                 if (onHintClicked != null) onHintClicked.run();

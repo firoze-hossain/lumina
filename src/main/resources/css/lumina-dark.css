@@ -714,14 +714,58 @@
     -fx-background-color: transparent;
     -fx-padding: 0 4 0 4;
 }
-.author-hint-box:hover .author-hint { -fx-text-fill: #8A8E98; }
-.author-hint-box:hover .author-hint-icon { -fx-fill: #8A8E98; }
 .author-hint {
-    -fx-text-fill: #5A5E68;
+    -fx-text-fill: #56A8F5;
+    -fx-underline: true;
     -fx-font-size: 11px;
     -fx-font-style: italic;
     -fx-font-family: "Segoe UI", "SF Pro Text", "Inter", sans-serif;
 }
 .author-hint-icon {
-    -fx-fill: #5A5E68;
+    -fx-fill: #56A8F5;
 }
+.author-hint-box:hover .author-hint {
+    -fx-text-fill: #82C4FF;
+}
+.author-hint-box:hover .author-hint-icon {
+    -fx-fill: #82C4FF;
+}
+
+
+/* ============================================================
+   Phase 8 — tests window, breakpoints, run controls
+   ============================================================ */
+
+/* breakpoint gutter */
+.breakpoint-dot { -fx-fill: #DB5C5C; }
+.breakpoint-box:hover { -fx-background-color: #2A2230; -fx-background-radius: 6; }
+
+/* stop button: dim while idle, red while a process runs */
+.tool-stop { -fx-text-fill: #6B4A4A; }
+.tool-stop:disabled { -fx-opacity: 0.45; }
+.stop-active { -fx-text-fill: #FF6B6B; }
+.stop-active:hover { -fx-text-fill: #FF9B9B; }
+
+/* restart (rerun) button */
+.tool-restart { -fx-text-fill: #8FBCCE; -fx-font-size: 14px; }
+.tool-restart:hover { -fx-text-fill: #B4E0EE; }
+
+/* tests tool window */
+.test-summary { -fx-text-fill: #B9BECF; -fx-font-size: 12px; -fx-font-weight: bold; }
+.test-summary-pass { -fx-text-fill: #8FCE8F; }
+.test-summary-fail { -fx-text-fill: #E88A8A; }
+
+.tests-tree { -fx-background-color: #14161E; -fx-padding: 4; }
+.tests-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 6 4 6;
+    -fx-background-radius: 6;
+    -fx-font-size: 12px;
+}
+.tests-tree .tree-cell:hover { -fx-background-color: #1F2230; }
+.tests-tree .tree-cell:selected { -fx-background-color: #3A3122; }
+.tests-tree .tree-cell.test-pass { -fx-text-fill: #8FCE8F; }
+.tests-tree .tree-cell.test-fail { -fx-text-fill: #E88A8A; }
+.tests-tree .tree-cell.test-skip { -fx-text-fill: #697089; }
+.tests-tree .tree-cell .arrow { -fx-background-color: #697089; }
