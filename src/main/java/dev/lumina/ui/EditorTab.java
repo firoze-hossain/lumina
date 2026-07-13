@@ -61,10 +61,15 @@ public class EditorTab extends Tab {
                 underlineWordAt(hit.getInsertionIndex());
             } else {
                 clearNavUnderline();
+                var hit = codeArea.hit(e.getX(), e.getY());
+                updateDiagTooltip(diagAt(hit.getInsertionIndex()));
             }
         });
         codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_EXITED,
-                e -> clearNavUnderline());
+                e -> {
+                    clearNavUnderline();
+                    updateDiagTooltip(null);
+                });
         // Dropping the modifier key removes the underline.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.CONTROL
@@ -85,7 +90,10 @@ public class EditorTab extends Tab {
                     .subscribe(ignore -> applyHighlighting());
         }
 
-        codeArea.textProperty().addListener((obs, old, txt) -> markDirty());
+        codeArea.textProperty().addListener((obs, old, txt) -> {
+            editGeneration++;
+            markDirty();
+        });
         codeArea.caretPositionProperty().addListener((obs, old, pos) -> {
             notifyCaret();
             highlightCurrentLine();
@@ -128,6 +136,11 @@ public class EditorTab extends Tab {
             char c = ch.charAt(0);
             if (c == '.') {
                 Platform.runLater(this::triggerCompletion);
+            } else if (c == '(') {
+                completionPopup.hide();
+                if (paramInfoTrigger != null) {
+                    Platform.runLater(paramInfoTrigger);
+                }
             } else if (completionPopup.isShowing()) {
                 if (Character.isLetterOrDigit(c) || c == '_') {
                     Platform.runLater(this::refilterCompletion);
@@ -503,8 +516,28 @@ public class EditorTab extends Tab {
     }
 
     private void applyHighlighting() {
-        if (highlighter == null) return;
-        codeArea.setStyleSpans(0, highlighter.apply(codeArea.getText()));
+        String text = codeArea.getText();
+        if (text.isEmpty()) return;
+        org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>> spans;
+        if (highlighter != null) {
+            spans = highlighter.apply(text);
+        } else if (!diagnostics.isEmpty()) {
+            var plain = new org.fxmisc.richtext.model.StyleSpansBuilder<
+                    java.util.Collection<String>>();
+            plain.add(java.util.List.of(), text.length());
+            spans = plain.create();
+        } else {
+            return;
+        }
+        if (!diagnostics.isEmpty()) {
+            spans = spans.overlay(diagnosticSpans(text.length()), (a, b) -> {
+                if (b.isEmpty()) return a;
+                java.util.List<String> merged = new java.util.ArrayList<>(a);
+                merged.addAll(b);
+                return merged;
+            });
+        }
+        codeArea.setStyleSpans(0, spans);
     }
 
     // ---------------------------------------------------------------- caret
@@ -536,6 +569,156 @@ public class EditorTab extends Tab {
             caretListener.caretMoved(codeArea.getCurrentParagraph() + 1,
                     codeArea.getCaretColumn() + 1);
         }
+    }
+
+    // ---------------------------------------------------- diagnostics (M3)
+
+    private java.util.function.BiFunction<Path, String, java.util.List<
+            dev.lumina.diagnostics.JavaDiagnostics.Diag>> diagnosticsProvider;
+    private java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag>
+            diagnostics = java.util.List.of();
+    private java.util.function.Consumer<java.util.List<
+            dev.lumina.diagnostics.JavaDiagnostics.Diag>> diagnosticsListener;
+    private volatile int editGeneration;
+    private javafx.scene.control.Tooltip diagTooltip;
+    private Runnable paramInfoTrigger;
+
+    /**
+     * M3: install the compile-on-idle pipeline. The provider runs on a
+     * worker thread; results are dropped if the buffer changed meanwhile.
+     */
+    public void setDiagnosticsProvider(java.util.function.BiFunction<Path,
+            String, java.util.List<
+            dev.lumina.diagnostics.JavaDiagnostics.Diag>> provider) {
+        this.diagnosticsProvider = provider;
+        codeArea.multiPlainChanges()
+                .successionEnds(Duration.ofMillis(700))
+                .subscribe(ignore -> scheduleDiagnostics());
+        scheduleDiagnostics();
+    }
+
+    public void setDiagnosticsListener(java.util.function.Consumer<
+            java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag>> listener) {
+        this.diagnosticsListener = listener;
+    }
+
+    public java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag>
+            getDiagnostics() {
+        return diagnostics;
+    }
+
+    private void scheduleDiagnostics() {
+        if (diagnosticsProvider == null || path == null
+                || !codeArea.isEditable()
+                || !path.toString().endsWith(".java")) {
+            return;
+        }
+        final int generation = editGeneration;
+        final String text = codeArea.getText();
+        Thread worker = new Thread(() -> {
+            java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> found;
+            try {
+                found = diagnosticsProvider.apply(path, text);
+            } catch (Throwable t) {
+                found = java.util.List.of();
+            }
+            final java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag>
+                    result = found;
+            Platform.runLater(() -> {
+                if (generation == editGeneration) {
+                    setDiagnostics(result);
+                }
+            });
+        }, "lumina-diagnostics");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Store squiggles and re-render (FX thread). */
+    public void setDiagnostics(
+            java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
+        this.diagnostics = diags == null ? java.util.List.of() : diags;
+        applyHighlighting();
+        if (diagnosticsListener != null) {
+            diagnosticsListener.accept(this.diagnostics);
+        }
+    }
+
+    private org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>
+            diagnosticSpans(int length) {
+        java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> sorted =
+                diagnostics.stream()
+                        .filter(d -> d.start() < length)
+                        .sorted(java.util.Comparator.comparingInt(
+                                dev.lumina.diagnostics.JavaDiagnostics.Diag::start))
+                        .toList();
+        var builder = new org.fxmisc.richtext.model.StyleSpansBuilder<
+                java.util.Collection<String>>();
+        int last = 0;
+        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : sorted) {
+            int start = Math.max(d.start(), last);
+            int end = Math.min(Math.max(d.end(), start + 1), length);
+            if (start >= end) continue;
+            if (start > last) {
+                builder.add(java.util.List.of(), start - last);
+            }
+            builder.add(java.util.List.of(d.severity()
+                    == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR
+                    ? "diag-error" : "diag-warning"), end - start);
+            last = end;
+        }
+        if (length > last) {
+            builder.add(java.util.List.of(), length - last);
+        }
+        return builder.create();
+    }
+
+    private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAt(int offset) {
+        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
+            if (offset >= d.start() && offset <= d.end()) return d;
+        }
+        return null;
+    }
+
+    private void updateDiagTooltip(
+            dev.lumina.diagnostics.JavaDiagnostics.Diag diag) {
+        if (diag == null) {
+            if (diagTooltip != null) {
+                javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
+                diagTooltip = null;
+            }
+            return;
+        }
+        if (diagTooltip != null
+                && diag.message().equals(diagTooltip.getText())) {
+            return;
+        }
+        if (diagTooltip != null) {
+            javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
+        }
+        diagTooltip = new javafx.scene.control.Tooltip(diag.message());
+        diagTooltip.setShowDelay(javafx.util.Duration.millis(250));
+        diagTooltip.setWrapText(true);
+        diagTooltip.setMaxWidth(520);
+        diagTooltip.getStyleClass().add("diag-tooltip");
+        javafx.scene.control.Tooltip.install(codeArea, diagTooltip);
+    }
+
+    // ------------------------------------------------------------ docs (M4)
+
+    /** Fired when the user types '(' — LuminaApp shows parameter info. */
+    public void setParamInfoTrigger(Runnable trigger) {
+        this.paramInfoTrigger = trigger;
+    }
+
+    /** Absolute caret offset into the document. */
+    public int getCaretOffset() {
+        return codeArea.getCaretPosition();
+    }
+
+    /** Caret bounds in screen coordinates, for anchoring popups. */
+    public java.util.Optional<javafx.geometry.Bounds> caretScreenBounds() {
+        return codeArea.getCaretBounds();
     }
 
     // ------------------------------------------------------------ completion

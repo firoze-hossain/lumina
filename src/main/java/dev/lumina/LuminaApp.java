@@ -61,6 +61,10 @@ public class LuminaApp extends Application {
     private long testRunStart;
     private Runnable lastTestRun;
     private volatile dev.lumina.semantics.SemanticEngine semantics;
+    private final ProblemsPanel problemsPanel = new ProblemsPanel();
+    private final DocPopup docPopup = new DocPopup();
+    private final ParamInfoPopup paramPopup = new ParamInfoPopup();
+    private Label statusProblems;
     private HBox breadcrumbBar;
     private Label statusCaret;
 
@@ -115,7 +119,12 @@ public class LuminaApp extends Application {
         bottomTabs = new TabPane(
                 toolTab("Run", console),
                 toolTab("Tests", testsPanel),
+                toolTab("Problems", problemsPanel),
                 toolTab("Terminal", terminal));
+        problemsPanel.setOnJump(line -> {
+            EditorTab editor = currentEditor();
+            if (editor != null) editor.goToLine(line);
+        });
         // IntelliJ-style button states: stop is red only while running.
         console.setOnRunningChanged(running -> {
             stopButton.setDisable(!running);
@@ -189,11 +198,18 @@ public class LuminaApp extends Application {
         editorTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
             if (tab instanceof EditorTab et) {
                 updateBreadcrumbs(et.getPath(), et.getText());
-                et.setCaretListener(this::updateCaretStatus);
+                et.setCaretListener((line, col) -> {
+                    updateCaretStatus(line, col);
+                    trackParamInfoCaret(et);
+                });
                 et.focusEditor();
+                problemsPanel.show(et.getDiagnostics());
+                updateProblemsStatus(et.getDiagnostics());
             } else {
                 updateBreadcrumbs(null, null);
                 statusCaret.setText("");
+                problemsPanel.show(java.util.List.of());
+                updateProblemsStatus(java.util.List.of());
             }
         });
     }
@@ -263,6 +279,10 @@ public class LuminaApp extends Application {
                     EditorTab tab = currentEditor();
                     if (tab != null) goToDeclaration(tab.wordAtCaret());
                 }),
+                item("Quick Documentation", "Shortcut+Q",
+                        e -> quickDocAtCaret()),
+                item("Parameter Info", "Shortcut+Shift+P",
+                        e -> showParameterInfo()),
                 item("Find Usages", "Alt+F7", e -> {
                     EditorTab tab = currentEditor();
                     if (tab != null) showUsages(tab.wordAtCaret());
@@ -1102,6 +1122,126 @@ public class LuminaApp extends Application {
                 ideActions, this::openFile, this::openFileAtLine).show();
     }
 
+    /** M3: reflect the current file's diagnostics in the status bar. */
+    private void updateProblemsStatus(
+            java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
+        if (statusProblems == null) return;
+        long errors = diags.stream()
+                .filter(d -> d.severity()
+                        == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR)
+                .count();
+        long warnings = diags.size() - errors;
+        if (diags.isEmpty()) {
+            statusProblems.setText("");
+        } else {
+            statusProblems.setText(
+                    (errors > 0 ? errors + " \u2716  " : "")
+                            + (warnings > 0 ? warnings + " \u26A0" : ""));
+            statusProblems.setStyle(errors > 0
+                    ? "-fx-text-fill: #E5534B;"
+                    : "-fx-text-fill: #D8A657;");
+        }
+    }
+
+    /** M4: quick documentation (Ctrl+Q) for the symbol at the caret. */
+    private void quickDocAtCaret() {
+        EditorTab editor = currentEditor();
+        if (editor == null || editor.getPath() == null) return;
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (engine == null) {
+            console.println("Quick Documentation needs the semantic engine "
+                    + "(still indexing\u2026)");
+            return;
+        }
+        final Path file = editor.getPath();
+        final String text = editor.getEditorText();
+        final int line = editor.getCaretLine();
+        final int column = editor.getCaretColumn();
+        Thread t = new Thread(() -> {
+            dev.lumina.semantics.Docs.DocTarget target = null;
+            String doc = null;
+            try {
+                target = engine.docTargetAt(file, text, line, column);
+                if (target != null && target.isProject()) {
+                    java.util.List<String> lines = target.file().equals(file)
+                            ? text.lines().toList()
+                            : Files.readAllLines(target.file());
+                    doc = dev.lumina.semantics.Docs.javadocAbove(
+                            lines, target.line());
+                } else if (target != null && target.isLibrary()) {
+                    String source = findLibrarySource(target.libraryFqcn());
+                    if (source != null) {
+                        int declLine = dev.lumina.semantics.Docs.findMemberLine(
+                                source, target.member(), target.paramCount());
+                        if (declLine > 0) {
+                            doc = dev.lumina.semantics.Docs.javadocAbove(
+                                    source.lines().toList(), declLine);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            final dev.lumina.semantics.Docs.DocTarget shownTarget = target;
+            final String shownDoc = doc;
+            Platform.runLater(() -> {
+                if (shownTarget == null) return;
+                editor.caretScreenBounds().ifPresent(bounds ->
+                        docPopup.show(editor.getContent(),
+                                shownTarget.signature(), shownDoc, bounds));
+            });
+        }, "lumina-quick-doc");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** M4: parameter info for the call around the caret. */
+    private void showParameterInfo() {
+        EditorTab editor = currentEditor();
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (editor == null || editor.getPath() == null || engine == null) {
+            return;
+        }
+        final String text = editor.getEditorText();
+        final int caret = editor.getCaretOffset();
+        final dev.lumina.semantics.Docs.Call call =
+                dev.lumina.semantics.Docs.enclosingCall(text, caret);
+        if (call == null) {
+            paramPopup.hide();
+            return;
+        }
+        final Path file = editor.getPath();
+        final int line = editor.getCaretLine();
+        Thread t = new Thread(() -> {
+            java.util.List<dev.lumina.semantics.Docs.Signature> signatures =
+                    engine.signaturesFor(file, text, line,
+                            call.receiver(), call.method());
+            Platform.runLater(() -> {
+                if (signatures.isEmpty()) return;
+                editor.caretScreenBounds().ifPresent(bounds ->
+                        paramPopup.show(editor.getContent(), signatures,
+                                call.argIndex(), call.openParenOffset(),
+                                bounds));
+            });
+        }, "lumina-param-info");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Keep the bold argument in sync while the caret moves inside a call. */
+    private void trackParamInfoCaret(EditorTab editor) {
+        if (!paramPopup.isShowing()) return;
+        String text = editor.getEditorText();
+        dev.lumina.semantics.Docs.Call call =
+                dev.lumina.semantics.Docs.enclosingCall(
+                        text, editor.getCaretOffset());
+        if (call == null
+                || call.openParenOffset() != paramPopup.openParenOffset()) {
+            paramPopup.hide();
+        } else {
+            paramPopup.updateArgIndex(call.argIndex());
+        }
+    }
+
     /**
      * M1: build the semantic engine in the background. Navigation works via
      * the old heuristics until it is ready (IntelliJ's "dumb mode" pattern).
@@ -1739,7 +1879,7 @@ public class LuminaApp extends Application {
     private void showTerminal() {
         toggleBottomPanel(true);
         iconRail.setBottomSelected(true);
-        bottomTabs.getSelectionModel().select(2);
+        bottomTabs.getSelectionModel().select(3);
         terminal.focusInput();
     }
 
@@ -1786,14 +1926,23 @@ public class LuminaApp extends Application {
         breadcrumbBar.setAlignment(Pos.CENTER_LEFT);
         updateBreadcrumbs(null, null);
 
+        statusProblems = new Label("");
+        statusProblems.getStyleClass().add("status-problems");
+        statusProblems.setOnMouseClicked(e -> {
+            if (!verticalSplit.getItems().contains(bottomTabs)) {
+                verticalSplit.getItems().add(bottomTabs);
+                verticalSplit.setDividerPositions(0.68);
+            }
+            bottomTabs.getSelectionModel().select(2);   // Problems
+        });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.7");
+        Label brand = new Label("Lumina 1.8");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(16, breadcrumbBar, spacer, statusCaret, brand);
+        HBox bar = new HBox(16, breadcrumbBar, spacer, statusProblems, statusCaret, brand);
         bar.getStyleClass().add("status-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(3, 12, 3, 12));
@@ -2118,6 +2267,29 @@ public class LuminaApp extends Application {
             }
             return items;
         });
+        // M3: compile-on-idle diagnostics for project .java files.
+        tab.setDiagnosticsProvider((file, text) -> {
+            if (projectRoot == null) return java.util.List.of();
+            String cp = ensureClasspath();
+            String classes = projectRoot.resolve("target/classes").toString();
+            String full = cp == null || cp.isBlank() ? classes
+                    : cp + java.io.File.pathSeparator + classes;
+            java.util.List<Path> roots = new java.util.ArrayList<>();
+            for (String rel : new String[]{"src/main/java", "src/test/java"}) {
+                Path root = projectRoot.resolve(rel);
+                if (Files.isDirectory(root)) roots.add(root);
+            }
+            return dev.lumina.diagnostics.JavaDiagnostics.compile(
+                    file, text, full, roots);
+        });
+        tab.setDiagnosticsListener(diags -> {
+            if (currentEditor() == tab) {
+                problemsPanel.show(diags);
+                updateProblemsStatus(diags);
+            }
+        });
+        // M4: '(' opens parameter info.
+        tab.setParamInfoTrigger(this::showParameterInfo);
         loadAuthorHints(tab);
         tab.setNavigationHandler(word -> {
             // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
@@ -2175,13 +2347,14 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.7");
+        alert.setHeaderText("Lumina IDE 1.8");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase 6: git blame annotations, Find Usages,
-                locate-in-tree, and JUnit test running & generation.""");
+                Phase M3+M4: live error highlighting (real
+                compiler), quick documentation (Ctrl+Q),
+                parameter info, semantic engine & completion.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

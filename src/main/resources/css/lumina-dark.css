@@ -804,3 +804,102 @@
 .completion-icon-class    { -fx-text-fill: #E8B450; -fx-background-color: #33290F; }
 .completion-icon-keyword  { -fx-text-fill: #CF8E6D; -fx-background-color: #33231B; }
 .completion-icon-template { -fx-text-fill: #2AACB8; -fx-background-color: #15292B; }
+
+/* ============================================================
+   M3 - diagnostics: squiggle underlines, Problems panel, status
+   ============================================================ */
+
+.code-area .diag-error {
+    -rtfx-underline-color: #E5534B;
+    -rtfx-underline-width: 1.8;
+    -rtfx-underline-dash-array: 2.5 2.5;
+}
+.code-area .diag-warning {
+    -rtfx-underline-color: #D8A657;
+    -rtfx-underline-width: 1.6;
+    -rtfx-underline-dash-array: 2.5 2.5;
+}
+.diag-tooltip {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #E6E9F2;
+    -fx-font-size: 12px;
+    -fx-background-radius: 8;
+    -fx-border-color: #E5534B;
+    -fx-border-radius: 8;
+    -fx-padding: 7 11 7 11;
+}
+
+.problems-panel { -fx-background-color: #14161F; }
+.problems-bar {
+    -fx-background-color: #1A1D28;
+    -fx-padding: 6 12 6 12;
+    -fx-border-color: transparent transparent #232636 transparent;
+}
+.problems-summary { -fx-font-size: 12px; -fx-font-weight: bold; }
+.problems-list { -fx-background-color: #14161F; -fx-background-insets: 0; }
+.problems-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 4 12 4 10;
+}
+.problems-list .list-cell:selected { -fx-background-color: #262A3A; }
+.problems-list .label { -fx-text-fill: #C9CEDD; -fx-font-size: 12px; }
+.problems-line {
+    -fx-text-fill: #697089;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.problems-message { -fx-text-fill: #C9CEDD; }
+.status-problems {
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-padding: 0 6 0 6;
+}
+
+/* ============================================================
+   M4 - quick documentation & parameter info popups
+   ============================================================ */
+
+.doc-popup {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 10;
+    -fx-border-color: #E8B450;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-padding: 12 14 12 14;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 6);
+    -fx-max-width: 560;
+}
+.doc-title {
+    -fx-text-fill: #E8B450;
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.doc-body {
+    -fx-text-fill: #D8DBE6;
+    -fx-font-size: 12px;
+    -fx-line-spacing: 2;
+}
+.doc-scroll, .doc-scroll .viewport { -fx-background-color: transparent; }
+
+.param-popup {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 9;
+    -fx-border-color: #3A4058;
+    -fx-border-width: 1;
+    -fx-border-radius: 9;
+    -fx-padding: 8 12 8 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 16, 0.2, 0, 4);
+}
+.param-row { -fx-padding: 2 0 2 0; }
+.param-text {
+    -fx-fill: #A9AFC3;
+    -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+.param-current {
+    -fx-fill: #E8B450;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}

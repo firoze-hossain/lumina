@@ -1119,6 +1119,260 @@ public final class SemanticEngine {
                 .toList();
     }
 
+    // ============================================================== M4 docs
+
+    /**
+     * Where the documentation for the symbol at the caret lives: a project
+     * file + declaration line, or a library FQCN to read from its
+     * sources jar. Includes a display signature. Null when unresolvable.
+     */
+    public Docs.DocTarget docTargetAt(Path file, String text, int line,
+                                      int column) {
+        CompilationUnit cu = parse(file, text);
+        if (cu == null) return null;
+        SimpleName target = nameAt(cu, line, column);
+        if (target == null) return null;
+        Node parent = target.getParentNode().orElse(null);
+        if (parent == null) return null;
+        try {
+            if (parent instanceof MethodCallExpr call && call.getName() == target) {
+                ResolvedMethodDeclaration m = call.resolve();
+                return memberDocTarget(m.declaringType().getQualifiedName(),
+                        m.getName(), m.getNumberOfParams());
+            }
+            if (parent instanceof ClassOrInterfaceType type
+                    && type.getName() == target) {
+                ResolvedType rt = type.resolve();
+                if (rt.isReferenceType()) {
+                    return typeDocTarget(rt.asReferenceType().getQualifiedName());
+                }
+                return null;
+            }
+            if (parent instanceof NameExpr name && name.getName() == target) {
+                ResolvedValueDeclaration v = name.resolve();
+                if (v instanceof ResolvedFieldDeclaration f) {
+                    return memberDocTarget(f.declaringType().getQualifiedName(),
+                            f.getName(), -1);
+                }
+                Location local = localDeclaration(cu, file, target);
+                if (local != null) {
+                    String typeName = declaredTypeOf(file, text, line,
+                            target.getIdentifier());
+                    String sig = (typeName != null ? typeName + " " : "")
+                            + target.getIdentifier();
+                    return new Docs.DocTarget(sig, local.file(), local.line(),
+                            null, target.getIdentifier(), -1);
+                }
+                return null;
+            }
+            if (parent instanceof FieldAccessExpr access
+                    && access.getName() == target) {
+                ResolvedValueDeclaration v = access.resolve();
+                if (v instanceof ResolvedFieldDeclaration f) {
+                    return memberDocTarget(f.declaringType().getQualifiedName(),
+                            f.getName(), -1);
+                }
+                return null;
+            }
+            // caret on a declaration name in this very file
+            if (parent instanceof MethodDeclaration md && md.getName() == target) {
+                return new Docs.DocTarget(signatureOf(md), file, beginLine(md),
+                        null, md.getNameAsString(), md.getParameters().size());
+            }
+            if (parent instanceof ClassOrInterfaceDeclaration cd
+                    && cd.getName() == target) {
+                String own = fqcnForFile(file);
+                return new Docs.DocTarget(own != null ? own : cd.getNameAsString(),
+                        file, beginLine(cd), null, cd.getNameAsString(), -2);
+            }
+        } catch (Throwable unresolved) {
+            return null;
+        }
+        return null;
+    }
+
+    private Docs.DocTarget memberDocTarget(String typeQn, String member,
+                                           int paramCount) {
+        Path source = sourceFileFor(typeQn);
+        if (source == null) {
+            return new Docs.DocTarget(
+                    reflectionSignature(typeQn, member, paramCount),
+                    null, -1, libraryEntryName(typeQn), member, paramCount);
+        }
+        CompilationUnit cu = parse(source, null);
+        int line = -1;
+        String sig = typeQn + (member != null ? "." + member : "");
+        if (cu != null && member != null) {
+            for (MethodDeclaration m : cu.findAll(MethodDeclaration.class)) {
+                if (!m.getNameAsString().equals(member)) continue;
+                if (paramCount >= 0
+                        && m.getParameters().size() != paramCount) {
+                    continue;
+                }
+                line = beginLine(m);
+                sig = signatureOf(m);
+                break;
+            }
+            if (line < 0) {   // maybe a field
+                for (FieldDeclaration fd : cu.findAll(FieldDeclaration.class)) {
+                    for (VariableDeclarator v : fd.getVariables()) {
+                        if (v.getNameAsString().equals(member)) {
+                            line = beginLine(v);
+                            sig = simpleType(v.getType().asString())
+                                    + " " + member;
+                        }
+                    }
+                }
+            }
+        }
+        return new Docs.DocTarget(sig, source, Math.max(1, line), null,
+                member, paramCount);
+    }
+
+    private Docs.DocTarget typeDocTarget(String typeQn) {
+        Path source = sourceFileFor(typeQn);
+        String simple = typeQn.substring(typeQn.lastIndexOf('.') + 1);
+        if (source == null) {
+            return new Docs.DocTarget(typeQn, null, -1,
+                    libraryEntryName(typeQn), simple, -2);
+        }
+        Resolution loc = typeLocation(typeQn);
+        int line = loc.location() != null ? loc.location().line() : 1;
+        return new Docs.DocTarget(typeQn, source, line, null, simple, -2);
+    }
+
+    private String signatureOf(MethodDeclaration m) {
+        StringBuilder ps = new StringBuilder();
+        for (Parameter p : m.getParameters()) {
+            if (!ps.isEmpty()) ps.append(", ");
+            ps.append(simpleType(p.getType().asString())).append(' ')
+                    .append(p.getNameAsString());
+        }
+        return simpleType(m.getType().asString()) + " " + m.getNameAsString()
+                + "(" + ps + ")";
+    }
+
+    private String reflectionSignature(String typeQn, String member,
+                                       int paramCount) {
+        try {
+            Class<?> type = Class.forName(typeQn, false, dependencyLoader);
+            if (member == null) return typeQn;
+            for (java.lang.reflect.Method m : type.getMethods()) {
+                if (!m.getName().equals(member)) continue;
+                if (paramCount >= 0 && m.getParameterCount() != paramCount) {
+                    continue;
+                }
+                StringBuilder ps = new StringBuilder();
+                for (Class<?> pt : m.getParameterTypes()) {
+                    if (!ps.isEmpty()) ps.append(", ");
+                    ps.append(pt.getSimpleName());
+                }
+                return m.getReturnType().getSimpleName() + " " + member
+                        + "(" + ps + ")";
+            }
+            for (java.lang.reflect.Field f : type.getFields()) {
+                if (f.getName().equals(member)) {
+                    return f.getType().getSimpleName() + " " + member;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return typeQn + (member != null ? "." + member : "");
+    }
+
+    // ======================================================== M4 param info
+
+    /** Overload signatures for receiver.method( — the param-info popup. */
+    public List<Docs.Signature> signaturesFor(Path file, String text,
+                                              int caretLine, String receiver,
+                                              String methodName) {
+        try {
+            String fqcn = receiverType(file, text, caretLine, receiver);
+            if (fqcn == null) return List.of();
+            List<Docs.Signature> out = new ArrayList<>();
+            collectSignatures(fqcn, methodName, out, 0);
+            return out;
+        } catch (Throwable t) {
+            return List.of();
+        }
+    }
+
+    private String receiverType(Path file, String text, int caretLine,
+                                String receiver) {
+        if (receiver == null || receiver.isEmpty()
+                || receiver.equals("this")) {
+            return fqcnForFile(file);
+        }
+        if (Character.isUpperCase(receiver.charAt(0))) {
+            String fqcn = resolveTypeName(receiver, text);
+            if (fqcn != null) return fqcn;
+        }
+        String typeName = declaredTypeOf(file, text, caretLine, receiver);
+        if (typeName == null) return null;
+        return typeName.contains(".") ? typeName
+                : resolveTypeName(typeName, text);
+    }
+
+    private void collectSignatures(String fqcn, String methodName,
+                                   List<Docs.Signature> out, int depth) {
+        if (depth > 4 || out.size() >= 12
+                || "java.lang.Object".equals(fqcn)) {
+            return;
+        }
+        Path source = sourceFileFor(fqcn);
+        if (source != null) {
+            CompilationUnit cu = parse(source, null);
+            if (cu == null) return;
+            String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+            ClassOrInterfaceDeclaration owner = null;
+            for (ClassOrInterfaceDeclaration d
+                    : cu.findAll(ClassOrInterfaceDeclaration.class)) {
+                if (d.getNameAsString().equals(simple)) {
+                    owner = d;
+                    break;
+                }
+            }
+            Node scope = owner != null ? owner : cu;
+            for (MethodDeclaration m : scope.findAll(MethodDeclaration.class)) {
+                if (!m.getNameAsString().equals(methodName)) continue;
+                List<String> ps = new ArrayList<>();
+                for (Parameter p : m.getParameters()) {
+                    ps.add(simpleType(p.getType().asString()) + " "
+                            + p.getNameAsString());
+                }
+                out.add(new Docs.Signature(
+                        simpleType(m.getType().asString()), methodName, ps));
+            }
+            if (owner != null) {
+                String ownText = readText(source);
+                for (ClassOrInterfaceType ext : owner.getExtendedTypes()) {
+                    String superFqcn = resolveTypeName(
+                            ext.getNameAsString(), ownText);
+                    if (superFqcn != null) {
+                        collectSignatures(superFqcn, methodName, out,
+                                depth + 1);
+                    }
+                }
+            }
+            return;
+        }
+        try {
+            Class<?> type = Class.forName(fqcn, false, dependencyLoader);
+            for (java.lang.reflect.Method m : type.getMethods()) {
+                if (!m.getName().equals(methodName)) continue;
+                if (m.isSynthetic() || m.isBridge()) continue;
+                List<String> ps = new ArrayList<>();
+                for (Class<?> pt : m.getParameterTypes()) {
+                    ps.add(pt.getSimpleName());
+                }
+                out.add(new Docs.Signature(
+                        m.getReturnType().getSimpleName(), methodName, ps));
+                if (out.size() >= 12) return;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private static final String[] JDK_TYPES = {
             "List", "java.util.List", "ArrayList", "java.util.ArrayList",
             "Map", "java.util.Map", "HashMap", "java.util.HashMap",
