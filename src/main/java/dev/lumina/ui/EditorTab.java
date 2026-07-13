@@ -91,8 +91,25 @@ public class EditorTab extends Tab {
             highlightCurrentLine();
         });
 
-        // Auto-indent: keep leading whitespace of the previous line on Enter.
+        // Completion popup keys, Ctrl+Space trigger, then auto-indent.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (completionPopup.isShowing()) {
+                switch (e.getCode()) {
+                    case DOWN -> { completionPopup.moveSelection(1); e.consume(); return; }
+                    case UP -> { completionPopup.moveSelection(-1); e.consume(); return; }
+                    case ENTER, TAB -> { completionPopup.acceptSelected(); e.consume(); return; }
+                    case ESCAPE -> { completionPopup.hide(); e.consume(); return; }
+                    case BACK_SPACE -> Platform.runLater(this::refilterCompletion);
+                    case LEFT, RIGHT, HOME, END, PAGE_UP, PAGE_DOWN ->
+                            completionPopup.hide();
+                    default -> { }
+                }
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.SPACE && e.isControlDown()) {
+                e.consume();
+                triggerCompletion();
+                return;
+            }
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
                 int paragraph = codeArea.getCurrentParagraph();
                 String line = codeArea.getParagraph(paragraph).getText();
@@ -102,6 +119,27 @@ public class EditorTab extends Tab {
                 e.consume();
                 codeArea.insertText(codeArea.getCaretPosition(), "    ");
             }
+        });
+
+        // '.' auto-triggers member completion; typing refines the open popup.
+        codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, e -> {
+            String ch = e.getCharacter();
+            if (ch == null || ch.isEmpty()) return;
+            char c = ch.charAt(0);
+            if (c == '.') {
+                Platform.runLater(this::triggerCompletion);
+            } else if (completionPopup.isShowing()) {
+                if (Character.isLetterOrDigit(c) || c == '_') {
+                    Platform.runLater(this::refilterCompletion);
+                } else {
+                    completionPopup.hide();
+                }
+            }
+        });
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED,
+                e -> completionPopup.hide());
+        codeArea.focusedProperty().addListener((obs, was, focused) -> {
+            if (!focused) completionPopup.hide();
         });
 
         // Ctrl/Cmd+Click on an identifier -> go to its declaration.
@@ -498,6 +536,116 @@ public class EditorTab extends Tab {
             caretListener.caretMoved(codeArea.getCurrentParagraph() + 1,
                     codeArea.getCaretColumn() + 1);
         }
+    }
+
+    // ------------------------------------------------------------ completion
+
+    @FunctionalInterface
+    public interface CompletionProvider {
+        java.util.List<dev.lumina.semantics.Completion.Item> complete(
+                Path file, String text, int caretLine,
+                dev.lumina.semantics.Completion.Context ctx);
+    }
+
+    private final CompletionPopup completionPopup =
+            new CompletionPopup(this::acceptCompletion);
+    private CompletionProvider completionProvider;
+    private dev.lumina.semantics.Completion.Context completionCtx;
+    private java.util.List<dev.lumina.semantics.Completion.Item> completionBase =
+            java.util.List.of();
+
+    public void setCompletionProvider(CompletionProvider provider) {
+        this.completionProvider = provider;
+    }
+
+    /** Compute the caret context and ask the provider on a worker thread. */
+    private void triggerCompletion() {
+        if (completionProvider == null || !codeArea.isEditable()) return;
+        String text = codeArea.getText();
+        int caret = codeArea.getCaretPosition();
+        dev.lumina.semantics.Completion.Context ctx =
+                dev.lumina.semantics.Completion.contextAt(text, caret);
+        if (ctx == null) {
+            completionPopup.hide();
+            return;
+        }
+        int caretLine = getCaretLine();
+        Thread worker = new Thread(() -> {
+            java.util.List<dev.lumina.semantics.Completion.Item> items;
+            try {
+                items = completionProvider.complete(path, text, caretLine, ctx);
+            } catch (Throwable t) {
+                items = java.util.List.of();
+            }
+            final java.util.List<dev.lumina.semantics.Completion.Item> found = items;
+            Platform.runLater(() -> {
+                if (found.isEmpty()) {
+                    completionPopup.hide();
+                } else {
+                    completionCtx = ctx;
+                    completionBase = found;
+                    refilterCompletion();
+                }
+            });
+        }, "lumina-completion");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Filter the fetched items against the prefix as the user keeps typing. */
+    private void refilterCompletion() {
+        if (completionCtx == null) return;
+        int caret = codeArea.getCaretPosition();
+        int start = completionCtx.prefixStart();
+        if (caret < start || caret > codeArea.getLength()) {
+            completionPopup.hide();
+            return;
+        }
+        String prefix = codeArea.getText(start, caret);
+        for (int i = 0; i < prefix.length(); i++) {
+            char c = prefix.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != '_') {
+                completionPopup.hide();
+                return;
+            }
+        }
+        java.util.List<dev.lumina.semantics.Completion.Item> filtered =
+                completionBase.stream()
+                        .filter(item -> dev.lumina.semantics.Completion
+                                .matches(prefix, item.name()))
+                        .limit(80)
+                        .toList();
+        var bounds = codeArea.getCaretBounds();
+        if (filtered.isEmpty() || bounds.isEmpty()) {
+            completionPopup.hide();
+            return;
+        }
+        completionPopup.show(codeArea, filtered, bounds.get());
+    }
+
+    /** Insert the chosen item, add its import, and place the caret. */
+    private void acceptCompletion(dev.lumina.semantics.Completion.Item item) {
+        if (completionCtx == null) return;
+        int caret = codeArea.getCaretPosition();
+        int start = completionCtx.prefixStart();
+        completionCtx = null;
+        if (caret < start) return;
+
+        int shift = 0;
+        if (item.importFqcn() != null) {
+            String full = codeArea.getText();
+            if (dev.lumina.semantics.Completion.needsImport(full, item.importFqcn())) {
+                int offset = dev.lumina.semantics.Completion.importInsertOffset(full);
+                String importLine = "import " + item.importFqcn() + ";\n";
+                codeArea.insertText(offset, importLine);
+                if (offset <= start) shift = importLine.length();
+            }
+        }
+        codeArea.replaceText(start + shift, caret + shift, item.insert());
+        if (item.caretBack() > 0) {
+            codeArea.moveTo(codeArea.getCaretPosition() - item.caretBack());
+        }
+        codeArea.requestFocus();
     }
 
     public void focusEditor() {

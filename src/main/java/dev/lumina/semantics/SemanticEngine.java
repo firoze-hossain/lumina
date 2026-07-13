@@ -82,6 +82,8 @@ public final class SemanticEngine {
     private final List<Path> sourceRoots;
     private final JavaParser parser;
     private final int jarCount;
+    private final Map<String, List<String>> typeIndex;   // simple -> fqcns
+    private final ClassLoader dependencyLoader;
 
     private static final int CACHE_SIZE = 64;
     private final Map<Path, CachedUnit> cache =
@@ -98,11 +100,15 @@ public final class SemanticEngine {
     }
 
     private SemanticEngine(Path projectRoot, List<Path> sourceRoots,
-                           JavaParser parser, int jarCount) {
+                           JavaParser parser, int jarCount,
+                           Map<String, List<String>> typeIndex,
+                           ClassLoader dependencyLoader) {
         this.projectRoot = projectRoot;
         this.sourceRoots = sourceRoots;
         this.parser = parser;
         this.jarCount = jarCount;
+        this.typeIndex = typeIndex;
+        this.dependencyLoader = dependencyLoader;
     }
 
     public int jarCount() {
@@ -137,6 +143,7 @@ public final class SemanticEngine {
             }
 
             int jars = 0;
+            List<Path> jarPaths = new ArrayList<>();
             if (classpath != null) {
                 for (String part : classpath.split(Pattern.quote(File.pathSeparator))) {
                     if (!part.endsWith(".jar")) continue;
@@ -144,6 +151,7 @@ public final class SemanticEngine {
                     if (!Files.isRegularFile(jar)) continue;
                     try {
                         solver.add(new JarTypeSolver(jar));
+                        jarPaths.add(jar);
                         jars++;
                     } catch (Exception ignored) {
                         // unreadable jar: skip, resolution degrades gracefully
@@ -151,12 +159,53 @@ public final class SemanticEngine {
                 }
             }
 
+            // M2: index of project types (simple name -> FQCNs) for
+            // type-name completion with auto-import.
+            Map<String, List<String>> typeIndex = new java.util.HashMap<>();
+            for (Path root : roots) {
+                try (Stream<Path> walk = Files.walk(root)) {
+                    walk.filter(p -> p.toString().endsWith(".java")).forEach(p -> {
+                        String rel = root.relativize(p).toString()
+                                .replace(File.separatorChar, '/');
+                        String fqcn = rel.substring(0, rel.length() - 5)
+                                .replace('/', '.');
+                        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+                        typeIndex.computeIfAbsent(simple,
+                                k -> new ArrayList<>()).add(fqcn);
+                    });
+                } catch (Exception ignored) {
+                }
+            }
+
+            // M2: classloader over dependency jars + compiled output, used to
+            // reflect members of library types (the completion "PSI" for JARs).
+            List<java.net.URL> urls = new ArrayList<>();
+            for (Path jar : jarPaths) {
+                try {
+                    urls.add(jar.toUri().toURL());
+                } catch (Exception ignored) {
+                }
+            }
+            for (String out : new String[]{"target/classes",
+                    "build/classes/java/main"}) {
+                Path dir = projectRoot.resolve(out);
+                if (Files.isDirectory(dir)) {
+                    try {
+                        urls.add(dir.toUri().toURL());
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            ClassLoader loader = new java.net.URLClassLoader(
+                    urls.toArray(new java.net.URL[0]),
+                    ClassLoader.getPlatformClassLoader());
+
             ParserConfiguration config = new ParserConfiguration()
                     .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21)
                     .setSymbolResolver(new JavaSymbolSolver(solver));
 
             return new SemanticEngine(projectRoot, roots,
-                    new JavaParser(config), jars);
+                    new JavaParser(config), jars, typeIndex, loader);
         } catch (Throwable t) {
             if (log != null) log.accept("Semantic engine failed to start: " + t);
             return null;
@@ -667,4 +716,428 @@ public final class SemanticEngine {
     private static String truncate(String s) {
         return s.length() > 90 ? s.substring(0, 90) + "\u2026" : s;
     }
+
+    // ========================================================== M2 completion
+
+    /**
+     * Completions for "receiver.prefix|". Resolves the receiver — this, a
+     * type name for statics, or a variable's declared type — then lists its
+     * members from project source (with inherited members up the extends
+     * chain) or by reflecting over the dependency-jar classloader.
+     */
+    public List<Completion.Item> memberCompletions(Path file, String text,
+                                                   int caretLine,
+                                                   String receiver,
+                                                   String prefix) {
+        try {
+            boolean staticOnly = false;
+            String fqcn = null;
+            if (receiver.equals("this")) {
+                fqcn = fqcnForFile(file);
+            } else if (Character.isUpperCase(receiver.charAt(0))) {
+                fqcn = resolveTypeName(receiver, text);
+                staticOnly = fqcn != null;
+            }
+            if (fqcn == null) {
+                String typeName = declaredTypeOf(file, text, caretLine, receiver);
+                if (typeName != null) {
+                    staticOnly = false;
+                    fqcn = typeName.contains(".") ? typeName
+                            : resolveTypeName(typeName, text);
+                }
+            }
+            if (fqcn == null) return List.of();
+            boolean includePrivate = receiver.equals("this")
+                    || fqcn.equals(fqcnForFile(file));
+            return finishItems(membersOf(fqcn, staticOnly, includePrivate,
+                    prefix, 0));
+        } catch (Throwable t) {
+            return List.of();
+        }
+    }
+
+    /**
+     * Completions for a bare identifier: locals and parameters in scope,
+     * fields and methods of this file's classes, and type names (project
+     * index + common JDK types) that auto-import on selection.
+     */
+    public List<Completion.Item> scopeCompletions(Path file, String text,
+                                                  int caretLine, String prefix) {
+        List<Completion.Item> items = new ArrayList<>();
+        try {
+            CompilationUnit cu = parse(file, blankLine(text, caretLine));
+            if (cu != null) {
+                for (Parameter p : cu.findAll(Parameter.class)) {
+                    Node owner = p.getParentNode().orElse(null);
+                    if (owner == null || !rangeContainsLine(owner, caretLine)) {
+                        continue;
+                    }
+                    String name = p.getNameAsString();
+                    if (!Completion.matches(prefix, name)) continue;
+                    items.add(new Completion.Item(name, name, name,
+                            ": " + simpleType(p.getType().asString()),
+                            Completion.Kind.VARIABLE, null, 0));
+                }
+                for (VariableDeclarator v : cu.findAll(VariableDeclarator.class)) {
+                    String name = v.getNameAsString();
+                    if (!Completion.matches(prefix, name)) continue;
+                    boolean isField = v.getParentNode()
+                            .map(p -> p instanceof FieldDeclaration)
+                            .orElse(false);
+                    if (isField) {
+                        Node cls = v.getParentNode()
+                                .flatMap(Node::getParentNode).orElse(null);
+                        if (cls != null && rangeContainsLine(cls, caretLine)) {
+                            items.add(new Completion.Item(name, name, name,
+                                    ": " + simpleType(v.getType().asString()),
+                                    Completion.Kind.FIELD, null, 0));
+                        }
+                    } else {
+                        int declLine = beginLine(v);
+                        Node scope = v.getParentNode()
+                                .flatMap(Node::getParentNode).orElse(null);
+                        if (declLine > 0 && declLine <= caretLine
+                                && scope != null
+                                && rangeContainsLine(scope, caretLine)) {
+                            items.add(new Completion.Item(name, name, name,
+                                    ": " + simpleType(v.getType().asString()),
+                                    Completion.Kind.VARIABLE, null, 0));
+                        }
+                    }
+                }
+                for (MethodDeclaration m : cu.findAll(MethodDeclaration.class)) {
+                    String name = m.getNameAsString();
+                    if (!Completion.matches(prefix, name)) continue;
+                    items.add(methodItem(name, params(m),
+                            simpleType(m.getType().asString()),
+                            m.getParameters().isEmpty()));
+                }
+            }
+            if (!prefix.isEmpty()) {
+                String filePkg = filePackage(text);
+                for (Map.Entry<String, List<String>> e : typeIndex.entrySet()) {
+                    if (!Completion.matches(prefix, e.getKey())) continue;
+                    String fq = e.getValue().stream()
+                            .filter(q -> packageOf(q).equals(filePkg))
+                            .findFirst()
+                            .orElse(e.getValue().get(0));
+                    items.add(new Completion.Item(e.getKey(), e.getKey(),
+                            e.getKey(), packageOf(fq),
+                            Completion.Kind.CLASS, fq, 0));
+                }
+                for (int i = 0; i < JDK_TYPES.length; i += 2) {
+                    String simple = JDK_TYPES[i];
+                    if (!Completion.matches(prefix, simple)) continue;
+                    items.add(new Completion.Item(simple, simple, simple,
+                            packageOf(JDK_TYPES[i + 1]),
+                            Completion.Kind.CLASS, JDK_TYPES[i + 1], 0));
+                }
+            }
+        } catch (Throwable t) {
+            // partial results are fine
+        }
+        return finishItems(items);
+    }
+
+    // ------------------------------------------------------- member listing
+
+    private List<Completion.Item> membersOf(String fqcn, boolean staticOnly,
+                                            boolean includePrivate,
+                                            String prefix, int depth) {
+        List<Completion.Item> items = new ArrayList<>();
+        if (depth > 4 || "java.lang.Object".equals(fqcn)) return items;
+
+        Path source = sourceFileFor(fqcn);
+        if (source != null) {
+            CompilationUnit cu = parse(source, null);
+            if (cu != null) {
+                String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
+                ClassOrInterfaceDeclaration owner = null;
+                for (ClassOrInterfaceDeclaration d
+                        : cu.findAll(ClassOrInterfaceDeclaration.class)) {
+                    if (d.getNameAsString().equals(simple)) {
+                        owner = d;
+                        break;
+                    }
+                }
+                Node scope = owner != null ? owner : cu;
+                for (MethodDeclaration m : scope.findAll(MethodDeclaration.class)) {
+                    if (m.isPrivate() && !includePrivate) continue;
+                    if (staticOnly && !m.isStatic()) continue;
+                    String name = m.getNameAsString();
+                    if (!Completion.matches(prefix, name)) continue;
+                    items.add(methodItem(name, params(m),
+                            simpleType(m.getType().asString()),
+                            m.getParameters().isEmpty()));
+                }
+                for (FieldDeclaration f : scope.findAll(FieldDeclaration.class)) {
+                    if (f.isPrivate() && !includePrivate) continue;
+                    if (staticOnly && !f.isStatic()) continue;
+                    for (VariableDeclarator v : f.getVariables()) {
+                        String name = v.getNameAsString();
+                        if (!Completion.matches(prefix, name)) continue;
+                        items.add(new Completion.Item(name, name, name,
+                                ": " + simpleType(v.getType().asString()),
+                                Completion.Kind.FIELD, null, 0));
+                    }
+                }
+                if (owner != null) {
+                    String ownText = readText(source);
+                    for (ClassOrInterfaceType ext : owner.getExtendedTypes()) {
+                        String superFqcn = resolveTypeName(
+                                ext.getNameAsString(), ownText);
+                        if (superFqcn != null) {
+                            items.addAll(membersOf(superFqcn, staticOnly,
+                                    false, prefix, depth + 1));
+                        }
+                    }
+                }
+                return items;
+            }
+        }
+
+        // library type: reflect over the dependency classloader
+        try {
+            Class<?> type = Class.forName(fqcn, false, dependencyLoader);
+            for (java.lang.reflect.Method m : type.getMethods()) {
+                if (m.isSynthetic() || m.isBridge()) continue;
+                boolean isStatic = java.lang.reflect.Modifier
+                        .isStatic(m.getModifiers());
+                if (staticOnly && !isStatic) continue;
+                String name = m.getName();
+                if (!Completion.matches(prefix, name)) continue;
+                StringBuilder ps = new StringBuilder();
+                for (Class<?> pt : m.getParameterTypes()) {
+                    if (!ps.isEmpty()) ps.append(", ");
+                    ps.append(pt.getSimpleName());
+                }
+                items.add(methodItem(name, ps.toString(),
+                        m.getReturnType().getSimpleName(),
+                        m.getParameterCount() == 0));
+            }
+            for (java.lang.reflect.Field f : type.getFields()) {
+                if (staticOnly && !java.lang.reflect.Modifier
+                        .isStatic(f.getModifiers())) {
+                    continue;
+                }
+                String name = f.getName();
+                if (!Completion.matches(prefix, name)) continue;
+                items.add(new Completion.Item(name, name, name,
+                        ": " + f.getType().getSimpleName(),
+                        Completion.Kind.FIELD, null, 0));
+            }
+        } catch (Throwable ignored) {
+        }
+        return items;
+    }
+
+    // -------------------------------------------------- completion helpers
+
+    private static Completion.Item methodItem(String name, String params,
+                                              String returnType,
+                                              boolean noParams) {
+        return new Completion.Item(name, name + "(" + params + ")",
+                name + "()", ": " + returnType,
+                Completion.Kind.METHOD, null, noParams ? 0 : 1);
+    }
+
+    private String params(MethodDeclaration m) {
+        StringBuilder sb = new StringBuilder();
+        for (Parameter p : m.getParameters()) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(simpleType(p.getType().asString()));
+        }
+        return sb.toString();
+    }
+
+    /** Declared type of a variable/parameter/field visible at the caret. */
+    private String declaredTypeOf(Path file, String text, int caretLine,
+                                  String receiver) {
+        CompilationUnit cu = parse(file, blankLine(text, caretLine));
+        if (cu == null) return null;
+        String best = null;
+        int bestLine = -1;
+        for (Parameter p : cu.findAll(Parameter.class)) {
+            if (!p.getNameAsString().equals(receiver)) continue;
+            Node owner = p.getParentNode().orElse(null);
+            int line = beginLine(p);
+            if (owner != null && rangeContainsLine(owner, caretLine)
+                    && line > bestLine) {
+                bestLine = line;
+                best = p.getType().asString();
+            }
+        }
+        for (VariableDeclarator v : cu.findAll(VariableDeclarator.class)) {
+            if (!v.getNameAsString().equals(receiver)) continue;
+            boolean isField = v.getParentNode()
+                    .map(p -> p instanceof FieldDeclaration).orElse(false);
+            int line = beginLine(v);
+            if (isField) {
+                Node cls = v.getParentNode()
+                        .flatMap(Node::getParentNode).orElse(null);
+                if (cls != null && rangeContainsLine(cls, caretLine)
+                        && best == null) {
+                    best = v.getType().asString();   // locals shadow fields
+                }
+            } else {
+                Node scope = v.getParentNode()
+                        .flatMap(Node::getParentNode).orElse(null);
+                if (line > 0 && line <= caretLine && scope != null
+                        && rangeContainsLine(scope, caretLine)
+                        && line > bestLine) {
+                    bestLine = line;
+                    best = v.getType().asString();
+                }
+            }
+        }
+        if (best == null) return null;
+        String stripped = best.replaceAll("<.*>", "").replace("[]", "").trim();
+        return stripped.isEmpty() || stripped.equals("var") ? null : stripped;
+    }
+
+    /** Resolve a simple type name to an FQCN via imports, index, java.lang. */
+    private String resolveTypeName(String simple, String sourceText) {
+        if (simple.contains(".")) return simple;
+        String filePkg = filePackage(sourceText);
+        for (String raw : sourceText.split("\n")) {
+            String line = raw.strip();
+            if (line.startsWith("import ") && line.endsWith("." + simple + ";")) {
+                return line.substring(7, line.length() - 1).trim();
+            }
+        }
+        for (String raw : sourceText.split("\n")) {
+            String line = raw.strip();
+            if (line.startsWith("import ") && line.endsWith(".*;")) {
+                String candidate = line.substring(7, line.length() - 3)
+                        + "." + simple;
+                if (sourceFileFor(candidate) != null || loadable(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+        if (!filePkg.isEmpty()) {
+            String candidate = filePkg + "." + simple;
+            if (sourceFileFor(candidate) != null) return candidate;
+        }
+        List<String> indexed = typeIndex.get(simple);
+        if (indexed != null && !indexed.isEmpty()) {
+            return indexed.stream()
+                    .filter(q -> packageOf(q).equals(filePkg))
+                    .findFirst()
+                    .orElse(indexed.get(0));
+        }
+        if (loadable("java.lang." + simple)) return "java.lang." + simple;
+        return null;
+    }
+
+    private boolean loadable(String fqcn) {
+        try {
+            Class.forName(fqcn, false, dependencyLoader);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private String fqcnForFile(Path file) {
+        Path abs = file.toAbsolutePath().normalize();
+        for (Path root : sourceRoots) {
+            Path base = root.toAbsolutePath().normalize();
+            if (abs.startsWith(base)) {
+                String rel = base.relativize(abs).toString()
+                        .replace(File.separatorChar, '/');
+                if (rel.endsWith(".java")) {
+                    return rel.substring(0, rel.length() - 5).replace('/', '.');
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String filePackage(String sourceText) {
+        for (String raw : sourceText.split("\n")) {
+            String line = raw.strip();
+            if (line.startsWith("package ") && line.endsWith(";")) {
+                return line.substring(8, line.length() - 1).trim();
+            }
+            if (line.startsWith("import ") || line.contains("class ")) break;
+        }
+        return "";
+    }
+
+    private static String packageOf(String fqcn) {
+        int dot = fqcn.lastIndexOf('.');
+        return dot < 0 ? "" : fqcn.substring(0, dot);
+    }
+
+    private static String simpleType(String type) {
+        String stripped = type.replaceAll("<.*>", "");
+        int dot = stripped.lastIndexOf('.');
+        return dot < 0 ? stripped : stripped.substring(dot + 1);
+    }
+
+    /** Replace one 1-based line with spaces so incomplete code still parses. */
+    private static String blankLine(String text, int line) {
+        String[] lines = text.split("\n", -1);
+        if (line - 1 < 0 || line - 1 >= lines.length) return text;
+        lines[line - 1] = " ".repeat(lines[line - 1].length());
+        return String.join("\n", lines);
+    }
+
+    private static boolean rangeContainsLine(Node node, int line) {
+        return node.getRange()
+                .map(r -> r.begin.line <= line && line <= r.end.line)
+                .orElse(false);
+    }
+
+    private static int beginLine(Node node) {
+        return node.getRange().map(r -> r.begin.line).orElse(-1);
+    }
+
+    private String readText(Path file) {
+        try {
+            return Files.readString(file);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** De-duplicate by label, order by kind then name, cap the list. */
+    private static List<Completion.Item> finishItems(List<Completion.Item> items) {
+        Map<String, Completion.Item> unique = new LinkedHashMap<>();
+        for (Completion.Item item : items) {
+            unique.putIfAbsent(item.kind() + "|" + item.label(), item);
+        }
+        return unique.values().stream()
+                .sorted((a, b) -> {
+                    int kind = Integer.compare(a.kind().ordinal(),
+                            b.kind().ordinal());
+                    return kind != 0 ? kind
+                            : a.name().compareToIgnoreCase(b.name());
+                })
+                .limit(200)
+                .toList();
+    }
+
+    private static final String[] JDK_TYPES = {
+            "List", "java.util.List", "ArrayList", "java.util.ArrayList",
+            "Map", "java.util.Map", "HashMap", "java.util.HashMap",
+            "Set", "java.util.Set", "HashSet", "java.util.HashSet",
+            "Optional", "java.util.Optional", "Arrays", "java.util.Arrays",
+            "Collections", "java.util.Collections", "Objects", "java.util.Objects",
+            "UUID", "java.util.UUID", "Stream", "java.util.stream.Stream",
+            "Collectors", "java.util.stream.Collectors",
+            "Files", "java.nio.file.Files", "Path", "java.nio.file.Path",
+            "Paths", "java.nio.file.Paths",
+            "String", "java.lang.String", "StringBuilder", "java.lang.StringBuilder",
+            "Integer", "java.lang.Integer", "Long", "java.lang.Long",
+            "Double", "java.lang.Double", "Boolean", "java.lang.Boolean",
+            "Math", "java.lang.Math", "System", "java.lang.System",
+            "Exception", "java.lang.Exception",
+            "RuntimeException", "java.lang.RuntimeException",
+            "Thread", "java.lang.Thread",
+            "BigDecimal", "java.math.BigDecimal",
+            "LocalDate", "java.time.LocalDate",
+            "LocalDateTime", "java.time.LocalDateTime",
+    };
 }

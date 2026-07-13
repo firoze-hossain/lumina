@@ -769,3 +769,38 @@
 .tests-tree .tree-cell.test-fail { -fx-text-fill: #E88A8A; }
 .tests-tree .tree-cell.test-skip { -fx-text-fill: #697089; }
 .tests-tree .tree-cell .arrow { -fx-background-color: #697089; }
+
+/* ============================================================
+   M2 — completion popup
+   ============================================================ */
+
+.completion-list {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 10;
+    -fx-border-color: #E8B450;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 6);
+}
+.completion-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 4 10 4 8;
+    -fx-background-radius: 6;
+}
+.completion-list .list-cell:selected { -fx-background-color: #3A3122; }
+.completion-label { -fx-text-fill: #D8DBE6; -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", "Consolas", "Menlo", monospace; }
+.completion-detail { -fx-text-fill: #697089; -fx-font-size: 11px; }
+.completion-icon {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-padding: 1 5 1 5;
+}
+.completion-icon-method   { -fx-text-fill: #56A8F5; -fx-background-color: #1D2B3A; }
+.completion-icon-field    { -fx-text-fill: #C77DBB; -fx-background-color: #2E2233; }
+.completion-icon-variable { -fx-text-fill: #8FCE8F; -fx-background-color: #1F2E1F; }
+.completion-icon-class    { -fx-text-fill: #E8B450; -fx-background-color: #33290F; }
+.completion-icon-keyword  { -fx-text-fill: #CF8E6D; -fx-background-color: #33231B; }
+.completion-icon-template { -fx-text-fill: #2AACB8; -fx-background-color: #15292B; }

@@ -1787,7 +1787,7 @@ public class LuminaApp extends Application {
         updateBreadcrumbs(null, null);
 
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.6");
+        Label brand = new Label("Lumina 1.7");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2095,6 +2095,29 @@ public class LuminaApp extends Application {
 
     private void addTab(EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
+        // M2: completion — engine results plus keywords and live templates.
+        tab.setCompletionProvider((file, text, caretLine, ctx) -> {
+            java.util.List<dev.lumina.semantics.Completion.Item> items =
+                    new java.util.ArrayList<>();
+            dev.lumina.semantics.SemanticEngine engine = semantics;
+            if (engine != null && file != null) {
+                try {
+                    items.addAll(ctx.member()
+                            ? engine.memberCompletions(file, text, caretLine,
+                                    ctx.receiver(), ctx.prefix())
+                            : engine.scopeCompletions(file, text, caretLine,
+                                    ctx.prefix()));
+                } catch (Throwable ignored) {
+                }
+            }
+            if (!ctx.member()) {
+                items.addAll(dev.lumina.semantics.Completion
+                        .templateItems(ctx.prefix()));
+                items.addAll(dev.lumina.semantics.Completion
+                        .keywordItems(ctx.prefix()));
+            }
+            return items;
+        });
         loadAuthorHints(tab);
         tab.setNavigationHandler(word -> {
             // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
@@ -2152,7 +2175,7 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.6");
+        alert.setHeaderText("Lumina IDE 1.7");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
