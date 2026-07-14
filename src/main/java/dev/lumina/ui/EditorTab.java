@@ -711,6 +711,29 @@ public class EditorTab extends Tab {
         this.paramInfoTrigger = trigger;
     }
 
+    /** Selection start offset (== caret when nothing is selected). */
+    public int getSelectionStart() {
+        return codeArea.getSelection().getStart();
+    }
+
+    /** Selection end offset. */
+    public int getSelectionEnd() {
+        return codeArea.getSelection().getEnd();
+    }
+
+    public String getSelectedText() {
+        return codeArea.getSelectedText();
+    }
+
+    /** Replace a range; each call is one undoable step. */
+    public void replaceRange(int start, int end, String text) {
+        codeArea.replaceText(start, end, text);
+    }
+
+    public void insertAt(int offset, String text) {
+        codeArea.insertText(offset, text);
+    }
+
     /** Absolute caret offset into the document. */
     public int getCaretOffset() {
         return codeArea.getCaretPosition();

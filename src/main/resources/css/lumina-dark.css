@@ -903,3 +903,36 @@
     -fx-font-size: 12px;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
 }
+
+/* ============================================================
+   M5 - refactoring: rename preview dialog
+   ============================================================ */
+
+.rename-dialog { -fx-background-color: #1A1D28; }
+.rename-header {
+    -fx-text-fill: #E8B450;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.rename-list { -fx-background-color: #14161F; -fx-background-insets: 0; }
+.rename-list .list-cell { -fx-background-color: transparent; -fx-padding: 5 10 5 8; }
+.rename-list .list-cell:selected { -fx-background-color: #262A3A; }
+.rename-location {
+    -fx-text-fill: #8FCE8F;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11.5px;
+    -fx-min-width: 220;
+}
+.rename-preview {
+    -fx-text-fill: #A9AFC3;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11.5px;
+}
+.primary-button {
+    -fx-background-color: #E8B450;
+    -fx-text-fill: #1A1D28;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+    -fx-padding: 6 18 6 18;
+}
+.primary-button:hover { -fx-background-color: #F0C36A; }

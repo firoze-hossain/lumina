@@ -14,6 +14,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.AssignExpr;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NameExpr;
@@ -73,7 +74,8 @@ public final class SemanticEngine {
         }
     }
 
-    public record Usage(Path file, int line, String preview, boolean declaration) {
+    public record Usage(Path file, int line, int startCol, int endCol,
+                        String preview, boolean declaration) {
     }
 
     // -------------------------------------------------------------- state
@@ -545,7 +547,7 @@ public final class SemanticEngine {
 
     private List<Usage> methodUsages(String typeQn, String method, int paramCount) {
         List<Usage> hits = new ArrayList<>();
-        addDeclarationHit(hits, memberLocation(typeQn, method, paramCount, true));
+        addDeclarationHit(hits, memberLocation(typeQn, method, paramCount, true), method);
         scanProject(method, (path, unit, lines) -> {
             for (MethodCallExpr call : unit.findAll(MethodCallExpr.class)) {
                 if (!call.getNameAsString().equals(method)) continue;
@@ -553,7 +555,7 @@ public final class SemanticEngine {
                     ResolvedMethodDeclaration m = call.resolve();
                     if (m.declaringType().getQualifiedName().equals(typeQn)
                             && m.getNumberOfParams() == paramCount) {
-                        addHit(hits, path, call.getRange(), lines, false);
+                        addHit(hits, path, call.getName().getRange(), lines, false);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -564,7 +566,7 @@ public final class SemanticEngine {
 
     private List<Usage> fieldUsages(String typeQn, String field) {
         List<Usage> hits = new ArrayList<>();
-        addDeclarationHit(hits, memberLocation(typeQn, field, -1, false));
+        addDeclarationHit(hits, memberLocation(typeQn, field, -1, false), field);
         scanProject(field, (path, unit, lines) -> {
             for (NameExpr name : unit.findAll(NameExpr.class)) {
                 if (!name.getNameAsString().equals(field)) continue;
@@ -583,7 +585,7 @@ public final class SemanticEngine {
                     ResolvedValueDeclaration v = access.resolve();
                     if (v instanceof ResolvedFieldDeclaration f
                             && f.declaringType().getQualifiedName().equals(typeQn)) {
-                        addHit(hits, path, access.getRange(), lines, false);
+                        addHit(hits, path, access.getName().getRange(), lines, false);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -594,8 +596,23 @@ public final class SemanticEngine {
 
     private List<Usage> typeUsages(String typeQn) {
         List<Usage> hits = new ArrayList<>();
-        addDeclarationHit(hits, typeLocation(typeQn));
+        addDeclarationHit(hits, typeLocation(typeQn),
+                typeQn.substring(typeQn.lastIndexOf('.') + 1));
         String simple = typeQn.substring(typeQn.lastIndexOf('.') + 1);
+        Path declFile = sourceFileFor(typeQn);
+        if (declFile != null) {
+            CompilationUnit declUnit = parse(declFile, null);
+            if (declUnit != null) {
+                List<String> declLines = readText(declFile).lines().toList();
+                for (ConstructorDeclaration c
+                        : declUnit.findAll(ConstructorDeclaration.class)) {
+                    if (c.getNameAsString().equals(simple)) {
+                        addHit(hits, declFile, c.getName().getRange(),
+                                declLines, false);
+                    }
+                }
+            }
+        }
         scanProject(simple, (path, unit, lines) -> {
             for (ClassOrInterfaceType type : unit.findAll(ClassOrInterfaceType.class)) {
                 if (!type.getNameAsString().equals(simple)) continue;
@@ -603,7 +620,7 @@ public final class SemanticEngine {
                     ResolvedType rt = type.resolve();
                     if (rt.isReferenceType() && rt.asReferenceType()
                             .getQualifiedName().equals(typeQn)) {
-                        addHit(hits, path, type.getRange(), lines, false);
+                        addHit(hits, path, type.getName().getRange(), lines, false);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -677,17 +694,37 @@ public final class SemanticEngine {
     }
 
     private void addDeclarationHit(List<Usage> hits, Resolution declaration) {
+        addDeclarationHit(hits, declaration, null);
+    }
+
+    private void addDeclarationHit(List<Usage> hits, Resolution declaration,
+                                   String name) {
         if (declaration.kind() == Kind.PROJECT && declaration.location() != null) {
             Location loc = declaration.location();
             String preview = "";
+            String rawLine = "";
             try {
                 List<String> lines = Files.readAllLines(loc.file());
                 if (loc.line() - 1 < lines.size()) {
-                    preview = lines.get(loc.line() - 1).strip();
+                    rawLine = lines.get(loc.line() - 1);
+                    preview = rawLine.strip();
                 }
             } catch (Exception ignored) {
             }
-            hits.add(new Usage(loc.file(), loc.line(), truncate(preview), true));
+            int startCol = 0;
+            int endCol = 0;
+            if (name != null && !rawLine.isEmpty()) {
+                java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("\\b" + java.util.regex.Pattern.quote(name)
+                                + "\\b")
+                        .matcher(rawLine);
+                if (m.find()) {
+                    startCol = m.start() + 1;
+                    endCol = m.end();
+                }
+            }
+            hits.add(new Usage(loc.file(), loc.line(), startCol, endCol,
+                    truncate(preview), true));
         }
     }
 
@@ -695,9 +732,11 @@ public final class SemanticEngine {
                                Optional<Range> range, List<String> lines,
                                boolean declaration) {
         if (range.isEmpty() || hits.size() >= 500) return;
-        int line = range.get().begin.line;
+        Range r = range.get();
+        int line = r.begin.line;
         String preview = line - 1 < lines.size() ? lines.get(line - 1).strip() : "";
-        hits.add(new Usage(path, line, truncate(preview), declaration));
+        hits.add(new Usage(path, line, r.begin.column, r.end.column,
+                truncate(preview), declaration));
     }
 
     private static List<Usage> finish(List<Usage> hits) {
@@ -1370,6 +1409,144 @@ public final class SemanticEngine {
                 if (out.size() >= 12) return;
             }
         } catch (Throwable ignored) {
+        }
+    }
+
+    // ======================================================= M5 refactoring
+
+    /**
+     * Analyze a whole-line selection for Extract Method: which outer
+     * variables become parameters, whether one inside-declared variable
+     * must be returned, and where the new method goes.
+     */
+    public dev.lumina.refactor.Refactor.MethodPlan planExtractMethod(
+            Path file, String text, int selStartLine, int selEndLine) {
+        try {
+            CompilationUnit cu = parse(file, text);
+            if (cu == null) {
+                return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                        "the file has syntax errors \u2014 fix them first");
+            }
+            MethodDeclaration enclosing = null;
+            for (MethodDeclaration m : cu.findAll(MethodDeclaration.class)) {
+                if (rangeContainsLine(m, selStartLine)
+                        && rangeContainsLine(m, selEndLine)) {
+                    if (enclosing == null
+                            || spanOf(m) < spanOf(enclosing)) {
+                        enclosing = m;
+                    }
+                }
+            }
+            if (enclosing == null) {
+                return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                        "the selection is not inside a single method");
+            }
+            int methodStart = beginLine(enclosing);
+            int methodEnd = endLine(enclosing);
+            if (selStartLine <= methodStart || selEndLine >= methodEnd) {
+                return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                        "select whole statements inside the method body");
+            }
+
+            java.util.Set<String> usedInside = new java.util.LinkedHashSet<>();
+            java.util.Set<String> usedAfter = new java.util.LinkedHashSet<>();
+            for (NameExpr n : enclosing.findAll(NameExpr.class)) {
+                int line = beginLine(n);
+                if (line >= selStartLine && line <= selEndLine) {
+                    usedInside.add(n.getNameAsString());
+                } else if (line > selEndLine) {
+                    usedAfter.add(n.getNameAsString());
+                }
+            }
+            java.util.Map<String, String> declaredInside =
+                    new java.util.LinkedHashMap<>();
+            java.util.Map<String, String> declaredBefore =
+                    new java.util.LinkedHashMap<>();
+            for (Parameter p : enclosing.getParameters()) {
+                declaredBefore.put(p.getNameAsString(), p.getType().asString());
+            }
+            for (VariableDeclarator v
+                    : enclosing.findAll(VariableDeclarator.class)) {
+                int line = beginLine(v);
+                if (line >= selStartLine && line <= selEndLine) {
+                    declaredInside.put(v.getNameAsString(),
+                            v.getType().asString());
+                } else if (line < selStartLine && line > 0) {
+                    declaredBefore.put(v.getNameAsString(),
+                            v.getType().asString());
+                }
+            }
+
+            List<String> paramDecls = new ArrayList<>();
+            List<String> paramNames = new ArrayList<>();
+            for (Map.Entry<String, String> e : declaredBefore.entrySet()) {
+                if (!usedInside.contains(e.getKey())
+                        || declaredInside.containsKey(e.getKey())) {
+                    continue;
+                }
+                if ("var".equals(e.getValue())) {
+                    return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                            "cannot infer a parameter type for 'var' variable '"
+                                    + e.getKey() + "'");
+                }
+                paramDecls.add(e.getValue() + " " + e.getKey());
+                paramNames.add(e.getKey());
+            }
+
+            List<String> returned = declaredInside.keySet().stream()
+                    .filter(usedAfter::contains)
+                    .toList();
+            if (returned.size() > 1) {
+                return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                        "the selection declares several variables used later: "
+                                + returned);
+            }
+            for (AssignExpr assign : enclosing.findAll(AssignExpr.class)) {
+                int line = beginLine(assign);
+                if (line < selStartLine || line > selEndLine) continue;
+                if (assign.getTarget() instanceof NameExpr targetName) {
+                    String name = targetName.getNameAsString();
+                    if (declaredBefore.containsKey(name)
+                            && !declaredInside.containsKey(name)
+                            && usedAfter.contains(name)) {
+                        return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                                "the selection modifies '" + name
+                                        + "', which is used after it");
+                    }
+                }
+            }
+            String returnVar = returned.isEmpty() ? null : returned.get(0);
+            String returnType = returnVar == null ? "void"
+                    : declaredInside.get(returnVar);
+            if ("var".equals(returnType)) {
+                return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                        "cannot infer the return type of 'var' variable '"
+                                + returnVar + "'");
+            }
+            return new dev.lumina.refactor.Refactor.MethodPlan(true, null,
+                    paramDecls, paramNames, returnType, returnVar,
+                    methodEnd, isStaticMethod(enclosing));
+        } catch (Throwable t) {
+            return dev.lumina.refactor.Refactor.MethodPlan.invalid(
+                    "analysis failed: " + t.getClass().getSimpleName());
+        }
+    }
+
+    private static int endLine(Node node) {
+        return node.getRange().map(r -> r.end.line).orElse(-1);
+    }
+
+    private static int spanOf(Node node) {
+        return node.getRange()
+                .map(r -> r.end.line - r.begin.line)
+                .orElse(Integer.MAX_VALUE);
+    }
+
+    private static boolean isStaticMethod(MethodDeclaration m) {
+        try {
+            return m.isStatic();
+        } catch (Throwable t) {
+            return false;
         }
     }
 

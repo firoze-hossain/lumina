@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -303,9 +304,13 @@ public class LuminaApp extends Application {
         // ---- Refactor
         Menu refactor = new Menu("Refactor");
         refactor.getItems().addAll(
-                item("Rename File\u2026", null, e -> renameSelectedFile()),
-                disabled("Rename Symbol (soon)"),
-                disabled("Extract Method (soon)"));
+                item("Rename Symbol\u2026", "Shift+F6", e -> renameAtCaret()),
+                item("Extract Variable\u2026", "Shortcut+Alt+V",
+                        e -> extractVariable()),
+                item("Extract Method\u2026", "Shortcut+Alt+M",
+                        e -> extractMethod()),
+                new SeparatorMenuItem(),
+                item("Rename File\u2026", null, e -> renameSelectedFile()));
 
         // ---- Build
         Menu build = new Menu("Build");
@@ -1122,6 +1127,259 @@ public class LuminaApp extends Application {
                 ideActions, this::openFile, this::openFileAtLine).show();
     }
 
+    // ============================================================== M5
+
+    /** Every open, file-backed tab is written to disk (rename needs truth). */
+    private void saveAllEditors() {
+        for (Tab t : editorTabs.getTabs()) {
+            if (t instanceof EditorTab et && et.getPath() != null
+                    && et.getText().startsWith("\u25CF")) {
+                try {
+                    Files.writeString(et.getPath(), et.getEditorText());
+                    et.markSaved(et.getPath());
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    private EditorTab openTabFor(Path path) {
+        for (Tab t : editorTabs.getTabs()) {
+            if (t instanceof EditorTab et && path.equals(et.getPath())) {
+                return et;
+            }
+        }
+        return null;
+    }
+
+    private java.util.Optional<String> promptIdentifier(String title,
+                                                        String header,
+                                                        String initial) {
+        TextInputDialog dialog = new TextInputDialog(initial);
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        dialog.initOwner(stage);
+        dialog.getDialogPane().getStylesheets().add(getClass()
+                .getResource("/css/lumina-dark.css").toExternalForm());
+        java.util.Optional<String> result = dialog.showAndWait()
+                .map(String::trim);
+        if (result.isEmpty()) return java.util.Optional.empty();
+        if (!dev.lumina.refactor.Refactor.isValidIdentifier(result.get())) {
+            error(title, "'" + result.get()
+                    + "' is not a valid Java identifier.");
+            return java.util.Optional.empty();
+        }
+        return result;
+    }
+
+    /** M5: semantic rename with preview (Shift+F6). */
+    private void renameAtCaret() {
+        EditorTab editor = currentEditor();
+        if (editor == null || editor.getPath() == null) return;
+        String word = editor.wordAtCaret();
+        if (word == null || word.isBlank()) return;
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (engine == null) {
+            error("Rename", "The semantic engine is still indexing \u2014 "
+                    + "try again in a moment.");
+            return;
+        }
+        java.util.Optional<String> input = promptIdentifier("Rename",
+                "Rename '" + word + "' to:", word);
+        if (input.isEmpty() || input.get().equals(word)) return;
+        final String newName = input.get();
+        saveAllEditors();
+        final Path file = editor.getPath();
+        final String text = editor.getEditorText();
+        final int line = editor.getCaretLine();
+        final int column = editor.getCaretColumn();
+        Thread t = new Thread(() -> {
+            java.util.List<dev.lumina.semantics.SemanticEngine.Usage> usages =
+                    java.util.List.of();
+            try {
+                usages = engine.findUsages(file, text, line, column);
+            } catch (Throwable ignored) {
+            }
+            final java.util.List<dev.lumina.semantics.SemanticEngine.Usage>
+                    found = usages;
+            Platform.runLater(() -> {
+                if (found.isEmpty()) {
+                    error("Rename", "Could not resolve '" + word
+                            + "' semantically \u2014 rename aborted "
+                            + "(Lumina never renames by text search).");
+                    return;
+                }
+                new RenamePreviewDialog(stage, projectRoot, word, newName,
+                        found, chosen -> applyRename(word, newName, chosen))
+                        .show();
+            });
+        }, "lumina-rename");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void applyRename(String oldName, String newName,
+            java.util.List<dev.lumina.semantics.SemanticEngine.Usage> usages) {
+        java.util.Map<Path, java.util.List<
+                dev.lumina.semantics.SemanticEngine.Usage>> byFile =
+                new java.util.LinkedHashMap<>();
+        for (dev.lumina.semantics.SemanticEngine.Usage u : usages) {
+            if (u.startCol() > 0) {
+                byFile.computeIfAbsent(u.file(),
+                        k -> new java.util.ArrayList<>()).add(u);
+            }
+        }
+        int edits = 0;
+        Path fileToRename = null;
+        for (Map.Entry<Path, java.util.List<
+                dev.lumina.semantics.SemanticEngine.Usage>> entry
+                : byFile.entrySet()) {
+            Path path = entry.getKey();
+            EditorTab open = openTabFor(path);
+            String content;
+            try {
+                content = open != null ? open.getEditorText()
+                        : Files.readString(path);
+            } catch (IOException ex) {
+                continue;
+            }
+            java.util.List<dev.lumina.refactor.Refactor.Edit> fileEdits =
+                    new java.util.ArrayList<>();
+            for (dev.lumina.semantics.SemanticEngine.Usage u
+                    : entry.getValue()) {
+                fileEdits.add(dev.lumina.refactor.Refactor.editForUsage(
+                        content, u.line(), u.startCol(), u.endCol(), newName));
+            }
+            fileEdits.sort(java.util.Comparator.comparingInt(
+                    dev.lumina.refactor.Refactor.Edit::start).reversed());
+            if (open != null) {
+                for (dev.lumina.refactor.Refactor.Edit edit : fileEdits) {
+                    open.replaceRange(edit.start(), edit.end(), edit.text());
+                }
+            } else {
+                try {
+                    Files.writeString(path, dev.lumina.refactor.Refactor
+                            .apply(content, fileEdits));
+                } catch (IOException ex) {
+                    console.println("Rename: could not write " + path);
+                    continue;
+                }
+            }
+            edits += fileEdits.size();
+            boolean hasDecl = entry.getValue().stream()
+                    .anyMatch(dev.lumina.semantics.SemanticEngine
+                            .Usage::declaration);
+            if (hasDecl && path.getFileName().toString()
+                    .equals(oldName + ".java")) {
+                fileToRename = path;
+            }
+        }
+        // renaming a public type renames its file, IntelliJ-style
+        if (fileToRename != null) {
+            Path target = fileToRename.resolveSibling(newName + ".java");
+            try {
+                EditorTab open = openTabFor(fileToRename);
+                if (open != null) {
+                    Files.writeString(fileToRename, open.getEditorText());
+                    editorTabs.getTabs().remove(open);
+                }
+                Files.move(fileToRename, target,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                openFileAtLine(target, 1);
+            } catch (IOException ex) {
+                console.println("Rename: could not rename the file \u2014 "
+                        + ex.getMessage());
+            }
+        }
+        fileExplorer.refresh();
+        console.println("\u2713 Renamed '" + oldName + "' \u2192 '" + newName
+                + "': " + edits + " usages in " + byFile.size() + " files.");
+    }
+
+    /** M5: Extract Variable (Ctrl+Alt+V) \u2014 selection becomes a local. */
+    private void extractVariable() {
+        EditorTab editor = currentEditor();
+        if (editor == null || editor.getPath() == null) return;
+        String selected = editor.getSelectedText();
+        if (selected == null || selected.isBlank()) {
+            error("Extract Variable", "Select an expression first.");
+            return;
+        }
+        if (selected.contains(";") || selected.contains("\n")
+                || selected.contains("{")) {
+            error("Extract Variable",
+                    "Select a single expression, not statements.");
+            return;
+        }
+        int selStart = editor.getSelectionStart();
+        int selEnd = editor.getSelectionEnd();
+        String text = editor.getEditorText();
+        java.util.Optional<String> input = promptIdentifier("Extract Variable",
+                "Variable name:", dev.lumina.refactor.Refactor
+                        .guessVarName(selected));
+        if (input.isEmpty()) return;
+        String name = input.get();
+        int lineStart = dev.lumina.refactor.Refactor
+                .startOfLineAt(text, selStart);
+        String indent = dev.lumina.refactor.Refactor.indentAt(text, lineStart);
+        editor.replaceRange(selStart, selEnd, name);
+        editor.insertAt(lineStart, indent + "var " + name + " = "
+                + selected.strip() + ";\n");
+    }
+
+    /** M5: Extract Method (Ctrl+Alt+M) on a whole-line selection. */
+    private void extractMethod() {
+        EditorTab editor = currentEditor();
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (editor == null || editor.getPath() == null) return;
+        if (engine == null) {
+            error("Extract Method", "The semantic engine is still indexing "
+                    + "\u2014 try again in a moment.");
+            return;
+        }
+        int selStart = editor.getSelectionStart();
+        int selEnd = editor.getSelectionEnd();
+        if (selEnd <= selStart) {
+            error("Extract Method", "Select the statements to extract.");
+            return;
+        }
+        String text = editor.getEditorText();
+        int startLine = dev.lumina.refactor.Refactor.lineOf(text, selStart);
+        int endLine = dev.lumina.refactor.Refactor.lineOf(text,
+                Math.max(selStart, selEnd - 1));
+        int from = dev.lumina.refactor.Refactor.lineStartOffset(text, startLine);
+        int to = dev.lumina.refactor.Refactor.lineEndOffset(text, endLine);
+        String body = text.substring(from, to);
+        if (body.contains("return ") || body.contains("return;")) {
+            error("Extract Method",
+                    "The selection contains a return statement.");
+            return;
+        }
+        dev.lumina.refactor.Refactor.MethodPlan plan =
+                engine.planExtractMethod(editor.getPath(), text,
+                        startLine, endLine);
+        if (!plan.valid()) {
+            error("Extract Method", plan.reason());
+            return;
+        }
+        java.util.Optional<String> input = promptIdentifier("Extract Method",
+                "Method name:", "extracted");
+        if (input.isEmpty()) return;
+        String name = input.get();
+        String methodIndent = dev.lumina.refactor.Refactor.indentAt(text,
+                dev.lumina.refactor.Refactor.lineStartOffset(text,
+                        plan.insertAfterLine()));
+        String callIndent = dev.lumina.refactor.Refactor.indentAt(text, from);
+        String methodText = dev.lumina.refactor.Refactor.buildMethodText(
+                name, plan, body.lines().toList(), methodIndent);
+        String callLine = dev.lumina.refactor.Refactor.buildCallLine(
+                name, plan, callIndent);
+        int insertOffset = dev.lumina.refactor.Refactor.lineEndOffset(text,
+                plan.insertAfterLine());
+        editor.insertAt(insertOffset, methodText);   // below the selection
+        editor.replaceRange(from, to, callLine);
+    }
+
     /** M3: reflect the current file's diagnostics in the status bar. */
     private void updateProblemsStatus(
             java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
@@ -1936,7 +2194,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.8");
+        Label brand = new Label("Lumina 1.9");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2347,14 +2605,14 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.8");
+        alert.setHeaderText("Lumina IDE 1.9");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase M3+M4: live error highlighting (real
-                compiler), quick documentation (Ctrl+Q),
-                parameter info, semantic engine & completion.""");
+                Phase M5: refactoring \u2014 semantic rename with
+                preview (Shift+F6), extract variable & method.
+                Plus live errors, quick docs, completion.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
