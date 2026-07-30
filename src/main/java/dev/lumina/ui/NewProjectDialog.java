@@ -2,14 +2,20 @@ package dev.lumina.ui;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import dev.lumina.project.ProjectSpec;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -18,9 +24,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -53,6 +62,38 @@ public class NewProjectDialog {
         }
     }
 
+    private record CatalogEntry(String name, String type, String location) {
+    }
+
+    private static class PropertyEntry {
+        private final StringProperty name = new SimpleStringProperty("");
+        private final StringProperty value = new SimpleStringProperty("");
+
+        public StringProperty nameProperty() {
+            return name;
+        }
+
+        public StringProperty valueProperty() {
+            return value;
+        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        public void setName(String name) {
+            this.name.set(name);
+        }
+
+        public String getValue() {
+            return value.get();
+        }
+
+        public void setValue(String value) {
+            this.value.set(value);
+        }
+    }
+
     private static final List<GeneratorEntry> NEW_PROJECT_ENTRIES = List.of(
             new GeneratorEntry("Java", ProjectSpec.Generator.JAVA, true),
             new GeneratorEntry("Kotlin", null, false),
@@ -61,7 +102,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Empty Project", null, false));
 
     private static final List<GeneratorEntry> GENERATOR_ENTRIES = List.of(
-            new GeneratorEntry("Maven Archetype", null, false),
+            new GeneratorEntry("Maven Archetype", ProjectSpec.Generator.MAVEN_ARCHETYPE, true),
             new GeneratorEntry("Spring Boot", ProjectSpec.Generator.SPRING_BOOT, true),
             new GeneratorEntry("JavaFX", null, false),
             new GeneratorEntry("Quarkus", null, false),
@@ -101,18 +142,35 @@ public class NewProjectDialog {
     private final TextField artifactField = new TextField("demo");
     private final TextField packageField = new TextField("com.example.demo");
     private final ComboBox<String> javaVersionBox =
-            new ComboBox<>(javafx.collections.FXCollections.observableArrayList("25", "21", "17"));
+            new ComboBox<>(FXCollections.observableArrayList("25", "21", "17"));
     private final CheckBox mavenWrapperCheck = new CheckBox("Use Maven wrapper");
     private final ComboBox<String> mavenVersionBox = new ComboBox<>(
-            javafx.collections.FXCollections.observableArrayList("3.9.5", "3.8.8"));
+            FXCollections.observableArrayList("3.9.5", "3.8.8"));
     private final CheckBox gradleWrapperCheck = new CheckBox("Use Gradle wrapper");
     private final ComboBox<String> gradleVersionBox = new ComboBox<>(
-            javafx.collections.FXCollections.observableArrayList("9.2", "9.1", "8.3", "7.6"));
+            FXCollections.observableArrayList("9.2", "9.1", "8.3", "7.6"));
     private final CheckBox saveSettingsCheck = new CheckBox("Use these settings for future projects");
     private final ToggleButton langJava = new ToggleButton("Java");
     private final ToggleButton langKotlin = new ToggleButton("Kotlin");
     private final ToggleButton langGroovy = new ToggleButton("Groovy");
     private final ToggleGroup languageGroup = new ToggleGroup();
+
+    private final ComboBox<String> catalogCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "Internal", "Default Local", "Maven Central"));
+    private final Button manageCatalogsButton = new Button("Manage catalogs...");
+    private final ComboBox<String> archetypeCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "maven-archetype-quickstart", "maven-archetype-webapp", "maven-archetype-site"));
+    private final Button addArchetypeButton = new Button("Add...");
+    private final ComboBox<String> archetypeVersionBox = new ComboBox<>(FXCollections.observableArrayList(
+            "1.4", "1.0", "1.1", "1.3"));
+    private final TextField mavenGroupField = new TextField("com.example");
+    private final TextField mavenArtifactField = new TextField("demo");
+    private final TextField projectVersionField = new TextField("1.0-SNAPSHOT");
+    private final TableView<PropertyEntry> propertiesTable = new TableView<>();
+    private final ObservableList<PropertyEntry> additionalProperties = FXCollections.observableArrayList();
+    private final VBox mavenArchetypeBox = new VBox(14);
+    private final List<Node> standardOnlyNodes = new ArrayList<>();
+    private final List<Node> springOnlyNodes = new ArrayList<>();
 
     private final ToggleButton typeGradleGroovy = new ToggleButton("Gradle - Groovy");
     private final ToggleButton typeGradleKotlin = new ToggleButton("Gradle - Kotlin");
@@ -158,7 +216,7 @@ public class NewProjectDialog {
         root.setCenter(buildForm());
         root.setBottom(buildButtons());
 
-        Scene scene = new Scene(root, 800, 640);
+        Scene scene = new Scene(root, 960, 760);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
@@ -287,8 +345,10 @@ public class NewProjectDialog {
         serverSettingsButton.setOnAction(e -> showServerSettings());
         serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
         serverRow.setAlignment(Pos.CENTER_LEFT);
-        grid.add(formLabel("Server URL:"), 0, row);
+        Label serverLabel = formLabel("Server URL:");
+        grid.add(serverLabel, 0, row);
         grid.add(serverRow, 1, row++);
+        springOnlyNodes.addAll(List.of(serverLabel, serverRow));
 
         languageGroup.getToggles().addAll(langJava, langKotlin, langGroovy);
         langJava.setToggleGroup(languageGroup);
@@ -300,8 +360,10 @@ public class NewProjectDialog {
         langJava.setSelected(true);
         languageRow.getChildren().setAll(langJava, langKotlin, langGroovy);
         languageRow.getStyleClass().add("segmented");
-        grid.add(formLabel("Language:"), 0, row);
+        Label languageLabel = formLabel("Language:");
+        grid.add(languageLabel, 0, row);
         grid.add(languageRow, 1, row++);
+        springOnlyNodes.addAll(List.of(languageLabel, languageRow));
 
         typeGroup.getToggles().addAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeGradleGroovy.setToggleGroup(typeGroup);
@@ -313,8 +375,10 @@ public class NewProjectDialog {
         typeMaven.setSelected(true);
         typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeRow.getStyleClass().add("segmented");
-        grid.add(formLabel("Type:"), 0, row);
+        Label typeLabel = formLabel("Type:");
+        grid.add(typeLabel, 0, row);
         grid.add(typeRow, 1, row++);
+        springOnlyNodes.addAll(List.of(typeLabel, typeRow));
 
         packagingGroup.getToggles().addAll(packagingJar, packagingWar);
         packagingJar.setToggleGroup(packagingGroup);
@@ -324,8 +388,10 @@ public class NewProjectDialog {
         packagingJar.setSelected(true);
         packagingRow.getChildren().setAll(packagingJar, packagingWar);
         packagingRow.getStyleClass().add("segmented");
-        grid.add(formLabel("Packaging:"), 0, row);
+        Label packagingLabel = formLabel("Packaging:");
+        grid.add(packagingLabel, 0, row);
         grid.add(packagingRow, 1, row++);
+        springOnlyNodes.addAll(List.of(packagingLabel, packagingRow));
 
         configGroup.getToggles().addAll(configProperties, configYaml);
         configProperties.setToggleGroup(configGroup);
@@ -335,30 +401,33 @@ public class NewProjectDialog {
         configProperties.setSelected(true);
         configRow.getChildren().setAll(configProperties, configYaml);
         configRow.getStyleClass().add("segmented");
-        grid.add(formLabel("Configuration:"), 0, row);
+        Label configLabel = formLabel("Configuration:");
+        grid.add(configLabel, 0, row);
         grid.add(configRow, 1, row++);
+        springOnlyNodes.addAll(List.of(configLabel, configRow));
 
-        serverRow.setVisible(false);
-        serverRow.setManaged(false);
-        typeRow.setVisible(false);
-        typeRow.setManaged(false);
-        packagingRow.setVisible(false);
-        packagingRow.setManaged(false);
-        configRow.setVisible(false);
-        configRow.setManaged(false);
+        setNodesVisible(springOnlyNodes, false);
 
         buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
-        grid.add(formLabel("Build system:"), 0, row);
+        Label buildSystemLabel = formLabel("Build system:");
+        grid.add(buildSystemLabel, 0, row);
         grid.add(buildSystemRow, 1, row++);
+        standardOnlyNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
 
-        grid.add(formLabel("Group:"), 0, row);
+        Label groupLabel = formLabel("Group:");
+        grid.add(groupLabel, 0, row);
         grid.add(groupField, 1, row++);
+        standardOnlyNodes.addAll(List.of(groupLabel, groupField));
 
-        grid.add(formLabel("Artifact:"), 0, row);
+        Label artifactLabel = formLabel("Artifact:");
+        grid.add(artifactLabel, 0, row);
         grid.add(artifactField, 1, row++);
+        standardOnlyNodes.addAll(List.of(artifactLabel, artifactField));
 
-        grid.add(formLabel("Package name:"), 0, row);
+        Label packageLabel = formLabel("Package name:");
+        grid.add(packageLabel, 0, row);
         grid.add(packageField, 1, row++);
+        standardOnlyNodes.addAll(List.of(packageLabel, packageField));
 
         grid.add(formLabel("JDK:"), 0, row);
         jdkCombo.setItems(javafx.collections.FXCollections.observableArrayList(JDK_ENTRIES));
@@ -382,16 +451,24 @@ public class NewProjectDialog {
         });
         grid.add(jdkCombo, 1, row++);
 
-        grid.add(formLabel("Java:"), 0, row);
+        buildMavenArchetypeForm();
+        grid.add(mavenArchetypeBox, 0, row++, 2, 1);
+
+        Label javaLabel = formLabel("Java:");
+        grid.add(javaLabel, 0, row);
         javaVersionBox.getSelectionModel().select("21");
         grid.add(javaVersionBox, 1, row++);
+        standardOnlyNodes.addAll(List.of(javaLabel, javaVersionBox));
 
-        grid.add(formLabel("Build options:"), 0, row);
+        Label buildOptionsLabel = formLabel("Build options:");
+        grid.add(buildOptionsLabel, 0, row);
         advancedBox.setSpacing(10);
         updateAdvancedOptions();
         grid.add(advancedBox, 1, row++);
+        standardOnlyNodes.addAll(List.of(buildOptionsLabel, advancedBox));
 
         grid.add(saveSettingsCheck, 1, row++);
+        standardOnlyNodes.add(saveSettingsCheck);
 
         Label depsLabel = formLabel("Dependencies:");
         dependenciesField.setPromptText("comma separated, e.g. web,data-jpa,lombok");
@@ -410,11 +487,13 @@ public class NewProjectDialog {
         // live bindings
         nameField.textProperty().addListener((obs, old, v) -> {
             artifactField.setText(sanitize(v));
+            mavenArtifactField.setText(sanitize(v));
             updateHints();
         });
         locationField.textProperty().addListener((obs, old, v) -> updateHints());
         groupField.textProperty().addListener((obs, old, v) -> updateHints());
         artifactField.textProperty().addListener((obs, old, v) -> updateHints());
+        mavenArtifactField.textProperty().addListener((obs, old, v) -> updateHints());
         packageField.setOnKeyTyped(e -> packageEdited = true);
         updateHints();
 
@@ -446,28 +525,187 @@ public class NewProjectDialog {
         return box;
     }
 
+    private void buildMavenArchetypeForm() {
+        Label intro = new Label("To create a general Maven project, go to the Java page.");
+        intro.getStyleClass().add("form-hint");
+
+        GridPane fields = new GridPane();
+        fields.setHgap(12);
+        fields.setVgap(14);
+        ColumnConstraints labelColumn = new ColumnConstraints(96);
+        ColumnConstraints valueColumn = new ColumnConstraints();
+        valueColumn.setHgrow(Priority.ALWAYS);
+        fields.getColumnConstraints().addAll(labelColumn, valueColumn);
+
+        catalogCombo.getSelectionModel().select("Internal");
+        catalogCombo.setPrefWidth(275);
+        manageCatalogsButton.getStyleClass().add("maven-link");
+        manageCatalogsButton.setOnAction(e -> showCatalogManager());
+        HBox catalog = new HBox(8, catalogCombo, manageCatalogsButton);
+        catalog.setAlignment(Pos.CENTER_LEFT);
+
+        archetypeCombo.getItems().setAll(
+                "org.apache.maven.archetypes:maven-archetype-archetype",
+                "org.apache.maven.archetypes:maven-archetype-j2ee-simple",
+                "org.apache.maven.archetypes:maven-archetype-plugin",
+                "org.apache.maven.archetypes:maven-archetype-plugin-site",
+                "org.apache.maven.archetypes:maven-archetype-portlet",
+                "org.apache.maven.archetypes:maven-archetype-quickstart",
+                "org.apache.maven.archetypes:maven-archetype-site",
+                "org.apache.maven.archetypes:maven-archetype-site-simple",
+                "org.apache.maven.archetypes:maven-archetype-webapp");
+        archetypeCombo.setEditable(true);
+        archetypeCombo.getSelectionModel().select("org.apache.maven.archetypes:maven-archetype-quickstart");
+        HBox.setHgrow(archetypeCombo, Priority.ALWAYS);
+        addArchetypeButton.getStyleClass().add("dialog-secondary");
+        addArchetypeButton.setOnAction(e -> addArchetype());
+        HBox archetype = new HBox(8, archetypeCombo, addArchetypeButton);
+        archetype.setAlignment(Pos.CENTER_LEFT);
+
+        archetypeVersionBox.getSelectionModel().select("1.4");
+        archetypeVersionBox.setPrefWidth(110);
+
+        fields.add(formLabel("Catalog:  ⓘ"), 0, 0);
+        fields.add(catalog, 1, 0);
+        fields.add(formLabel("Archetype:  ⓘ"), 0, 1);
+        fields.add(archetype, 1, 1);
+        fields.add(formLabel("Version:"), 0, 2);
+        fields.add(archetypeVersionBox, 1, 2);
+
+        configurePropertiesTable();
+        Button addProperty = new Button("+");
+        Button removeProperty = new Button("−");
+        addProperty.getStyleClass().add("property-button");
+        removeProperty.getStyleClass().add("property-button");
+        addProperty.setOnAction(e -> {
+            PropertyEntry property = new PropertyEntry();
+            additionalProperties.add(property);
+            propertiesTable.getSelectionModel().select(property);
+            propertiesTable.edit(additionalProperties.size() - 1, propertiesTable.getColumns().get(0));
+        });
+        removeProperty.setOnAction(e -> {
+            PropertyEntry property = propertiesTable.getSelectionModel().getSelectedItem();
+            if (property != null) additionalProperties.remove(property);
+        });
+        HBox propertyButtons = new HBox(5, addProperty, removeProperty);
+        propertyButtons.getStyleClass().add("property-toolbar");
+
+        Label propertiesTitle = new Label("Additional Properties");
+        propertiesTitle.getStyleClass().add("maven-section-title");
+        VBox properties = new VBox(5, propertiesTitle, propertyButtons, propertiesTable);
+        properties.getStyleClass().add("maven-properties");
+
+        Label advancedTitle = new Label("⌄  Advanced Settings");
+        advancedTitle.getStyleClass().add("maven-section-title");
+        GridPane advanced = new GridPane();
+        advanced.setHgap(12);
+        advanced.setVgap(10);
+        advanced.getColumnConstraints().addAll(new ColumnConstraints(96), new ColumnConstraints());
+        advanced.add(formLabel("GroupId:  ⓘ"), 0, 0);
+        advanced.add(mavenGroupField, 1, 0);
+        advanced.add(formLabel("ArtifactId:  ⓘ"), 0, 1);
+        advanced.add(mavenArtifactField, 1, 1);
+        advanced.add(formLabel("Version:"), 0, 2);
+        advanced.add(projectVersionField, 1, 2);
+        for (Node field : List.of(mavenGroupField, mavenArtifactField, projectVersionField)) {
+            ((TextField) field).setPrefWidth(275);
+        }
+        VBox advancedSection = new VBox(12, advancedTitle, advanced);
+        advancedSection.getStyleClass().add("maven-advanced");
+
+        mavenArchetypeBox.getChildren().setAll(intro, fields, properties, advancedSection);
+        mavenArchetypeBox.setVisible(false);
+        mavenArchetypeBox.setManaged(false);
+    }
+
+    private void configurePropertiesTable() {
+        propertiesTable.setItems(additionalProperties);
+        propertiesTable.setEditable(true);
+        propertiesTable.getStyleClass().add("maven-properties-table");
+        propertiesTable.setPrefHeight(145);
+        propertiesTable.setPlaceholder(new Label("No properties"));
+
+        TableColumn<PropertyEntry, String> name = new TableColumn<>("Name");
+        name.setCellValueFactory(cell -> cell.getValue().nameProperty());
+        name.setCellFactory(TextFieldTableCell.<PropertyEntry>forTableColumn());
+        name.setOnEditCommit(e -> e.getRowValue().setName(e.getNewValue()));
+        name.setPrefWidth(230);
+        TableColumn<PropertyEntry, String> value = new TableColumn<>("Value");
+        value.setCellValueFactory(cell -> cell.getValue().valueProperty());
+        value.setCellFactory(TextFieldTableCell.<PropertyEntry>forTableColumn());
+        value.setOnEditCommit(e -> e.getRowValue().setValue(e.getNewValue()));
+        value.setPrefWidth(330);
+        propertiesTable.getColumns().setAll(name, value);
+    }
+
+    private void addArchetype() {
+        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
+        dialog.initOwner(stage);
+        dialog.setTitle("Add Maven Archetype");
+        dialog.setHeaderText("Add archetype coordinates");
+        dialog.setContentText("Group ID:Artifact ID");
+        dialog.showAndWait().map(String::trim).filter(value -> !value.isBlank()).ifPresent(value -> {
+            if (!archetypeCombo.getItems().contains(value)) archetypeCombo.getItems().add(value);
+            archetypeCombo.getSelectionModel().select(value);
+        });
+    }
+
+    private void showCatalogManager() {
+        Stage dialog = new Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Manage Catalogs");
+
+        TableView<CatalogEntry> catalogs = new TableView<>(FXCollections.observableArrayList(
+                new CatalogEntry("Internal", "System", ""),
+                new CatalogEntry("Default Local", "System", System.getProperty("user.home") + "/.m2/repository"),
+                new CatalogEntry("Maven Central", "System", "https://repo.maven.apache.org/maven2")));
+        catalogs.getStyleClass().add("maven-properties-table");
+        TableColumn<CatalogEntry, String> name = new TableColumn<>("Name");
+        name.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().name()));
+        name.setPrefWidth(135);
+        TableColumn<CatalogEntry, String> type = new TableColumn<>("Type");
+        type.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().type()));
+        type.setPrefWidth(70);
+        TableColumn<CatalogEntry, String> location = new TableColumn<>("Location");
+        location.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().location()));
+        location.setPrefWidth(340);
+        catalogs.getColumns().setAll(name, type, location);
+
+        Button ok = new Button("OK");
+        ok.getStyleClass().add("dialog-primary");
+        ok.setOnAction(e -> dialog.close());
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().add("dialog-secondary");
+        cancel.setOnAction(e -> dialog.close());
+        HBox footer = new HBox(10, ok, cancel);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setPadding(new Insets(12));
+
+        BorderPane root = new BorderPane(catalogs);
+        root.setBottom(footer);
+        root.getStyleClass().addAll("app-root", "catalog-manager");
+        Scene scene = new Scene(root, 580, 330);
+        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
     // --------------------------------------------------------------- logic
 
     private void updateForGenerator() {
         boolean spring = selected.generator() == ProjectSpec.Generator.SPRING_BOOT;
+        boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         if (dependenciesRow != null) {
             dependenciesRow.setVisible(spring);
             dependenciesRow.setManaged(spring);
         }
-        serverRow.setVisible(spring);
-        serverRow.setManaged(spring);
-        languageRow.setVisible(spring);
-        languageRow.setManaged(spring);
-        typeRow.setVisible(spring);
-        typeRow.setManaged(spring);
-        packagingRow.setVisible(spring);
-        packagingRow.setManaged(spring);
-        configRow.setVisible(spring);
-        configRow.setManaged(spring);
-        buildSystemRow.setVisible(!spring);
-        buildSystemRow.setManaged(!spring);
+        setNodesVisible(springOnlyNodes, spring);
+        setNodesVisible(standardOnlyNodes, !mavenArchetype);
+        mavenArchetypeBox.setVisible(mavenArchetype);
+        mavenArchetypeBox.setManaged(mavenArchetype);
 
-        javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
+        if (!mavenArchetype) javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
         updateAdvancedOptions();
@@ -559,7 +797,8 @@ public class NewProjectDialog {
         try {
             locationHint.setText("Project will be created in: "
                     + Path.of(locationField.getText().isBlank() ? "." : locationField.getText())
-                    .resolve(nameField.getText()).toString());
+                    .resolve(selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
+                            ? mavenArtifactField.getText() : nameField.getText()).toString());
         } catch (java.nio.file.InvalidPathException ex) {
             locationHint.setText("Invalid location path");
         }
@@ -567,6 +806,18 @@ public class NewProjectDialog {
             String pkg = (sanitize(groupField.getText()) + "." + sanitize(artifactField.getText()))
                     .replaceAll("^\\.|\\.$", "");
             packageField.setText(pkg);
+        }
+    }
+
+    private String selectedArchetype() {
+        String typed = archetypeCombo.getEditor().getText().trim();
+        return typed.isEmpty() ? archetypeCombo.getValue() : typed;
+    }
+
+    private static void setNodesVisible(List<Node> nodes, boolean visible) {
+        for (Node node : nodes) {
+            node.setVisible(visible);
+            node.setManaged(visible);
         }
     }
 
@@ -659,7 +910,9 @@ public class NewProjectDialog {
             errorLabel.setText("Location is required.");
             return;
         }
-        if (artifactField.getText().trim().isEmpty()) {
+        boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
+        String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
+        if (artifact.isEmpty()) {
             errorLabel.setText("Artifact is required.");
             return;
         }
@@ -669,7 +922,9 @@ public class NewProjectDialog {
         else if (langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
 
         ProjectSpec.BuildSystem build;
-        if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+        if (mavenArchetype) {
+            build = ProjectSpec.BuildSystem.MAVEN;
+        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
             if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
                 build = ProjectSpec.BuildSystem.GRADLE;
             } else {
@@ -696,11 +951,22 @@ public class NewProjectDialog {
                 language,
                 packaging,
                 configFormat,
-                groupField.getText().trim(),
-                artifactField.getText().trim(),
-                packageField.getText().trim(),
+                (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
+                artifact,
+                mavenArchetype
+                        ? (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact))
+                                .replaceAll("^\\.|\\.$", "")
+                        : packageField.getText().trim(),
                 javaVersionBox.getValue(),
-                dependenciesField.getText().trim());
+                dependenciesField.getText().trim(),
+                catalogCombo.getValue(),
+                selectedArchetype(),
+                archetypeVersionBox.getValue(),
+                projectVersionField.getText().trim(),
+                additionalProperties.stream()
+                        .filter(property -> !property.getName().isBlank())
+                        .map(property -> property.getName().trim() + "=" + property.getValue().trim())
+                        .collect(java.util.stream.Collectors.joining(",")));
 
         stage.close();
         onCreate.accept(spec);

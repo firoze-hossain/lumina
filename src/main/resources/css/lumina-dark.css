@@ -361,6 +361,53 @@
 .form-static { -fx-text-fill: #B9BECF; -fx-font-size: 12px; }
 .form-error { -fx-text-fill: #E88A8A; -fx-font-size: 12px; }
 
+.maven-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #56A8F5;
+    -fx-padding: 4 0 4 0;
+    -fx-cursor: hand;
+}
+.maven-link:hover { -fx-text-fill: #87C5FF; -fx-underline: true; }
+.maven-section-title {
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 12px;
+    -fx-padding: 8 0 5 0;
+    -fx-border-color: transparent transparent #2C3042 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.property-toolbar {
+    -fx-background-color: #191C26;
+    -fx-border-color: #2C3042 #2C3042 transparent #2C3042;
+    -fx-border-width: 1 1 0 1;
+    -fx-padding: 3 7 3 7;
+}
+.property-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 17px;
+    -fx-padding: 0 4 0 4;
+    -fx-cursor: hand;
+}
+.property-button:hover { -fx-text-fill: -lumen; }
+.maven-properties-table {
+    -fx-background-color: #191C26;
+    -fx-border-color: #2C3042;
+}
+.maven-properties-table .column-header-background,
+.maven-properties-table .column-header {
+    -fx-background-color: #14161E;
+}
+.maven-properties-table .column-header .label {
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 11px;
+}
+.maven-properties-table .table-row-cell {
+    -fx-background-color: #191C26;
+    -fx-border-color: transparent transparent #242837 transparent;
+}
+.maven-properties-table .table-cell { -fx-text-fill: #C9CDDC; }
+.maven-properties-table .placeholder .label { -fx-text-fill: #565D75; }
+
 .text-field {
     -fx-background-color: #1F2230;
     -fx-text-fill: #D8DBE6;

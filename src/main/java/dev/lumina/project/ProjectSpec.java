@@ -16,9 +16,14 @@ public record ProjectSpec(
         String artifact,
         String packageName,
         String javaVersion,
-        String springDependencies  // comma-separated, Spring Boot only
+        String springDependencies, // comma-separated, Spring Boot only
+        String archetypeCatalog,
+        String archetypeId,
+        String archetypeVersion,
+        String projectVersion,
+        String additionalProperties
 ) {
-    public enum Generator { JAVA, SPRING_BOOT }
+    public enum Generator { JAVA, SPRING_BOOT, MAVEN_ARCHETYPE }
 
     public enum BuildSystem { MAVEN, GRADLE }
 
@@ -29,6 +34,6 @@ public record ProjectSpec(
     public enum ConfigFormat { PROPERTIES, YAML }
 
     public Path projectDir() {
-        return location.resolve(name);
+        return location.resolve(generator == Generator.MAVEN_ARCHETYPE ? artifact : name);
     }
 }
