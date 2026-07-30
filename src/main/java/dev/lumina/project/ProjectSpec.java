@@ -26,7 +26,10 @@ public record ProjectSpec(
         String rustTemplate,
         String rustEnvironment
 ) {
-    public enum Generator { JAVA, SPRING_BOOT, MAVEN_ARCHETYPE, RUST }
+    public enum Generator {
+        JAVA, KOTLIN, GROOVY, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
+        JAVAFX, ANGULAR_CLI, VITE, RUST
+    }
 
     public enum BuildSystem { MAVEN, GRADLE }
 

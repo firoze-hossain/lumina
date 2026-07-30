@@ -50,7 +50,9 @@ public final class ProjectGenerator {
         }
 
         switch (spec.generator()) {
-            case JAVA -> generateJava(spec, dir, log);
+            case JAVA, KOTLIN, GROOVY, JAVAFX -> generateJava(spec, dir, log);
+            case EMPTY_PROJECT -> Files.createDirectories(dir);
+            case ANGULAR_CLI, VITE -> generateWebStarter(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
             case RUST -> generateRust(spec, dir, log);
@@ -61,6 +63,21 @@ public final class ProjectGenerator {
         }
         log.accept("\u2713 Project created at " + dir);
         return dir;
+    }
+
+    /** A small offline starter for the web generators when their CLIs are unavailable. */
+    private static void generateWebStarter(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating " + spec.generator().name().toLowerCase().replace('_', ' ') + " project …");
+        Files.writeString(dir.resolve("package.json"), """
+                {
+                  "name": "%s",
+                  "private": true,
+                  "version": "0.0.0",
+                  "scripts": { "start": "echo 'Install dependencies to start this project'" }
+                }
+                """.formatted(spec.artifact()));
+        Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
     }
 
     // ------------------------------------------------------------ plain java

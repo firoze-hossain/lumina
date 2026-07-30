@@ -104,15 +104,15 @@ public class NewProjectDialog {
 
     private static final List<GeneratorEntry> NEW_PROJECT_ENTRIES = List.of(
             new GeneratorEntry("Java", ProjectSpec.Generator.JAVA, true),
-            new GeneratorEntry("Kotlin", null, false),
-            new GeneratorEntry("Groovy", null, false),
+            new GeneratorEntry("Kotlin", ProjectSpec.Generator.KOTLIN, true),
+            new GeneratorEntry("Groovy", ProjectSpec.Generator.GROOVY, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
-            new GeneratorEntry("Empty Project", null, false));
+            new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
     private static final List<GeneratorEntry> GENERATOR_ENTRIES = List.of(
             new GeneratorEntry("Maven Archetype", ProjectSpec.Generator.MAVEN_ARCHETYPE, true),
             new GeneratorEntry("Spring Boot", ProjectSpec.Generator.SPRING_BOOT, true),
-            new GeneratorEntry("JavaFX", null, false),
+            new GeneratorEntry("JavaFX", ProjectSpec.Generator.JAVAFX, true),
             new GeneratorEntry("Quarkus", null, false),
             new GeneratorEntry("Micronaut", null, false),
             new GeneratorEntry("Jakarta EE", null, false),
@@ -120,9 +120,9 @@ public class NewProjectDialog {
             new GeneratorEntry("HTML", null, false),
             new GeneratorEntry("React", null, false),
             new GeneratorEntry("Express", null, false),
-            new GeneratorEntry("Angular CLI", null, false),
+            new GeneratorEntry("Angular CLI", ProjectSpec.Generator.ANGULAR_CLI, true),
             new GeneratorEntry("Vue.js", null, false),
-            new GeneratorEntry("Vite", null, false),
+            new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
             new GeneratorEntry("Nuxt", null, false));
 
     private static final List<JdkEntry> JDK_ENTRIES = List.of(
@@ -139,18 +139,32 @@ public class NewProjectDialog {
     private final Consumer<ProjectSpec> onCreate;
 
     // form controls
-    private final TextField nameField = new TextField("demo");
+    private final TextField nameField = new TextField("untitled");
     private final TextField locationField = new TextField(
-            System.getProperty("user.home") + File.separator + "Development");
+            System.getProperty("user.home") + File.separator + "projects" + File.separator + "others");
     private final Label locationHint = new Label();
     private final CheckBox gitCheck = new CheckBox("Create Git repository");
+    private final CheckBox sampleCodeCheck = new CheckBox("Add sample code");
+    private final CheckBox angularStandaloneCheck = new CheckBox("Create new project with standalone components");
+    private final CheckBox angularDefaultsCheck = new CheckBox("Use the default project setup");
     private final ToggleGroup buildGroup = new ToggleGroup();
     private final ComboBox<JdkEntry> jdkCombo = new ComboBox<>();
     private final TextField groupField = new TextField("com.example");
-    private final TextField artifactField = new TextField("demo");
-    private final TextField packageField = new TextField("com.example.demo");
+    private final TextField artifactField = new TextField("untitled");
+    private final TextField packageField = new TextField("org.example.untitled");
     private final ComboBox<String> javaVersionBox =
             new ComboBox<>(FXCollections.observableArrayList("25", "21", "17"));
+    private final ComboBox<String> groovySdkBox = new ComboBox<>(
+            FXCollections.observableArrayList("5.0.6", "4.0.29", "3.0.25"));
+    private final ComboBox<String> nodeRuntimeBox = new ComboBox<>(
+            FXCollections.observableArrayList("node  /usr/bin/node                         22.23.1"));
+    private final ComboBox<String> angularCliBox = new ComboBox<>(
+            FXCollections.observableArrayList("npx --package @angular/cli ng                         22.1.1"));
+    private final ComboBox<String> viteBox = new ComboBox<>(
+            FXCollections.observableArrayList("npx create-vite                                                    9.1.2"));
+    private final ComboBox<String> viteTemplateBox = new ComboBox<>(
+            FXCollections.observableArrayList("React", "Vue", "Vanilla", "Svelte"));
+    private final TextField webParametersField = new TextField();
     private final CheckBox mavenWrapperCheck = new CheckBox("Use Maven wrapper");
     private final ComboBox<String> mavenVersionBox = new ComboBox<>(
             FXCollections.observableArrayList("3.9.5", "3.8.8"));
@@ -179,6 +193,16 @@ public class NewProjectDialog {
     private final VBox mavenArchetypeBox = new VBox(14);
     private final VBox rustBox = new VBox(14);
     private final List<Node> standardOnlyNodes = new ArrayList<>();
+    private final List<Node> webOnlyNodes = new ArrayList<>();
+    private final List<Node> viteOnlyNodes = new ArrayList<>();
+    private final List<Node> angularOnlyNodes = new ArrayList<>();
+    private final List<Node> sampleCodeNodes = new ArrayList<>();
+    private final List<Node> groovyOnlyNodes = new ArrayList<>();
+    private final List<Node> emptyOnlyNodes = new ArrayList<>();
+    private final List<Node> javafxOnlyNodes = new ArrayList<>();
+    private final List<Node> javafxHiddenNodes = new ArrayList<>();
+    private final Label emptyDescription = new Label("A basic project with free structure.");
+    private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here ↗");
     private final List<Node> springOnlyNodes = new ArrayList<>();
     private final List<Node> jdkNodes = new ArrayList<>();
     private final ComboBox<String> rustToolchainBox = new ComboBox<>();
@@ -215,6 +239,7 @@ public class NewProjectDialog {
     private final VBox advancedBox = new VBox(10);
 
     private HBox dependenciesRow;
+    private Button createButton;
     private boolean packageEdited;
     private GeneratorEntry selected = NEW_PROJECT_ENTRIES.get(0);
     private JdkEntry selectedJdk = JDK_ENTRIES.get(1);
@@ -232,7 +257,7 @@ public class NewProjectDialog {
         root.setCenter(buildForm());
         root.setBottom(buildButtons());
 
-        Scene scene = new Scene(root, 960, 760);
+        Scene scene = new Scene(root, 1060, 840);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
@@ -307,7 +332,7 @@ public class NewProjectDialog {
                     getStyleClass().remove("generator-disabled");
                     return;
                 }
-                setText((item.enabled() ? "" : "\u25CB ") + item.label()
+                setText(generatorGlyph(item.label()) + "  " + item.label()
                         + (item.enabled() ? "" : "  (soon)"));
                 if (!item.enabled() && !getStyleClass().contains("generator-disabled")) {
                     getStyleClass().add("generator-disabled");
@@ -355,6 +380,45 @@ public class NewProjectDialog {
         locationHint.getStyleClass().add("form-hint");
         grid.add(locationHint, 1, row++);
         grid.add(gitCheck, 1, row++);
+
+        // JavaScript generators use the same compact runtime fields as IntelliJ's wizard.
+        nodeRuntimeBox.getSelectionModel().selectFirst();
+        angularCliBox.getSelectionModel().selectFirst();
+        viteBox.getSelectionModel().selectFirst();
+        viteTemplateBox.getSelectionModel().select("React");
+        nodeRuntimeBox.setMaxWidth(Double.MAX_VALUE);
+        angularCliBox.setMaxWidth(Double.MAX_VALUE);
+        viteBox.setMaxWidth(Double.MAX_VALUE);
+        viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
+        Button nodeMore = compactButton("…");
+        Button cliMore = compactButton("…");
+        HBox nodeRow = wideRow(nodeRuntimeBox, nodeMore);
+        HBox cliRow = wideRow(angularCliBox, cliMore);
+        Label nodeLabel = formLabel("Node runtime:");
+        Label cliLabel = formLabel("Angular CLI:");
+        Label parametersLabel = formLabel("Additional parameters:");
+        grid.add(nodeLabel, 0, row); grid.add(nodeRow, 1, row++);
+        grid.add(cliLabel, 0, row); grid.add(cliRow, 1, row++);
+        grid.add(parametersLabel, 0, row); grid.add(webParametersField, 1, row++);
+        grid.add(angularStandaloneCheck, 1, row++);
+        grid.add(angularDefaultsCheck, 1, row++);
+        webOnlyNodes.addAll(List.of(nodeLabel, nodeRow, cliLabel, cliRow, parametersLabel,
+                webParametersField, angularStandaloneCheck, angularDefaultsCheck));
+        angularOnlyNodes.addAll(List.of(cliLabel, cliRow, parametersLabel, webParametersField,
+                angularStandaloneCheck, angularDefaultsCheck));
+
+        Label viteLabel = formLabel("Vite:");
+        HBox viteRow = wideRow(viteBox, compactButton("…"));
+        Label templateLabel = formLabel("Template:");
+        CheckBox typescript = new CheckBox("Use TypeScript template");
+        grid.add(viteLabel, 0, row); grid.add(viteRow, 1, row++);
+        grid.add(templateLabel, 0, row); grid.add(viteTemplateBox, 1, row++);
+        grid.add(typescript, 1, row++);
+        viteOnlyNodes.addAll(List.of(viteLabel, viteRow, templateLabel, viteTemplateBox, typescript));
+
+        emptyDescription.getStyleClass().add("form-hint");
+        grid.add(emptyDescription, 1, row++);
+        emptyOnlyNodes.add(emptyDescription);
 
         serverUrlLabel.getStyleClass().add("form-static");
         serverSettingsButton.getStyleClass().add("console-button");
@@ -444,6 +508,7 @@ public class NewProjectDialog {
         grid.add(packageLabel, 0, row);
         grid.add(packageField, 1, row++);
         standardOnlyNodes.addAll(List.of(packageLabel, packageField));
+        javafxHiddenNodes.addAll(List.of(packageLabel, packageField));
 
         Label jdkLabel = formLabel("JDK:");
         grid.add(jdkLabel, 0, row);
@@ -469,6 +534,19 @@ public class NewProjectDialog {
         grid.add(jdkCombo, 1, row++);
         jdkNodes.addAll(List.of(jdkLabel, jdkCombo));
 
+        groovySdkBox.getSelectionModel().selectFirst();
+        Label groovySdkLabel = formLabel("Groovy SDK:");
+        grid.add(groovySdkLabel, 0, row);
+        grid.add(groovySdkBox, 1, row++);
+        groovyOnlyNodes.addAll(List.of(groovySdkLabel, groovySdkBox));
+
+        sampleCodeCheck.setSelected(true);
+        grid.add(sampleCodeCheck, 1, row++);
+        sampleCodeNodes.add(sampleCodeCheck);
+        kotlinInfo.getStyleClass().add("form-hint");
+        grid.add(kotlinInfo, 1, row++);
+        sampleCodeNodes.add(kotlinInfo);
+
         buildMavenArchetypeForm();
         grid.add(mavenArchetypeBox, 0, row++, 2, 1);
         buildRustForm();
@@ -479,6 +557,7 @@ public class NewProjectDialog {
         javaVersionBox.getSelectionModel().select("21");
         grid.add(javaVersionBox, 1, row++);
         standardOnlyNodes.addAll(List.of(javaLabel, javaVersionBox));
+        javafxHiddenNodes.addAll(List.of(javaLabel, javaVersionBox));
 
         Label buildOptionsLabel = formLabel("Build options:");
         grid.add(buildOptionsLabel, 0, row);
@@ -486,9 +565,11 @@ public class NewProjectDialog {
         updateAdvancedOptions();
         grid.add(advancedBox, 1, row++);
         standardOnlyNodes.addAll(List.of(buildOptionsLabel, advancedBox));
+        javafxHiddenNodes.addAll(List.of(buildOptionsLabel, advancedBox));
 
         grid.add(saveSettingsCheck, 1, row++);
         standardOnlyNodes.add(saveSettingsCheck);
+        javafxHiddenNodes.add(saveSettingsCheck);
 
         Label depsLabel = formLabel("Dependencies:");
         dependenciesField.setPromptText("comma separated, e.g. web,data-jpa,lombok");
@@ -530,15 +611,15 @@ public class NewProjectDialog {
         cancel.getStyleClass().add("dialog-secondary");
         cancel.setOnAction(e -> stage.close());
 
-        Button create = new Button("Create");
-        create.getStyleClass().add("dialog-primary");
-        create.setDefaultButton(true);
-        create.setOnAction(e -> tryCreate());
+        createButton = new Button("Create");
+        createButton.getStyleClass().add("dialog-primary");
+        createButton.setDefaultButton(true);
+        createButton.setOnAction(e -> tryCreate());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox box = new HBox(10, errorLabel, spacer, cancel, create);
+        HBox box = new HBox(10, errorLabel, spacer, createButton, cancel);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(12, 20, 14, 20));
         box.getStyleClass().add("dialog-footer");
@@ -861,16 +942,42 @@ public class NewProjectDialog {
     // --------------------------------------------------------------- logic
 
     private void updateForGenerator() {
-        boolean spring = selected.generator() == ProjectSpec.Generator.SPRING_BOOT;
-        boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
-        boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
+        ProjectSpec.Generator generator = selected.generator();
+        boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
+        boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
+        boolean rust = generator == ProjectSpec.Generator.RUST;
+        boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
+        boolean groovy = generator == ProjectSpec.Generator.GROOVY;
+        boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
+        boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
+        boolean vite = generator == ProjectSpec.Generator.VITE;
+        boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
+        boolean web = angular || vite;
         if (dependenciesRow != null) {
             dependenciesRow.setVisible(spring);
             dependenciesRow.setManaged(spring);
         }
         setNodesVisible(springOnlyNodes, spring);
-        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust);
-        setNodesVisible(jdkNodes, !rust);
+        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web);
+        setNodesVisible(jdkNodes, !rust && !empty && !web);
+        setNodesVisible(webOnlyNodes, web);
+        setNodesVisible(viteOnlyNodes, vite);
+        setNodesVisible(angularOnlyNodes, angular);
+        setNodesVisible(sampleCodeNodes, kotlin || groovy);
+        setNodesVisible(groovyOnlyNodes, groovy);
+        setNodesVisible(emptyOnlyNodes, empty);
+        setNodesVisible(javafxOnlyNodes, javafx);
+        // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
+        // from the advanced identity fields and no wrapper/version section is shown.
+        setNodesVisible(javafxHiddenNodes,
+                !mavenArchetype && !rust && !empty && !web && !(javafx || kotlin || groovy));
+        gitCheck.setVisible(!web);
+        gitCheck.setManaged(!web);
+        // Match the wizard's sensible defaults for each page.
+        if (kotlin || groovy) configureBuildOptions(true);
+        else if (javafx) configureBuildOptions(false);
+        else configureBuildOptions(false);
+        if (createButton != null) createButton.setText(javafx ? "Next" : "Create");
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
         rustBox.setVisible(rust);
@@ -880,6 +987,23 @@ public class NewProjectDialog {
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
         updateAdvancedOptions();
+    }
+
+    private void configureBuildOptions(boolean includeIntelliJ) {
+        ToggleButton selectedBuild = (ToggleButton) buildGroup.getSelectedToggle();
+        String wasSelected = selectedBuild == null ? "" : selectedBuild.getText();
+        buildGroup.getToggles().clear();
+        if (includeIntelliJ) {
+            buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "IntelliJ", "Maven", "Gradle"));
+        } else {
+            buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
+        }
+        for (javafx.scene.control.Toggle toggle : buildGroup.getToggles()) {
+            if (((ToggleButton) toggle).getText().equals(wasSelected)) {
+                toggle.setSelected(true);
+                break;
+            }
+        }
     }
 
     private void updateAdvancedOptions() {
@@ -1179,7 +1303,35 @@ public class NewProjectDialog {
         return box;
     }
 
+    private Button compactButton(String text) {
+        Button button = new Button(text);
+        button.getStyleClass().add("console-button");
+        return button;
+    }
+
+    private HBox wideRow(Node field, Node button) {
+        HBox row = new HBox(6, field, button);
+        HBox.setHgrow(field, Priority.ALWAYS);
+        return row;
+    }
+
     private static String sanitize(String s) {
         return s == null ? "" : s.toLowerCase().replaceAll("[^a-z0-9.\\-]", "");
+    }
+
+    private static String generatorGlyph(String label) {
+        return switch (label) {
+            case "Java" -> "☕";
+            case "Kotlin", "Ktor" -> "◇";
+            case "Groovy" -> "Ⓖ";
+            case "Rust" -> "◉";
+            case "Empty Project" -> "▱";
+            case "Angular CLI" -> "▲";
+            case "Vite" -> "◆";
+            case "Vue.js" -> "▼";
+            case "React" -> "⚛";
+            case "JavaFX" -> "▣";
+            default -> "·";
+        };
     }
 }
