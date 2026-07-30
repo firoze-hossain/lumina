@@ -295,6 +295,33 @@ public class LuminaApp extends Application {
                 item("Exit", null, e -> Platform.exit()));
 
         // ---- Edit
+        Menu pasteMenu = new Menu("Paste");
+        pasteMenu.getItems().addAll(
+                item("Paste", "Shortcut+V", e -> withEditor(EditorTab::paste)),
+                item("Paste from History…", null, e -> showInfo("Paste from History", "Clipboard history is empty.")));
+        Menu findMenu = new Menu("Find");
+        findMenu.getItems().addAll(
+                item("Find…", "Shortcut+F", e -> findInFiles()),
+                item("Replace…", "Shortcut+R", e -> showInfo("Replace", "Replace in the current file is not available yet.")),
+                item("Find in Files…", "Shortcut+Shift+F", e -> findInFiles()));
+        Menu usagesMenu = new Menu("Find Usages");
+        usagesMenu.getItems().addAll(
+                item("Find Usages", "Alt+F7", e -> {
+                    EditorTab tab = currentEditor();
+                    if (tab != null) showUsages(tab.wordAtCaret());
+                }),
+                item("Find Usages Settings…", null, e -> showInfo("Find Usages", "Usage search settings are not available yet.")));
+        Menu convertIndents = new Menu("Convert Indents");
+        convertIndents.getItems().addAll(
+                item("To Spaces", null, e -> showInfo("Convert Indents", "Indent conversion is not available yet.")),
+                item("To Tabs", null, e -> showInfo("Convert Indents", "Indent conversion is not available yet.")));
+        Menu macros = new Menu("Macros");
+        macros.getItems().addAll(item("Start Macro Recording", null,
+                e -> showInfo("Macros", "Macro recording is not available yet.")));
+        Menu bookmarks = new Menu("Bookmarks");
+        bookmarks.getItems().addAll(item("Toggle Bookmark", "F11",
+                e -> showInfo("Bookmarks", "Bookmarks are not available yet.")));
+
         Menu edit = new Menu("Edit");
         edit.getItems().addAll(
                 item("Undo", "Shortcut+Z", e -> withEditor(EditorTab::undo)),
@@ -302,10 +329,35 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(),
                 item("Cut", "Shortcut+X", e -> withEditor(EditorTab::cut)),
                 item("Copy", "Shortcut+C", e -> withEditor(EditorTab::copy)),
-                item("Paste", "Shortcut+V", e -> withEditor(EditorTab::paste)),
-                item("Select All", "Shortcut+A", e -> withEditor(EditorTab::selectAll)),
+                item("Copy Path/Reference…", null, e -> showInfo("Copy Path/Reference", "No file is selected.")),
+                pasteMenu,
+                item("Delete", "Delete", e -> withEditor(EditorTab::cut)),
                 new SeparatorMenuItem(),
-                item("Find in Files\u2026", "Shortcut+Shift+F", e -> findInFiles()));
+                disabled("Search In Selection"),
+                findMenu,
+                usagesMenu,
+                new SeparatorMenuItem(),
+                item("Column Selection Mode", "Alt+Shift+Insert", e -> showInfo("Column Selection", "Column selection is not available yet.")),
+                item("Select All", "Shortcut+A", e -> withEditor(EditorTab::selectAll)),
+                item("Add Carets to Ends of Selected Lines", "Alt+Shift+G", e -> showInfo("Multiple Carets", "Multiple carets are not available yet.")),
+                item("Extend Selection", "Shortcut+W", e -> showInfo("Selection", "Selection expansion is not available yet.")),
+                item("Shrink Selection", "Shortcut+Shift+W", e -> showInfo("Selection", "Selection expansion is not available yet.")),
+                new SeparatorMenuItem(),
+                item("Toggle Case", "Shortcut+Shift+U", e -> showInfo("Toggle Case", "Case conversion is not available yet.")),
+                item("Join Lines", "Shortcut+Shift+J", e -> showInfo("Join Lines", "Line joining is not available yet.")),
+                item("Duplicate Line", "Shortcut+D", e -> showInfo("Duplicate Line", "Line duplication is not available yet.")),
+                disabled("Fill Paragraph"),
+                item("Sort Lines", null, e -> showInfo("Sort Lines", "Line sorting is not available yet.")),
+                item("Reverse Lines", null, e -> showInfo("Reverse Lines", "Line reversal is not available yet.")),
+                item("Transpose", null, e -> showInfo("Transpose", "Transposition is not available yet.")),
+                new SeparatorMenuItem(),
+                disabled("Indent Selection"),
+                item("Unindent Line or Selection", "Shift+Tab", e -> showInfo("Unindent", "Unindent is not available yet.")),
+                convertIndents,
+                new SeparatorMenuItem(),
+                macros,
+                bookmarks,
+                item("Emoji & Symbols", "Shortcut+Alt+;", e -> showInfo("Emoji & Symbols", "Emoji picker is not available yet.")));
 
         // ---- View
         Menu toolWindows = new Menu("Tool Windows");
