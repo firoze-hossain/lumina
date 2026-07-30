@@ -368,18 +368,80 @@ public class LuminaApp extends Application {
                 item("Terminal", null, e -> showTerminal()),
                 item("Maven / Build", null, e -> showRightPanel(0)),
                 item("Database", null, e -> showRightPanel(1)));
+        Menu appearance = new Menu("Appearance");
+        appearance.getItems().addAll(placeholder("Enter Distraction Free Mode", null),
+                placeholder("Enter Full Screen", null), placeholder("Toolbar", null));
+        Menu activeEditor = new Menu("Active Editor");
+        activeEditor.getItems().addAll(placeholder("Split Right", null), placeholder("Close", null));
+        Menu bidi = new Menu("Bidi Text Base Direction");
+        bidi.getItems().addAll(placeholder("Left-to-Right", null), placeholder("Right-to-Left", null));
         Menu view = new Menu("View");
-        view.getItems().add(toolWindows);
+        view.getItems().addAll(
+                toolWindows, appearance, new SeparatorMenuItem(),
+                item("Quick Definition", "Shortcut+Shift+I", e -> {
+                    EditorTab tab = currentEditor();
+                    if (tab != null) goToDeclaration(tab.wordAtCaret());
+                }),
+                placeholder("Show Siblings", null), placeholder("Quick Type Definition", null),
+                item("Quick Documentation", "Shortcut+Q", e -> quickDocAtCaret()),
+                placeholder("Show Bytecode", null),
+                item("Parameter Info", "Shortcut+P", e -> showParameterInfo()),
+                placeholder("Type Info", "Shortcut+Shift+P"), placeholder("Context Info", "Alt+Q"),
+                new SeparatorMenuItem(),
+                item("Jump to Source", "F4", e -> {
+                    EditorTab tab = currentEditor();
+                    if (tab != null) tab.focusEditor();
+                }),
+                placeholder("Recent Locations", "Shortcut+Shift+E"), placeholder("Recent Files", "Shortcut+E"),
+                placeholder("Recently Changed Files", null), placeholder("Recent Changes", "Alt+Shift+C"),
+                new SeparatorMenuItem(), placeholder("Compare With…", "Shortcut+D"), placeholder("Compare with Clipboard", null),
+                new SeparatorMenuItem(), placeholder("Quick Switch Scheme…", null), activeEditor,
+                placeholder("Increase Font Size in All Editors", "Alt+Shift+."),
+                placeholder("Decrease Font Size in All Editors", "Alt+Shift+Comma"),
+                placeholder("Reset Font Size in All Editors", null), bidi);
 
         // ---- Navigate
+        Menu navigateInFile = new Menu("Navigate in File");
+        navigateInFile.getItems().addAll(placeholder("Next Method", null), placeholder("Previous Method", null));
         Menu navigate = new Menu("Navigate");
         navigate.getItems().addAll(
+                placeholder("Back", "Alt+Shift+Left"),
+                disabled("Forward"),
+                new SeparatorMenuItem(),
                 item("Search Everywhere (double Shift)", "Shortcut+Shift+A",
                         e -> searchEverywhere()),
+                placeholder("Class…", "Shortcut+N"),
+                item("File…", "Shortcut+Shift+N", e -> goToFile()),
+                placeholder("Symbol…", "Shortcut+Alt+Shift+N"),
+                placeholder("Text…", "Shortcut+Shift+F"),
+                item("Line:Column…", "Shortcut+G", e -> goToLine()),
+                placeholder("Endpoint…", null),
+                new SeparatorMenuItem(),
+                placeholder("Next Highlighted Error", "F2"),
+                placeholder("Previous Highlighted Error", "Shift+F2"),
+                new SeparatorMenuItem(),
+                disabled("Last Edit Location"),
+                disabled("Next Edit Location"),
+                new SeparatorMenuItem(),
+                navigateInFile,
+                placeholder("Select In…", "Alt+Shift+1"),
+                placeholder("Jump to Navigation Bar", "Alt+Home"),
+                new SeparatorMenuItem(),
                 item("Go to Declaration", "Shortcut+B", e -> {
                     EditorTab tab = currentEditor();
                     if (tab != null) goToDeclaration(tab.wordAtCaret());
                 }),
+                placeholder("Implementation(s)", "Shortcut+Alt+B"),
+                placeholder("Type Declaration", "Shortcut+Shift+B"),
+                placeholder("Super Class or Interface", "Shortcut+U"),
+                placeholder("Test", "Shortcut+Shift+T"),
+                placeholder("Related Symbol…", "Shortcut+Alt+Home"),
+                new SeparatorMenuItem(),
+                placeholder("File Structure", "Shortcut+F12"),
+                placeholder("File Path", "Shortcut+Alt+Shift+2"),
+                placeholder("Type Hierarchy", "Shortcut+H"),
+                disabled("Method Hierarchy"),
+                disabled("Call Hierarchy"),
                 item("Quick Documentation", "Shortcut+Q",
                         e -> quickDocAtCaret()),
                 item("Parameter Info", "Shortcut+Shift+P",
@@ -393,83 +455,136 @@ public class LuminaApp extends Application {
                 item("Go to Line\u2026", "Shortcut+G", e -> goToLine()));
 
         // ---- Code
+        Menu completion = new Menu("Code Completion");
+        completion.getItems().addAll(placeholder("Basic", "Shortcut+Space"), placeholder("Smart Type", "Shortcut+Shift+Space"));
+        Menu folding = new Menu("Folding");
+        folding.getItems().addAll(placeholder("Expand", "Shortcut+Plus"), placeholder("Collapse", "Shortcut+Minus"));
         Menu code = new Menu("Code");
         code.getItems().addAll(
-                item("Toggle Line Comment", "Shortcut+Slash",
-                        e -> withEditor(EditorTab::toggleComment)),
-                item("Generate Test for Current Class", null, e -> generateTest()),
-                disabled("Reformat Code (soon)"),
-                disabled("Optimize Imports (soon)"));
+                placeholder("Override Methods…", "Shortcut+O"), placeholder("Implement Methods…", "Shortcut+I"),
+                placeholder("Delegate Methods…", null), placeholder("Generate…", "Alt+Insert"), completion,
+                new SeparatorMenuItem(), placeholder("Inspect Code…", null), placeholder("Code Cleanup…", null),
+                placeholder("Analyze Code", null), placeholder("Analyze Stack Trace or Thread Dump…", null),
+                new SeparatorMenuItem(), placeholder("Insert Live Template…", "Shortcut+J"), disabled("Save as Live Template…"),
+                placeholder("Surround With…", "Shortcut+Alt+Shift+B"), placeholder("Unwrap/Remove…", "Shortcut+Shift+Delete"),
+                new SeparatorMenuItem(), folding,
+                item("Comment with Line Comment", "Shortcut+Slash", e -> withEditor(EditorTab::toggleComment)),
+                placeholder("Comment with Block Comment", "Shortcut+Shift+Slash"), placeholder("Reformat Code", "Shortcut+Alt+L"),
+                placeholder("Reformat File…", "Shortcut+Alt+Shift+L"), placeholder("Auto-Indent Lines", "Shortcut+Alt+I"),
+                placeholder("Optimize Imports", "Shortcut+Alt+O"), placeholder("Rearrange Code", null), new SeparatorMenuItem(),
+                placeholder("Move Statement Down", "Shortcut+Shift+Down"), placeholder("Move Statement Up", "Shortcut+Shift+Up"),
+                disabled("Move Element Left"), disabled("Move Element Right"), placeholder("Move Line Down", null), placeholder("Move Line Up", null),
+                new SeparatorMenuItem(), disabled("Update Copyright…"), placeholder("Generate module-info Descriptors", null),
+                disabled("Reformat File with Rustfmt"), disabled("Reformat Cargo Project with Rustfmt"), new SeparatorMenuItem(),
+                placeholder("Convert Java File to Kotlin File", "Shortcut+Alt+Shift+K"), item("Generate Test for Current Class", null, e -> generateTest()));
 
         // ---- Refactor
+        Menu extract = new Menu("Extract/Introduce");
+        extract.getItems().addAll(placeholder("Variable…", "Shortcut+Alt+V"), placeholder("Method…", "Shortcut+Alt+M"));
+        Menu migrate = new Menu("Migrate Packages and Classes");
+        migrate.getItems().add(placeholder("Migrate…", null));
         Menu refactor = new Menu("Refactor");
         refactor.getItems().addAll(
-                item("Rename Symbol\u2026", "Shift+F6", e -> renameAtCaret()),
-                item("Extract Variable\u2026", "Shortcut+Alt+V",
-                        e -> extractVariable()),
-                item("Extract Method\u2026", "Shortcut+Alt+M",
-                        e -> extractMethod()),
-                new SeparatorMenuItem(),
-                item("Rename File\u2026", null, e -> renameSelectedFile()));
+                placeholder("Refactor This…", "Shortcut+Alt+Shift+T"), item("Rename…", "Shift+F6", e -> renameAtCaret()),
+                item("Rename File…", null, e -> renameSelectedFile()), placeholder("Change Signature…", "Shortcut+F6"), extract,
+                placeholder("Inline…", "Shortcut+Alt+N"), placeholder("Find and Replace Code Duplicates…", null), new SeparatorMenuItem(),
+                placeholder("Move Class…", "F6"), placeholder("Copy Class…", "F5"), disabled("Safe Delete…"), new SeparatorMenuItem(),
+                placeholder("Pull Members Up…", null), placeholder("Push Members Down…", null), new SeparatorMenuItem(), disabled("Type Migration…"),
+                disabled("Make Static…"), disabled("Convert To Instance Method…"), new SeparatorMenuItem(),
+                placeholder("Use Interface Where Possible…", null), placeholder("Replace Inheritance with Delegation…", null),
+                placeholder("Encapsulate Fields…", null), migrate, disabled("Invert Boolean…"), disabled("Internationalize…"));
 
         // ---- Build
         Menu build = new Menu("Build");
         build.getItems().addAll(
                 item("Build Project", "Shortcut+F9", e -> buildProject()),
-                item("Clean Project", null, e -> cleanProject()));
+                placeholder("Build Module 'lumina-ide'", null), placeholder("Recompile 'ProjectSpec.java'", "Shortcut+Shift+F9"),
+                item("Rebuild Project", null, e -> { cleanProject(); buildProject(); }), disabled("Build Artifacts…"),
+                placeholder("Groovy Resources", null));
 
         // ---- Run
+        Menu debugging = new Menu("Debugging Actions"); debugging.getItems().add(placeholder("Resume Program", "F9"));
+        Menu breakpoints = new Menu("Toggle Breakpoint"); breakpoints.getItems().add(placeholder("Line Breakpoint", "Shortcut+F8"));
+        Menu testHistory = new Menu("Test History"); testHistory.getItems().add(disabled("No test history"));
+        Menu profiler = new Menu("Open Profiler Snapshot"); profiler.getItems().add(placeholder("Open…", null));
         Menu run = new Menu("Run");
         run.getItems().addAll(
-                item("Run", "Shortcut+R", e -> runSelectedConfig()),
-                item("Run Current File", "Shortcut+Shift+R", e -> runCurrentFile()),
-                item("Debug", "Shortcut+D", e -> debugSelectedConfig()),
-                new SeparatorMenuItem(),
-                item("Run All Tests", "Shortcut+Shift+T", e -> runAllTests()),
-                item("Run Current Test Class", null, e -> runCurrentTestClass()),
-                new SeparatorMenuItem(),
-                item("Stop", "Shortcut+F2", e -> console.stopProcess()),
-                new SeparatorMenuItem(),
+                item("Run 'LuminaApp'", "Shift+F10", e -> runSelectedConfig()), item("Debug 'LuminaApp'", "Shift+F9", e -> debugSelectedConfig()),
+                placeholder("Run 'LuminaApp' with Coverage", null), placeholder("Profile 'LuminaApp' with 'IntelliJ Profiler'", null), new SeparatorMenuItem(),
+                item("Run…", "Alt+Shift+F10", e -> runCurrentFile()), item("Debug…", "Alt+Shift+F9", e -> debugSelectedConfig()),
+                placeholder("Attach to Process…", "Shortcut+Alt+5"), placeholder("Edit Configurations…", null), placeholder("Manage Targets…", null),
+                new SeparatorMenuItem(), item("Stop", "Shortcut+F2", e -> console.stopProcess()), disabled("Stop Background Processes…"),
+                disabled("Show Running List"), new SeparatorMenuItem(), debugging, breakpoints, placeholder("View Breakpoints…", "Shortcut+Shift+F8"),
+                testHistory, placeholder("Import Tests from File…", null), placeholder("Manage Coverage Reports…", "Shortcut+Alt+6"),
+                new SeparatorMenuItem(), placeholder("Attach Profiler to Process…", null), profiler,
+                new SeparatorMenuItem(), item("Run All Tests", "Shortcut+Shift+T", e -> runAllTests()), item("Run Current Test Class", null, e -> runCurrentTestClass()),
                 item("Clear Run Output", null, e -> console.clear()));
 
         // ---- Git
+        Menu patch = new Menu("Patch"); patch.getItems().add(placeholder("Create Patch…", null));
+        Menu changes = new Menu("Uncommitted Changes"); changes.getItems().add(item("Show Status", null, e -> gitStatus()));
+        Menu currentFile = new Menu("Current File"); currentFile.getItems().add(item("Toggle Blame Annotations", "Shortcut+Alt+B", e -> toggleBlame()));
+        Menu gitLab = new Menu("GitLab"); gitLab.getItems().add(placeholder("Open Merge Requests", null));
+        Menu github = new Menu("GitHub"); github.getItems().addAll(item("Sign in to GitHub…", null, e -> onGitHubButton()), item("Open Repository on GitHub", null, e -> openRemote()));
         Menu git = new Menu("Git");
         git.getItems().addAll(
-                item("Clone Repository\u2026", null, e -> gitClone()),
-                item("Init Repository", null, e -> gitInit()),
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
-                item("Push", "Shortcut+Shift+K", e -> gitRun("Push", "push")),
-                item("Pull", null, e -> gitRun("Pull", "pull")),
+                item("Push…", "Shortcut+Shift+K", e -> gitRun("Push", "push")), placeholder("Update Project…", null),
+                item("Pull…", null, e -> gitRun("Pull", "pull")),
                 item("Fetch", null, e -> gitRun("Fetch", "fetch")),
-                item("Show Status", null, e -> gitStatus()),
-                item("Toggle Blame Annotations", "Shortcut+Alt+B", e -> toggleBlame()),
-                new SeparatorMenuItem(),
-                item("New Branch\u2026", null, e -> gitNewBranch()),
-                new SeparatorMenuItem(),
-                item("Sign in to GitHub\u2026", null, e -> onGitHubButton()),
-                item("Open Repository on GitHub", null, e -> openRemote()));
+                new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
+                placeholder("Branches…", null), item("New Branch…", "Shortcut+Alt+N", e -> gitNewBranch()),
+                placeholder("New Tag…", null), placeholder("Reset HEAD…", null), placeholder("Show Git Log", null), patch, changes, currentFile,
+                gitLab, github, placeholder("Manage Remotes…", null), item("Clone…", null, e -> gitClone()),
+                new SeparatorMenuItem(), placeholder("VCS Operations Popup…", null));
 
         // ---- Tools
+        Menu tasks = new Menu("Tasks & Contexts"); tasks.getItems().add(placeholder("Open Task…", null));
+        Menu services = new Menu("Services"); services.getItems().add(item("Terminal", "Shortcut+T", e -> showTerminal()));
+        Menu xml = new Menu("XML Actions"); xml.getItems().add(placeholder("Validate XML", null));
+        Menu markdown = new Menu("Markdown"); markdown.getItems().add(placeholder("Preview", null));
+        Menu security = new Menu("Security Analysis"); security.getItems().add(placeholder("Inspect", null));
+        Menu deployment = new Menu("Deployment"); deployment.getItems().add(placeholder("Browse Remote Host", null));
+        Menu kotlinTools = new Menu("Kotlin"); kotlinTools.getItems().add(placeholder("Configure Kotlin", null));
+        Menu http = new Menu("HTTP Client"); http.getItems().add(placeholder("Create Request", null));
+        Menu qodana = new Menu("Qodana"); qodana.getItems().add(placeholder("Run Inspection", null));
+        Menu copilot = new Menu("GitHub Copilot"); copilot.getItems().add(placeholder("Open Chat", null));
         Menu tools = new Menu("Tools");
-        tools.getItems().addAll(
-                item("Terminal", "Shortcut+T", e -> showTerminal()),
-                item("New Project Wizard\u2026", null, e -> showNewProjectDialog()),
-                item("Plugins\u2026", null, e -> showPluginManager()));
+        tools.getItems().addAll(placeholder("AI Assistant", null), tasks, placeholder("Code With Me…", "Shortcut+Shift+Y"),
+                placeholder("Generate Javadoc…", null), placeholder("Create Command Line Launcher…", null), placeholder("Create Desktop Entry…", null),
+                new SeparatorMenuItem(), services, xml, markdown, placeholder("Create IntelliJ IDEA Plugin…", null), security, deployment,
+                placeholder("Start SSH Session…", null), placeholder("Groovy Console", null), kotlinTools, http, qodana, copilot,
+                new SeparatorMenuItem(), item("New Project Wizard…", null, e -> showNewProjectDialog()), item("Plugins…", null, e -> showPluginManager()));
 
         // ---- Window
+        Menu layouts = new Menu("Layouts"); layouts.getItems().add(placeholder("Save Current Layout as…", null));
+        Menu activeWindow = new Menu("Active Tool Window"); activeWindow.getItems().add(item("Terminal", null, e -> showTerminal()));
+        Menu editorTabsMenu = new Menu("Editor Tabs"); editorTabsMenu.getItems().add(placeholder("Close All", null));
+        Menu notifications = new Menu("Notifications"); notifications.getItems().add(placeholder("Show Notifications", null));
+        Menu processes = new Menu("Processes"); processes.getItems().add(disabled("No running processes"));
         Menu window = new Menu("Window");
-        window.getItems().addAll(
+        window.getItems().addAll(layouts, activeWindow, editorTabsMenu, notifications, processes, new SeparatorMenuItem(),
+                disabled("Next Project Window"), disabled("Previous Project Window"), new SeparatorMenuItem(),
                 item("Toggle Project Panel", null, e -> toggleProjectPanel(
                         !horizontalSplit.getItems().contains(fileExplorer))),
                 item("Toggle Bottom Panel", null, e -> {
                     boolean show = !verticalSplit.getItems().contains(bottomTabs);
                     toggleBottomPanel(show);
                     iconRail.setBottomSelected(show);
-                }));
+                }), new CheckMenuItem("Lumina"));
 
         // ---- Help
+        Menu diagnostics = new Menu("Diagnostic Tools"); diagnostics.getItems().add(placeholder("Activity Monitor", null));
         Menu help = new Menu("Help");
-        help.getItems().add(item("About Lumina", null, e -> showAbout()));
+        help.getItems().addAll(item("Find Action…", "Shortcut+Shift+A", e -> searchEverywhere()), placeholder("Help", null),
+                placeholder("Learn IDE Features", null), new SeparatorMenuItem(), placeholder("What's New in IntelliJ IDEA", null),
+                placeholder("Getting Started", null), placeholder("IntelliJ IDEA on YouTube", null), placeholder("Keyboard Shortcuts PDF", null),
+                placeholder("Tip of the Day", null), new SeparatorMenuItem(), placeholder("My Productivity", null),
+                placeholder("Contact Support…", null), placeholder("Submit a Bug Report…", null), placeholder("Submit Feedback…", null),
+                new SeparatorMenuItem(), placeholder("Show Log in Files", null), placeholder("Show SQL Log in Files", null),
+                placeholder("Collect Logs and Diagnostic Data", null), placeholder("Delete Leftover IDE Directories…", null), diagnostics,
+                placeholder("Change Memory Settings", null), placeholder("Edit Custom Properties…", null), placeholder("Edit Custom VM Options…", null),
+                placeholder("Manage Subscriptions…", null), new SeparatorMenuItem(), placeholder("Check for Updates…", null), item("About", null, e -> showAbout()));
 
         MenuBar bar = new MenuBar(file, edit, view, navigate, code, refactor,
                 build, run, git, tools, window, help);
@@ -489,6 +604,11 @@ public class LuminaApp extends Application {
         MenuItem mi = new MenuItem(text);
         mi.setDisable(true);
         return mi;
+    }
+
+    private MenuItem placeholder(String text, String accelerator) {
+        return item(text, accelerator, e -> showInfo(text.replace("…", ""),
+                text.replace("…", "") + " is not available yet."));
     }
 
     private void reloadAllFromDisk() {
