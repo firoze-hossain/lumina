@@ -305,6 +305,35 @@
     -fx-border-color: transparent #1E2230 transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
+
+/* Right tool-window rail: compact IntelliJ new-UI style selectors. */
+.right-tool-dock { -fx-background-color: #14161E; }
+.right-tool-rail {
+    -fx-background-color: #202329;
+    -fx-border-color: transparent transparent transparent #2C3042;
+    -fx-border-width: 0 0 0 1;
+}
+.right-rail-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 17px;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.right-rail-button:hover { -fx-background-color: #2C3042; }
+.right-rail-button:selected { -fx-background-color: #3574F0; -fx-text-fill: white; }
+.right-tool-heading { -fx-text-fill: #EDEFF6; -fx-font-weight: bold; -fx-font-size: 14px; }
+.right-tool-empty { -fx-text-fill: #848BA3; -fx-line-spacing: 5; }
+.db-add-source {
+    -fx-background-color: transparent;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 20px;
+    -fx-padding: 0 4 0 4;
+    -fx-cursor: hand;
+}
+.db-add-source:hover { -fx-text-fill: -lumen; }
 .rail-button {
     -fx-background-color: transparent;
     -fx-text-fill: #697089;

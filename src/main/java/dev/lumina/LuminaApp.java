@@ -46,6 +46,7 @@ public class LuminaApp extends Application {
     private TerminalPane terminal;
     private TabPane bottomTabs;
     private TabPane rightTabs;
+    private BorderPane rightDock;
     private SplitPane outerSplit;
     private MavenPanel mavenPanel;
     private DatabasePanel dbPanel;
@@ -143,16 +144,29 @@ public class LuminaApp extends Application {
         horizontalSplit.setDividerPositions(0.22);
         SplitPane.setResizableWithParent(fileExplorer, false);
 
-        // right tool windows: Maven/Gradle goals + Database (hidden by default)
+        // Right tool windows, selected from a compact IntelliJ-style vertical rail.
         mavenPanel = new MavenPanel(this::runBuildGoal);
         dbPanel = new DatabasePanel();
-        rightTabs = new TabPane(toolTab("Maven", mavenPanel), toolTab("Database", dbPanel));
+        rightTabs = new TabPane(
+                toolTab("Notifications", rightPlaceholder("Notifications", "Timeline\n\nNo new notifications")),
+                toolTab("AI Chat", rightPlaceholder("AI Chat", "Multiline code completion\n\nCode generation in the editor\n\nStart a new chat to ask Lumina for help.")),
+                toolTab("Database", dbPanel), toolTab("Maven", mavenPanel),
+                toolTab("Services", rightPlaceholder("Services", "No services are running")),
+                toolTab("GitHub Copilot", rightPlaceholder("GitHub Copilot", "Ask Copilot\n\nAI assistance is ready when GitHub Copilot is connected.")));
         rightTabs.getStyleClass().add("tool-tabs");
         rightTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        SplitPane.setResizableWithParent(rightTabs, false);
+        rightTabs.getSelectionModel().select(3);
+        rightDock = new BorderPane(rightTabs);
+        rightDock.setRight(new RightToolRail(index -> {
+            rightTabs.getSelectionModel().select(index);
+            toggleRightPanel(true);
+        }));
+        rightDock.getStyleClass().add("right-tool-dock");
+        rightDock.setMinWidth(300);
+        SplitPane.setResizableWithParent(rightDock, false);
 
-        outerSplit = new SplitPane(horizontalSplit);
-        outerSplit.setDividerPositions(0.78);
+        outerSplit = new SplitPane(horizontalSplit, rightDock);
+        outerSplit.setDividerPositions(0.74);
 
         root.setCenter(outerSplit);
         root.setBottom(buildStatusBar());
@@ -219,6 +233,18 @@ public class LuminaApp extends Application {
         Tab t = new Tab(name, content);
         t.setClosable(false);
         return t;
+    }
+
+    private javafx.scene.Node rightPlaceholder(String title, String message) {
+        Label heading = new Label(title);
+        heading.getStyleClass().add("right-tool-heading");
+        Label body = new Label(message);
+        body.getStyleClass().add("right-tool-empty");
+        body.setWrapText(true);
+        VBox panel = new VBox(18, heading, body);
+        panel.setPadding(new Insets(14));
+        panel.getStyleClass().add("side-panel");
+        return panel;
     }
 
     // ------------------------------------------------------------------ menus
@@ -366,8 +392,8 @@ public class LuminaApp extends Application {
                         !horizontalSplit.getItems().contains(fileExplorer))),
                 item("Run", null, e -> showRunPanel()),
                 item("Terminal", null, e -> showTerminal()),
-                item("Maven / Build", null, e -> showRightPanel(0)),
-                item("Database", null, e -> showRightPanel(1)));
+                item("Maven / Build", null, e -> showRightPanel(3)),
+                item("Database", null, e -> showRightPanel(2)));
         Menu appearance = new Menu("Appearance");
         appearance.getItems().addAll(placeholder("Enter Distraction Free Mode", null),
                 placeholder("Enter Full Screen", null), placeholder("Toolbar", null));
@@ -690,7 +716,7 @@ public class LuminaApp extends Application {
 
         Button sideBtn = toolButton("\u25A5", "Maven / Database panel");
         sideBtn.setOnAction(e -> {
-            if (outerSplit.getItems().contains(rightTabs)) toggleRightPanel(false);
+            if (outerSplit.getItems().contains(rightDock)) toggleRightPanel(false);
             else showRightPanel(rightTabs.getSelectionModel().getSelectedIndex());
         });
 
@@ -1371,8 +1397,8 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
-                new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(0)),
-                new SearchEverywhereDialog.Action("Database Panel", () -> showRightPanel(1)),
+                new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(3)),
+                new SearchEverywhereDialog.Action("Database Panel", () -> showRightPanel(2)),
                 new SearchEverywhereDialog.Action("About Lumina", this::showAbout));
         new SearchEverywhereDialog(stage,
                 projectRoot != null ? projectRoot : fileExplorer.getRootPath(),
@@ -2370,11 +2396,11 @@ public class LuminaApp extends Application {
     }
 
     private void toggleRightPanel(boolean show) {
-        if (show && !outerSplit.getItems().contains(rightTabs)) {
-            outerSplit.getItems().add(rightTabs);
-            outerSplit.setDividerPositions(0.78);
+        if (show && !outerSplit.getItems().contains(rightDock)) {
+            outerSplit.getItems().add(rightDock);
+            outerSplit.setDividerPositions(0.74);
         } else if (!show) {
-            outerSplit.getItems().remove(rightTabs);
+            outerSplit.getItems().remove(rightDock);
         }
     }
 

@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -36,9 +37,14 @@ public class DatabasePanel extends BorderPane {
     public DatabasePanel() {
         getStyleClass().add("side-panel");
 
-        Label header = new Label("DATABASE");
+        Label header = new Label("Database");
         header.getStyleClass().add("panel-header");
-        header.setPadding(new Insets(8, 12, 8, 12));
+        Button addSource = new Button("+");
+        addSource.getStyleClass().add("db-add-source");
+        addSource.setTooltip(new Tooltip("Add data source"));
+        addSource.setOnAction(e -> showDataSourceDialog());
+        HBox headerRow = new HBox(header, spacer(), addSource);
+        headerRow.setPadding(new Insets(8, 12, 8, 12));
 
         urlField.setPromptText("jdbc:postgresql://localhost:5432/mydb");
         userField.setPromptText("user");
@@ -87,7 +93,7 @@ public class DatabasePanel extends BorderPane {
         split.setOrientation(Orientation.VERTICAL);
         split.setDividerPositions(0.42);
 
-        setTop(new VBox(header, form));
+        setTop(new VBox(headerRow, form));
         setCenter(split);
         setMinWidth(230);
     }
@@ -201,6 +207,39 @@ public class DatabasePanel extends BorderPane {
         closeQuiet();
     }
 
+    private void showDataSourceDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Data Sources and Drivers");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        ComboBox<String> driver = new ComboBox<>(FXCollections.observableArrayList(
+                "PostgreSQL", "MySQL", "MariaDB", "SQLite", "Oracle", "Microsoft SQL Server"));
+        driver.getSelectionModel().selectFirst();
+        TextField host = new TextField("localhost");
+        TextField port = new TextField("5432");
+        TextField database = new TextField("postgres");
+        TextField user = new TextField();
+        PasswordField password = new PasswordField();
+        GridPane fields = new GridPane();
+        fields.setHgap(10); fields.setVgap(10); fields.setPadding(new Insets(14));
+        fields.add(new Label("Driver:"), 0, 0); fields.add(driver, 1, 0);
+        fields.add(new Label("Host:"), 0, 1); fields.add(host, 1, 1);
+        fields.add(new Label("Port:"), 0, 2); fields.add(port, 1, 2);
+        fields.add(new Label("Database:"), 0, 3); fields.add(database, 1, 3);
+        fields.add(new Label("User:"), 0, 4); fields.add(user, 1, 4);
+        fields.add(new Label("Password:"), 0, 5); fields.add(password, 1, 5);
+        dialog.getDialogPane().setContent(fields);
+        dialog.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        dialog.showAndWait().filter(ButtonType.OK::equals).ifPresent(result -> {
+            String prefix = "PostgreSQL".equals(driver.getValue()) ? "postgresql" : driver.getValue().toLowerCase();
+            urlField.setText("jdbc:" + prefix + "://" + host.getText().trim() + ":" + port.getText().trim()
+                    + "/" + database.getText().trim());
+            userField.setText(user.getText());
+            passField.setText(password.getText());
+            connect();
+        });
+    }
+
     private void closeQuiet() {
         if (connection != null) {
             try {
@@ -226,5 +265,11 @@ public class DatabasePanel extends BorderPane {
     private static TextField grow(TextField f) {
         HBox.setHgrow(f, Priority.ALWAYS);
         return f;
+    }
+
+    private static javafx.scene.layout.Region spacer() {
+        javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
     }
 }
