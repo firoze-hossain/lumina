@@ -1,6 +1,7 @@
 package dev.lumina.ui;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,13 @@ public class NewProjectDialog {
     private record CatalogEntry(String name, String type, String location) {
     }
 
+    private record RustTemplate(String label, String detail, String value) {
+        @Override
+        public String toString() {
+            return label + (detail.isBlank() ? "" : "  " + detail);
+        }
+    }
+
     private static class PropertyEntry {
         private final StringProperty name = new SimpleStringProperty("");
         private final StringProperty value = new SimpleStringProperty("");
@@ -98,7 +106,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Java", ProjectSpec.Generator.JAVA, true),
             new GeneratorEntry("Kotlin", null, false),
             new GeneratorEntry("Groovy", null, false),
-            new GeneratorEntry("Rust", null, false),
+            new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
             new GeneratorEntry("Empty Project", null, false));
 
     private static final List<GeneratorEntry> GENERATOR_ENTRIES = List.of(
@@ -169,8 +177,16 @@ public class NewProjectDialog {
     private final TableView<PropertyEntry> propertiesTable = new TableView<>();
     private final ObservableList<PropertyEntry> additionalProperties = FXCollections.observableArrayList();
     private final VBox mavenArchetypeBox = new VBox(14);
+    private final VBox rustBox = new VBox(14);
     private final List<Node> standardOnlyNodes = new ArrayList<>();
     private final List<Node> springOnlyNodes = new ArrayList<>();
+    private final List<Node> jdkNodes = new ArrayList<>();
+    private final ComboBox<String> rustToolchainBox = new ComboBox<>();
+    private final Label rustVersionLabel = new Label();
+    private final TextField rustStdlibField = new TextField();
+    private final TextField rustEnvironmentField = new TextField();
+    private final TableView<RustTemplate> rustTemplateTable = new TableView<>();
+    private final ObservableList<RustTemplate> rustTemplates = FXCollections.observableArrayList();
 
     private final ToggleButton typeGradleGroovy = new ToggleButton("Gradle - Groovy");
     private final ToggleButton typeGradleKotlin = new ToggleButton("Gradle - Kotlin");
@@ -429,7 +445,8 @@ public class NewProjectDialog {
         grid.add(packageField, 1, row++);
         standardOnlyNodes.addAll(List.of(packageLabel, packageField));
 
-        grid.add(formLabel("JDK:"), 0, row);
+        Label jdkLabel = formLabel("JDK:");
+        grid.add(jdkLabel, 0, row);
         jdkCombo.setItems(javafx.collections.FXCollections.observableArrayList(JDK_ENTRIES));
         jdkCombo.setCellFactory(listView -> createJdkCell());
         jdkCombo.setButtonCell(createJdkButtonCell());
@@ -450,9 +467,12 @@ public class NewProjectDialog {
             selectedJdk = entry;
         });
         grid.add(jdkCombo, 1, row++);
+        jdkNodes.addAll(List.of(jdkLabel, jdkCombo));
 
         buildMavenArchetypeForm();
         grid.add(mavenArchetypeBox, 0, row++, 2, 1);
+        buildRustForm();
+        grid.add(rustBox, 0, row++, 2, 1);
 
         Label javaLabel = formLabel("Java:");
         grid.add(javaLabel, 0, row);
@@ -638,6 +658,153 @@ public class NewProjectDialog {
         propertiesTable.getColumns().setAll(name, value);
     }
 
+    private void buildRustForm() {
+        String cargoHome = System.getenv().getOrDefault("CARGO_HOME",
+                System.getProperty("user.home") + File.separator + ".cargo");
+        String toolchainPath = cargoHome + File.separator + "bin";
+        rustToolchainBox.setEditable(true);
+        rustToolchainBox.getItems().setAll(toolchainPath);
+        rustToolchainBox.getSelectionModel().select(toolchainPath);
+        rustToolchainBox.setPrefWidth(470);
+        rustVersionLabel.setText(detectRustVersion());
+        rustVersionLabel.getStyleClass().add("form-static");
+        rustStdlibField.setText(toolchainPath + File.separator + "../lib/rustlib/src/rust");
+        rustEnvironmentField.setPromptText("Environment variables");
+
+        Button toolchainBrowse = new Button("…");
+        toolchainBrowse.getStyleClass().add("console-button");
+        toolchainBrowse.setOnAction(e -> chooseRustToolchain());
+        HBox toolchain = new HBox(8, rustToolchainBox, toolchainBrowse);
+        toolchain.setAlignment(Pos.CENTER_LEFT);
+
+        Button stdlibBrowse = new Button("⌂");
+        stdlibBrowse.getStyleClass().add("console-button");
+        stdlibBrowse.setOnAction(e -> chooseRustStdlib());
+        HBox stdlib = new HBox(8, rustStdlibField, stdlibBrowse);
+        HBox.setHgrow(rustStdlibField, Priority.ALWAYS);
+
+        GridPane settings = new GridPane();
+        settings.setHgap(12);
+        settings.setVgap(12);
+        settings.getColumnConstraints().addAll(new ColumnConstraints(136), new ColumnConstraints());
+        settings.add(formLabel("Toolchain location:"), 0, 0);
+        settings.add(toolchain, 1, 0);
+        settings.add(formLabel("Toolchain version:"), 0, 1);
+        settings.add(rustVersionLabel, 1, 1);
+        settings.add(formLabel("Standard library:"), 0, 2);
+        settings.add(stdlib, 1, 2);
+        settings.add(formLabel("Environment variables:"), 0, 3);
+        settings.add(rustEnvironmentField, 1, 3);
+
+        rustTemplates.setAll(
+                new RustTemplate("◉ Binary (application)", "", "binary"),
+                new RustTemplate("◉ Library", "", "library"),
+                new RustTemplate("⌘ Procedural Macro", "github.com/intellij-rust/rust-procmacro-quickstart-template",
+                        "Custom:https://github.com/intellij-rust/rust-procmacro-quickstart-template"),
+                new RustTemplate("◈ WebAssembly Lib", "github.com/intellij-rust/wasm-pack-template",
+                        "Custom:https://github.com/intellij-rust/wasm-pack-template"));
+        rustTemplateTable.setItems(rustTemplates);
+        rustTemplateTable.getStyleClass().add("rust-template-table");
+        rustTemplateTable.setPrefHeight(150);
+        rustTemplateTable.setPlaceholder(new Label("No project templates"));
+        TableColumn<RustTemplate, String> templateColumn = new TableColumn<>();
+        templateColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().toString()));
+        templateColumn.setPrefWidth(650);
+        rustTemplateTable.getColumns().setAll(templateColumn);
+        rustTemplateTable.getSelectionModel().select(0);
+
+        Button addTemplate = new Button("+");
+        addTemplate.getStyleClass().add("property-button");
+        addTemplate.setOnAction(e -> showAddRustTemplate());
+        Button removeTemplate = new Button("−");
+        removeTemplate.getStyleClass().add("property-button");
+        removeTemplate.setOnAction(e -> {
+            RustTemplate selectedTemplate = rustTemplateTable.getSelectionModel().getSelectedItem();
+            if (selectedTemplate != null && selectedTemplate.value().startsWith("Custom:")) {
+                rustTemplates.remove(selectedTemplate);
+            }
+        });
+        HBox templatesToolbar = new HBox(5, addTemplate, removeTemplate);
+        templatesToolbar.getStyleClass().add("property-toolbar");
+
+        Label templatesTitle = new Label("Project Template");
+        templatesTitle.getStyleClass().add("maven-section-title");
+        VBox templates = new VBox(5, templatesTitle, rustTemplateTable, templatesToolbar);
+        rustBox.getChildren().setAll(settings, templates);
+        rustBox.setVisible(false);
+        rustBox.setManaged(false);
+    }
+
+    private String detectRustVersion() {
+        try {
+            Process process = new ProcessBuilder("rustc", "--version").redirectErrorStream(true).start();
+            String version = new String(process.getInputStream().readAllBytes()).trim();
+            return process.waitFor() == 0 ? version.replace("rustc ", "") : "Not detected";
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            return "Not detected";
+        }
+    }
+
+    private void chooseRustToolchain() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Rust Toolchain Location");
+        File chosen = chooser.showDialog(stage);
+        if (chosen != null) rustToolchainBox.getEditor().setText(chosen.getAbsolutePath());
+    }
+
+    private void chooseRustStdlib() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Rust Standard Library Location");
+        File chosen = chooser.showDialog(stage);
+        if (chosen != null) rustStdlibField.setText(chosen.getAbsolutePath());
+    }
+
+    private void showAddRustTemplate() {
+        Stage dialog = new Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Add Custom Template");
+        TextField url = new TextField();
+        TextField name = new TextField();
+        Label note = new Label("The template will be generated with cargo-generate. You can provide a link to any GitHub project.");
+        note.getStyleClass().add("form-hint");
+        GridPane fields = new GridPane();
+        fields.setHgap(12);
+        fields.setVgap(12);
+        fields.setPadding(new Insets(18));
+        fields.add(formLabel("Template URL:"), 0, 0);
+        fields.add(url, 1, 0);
+        fields.add(note, 1, 1);
+        fields.add(formLabel("Name:"), 0, 2);
+        fields.add(name, 1, 2);
+        Button add = new Button("Add");
+        add.getStyleClass().add("dialog-primary");
+        add.setOnAction(e -> {
+            String templateUrl = url.getText().trim();
+            String templateName = name.getText().trim();
+            if (!templateUrl.isBlank() && !templateName.isBlank()) {
+                RustTemplate template = new RustTemplate(templateName, templateUrl, "Custom:" + templateUrl);
+                rustTemplates.add(template);
+                rustTemplateTable.getSelectionModel().select(template);
+                dialog.close();
+            }
+        });
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().add("dialog-secondary");
+        cancel.setOnAction(e -> dialog.close());
+        HBox footer = new HBox(10, add, cancel);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setPadding(new Insets(12, 18, 18, 18));
+        BorderPane root = new BorderPane(fields);
+        root.setBottom(footer);
+        root.getStyleClass().addAll("app-root", "catalog-manager");
+        Scene scene = new Scene(root, 685, 230);
+        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
     private void addArchetype() {
         javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog();
         dialog.initOwner(stage);
@@ -696,16 +863,20 @@ public class NewProjectDialog {
     private void updateForGenerator() {
         boolean spring = selected.generator() == ProjectSpec.Generator.SPRING_BOOT;
         boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
+        boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
         if (dependenciesRow != null) {
             dependenciesRow.setVisible(spring);
             dependenciesRow.setManaged(spring);
         }
         setNodesVisible(springOnlyNodes, spring);
-        setNodesVisible(standardOnlyNodes, !mavenArchetype);
+        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust);
+        setNodesVisible(jdkNodes, !rust);
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
+        rustBox.setVisible(rust);
+        rustBox.setManaged(rust);
 
-        if (!mavenArchetype) javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
+        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
         updateAdvancedOptions();
@@ -814,6 +985,11 @@ public class NewProjectDialog {
         return typed.isEmpty() ? archetypeCombo.getValue() : typed;
     }
 
+    private RustTemplate selectedRustTemplate() {
+        RustTemplate template = rustTemplateTable.getSelectionModel().getSelectedItem();
+        return template == null ? rustTemplates.getFirst() : template;
+    }
+
     private static void setNodesVisible(List<Node> nodes, boolean visible) {
         for (Node node : nodes) {
             node.setVisible(visible);
@@ -911,6 +1087,7 @@ public class NewProjectDialog {
             return;
         }
         boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
+        boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
             errorLabel.setText("Artifact is required.");
@@ -922,7 +1099,7 @@ public class NewProjectDialog {
         else if (langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
 
         ProjectSpec.BuildSystem build;
-        if (mavenArchetype) {
+        if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
             if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
@@ -966,7 +1143,10 @@ public class NewProjectDialog {
                 additionalProperties.stream()
                         .filter(property -> !property.getName().isBlank())
                         .map(property -> property.getName().trim() + "=" + property.getValue().trim())
-                        .collect(java.util.stream.Collectors.joining(",")));
+                        .collect(java.util.stream.Collectors.joining(",")),
+                rustToolchainBox.getEditor().getText().trim(),
+                rust ? selectedRustTemplate().value() : "",
+                rustEnvironmentField.getText().trim());
 
         stage.close();
         onCreate.accept(spec);

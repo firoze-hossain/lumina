@@ -21,9 +21,12 @@ public record ProjectSpec(
         String archetypeId,
         String archetypeVersion,
         String projectVersion,
-        String additionalProperties
+        String additionalProperties,
+        String rustToolchainPath,
+        String rustTemplate,
+        String rustEnvironment
 ) {
-    public enum Generator { JAVA, SPRING_BOOT, MAVEN_ARCHETYPE }
+    public enum Generator { JAVA, SPRING_BOOT, MAVEN_ARCHETYPE, RUST }
 
     public enum BuildSystem { MAVEN, GRADLE }
 

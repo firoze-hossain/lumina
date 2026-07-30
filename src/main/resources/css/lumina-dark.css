@@ -408,6 +408,20 @@
 .maven-properties-table .table-cell { -fx-text-fill: #C9CDDC; }
 .maven-properties-table .placeholder .label { -fx-text-fill: #565D75; }
 
+.rust-template-table {
+    -fx-background-color: #191C26;
+    -fx-border-color: #2C3042;
+}
+.rust-template-table .column-header-background,
+.rust-template-table .column-header { -fx-background-color: #14161E; -fx-max-height: 0; -fx-pref-height: 0; }
+.rust-template-table .table-row-cell {
+    -fx-background-color: #191C26;
+    -fx-border-color: transparent;
+}
+.rust-template-table .table-row-cell:selected { -fx-background-color: #3A3122; }
+.rust-template-table .table-cell { -fx-text-fill: #C9CDDC; }
+.rust-template-table .placeholder .label { -fx-text-fill: #565D75; }
+
 .text-field {
     -fx-background-color: #1F2230;
     -fx-text-fill: #D8DBE6;
