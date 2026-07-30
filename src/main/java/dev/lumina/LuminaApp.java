@@ -353,7 +353,8 @@ public class LuminaApp extends Application {
         Menu tools = new Menu("Tools");
         tools.getItems().addAll(
                 item("Terminal", "Shortcut+T", e -> showTerminal()),
-                item("New Project Wizard\u2026", null, e -> showNewProjectDialog()));
+                item("New Project Wizard\u2026", null, e -> showNewProjectDialog()),
+                item("Plugins\u2026", null, e -> showPluginManager()));
 
         // ---- Window
         Menu window = new Menu("Window");
@@ -388,6 +389,18 @@ public class LuminaApp extends Application {
         MenuItem mi = new MenuItem(text);
         mi.setDisable(true);
         return mi;
+    }
+
+    private void showPluginManager() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(stage);
+        alert.setTitle("Plugins");
+        alert.setHeaderText("Plugin Manager coming soon");
+        alert.setContentText("Plugin-based project templates and more IDE extensions "
+                + "will be available in a future version.");
+        alert.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        alert.showAndWait();
     }
 
     // --------------------------------------------------------------- toolbar
