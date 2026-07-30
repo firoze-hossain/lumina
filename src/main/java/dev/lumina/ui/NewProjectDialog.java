@@ -109,6 +109,33 @@ public class NewProjectDialog {
     private final ComboBox<String> gradleVersionBox = new ComboBox<>(
             javafx.collections.FXCollections.observableArrayList("9.2", "9.1", "8.3", "7.6"));
     private final CheckBox saveSettingsCheck = new CheckBox("Use these settings for future projects");
+    private final ToggleButton langJava = new ToggleButton("Java");
+    private final ToggleButton langKotlin = new ToggleButton("Kotlin");
+    private final ToggleButton langGroovy = new ToggleButton("Groovy");
+    private final ToggleGroup languageGroup = new ToggleGroup();
+
+    private final ToggleButton typeGradleGroovy = new ToggleButton("Gradle - Groovy");
+    private final ToggleButton typeGradleKotlin = new ToggleButton("Gradle - Kotlin");
+    private final ToggleButton typeMaven = new ToggleButton("Maven");
+    private final ToggleGroup typeGroup = new ToggleGroup();
+
+    private final ToggleButton packagingJar = new ToggleButton("Jar");
+    private final ToggleButton packagingWar = new ToggleButton("War");
+    private final ToggleGroup packagingGroup = new ToggleGroup();
+
+    private final ToggleButton configProperties = new ToggleButton("Properties");
+    private final ToggleButton configYaml = new ToggleButton("YAML");
+    private final ToggleGroup configGroup = new ToggleGroup();
+
+    private final Label serverUrlLabel = new Label("start.spring.io");
+    private final Button serverSettingsButton = new Button("\u2699");
+    private final HBox serverRow = new HBox(8);
+    private final HBox typeRow = new HBox(8);
+    private final HBox packagingRow = new HBox(8);
+    private final HBox configRow = new HBox(8);
+    private final HBox languageRow = new HBox(8);
+    private final HBox buildSystemRow = new HBox(8);
+
     private final TextField dependenciesField = new TextField("web");
     private final Label errorLabel = new Label();
     private final VBox advancedBox = new VBox(10);
@@ -255,13 +282,74 @@ public class NewProjectDialog {
         grid.add(locationHint, 1, row++);
         grid.add(gitCheck, 1, row++);
 
-        // language (Java only in this phase, shown as a segmented control)
-        grid.add(formLabel("Language:"), 0, row);
-        grid.add(segmented(new ToggleGroup(), true, "Java"), 1, row++);
+        serverUrlLabel.getStyleClass().add("form-static");
+        serverSettingsButton.getStyleClass().add("console-button");
+        serverSettingsButton.setOnAction(e -> showServerSettings());
+        serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
+        serverRow.setAlignment(Pos.CENTER_LEFT);
+        grid.add(formLabel("Server URL:"), 0, row);
+        grid.add(serverRow, 1, row++);
 
-        HBox buildControl = segmented(buildGroup, true, "Maven", "Gradle");
+        languageGroup.getToggles().addAll(langJava, langKotlin, langGroovy);
+        langJava.setToggleGroup(languageGroup);
+        langKotlin.setToggleGroup(languageGroup);
+        langGroovy.setToggleGroup(languageGroup);
+        langJava.getStyleClass().addAll("segment", "segment-first");
+        langKotlin.getStyleClass().addAll("segment");
+        langGroovy.getStyleClass().addAll("segment", "segment-last");
+        langJava.setSelected(true);
+        languageRow.getChildren().setAll(langJava, langKotlin, langGroovy);
+        languageRow.getStyleClass().add("segmented");
+        grid.add(formLabel("Language:"), 0, row);
+        grid.add(languageRow, 1, row++);
+
+        typeGroup.getToggles().addAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
+        typeGradleGroovy.setToggleGroup(typeGroup);
+        typeGradleKotlin.setToggleGroup(typeGroup);
+        typeMaven.setToggleGroup(typeGroup);
+        typeGradleGroovy.getStyleClass().addAll("segment", "segment-first");
+        typeGradleKotlin.getStyleClass().addAll("segment");
+        typeMaven.getStyleClass().addAll("segment", "segment-last");
+        typeMaven.setSelected(true);
+        typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
+        typeRow.getStyleClass().add("segmented");
+        grid.add(formLabel("Type:"), 0, row);
+        grid.add(typeRow, 1, row++);
+
+        packagingGroup.getToggles().addAll(packagingJar, packagingWar);
+        packagingJar.setToggleGroup(packagingGroup);
+        packagingWar.setToggleGroup(packagingGroup);
+        packagingJar.getStyleClass().addAll("segment", "segment-first");
+        packagingWar.getStyleClass().addAll("segment", "segment-last");
+        packagingJar.setSelected(true);
+        packagingRow.getChildren().setAll(packagingJar, packagingWar);
+        packagingRow.getStyleClass().add("segmented");
+        grid.add(formLabel("Packaging:"), 0, row);
+        grid.add(packagingRow, 1, row++);
+
+        configGroup.getToggles().addAll(configProperties, configYaml);
+        configProperties.setToggleGroup(configGroup);
+        configYaml.setToggleGroup(configGroup);
+        configProperties.getStyleClass().addAll("segment", "segment-first");
+        configYaml.getStyleClass().addAll("segment", "segment-last");
+        configProperties.setSelected(true);
+        configRow.getChildren().setAll(configProperties, configYaml);
+        configRow.getStyleClass().add("segmented");
+        grid.add(formLabel("Configuration:"), 0, row);
+        grid.add(configRow, 1, row++);
+
+        serverRow.setVisible(false);
+        serverRow.setManaged(false);
+        typeRow.setVisible(false);
+        typeRow.setManaged(false);
+        packagingRow.setVisible(false);
+        packagingRow.setManaged(false);
+        configRow.setVisible(false);
+        configRow.setManaged(false);
+
+        buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
         grid.add(formLabel("Build system:"), 0, row);
-        grid.add(buildControl, 1, row++);
+        grid.add(buildSystemRow, 1, row++);
 
         grid.add(formLabel("Group:"), 0, row);
         grid.add(groupField, 1, row++);
@@ -364,7 +452,21 @@ public class NewProjectDialog {
         boolean spring = selected.generator() == ProjectSpec.Generator.SPRING_BOOT;
         if (dependenciesRow != null) {
             dependenciesRow.setVisible(spring);
+            dependenciesRow.setManaged(spring);
         }
+        serverRow.setVisible(spring);
+        serverRow.setManaged(spring);
+        languageRow.setVisible(spring);
+        languageRow.setManaged(spring);
+        typeRow.setVisible(spring);
+        typeRow.setManaged(spring);
+        packagingRow.setVisible(spring);
+        packagingRow.setManaged(spring);
+        configRow.setVisible(spring);
+        configRow.setManaged(spring);
+        buildSystemRow.setVisible(!spring);
+        buildSystemRow.setManaged(!spring);
+
         javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
@@ -531,6 +633,17 @@ public class NewProjectDialog {
         }
     }
 
+    private void showServerSettings() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(stage);
+        alert.setTitle("Spring Initializr Server");
+        alert.setHeaderText("Spring Initializr server settings");
+        alert.setContentText("Server settings are not configurable yet.");
+        alert.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        alert.showAndWait();
+    }
+
     private void tryCreate() {
         if (!selected.enabled()) {
             errorLabel.setText(selected.label() + " support arrives in a later phase.");
@@ -551,11 +664,28 @@ public class NewProjectDialog {
             return;
         }
 
-        ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
-        ProjectSpec.BuildSystem build = buildToggle != null
-                && "Gradle".equals(buildToggle.getText())
-                ? ProjectSpec.BuildSystem.GRADLE
-                : ProjectSpec.BuildSystem.MAVEN;
+        ProjectSpec.Language language = ProjectSpec.Language.JAVA;
+        if (langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
+        else if (langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
+
+        ProjectSpec.BuildSystem build;
+        if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+            if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
+                build = ProjectSpec.BuildSystem.GRADLE;
+            } else {
+                build = ProjectSpec.BuildSystem.MAVEN;
+            }
+        } else {
+            ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
+            build = buildToggle != null && "Gradle".equals(buildToggle.getText())
+                    ? ProjectSpec.BuildSystem.GRADLE
+                    : ProjectSpec.BuildSystem.MAVEN;
+        }
+
+        ProjectSpec.Packaging packaging = packagingJar.isSelected()
+                ? ProjectSpec.Packaging.JAR : ProjectSpec.Packaging.WAR;
+        ProjectSpec.ConfigFormat configFormat = configYaml.isSelected()
+                ? ProjectSpec.ConfigFormat.YAML : ProjectSpec.ConfigFormat.PROPERTIES;
 
         ProjectSpec spec = new ProjectSpec(
                 selected.generator(),
@@ -563,6 +693,9 @@ public class NewProjectDialog {
                 Path.of(location),
                 gitCheck.isSelected(),
                 build,
+                language,
+                packaging,
+                configFormat,
                 groupField.getText().trim(),
                 artifactField.getText().trim(),
                 packageField.getText().trim(),

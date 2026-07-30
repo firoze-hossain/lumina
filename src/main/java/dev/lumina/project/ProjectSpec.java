@@ -9,6 +9,9 @@ public record ProjectSpec(
         Path location,          // parent folder; project goes in location/name
         boolean initGit,
         BuildSystem buildSystem,
+        Language language,
+        Packaging packaging,
+        ConfigFormat configFormat,
         String group,
         String artifact,
         String packageName,
@@ -18,6 +21,12 @@ public record ProjectSpec(
     public enum Generator { JAVA, SPRING_BOOT }
 
     public enum BuildSystem { MAVEN, GRADLE }
+
+    public enum Language { JAVA, KOTLIN, GROOVY }
+
+    public enum Packaging { JAR, WAR }
+
+    public enum ConfigFormat { PROPERTIES, YAML }
 
     public Path projectDir() {
         return location.resolve(name);

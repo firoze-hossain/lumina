@@ -163,7 +163,8 @@ public final class ProjectGenerator {
 
         StringBuilder url = new StringBuilder("https://start.spring.io/starter.zip")
                 .append("?type=").append(type)
-                .append("&language=java")
+                .append("&language=").append(enc(spec.language().name().toLowerCase()))
+                .append("&packaging=").append(enc(spec.packaging().name().toLowerCase()))
                 .append("&javaVersion=").append(enc(spec.javaVersion()))
                 .append("&groupId=").append(enc(spec.group()))
                 .append("&artifactId=").append(enc(spec.artifact()))
