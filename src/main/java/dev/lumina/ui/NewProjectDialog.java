@@ -113,17 +113,17 @@ public class NewProjectDialog {
             new GeneratorEntry("Maven Archetype", ProjectSpec.Generator.MAVEN_ARCHETYPE, true),
             new GeneratorEntry("Spring Boot", ProjectSpec.Generator.SPRING_BOOT, true),
             new GeneratorEntry("JavaFX", ProjectSpec.Generator.JAVAFX, true),
-            new GeneratorEntry("Quarkus", null, false),
-            new GeneratorEntry("Micronaut", null, false),
-            new GeneratorEntry("Jakarta EE", null, false),
-            new GeneratorEntry("Ktor", null, false),
-            new GeneratorEntry("HTML", null, false),
-            new GeneratorEntry("React", null, false),
-            new GeneratorEntry("Express", null, false),
+            new GeneratorEntry("Quarkus", ProjectSpec.Generator.QUARKUS, true),
+            new GeneratorEntry("Micronaut", ProjectSpec.Generator.MICRONAUT, true),
+            new GeneratorEntry("Jakarta EE", ProjectSpec.Generator.JAKARTA_EE, true),
+            new GeneratorEntry("Ktor", ProjectSpec.Generator.KTOR, true),
+            new GeneratorEntry("HTML", ProjectSpec.Generator.HTML, true),
+            new GeneratorEntry("React", ProjectSpec.Generator.REACT, true),
+            new GeneratorEntry("Express", ProjectSpec.Generator.EXPRESS, true),
             new GeneratorEntry("Angular CLI", ProjectSpec.Generator.ANGULAR_CLI, true),
-            new GeneratorEntry("Vue.js", null, false),
+            new GeneratorEntry("Vue.js", ProjectSpec.Generator.VUE, true),
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
-            new GeneratorEntry("Nuxt", null, false));
+            new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
 
     private static final List<JdkEntry> JDK_ENTRIES = List.of(
             new JdkEntry("Registered JDKs", "", false, false),
@@ -203,6 +203,7 @@ public class NewProjectDialog {
     private final List<Node> javafxHiddenNodes = new ArrayList<>();
     private final Label emptyDescription = new Label("A basic project with free structure.");
     private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here ↗");
+    private final VBox generatorSpecificBox = new VBox();
     private final List<Node> springOnlyNodes = new ArrayList<>();
     private final List<Node> jdkNodes = new ArrayList<>();
     private final ComboBox<String> rustToolchainBox = new ComboBox<>();
@@ -380,6 +381,9 @@ public class NewProjectDialog {
         locationHint.getStyleClass().add("form-hint");
         grid.add(locationHint, 1, row++);
         grid.add(gitCheck, 1, row++);
+        generatorSpecificBox.setVisible(false);
+        generatorSpecificBox.setManaged(false);
+        grid.add(generatorSpecificBox, 0, row++, 2, 1);
 
         // JavaScript generators use the same compact runtime fields as IntelliJ's wizard.
         nodeRuntimeBox.getSelectionModel().selectFirst();
@@ -953,13 +957,17 @@ public class NewProjectDialog {
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean web = angular || vite;
+        boolean specific = switch (generator) {
+            case QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            default -> false;
+        };
         if (dependenciesRow != null) {
             dependenciesRow.setVisible(spring);
             dependenciesRow.setManaged(spring);
         }
         setNodesVisible(springOnlyNodes, spring);
-        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web);
-        setNodesVisible(jdkNodes, !rust && !empty && !web);
+        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific);
+        setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
         setNodesVisible(webOnlyNodes, web);
         setNodesVisible(viteOnlyNodes, vite);
         setNodesVisible(angularOnlyNodes, angular);
@@ -970,14 +978,19 @@ public class NewProjectDialog {
         // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
         // from the advanced identity fields and no wrapper/version section is shown.
         setNodesVisible(javafxHiddenNodes,
-                !mavenArchetype && !rust && !empty && !web && !(javafx || kotlin || groovy));
+                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy));
         gitCheck.setVisible(!web);
         gitCheck.setManaged(!web);
+        generatorSpecificBox.setVisible(specific);
+        generatorSpecificBox.setManaged(specific);
+        if (specific) buildSpecificForm(generator);
         // Match the wizard's sensible defaults for each page.
         if (kotlin || groovy) configureBuildOptions(true);
         else if (javafx) configureBuildOptions(false);
         else configureBuildOptions(false);
-        if (createButton != null) createButton.setText(javafx ? "Next" : "Create");
+        if (createButton != null) createButton.setText(javafx || (specific && generator != ProjectSpec.Generator.HTML
+                && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
+                && generator != ProjectSpec.Generator.VUE && generator != ProjectSpec.Generator.NUXT) ? "Next" : "Create");
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
         rustBox.setVisible(rust);
@@ -1004,6 +1017,150 @@ public class NewProjectDialog {
                 break;
             }
         }
+    }
+
+    /** Builds the compact page for generators that have their own external wizard. */
+    private void buildSpecificForm(ProjectSpec.Generator generator) {
+        GridPane form = new GridPane();
+        form.setHgap(12);
+        form.setVgap(14);
+        ColumnConstraints labels = new ColumnConstraints(112);
+        ColumnConstraints values = new ColumnConstraints();
+        values.setHgrow(Priority.ALWAYS);
+        form.getColumnConstraints().addAll(labels, values);
+        int row = 0;
+
+        if (generator == ProjectSpec.Generator.QUARKUS || generator == ProjectSpec.Generator.MICRONAUT) {
+            String url = generator == ProjectSpec.Generator.QUARKUS ? "code.quarkus.io" : "launch.micronaut.io";
+            HBox server = new HBox(14, blueText(url), compactButton("⚙"));
+            form.add(formLabel("Server URL:"), 0, row); form.add(server, 1, row++);
+        }
+
+        switch (generator) {
+            case QUARKUS -> {
+                add(form, row++, "Language:", segments("Java", "Kotlin"));
+                add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
+                add(form, row++, "Group:  ⓘ", text("org.example"));
+                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "JDK:", jdkChoice());
+                add(form, row++, "Java:", choice("21", "17"));
+                form.add(selectedCheck("Add sample code"), 1, row++);
+            }
+            case MICRONAUT -> {
+                add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
+                add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
+                add(form, row++, "Test framework:", segments("JUnit", "Kotest", "Spock"));
+                add(form, row++, "Group:  ⓘ", text("org.example"));
+                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "Application type:", choice("Application", "CLI Application", "Function"));
+                add(form, row++, "JDK:", jdkChoice());
+                add(form, row++, "Java:", choice("21", "17"));
+            }
+            case JAKARTA_EE -> {
+                add(form, row++, "Template:", choice("REST service", "Web application", "Library"));
+                add(form, row++, "Application server:", choice("JAX-RS resource", "Servlet, web.xml, index.jsp"));
+                add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
+                add(form, row++, "Build system:", segments("Maven", "Gradle"));
+                add(form, row++, "Group:  ⓘ", text("org.example"));
+                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "JDK:", jdkChoice());
+            }
+            case KTOR -> {
+                add(form, row++, "Group:", text("com.example"));
+                add(form, row++, "Artifact:", text("com.example.ktor-sample"));
+                add(form, row++, "Engine:", choice("Netty  Default", "CIO"));
+                form.add(selectedCheck("Add sample code"), 1, row++);
+                Label tutorials = new Label("Start with Ktor Server and Client tutorials ↗");
+                tutorials.getStyleClass().add("form-hint"); form.add(tutorials, 1, row++);
+                Label advanced = new Label("⌄  Advanced Settings"); advanced.getStyleClass().add("maven-section-title");
+                form.add(advanced, 0, row++, 2, 1);
+                add(form, row++, "Build system:", segments("Gradle", "Kotlin", "Maven"));
+                add(form, row++, "Ktor version:", choice("3.5.1  Default", "3.4.0"));
+                add(form, row++, "Configuration in:", choice("YAML File  Default", "HOCON File"));
+            }
+            case HTML -> {
+                add(form, row++, "Project type:", segments("HTML5 Boilerplate", "Bootstrap"));
+                add(form, row++, "Version:", choice("v9.0.1", "v8.0.0"));
+            }
+            case REACT -> {
+                add(form, row++, "Project type:", segments("React", "React Native", "Next.js"));
+                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
+                add(form, row++, "create-react-app:", runtime("npx create-react-app                                      5.1.0"));
+                form.add(new CheckBox("Create TypeScript project"), 1, row++);
+                Label warning = new Label("Using the create-react-app is not the advised method for creating React applications. The preferred\napproach is to use a template with the Vite bundler when using React without a framework.");
+                warning.getStyleClass().add("form-error"); form.add(warning, 1, row++);
+            }
+            case EXPRESS -> {
+                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
+                add(form, row++, "express-generator:", runtime("npx --package express-generator express                    4.16.1"));
+                Label options = new Label("Options"); options.getStyleClass().add("maven-section-title");
+                form.add(options, 1, row++);
+                add(form, row++, "View Engine:", choice("Pug (Jade)", "EJS", "Handlebars"));
+                add(form, row++, "Stylesheet Engine:", choice("Plain CSS", "Sass", "Less"));
+            }
+            case VUE -> {
+                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
+                add(form, row++, "Vue CLI:", runtime("npx create-vue                                                3.23.0"));
+                form.add(selectedCheck("Use the default project setup"), 1, row++);
+            }
+            case NUXT -> {
+                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
+                add(form, row++, "Nuxt CLI:", runtime("npx nuxi@latest                                               3.37.0"));
+            }
+            default -> { }
+        }
+        generatorSpecificBox.getChildren().setAll(form);
+    }
+
+    private void add(GridPane grid, int row, String label, Node value) {
+        grid.add(formLabel(label), 0, row);
+        grid.add(value, 1, row);
+    }
+
+    private TextField text(String value) {
+        TextField field = new TextField(value);
+        field.setPrefWidth(275);
+        return field;
+    }
+
+    private ComboBox<String> choice(String... values) {
+        ComboBox<String> box = new ComboBox<>(FXCollections.observableArrayList(values));
+        box.getSelectionModel().selectFirst();
+        box.setPrefWidth(398);
+        return box;
+    }
+
+    private HBox runtime(String value) {
+        ComboBox<String> box = choice(value);
+        box.setMaxWidth(Double.MAX_VALUE);
+        HBox row = new HBox(6, box, compactButton("…"));
+        HBox.setHgrow(box, Priority.ALWAYS);
+        return row;
+    }
+
+    private HBox segments(String... labels) {
+        return segmented(new ToggleGroup(), true, labels);
+    }
+
+    private CheckBox selectedCheck(String label) {
+        CheckBox box = new CheckBox(label);
+        box.setSelected(true);
+        return box;
+    }
+
+    private ComboBox<JdkEntry> jdkChoice() {
+        ComboBox<JdkEntry> box = new ComboBox<>(FXCollections.observableArrayList(JDK_ENTRIES));
+        box.setCellFactory(list -> createJdkCell());
+        box.setButtonCell(createJdkButtonCell());
+        box.getSelectionModel().select(JDK_ENTRIES.get(1));
+        box.setPrefWidth(398);
+        return box;
+    }
+
+    private Label blueText(String value) {
+        Label label = new Label(value);
+        label.getStyleClass().add("maven-link");
+        return label;
     }
 
     private void updateAdvancedOptions() {

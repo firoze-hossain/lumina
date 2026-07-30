@@ -52,7 +52,8 @@ public final class ProjectGenerator {
         switch (spec.generator()) {
             case JAVA, KOTLIN, GROOVY, JAVAFX -> generateJava(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
-            case ANGULAR_CLI, VITE -> generateWebStarter(spec, dir, log);
+            case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case QUARKUS, MICRONAUT, JAKARTA_EE, KTOR -> generateJava(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
             case RUST -> generateRust(spec, dir, log);

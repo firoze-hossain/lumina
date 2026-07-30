@@ -28,7 +28,8 @@ public record ProjectSpec(
 ) {
     public enum Generator {
         JAVA, KOTLIN, GROOVY, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
-        JAVAFX, ANGULAR_CLI, VITE, RUST
+        JAVAFX, QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS,
+        ANGULAR_CLI, VUE, VITE, NUXT, RUST
     }
 
     public enum BuildSystem { MAVEN, GRADLE }
