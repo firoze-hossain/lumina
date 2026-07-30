@@ -1,2 +1,33 @@
-# Project exclude paths
+# Build output
 /target/
+/build/
+
+# IDE and editor files
+/.idea/
+/.vscode/
+*.iml
+*.ipr
+*.iws
+
+# JVM and local runtime artifacts
+/.classpath
+/.project
+/.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
+# Local environment / secrets
+.env
+*.local
+
+# JavaFX / native packaging outputs
+/out/
+/dist/
+*.jpackage/
