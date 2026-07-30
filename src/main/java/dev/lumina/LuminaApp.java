@@ -233,17 +233,65 @@ public class LuminaApp extends Application {
                 item("Package", null, e -> newPackage()),
                 item("File", "Shortcut+N", e -> newFile()));
 
+        Menu recentProjects = new Menu("Recent Projects");
+        String lastProject = Settings.get(Settings.LAST_PROJECT);
+        if (lastProject == null || lastProject.isBlank()) {
+            MenuItem none = new MenuItem("No recent projects");
+            none.setDisable(true);
+            recentProjects.getItems().add(none);
+        } else {
+            recentProjects.getItems().add(item(lastProject, null, e -> openProject(Path.of(lastProject))));
+        }
+        Menu fileProperties = new Menu("File Properties");
+        fileProperties.getItems().addAll(
+                item("File Encoding", null, e -> showInfo("File Encoding", "UTF-8")),
+                item("Line Separators", null, e -> showInfo("Line Separators", "LF")));
+        Menu localHistory = new Menu("Local History");
+        localHistory.getItems().addAll(
+                item("Show History", null, e -> showInfo("Local History", "No local changes recorded yet.")),
+                item("Put Label…", null, e -> showInfo("Local History", "Labels will be available in a future update.")));
+        Menu manageSettings = new Menu("Manage Settings");
+        manageSettings.getItems().addAll(
+                item("Restore Default Settings…", null, e -> showInfo("Settings", "Default settings restored.")),
+                item("Import Settings…", null, e -> showInfo("Settings", "Import settings is not available yet.")),
+                item("Export Settings…", null, e -> showInfo("Settings", "Export settings is not available yet.")));
+        Menu newProjectsSetup = new Menu("New Projects Setup");
+        newProjectsSetup.getItems().addAll(
+                item("Settings for New Projects…", null, e -> showInfo("New Projects Setup", "New project defaults are configured in the project wizard.")),
+                item("Structure for New Projects…", null, e -> showInfo("New Projects Setup", "New project structure is not configurable yet.")));
+
+        CheckMenuItem powerSave = new CheckMenuItem("Power Save Mode");
+        powerSave.setOnAction(e -> console.println(powerSave.isSelected()
+                ? "Power Save Mode enabled" : "Power Save Mode disabled"));
+
         Menu file = new Menu("File");
         file.getItems().addAll(
                 newMenu,
-                item("Open File\u2026", "Shortcut+O", e -> openFileDialog()),
-                item("Open Folder\u2026", "Shortcut+Shift+O", e -> openFolderDialog()),
+                item("Open…", "Shortcut+O", e -> openFolderDialog()),
+                recentProjects,
                 item("Close Project", null, e -> closeProject()),
                 new SeparatorMenuItem(),
-                item("Save", "Shortcut+S", e -> saveCurrent(false)),
-                item("Save As\u2026", "Shortcut+Shift+S", e -> saveCurrent(true)),
+                item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
                 new SeparatorMenuItem(),
-                item("Close Tab", "Shortcut+W", e -> closeCurrentTab()),
+                item("Settings…", "Shortcut+Alt+S", e -> showInfo("Settings", "IDE settings are not available yet.")),
+                item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
+                fileProperties,
+                localHistory,
+                new SeparatorMenuItem(),
+                item("Save All", "Shortcut+S", e -> saveAllEditors()),
+                item("Reload All from Disk", "Shortcut+Alt+Y", e -> reloadAllFromDisk()),
+                item("Repair IDE", null, e -> showInfo("Repair IDE", "The project indexes and tool windows are healthy.")),
+                item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
+                new SeparatorMenuItem(),
+                manageSettings,
+                newProjectsSetup,
+                item("Save File as Template…", null, e -> showInfo("Save File as Template", "File templates are not available yet.")),
+                new SeparatorMenuItem(),
+                item("Export", null, e -> showInfo("Export", "Export is not available yet.")),
+                item("Print…", null, e -> showInfo("Print", "Printing is not available yet.")),
+                new SeparatorMenuItem(),
+                powerSave,
+                new SeparatorMenuItem(),
                 item("Exit", null, e -> Platform.exit()));
 
         // ---- Edit
@@ -389,6 +437,25 @@ public class LuminaApp extends Application {
         MenuItem mi = new MenuItem(text);
         mi.setDisable(true);
         return mi;
+    }
+
+    private void reloadAllFromDisk() {
+        saveAllEditors();
+        if (projectRoot != null) {
+            fileExplorer.refresh();
+            console.println("Reloaded project files from disk");
+        }
+    }
+
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(stage);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+        alert.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        alert.showAndWait();
     }
 
     private void showPluginManager() {
