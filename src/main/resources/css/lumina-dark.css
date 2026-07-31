@@ -9,6 +9,9 @@
      lumen        #E8B450   (signature amber accent)
      lumen-soft   #3A3122   (amber wash for selections)
    ============================================================ */
+.root {
+    -lumen: #E8B450;
+}
 
 .app-root {
     -fx-background-color: #191C26;
@@ -1752,4 +1755,327 @@
     -fx-border-color: #2C3042;
     -fx-border-radius: 6;
     -fx-padding: 4 10 4 10;
+}
+
+/* ============================================================
+   Plugin Manager Dialog - Complete Dark Styles
+   ============================================================ */
+
+.plugin-manager-dialog {
+    -fx-background-color: #191C26;
+}
+
+.plugin-toolbar {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent transparent #262A3A transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.plugin-search {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #D8DBE6;
+    -fx-prompt-text-fill: #565D75;
+    -fx-background-radius: 8;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-padding: 6 12 6 12;
+    -fx-font-size: 13px;
+}
+.plugin-search:focused {
+    -fx-border-color: #E8B450;
+}
+
+.plugin-filter-combo {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #D8DBE6;
+    -fx-pref-width: 120;
+}
+.plugin-filter-combo .list-cell {
+    -fx-text-fill: #D8DBE6;
+    -fx-background-color: transparent;
+}
+.plugin-filter-combo .arrow {
+    -fx-background-color: #848BA3;
+}
+.plugin-filter-combo-popup .list-view {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+}
+.plugin-filter-combo-popup .list-cell {
+    -fx-text-fill: #C9CDDC;
+    -fx-padding: 6 12 6 12;
+}
+.plugin-filter-combo-popup .list-cell:hover,
+.plugin-filter-combo-popup .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+.plugin-refresh-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 16px;
+    -fx-padding: 4 8 4 8;
+    -fx-cursor: hand;
+}
+.plugin-refresh-btn:hover {
+    -fx-text-fill: #E8B450;
+}
+
+/* Plugin List */
+.plugin-list {
+    -fx-background-color: #14161E;
+    -fx-background-insets: 0;
+}
+.plugin-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-border-color: transparent transparent #1A1D28 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.plugin-list .list-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.plugin-list .list-cell:selected {
+    -fx-background-color: #3A3122;
+}
+
+/* Plugin Icons */
+.plugin-icon {
+    -fx-background-color: #3574F0;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 50%;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+}
+
+.plugin-name {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.plugin-desc {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+
+.plugin-meta {
+    -fx-text-fill: #697089;
+    -fx-font-size: 10px;
+}
+
+.plugin-installed {
+    -fx-text-fill: #8FCE8F;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* Plugin Buttons - IntelliJ Style */
+.plugin-btn-install {
+    -fx-background-color: #3574F0;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 4 16 4 16;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.plugin-btn-install:hover {
+    -fx-background-color: #4A8AFF;
+}
+
+.plugin-btn-installed {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8FCE8F;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 16 4 16;
+    -fx-font-size: 11px;
+    -fx-cursor: default;
+}
+
+.plugin-btn-homepage {
+    -fx-background-color: transparent;
+    -fx-text-fill: #56A8F5;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 16 4 16;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+.plugin-btn-homepage:hover {
+    -fx-border-color: #56A8F5;
+    -fx-text-fill: #87C5FF;
+}
+
+/* Split Pane */
+.plugin-split-pane {
+    -fx-background-color: #14161E;
+}
+.plugin-split-pane .split-pane-divider {
+    -fx-background-color: #14161E;
+    -fx-padding: 0 1 0 1;
+}
+.plugin-split-pane .split-pane-divider:hover {
+    -fx-background-color: #E8B450;
+}
+
+/* Detail Panel */
+.plugin-detail {
+    -fx-background-color: #191C26;
+}
+.plugin-detail-panel {
+    -fx-background-color: #191C26;
+}
+
+.plugin-detail-icon {
+    -fx-background-color: #3574F0;
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 50%;
+    -fx-min-width: 48;
+    -fx-min-height: 48;
+    -fx-max-width: 48;
+    -fx-max-height: 48;
+}
+
+.plugin-detail-name {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.plugin-detail-version {
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 11px;
+}
+
+.plugin-detail-meta {
+    -fx-text-fill: #697089;
+    -fx-font-size: 11px;
+}
+
+.plugin-detail-description {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #D8DBE6;
+    -fx-font-size: 12px;
+    -fx-background-radius: 8;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-wrap-text: true;
+}
+.plugin-detail-description .content {
+    -fx-background-color: #1F2230;
+}
+
+.plugin-detail-tags {
+    -fx-text-fill: #56A8F5;
+    -fx-font-size: 11px;
+    -fx-padding: 4 0 0 0;
+}
+
+.plugin-detail-text {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+
+/* Detail Tabs - IntelliJ Style */
+.plugin-detail-tabs {
+    -fx-background-color: transparent;
+    -fx-tab-min-height: 30;
+}
+.plugin-detail-tabs .tab-header-area {
+    -fx-padding: 0 0 4 0;
+}
+.plugin-detail-tabs .tab-header-background {
+    -fx-background-color: transparent;
+}
+.plugin-detail-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 4 14 4 14;
+    -fx-background-radius: 6 6 0 0;
+}
+.plugin-detail-tabs .tab .tab-label {
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+.plugin-detail-tabs .tab:hover .tab-label {
+    -fx-text-fill: #C9CDDC;
+}
+.plugin-detail-tabs .tab:selected {
+    -fx-background-color: #1F2230;
+}
+.plugin-detail-tabs .tab:selected .tab-label {
+    -fx-text-fill: #EDEFF6;
+}
+.plugin-detail-tabs .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 4 0 0 0;
+}
+
+/* Footer */
+.plugin-footer {
+    -fx-background-color: #14161E;
+    -fx-border-color: #262A3A transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.plugin-close-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #C9CDDC;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6 22 6 22;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.plugin-close-btn:hover {
+    -fx-border-color: #E8B450;
+    -fx-text-fill: #F2D9A6;
+}
+
+.plugin-manage-btn {
+    -fx-background-color: #E8B450;
+    -fx-text-fill: #191C26;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 6 22 6 22;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.plugin-manage-btn:hover {
+    -fx-background-color: #F2C875;
+}
+
+/* Plugin link in New Project dialog */
+.plugin-link {
+    -fx-background-color: transparent;
+    -fx-text-fill: #56A8F5;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.plugin-link:hover {
+    -fx-background-color: #1A1D30;
+    -fx-text-fill: #87C5FF;
+    -fx-border-color: #3574F0;
 }

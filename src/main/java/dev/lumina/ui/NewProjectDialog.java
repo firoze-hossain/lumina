@@ -1181,68 +1181,95 @@ public class NewProjectDialog {
         }
     }
 
+//    private void showPluginManager() {
+//        Stage dialog = new Stage();
+//        dialog.initOwner(stage);
+//        dialog.initModality(Modality.APPLICATION_MODAL);
+//        dialog.setTitle("Install Plugin");
+//
+//        BorderPane root = new BorderPane();
+//        root.getStyleClass().addAll("app-root", "new-project-dialog");
+//
+//        Label header = new Label("Install Plugin");
+//        header.getStyleClass().add("panel-header");
+//        header.setPadding(new Insets(14, 16, 8, 16));
+//        root.setTop(header);
+//
+//        ListView<String> list = new ListView<>(
+//                javafx.collections.FXCollections.observableArrayList(
+//                        "Go", "PHP", "Python", "Plugin DevKit", "Ruby", "Scala"));
+//        list.getSelectionModel().select(3);
+//        list.setStyle("-fx-background-color: #14161E;");
+//        root.setCenter(list);
+//
+//        Button install = new Button("Install");
+//        install.getStyleClass().add("dialog-primary");
+//        install.setOnAction(e -> {
+//            String plugin = list.getSelectionModel().getSelectedItem();
+//            Alert info = new Alert(Alert.AlertType.INFORMATION);
+//            info.initOwner(dialog);
+//            info.setTitle("Install Plugin");
+//            info.setHeaderText(plugin + " installation");
+//            info.setContentText("Plugin installation is not available yet.");
+//            info.getDialogPane().getStylesheets().add(
+//                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+//            info.showAndWait();
+//        });
+//
+//        Button manage = new Button("Manage plugins...");
+//        manage.getStyleClass().add("dialog-secondary");
+//        manage.setOnAction(e -> {
+//            Alert info = new Alert(Alert.AlertType.INFORMATION);
+//            info.initOwner(dialog);
+//            info.setTitle("Manage plugins");
+//            info.setHeaderText("Plugin manager coming soon");
+//            info.setContentText("Future versions will let you install and manage plugins "
+//                    + "from a marketplace.");
+//            info.getDialogPane().getStylesheets().add(
+//                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+//            info.showAndWait();
+//        });
+//
+//        Button close = new Button("Close");
+//        close.getStyleClass().add("dialog-secondary");
+//        close.setOnAction(e -> dialog.close());
+//
+//        HBox footer = new HBox(10, install, manage, close);
+//        footer.setPadding(new Insets(12, 16, 18, 16));
+//        footer.setAlignment(Pos.CENTER_RIGHT);
+//        root.setBottom(footer);
+//
+//        Scene scene = new Scene(root, 360, 420);
+//        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+//        dialog.setScene(scene);
+//        dialog.showAndWait();
+//    }
+
     private void showPluginManager() {
-        Stage dialog = new Stage();
-        dialog.initOwner(stage);
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Install Plugin");
-
-        BorderPane root = new BorderPane();
-        root.getStyleClass().addAll("app-root", "new-project-dialog");
-
-        Label header = new Label("Install Plugin");
-        header.getStyleClass().add("panel-header");
-        header.setPadding(new Insets(14, 16, 8, 16));
-        root.setTop(header);
-
-        ListView<String> list = new ListView<>(
-                javafx.collections.FXCollections.observableArrayList(
-                        "Go", "PHP", "Python", "Plugin DevKit", "Ruby", "Scala"));
-        list.getSelectionModel().select(3);
-        list.setStyle("-fx-background-color: #14161E;");
-        root.setCenter(list);
-
-        Button install = new Button("Install");
-        install.getStyleClass().add("dialog-primary");
-        install.setOnAction(e -> {
-            String plugin = list.getSelectionModel().getSelectedItem();
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.initOwner(dialog);
-            info.setTitle("Install Plugin");
-            info.setHeaderText(plugin + " installation");
-            info.setContentText("Plugin installation is not available yet.");
-            info.getDialogPane().getStylesheets().add(
+        try {
+            // Use the new professional PluginManagerDialog
+            PluginManagerDialog pm = new PluginManagerDialog(
+                    stage,
+                    () -> {
+                        // This callback runs when plugins are installed/uninstalled
+                        Platform.runLater(() -> {
+                            updateForGenerator(); // Refresh the generator list
+                        });
+                    }
+            );
+            pm.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Fallback: show error dialog
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.initOwner(stage);
+            alert.setTitle("Plugin Manager Error");
+            alert.setHeaderText("Could not open Plugin Manager");
+            alert.setContentText("Error: " + e.getMessage());
+            alert.getDialogPane().getStylesheets().add(
                     getClass().getResource("/css/lumina-dark.css").toExternalForm());
-            info.showAndWait();
-        });
-
-        Button manage = new Button("Manage plugins...");
-        manage.getStyleClass().add("dialog-secondary");
-        manage.setOnAction(e -> {
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.initOwner(dialog);
-            info.setTitle("Manage plugins");
-            info.setHeaderText("Plugin manager coming soon");
-            info.setContentText("Future versions will let you install and manage plugins "
-                    + "from a marketplace.");
-            info.getDialogPane().getStylesheets().add(
-                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
-            info.showAndWait();
-        });
-
-        Button close = new Button("Close");
-        close.getStyleClass().add("dialog-secondary");
-        close.setOnAction(e -> dialog.close());
-
-        HBox footer = new HBox(10, install, manage, close);
-        footer.setPadding(new Insets(12, 16, 18, 16));
-        footer.setAlignment(Pos.CENTER_RIGHT);
-        root.setBottom(footer);
-
-        Scene scene = new Scene(root, 360, 420);
-        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        dialog.setScene(scene);
-        dialog.showAndWait();
+            alert.showAndWait();
+        }
     }
 
     private void updateHints() {

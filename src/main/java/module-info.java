@@ -12,6 +12,8 @@ module dev.lumina {
     requires com.github.javaparser.core;
     requires com.github.javaparser.symbolsolver.core;
     requires com.google.common;
+    requires com.google.gson;
+    requires java.desktop;
 
     exports dev.lumina;
     exports dev.lumina.ui;
@@ -23,4 +25,5 @@ module dev.lumina {
     exports dev.lumina.git;
     exports dev.lumina.refactor;
     exports dev.lumina.util;
+    opens dev.lumina.plugin to com.google.gson;
 }
