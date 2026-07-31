@@ -1622,3 +1622,134 @@
 .invalidate-dialog .check-box:selected .mark {
     -fx-background-color: #E8B450;
 }
+
+/* ============================================================
+   Print Dialog
+   ============================================================ */
+
+.print-dialog {
+    -fx-background-color: #191C26;
+}
+
+.print-section-title {
+    -fx-text-fill: #A6ADC4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 0 4 0;
+}
+
+.print-sublabel {
+    -fx-text-fill: #697089;
+    -fx-font-size: 11px;
+    -fx-padding: 0 0 2 0;
+}
+
+.print-label {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+    -fx-min-width: 70;
+}
+
+.print-dialog .radio-button {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.print-dialog .radio-button .radio {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+}
+.print-dialog .radio-button:selected .radio {
+    -fx-border-color: #E8B450;
+}
+.print-dialog .radio-button:selected .dot {
+    -fx-background-color: #E8B450;
+}
+
+.print-dialog .check-box {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.print-dialog .check-box .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.print-dialog .check-box:selected .box {
+    -fx-background-color: #3A3122;
+    -fx-border-color: #E8B450;
+}
+.print-dialog .check-box:selected .mark {
+    -fx-background-color: #E8B450;
+}
+
+/* Spinner in print dialog */
+.print-spinner {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.print-spinner .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #D8DBE6;
+    -fx-padding: 2 6 2 6;
+    -fx-font-size: 12px;
+}
+.print-spinner .increment-arrow-button,
+.print-spinner .decrement-arrow-button {
+    -fx-background-color: #1F2230;
+    -fx-border-color: transparent;
+}
+.print-spinner .increment-arrow-button:hover,
+.print-spinner .decrement-arrow-button:hover {
+    -fx-background-color: #2C3042;
+}
+.print-spinner .increment-arrow,
+.print-spinner .decrement-arrow {
+    -fx-background-color: #848BA3;
+}
+
+/* Override combo box in print dialog */
+.print-dialog .settings-combo {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: #D8DBE6;
+}
+.print-dialog .settings-combo .list-cell {
+    -fx-text-fill: #D8DBE6;
+    -fx-background-color: transparent;
+}
+.print-dialog .settings-combo .arrow {
+    -fx-background-color: #848BA3;
+}
+.print-dialog .settings-combo-popup .list-view {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.print-dialog .settings-combo-popup .list-cell {
+    -fx-text-fill: #C9CDDC;
+    -fx-padding: 6 12 6 12;
+}
+.print-dialog .settings-combo-popup .list-cell:hover,
+.print-dialog .settings-combo-popup .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+/* Override text field in print dialog */
+.print-dialog .text-field {
+    -fx-background-color: #1F2230;
+    -fx-text-fill: #D8DBE6;
+    -fx-prompt-text-fill: #565D75;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-padding: 4 10 4 10;
+}

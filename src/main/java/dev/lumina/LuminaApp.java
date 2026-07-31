@@ -344,7 +344,13 @@ public class LuminaApp extends Application {
                 item("Save File as Template…", null, e -> showInfo("Save File as Template", "File templates are not available yet.")),
                 new SeparatorMenuItem(),
                 item("Export", null, e -> showInfo("Export", "Export is not available yet.")),
-                item("Print…", null, e -> showInfo("Print", "Printing is not available yet.")),
+                //item("Print…", null, e -> showInfo("Print", "Printing is not available yet.")),
+                // In buildMenuBar(), find the Print item:
+                item("Print…", null, e -> {
+                    EditorTab tab = currentEditor();
+                    Path filePath = tab != null ? tab.getPath() : null;
+                    new PrintDialog(stage, filePath).show();
+                }),
                 new SeparatorMenuItem(),
                 powerSave,
                 new SeparatorMenuItem(),
