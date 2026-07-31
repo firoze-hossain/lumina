@@ -303,7 +303,15 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(),
 //                item("Settings…", "Shortcut+Alt+S", e -> showInfo("Settings", "IDE settings are not available yet.")),
                 item("Settings…", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
-                item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
+           //     item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
+                // In buildMenuBar(), find the Project Structure item:
+                item("Project Structure…", "Shortcut+Alt+Shift+S", e -> {
+                    if (projectRoot == null) {
+                        showInfo("Project Structure", "Open a project first to see its structure.");
+                        return;
+                    }
+                    new ProjectStructureDialog(stage, projectRoot.getFileName().toString(), projectRoot).show();
+                }),
                 fileProperties,
                 localHistory,
                 new SeparatorMenuItem(),

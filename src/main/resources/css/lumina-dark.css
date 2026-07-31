@@ -1375,3 +1375,198 @@
 .remote-page .radio-button:selected .dot {
     -fx-background-color: #E8B450;
 }
+
+/* ============================================================
+   Project Structure Dialog
+   ============================================================ */
+
+.project-structure-dialog {
+    -fx-background-color: #191C26;
+}
+
+.ps-tree {
+    -fx-background-color: #14161E;
+    -fx-background-insets: 0;
+    -fx-padding: 8 0 8 0;
+}
+.ps-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 16 4 16;
+    -fx-background-radius: 0;
+    -fx-font-size: 12px;
+}
+.ps-tree .tree-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.ps-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.ps-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+.ps-tree .tree-cell:selected .arrow {
+    -fx-background-color: #E8B450;
+}
+.ps-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2 6 2 0;
+}
+.ps-tree .tree-cell .label {
+    -fx-text-fill: inherit;
+}
+
+.ps-page {
+    -fx-background-color: #191C26;
+}
+.ps-page-title {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+.ps-subtitle {
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 12px;
+    -fx-wrap-text: true;
+}
+.ps-module-title {
+    -fx-text-fill: #D8DBE6;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.ps-section-title {
+    -fx-text-fill: #A6ADC4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 0 4 0;
+}
+.ps-label {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.ps-hint {
+    -fx-text-fill: #697089;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+.ps-empty {
+    -fx-text-fill: #565D75;
+    -fx-font-size: 13px;
+}
+.ps-placeholder {
+    -fx-text-fill: #697089;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+.ps-folder-value {
+    -fx-text-fill: #8FCE8F;
+    -fx-font-size: 12px;
+}
+.ps-add-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 18px;
+    -fx-padding: 0 6 0 6;
+    -fx-cursor: hand;
+}
+.ps-add-button:hover {
+    -fx-text-fill: #E8B450;
+}
+
+.ps-scroll {
+    -fx-background-color: #191C26;
+    -fx-background: #191C26;
+}
+.ps-scroll > .viewport {
+    -fx-background-color: #191C26;
+}
+.ps-scroll .scroll-bar:horizontal {
+    -fx-opacity: 0;
+}
+
+.ps-file-tree {
+    -fx-background-color: #14161E;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.ps-file-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 3 8 3 8;
+    -fx-font-size: 12px;
+}
+.ps-file-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.ps-file-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+.ps-file-tree .tree-cell:selected .arrow {
+    -fx-background-color: #E8B450;
+}
+
+/* Radio buttons in PS */
+.ps-page .radio-button {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.ps-page .radio-button .radio {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+}
+.ps-page .radio-button:selected .radio {
+    -fx-border-color: #E8B450;
+}
+.ps-page .radio-button:selected .dot {
+    -fx-background-color: #E8B450;
+}
+
+/* Checkboxes in PS */
+.ps-page .check-box {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.ps-page .check-box .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.ps-page .check-box:selected .box {
+    -fx-background-color: #3A3122;
+    -fx-border-color: #E8B450;
+}
+.ps-page .check-box:selected .mark {
+    -fx-background-color: #E8B450;
+}
+
+/* ListView in PS */
+.ps-page .list-view {
+    -fx-background-color: #14161E;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.ps-page .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 10 4 10;
+    -fx-font-size: 12px;
+}
+.ps-page .list-view .list-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.ps-page .list-view .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+/* GridPane labels in PS */
+.ps-page .grid-pane .label {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
