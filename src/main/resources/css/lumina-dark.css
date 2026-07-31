@@ -1026,3 +1026,188 @@
     -fx-padding: 6 18 6 18;
 }
 .primary-button:hover { -fx-background-color: #F0C36A; }
+
+/* ============================================================
+   Settings Dialog — IntelliJ-style
+   ============================================================ */
+
+.settings-dialog {
+    -fx-background-color: #191C26;
+}
+
+.settings-tree {
+    -fx-background-color: #14161E;
+    -fx-background-insets: 0;
+    -fx-padding: 8 0 8 0;
+}
+.settings-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 16 4 16;
+    -fx-background-radius: 0;
+    -fx-font-size: 12px;
+}
+.settings-tree .tree-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.settings-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.settings-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+.settings-tree .tree-cell:selected .arrow {
+    -fx-background-color: #E8B450;
+}
+.settings-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2 6 2 0;
+}
+.settings-tree .tree-cell .label {
+    -fx-text-fill: inherit;
+}
+
+.settings-page {
+    -fx-background-color: #191C26;
+}
+.settings-page-title {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+.settings-section {
+    -fx-text-fill: #A6ADC4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 12 0 4 0;
+    -fx-border-color: transparent transparent #2C3042 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.settings-label {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.settings-hint {
+    -fx-text-fill: #697089;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+.settings-value {
+    -fx-text-fill: #E8B450;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+.settings-check {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.settings-check .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.settings-check:selected .box {
+    -fx-background-color: #3A3122;
+    -fx-border-color: #E8B450;
+}
+.settings-check:selected .mark {
+    -fx-background-color: #E8B450;
+}
+.settings-combo {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: #D8DBE6;
+    -fx-pref-width: 260;
+}
+.settings-combo .list-cell {
+    -fx-text-fill: #D8DBE6;
+    -fx-background-color: transparent;
+}
+.settings-combo .arrow {
+    -fx-background-color: #848BA3;
+}
+.settings-combo-popup .list-view {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.settings-combo-popup .list-cell {
+    -fx-text-fill: #C9CDDC;
+    -fx-padding: 6 12 6 12;
+}
+.settings-combo-popup .list-cell:hover,
+.settings-combo-popup .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+
+.settings-scroll {
+    -fx-background-color: #191C26;
+    -fx-background: #191C26;
+}
+.settings-scroll > .viewport {
+    -fx-background-color: #191C26;
+}
+.settings-scroll .scroll-bar:horizontal {
+    -fx-opacity: 0;
+}
+
+.settings-placeholder {
+    -fx-text-fill: #697089;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+/* Spinner in settings */
+.settings-page .spinner {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.settings-page .spinner .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #D8DBE6;
+    -fx-padding: 2 6 2 6;
+    -fx-font-size: 12px;
+}
+.settings-page .spinner .increment-arrow-button,
+.settings-page .spinner .decrement-arrow-button {
+    -fx-background-color: #1F2230;
+    -fx-border-color: transparent;
+}
+.settings-page .spinner .increment-arrow-button:hover,
+.settings-page .spinner .decrement-arrow-button:hover {
+    -fx-background-color: #2C3042;
+}
+.settings-page .spinner .increment-arrow,
+.settings-page .spinner .decrement-arrow {
+    -fx-background-color: #848BA3;
+}
+
+/* Slider in settings */
+.settings-page .slider .track {
+    -fx-background-color: #2C3042;
+    -fx-background-radius: 4;
+}
+.settings-page .slider .thumb {
+    -fx-background-color: #E8B450;
+    -fx-background-radius: 50%;
+    -fx-pref-width: 14;
+    -fx-pref-height: 14;
+}
+.settings-page .slider .thumb:hover {
+    -fx-background-color: #F2C875;
+}
+.settings-page .slider .axis {
+    -fx-text-fill: #697089;
+    -fx-font-size: 10px;
+}
+.settings-page .slider .axis-tick-mark,
+.settings-page .slider .axis-minor-tick-mark {
+    -fx-stroke: #2C3042;
+}
