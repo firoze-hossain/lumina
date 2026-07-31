@@ -318,7 +318,26 @@ public class LuminaApp extends Application {
                 item("Save All", "Shortcut+S", e -> saveAllEditors()),
                 item("Reload All from Disk", "Shortcut+Alt+Y", e -> reloadAllFromDisk()),
                 item("Repair IDE", null, e -> showInfo("Repair IDE", "The project indexes and tool windows are healthy.")),
-                item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
+              //  item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
+                // In buildMenuBar(), find the Invalidate Caches item:
+                item("Invalidate Caches…", null, e -> {
+                    new InvalidateCachesDialog(stage, () -> {
+                        // Restart logic - close and reopen the IDE
+                        Platform.runLater(() -> {
+                            try {
+                                // Save current state
+                                Settings.put(Settings.LAST_PROJECT, projectRoot != null ? projectRoot.toString() : null);
+                                // Restart the application
+                                Stage currentStage = (Stage) stage.getScene().getWindow();
+                                currentStage.close();
+                                // Re-launch
+                                new LuminaApp().start(new Stage());
+                            } catch (Exception ex) {
+                                showInfo("Restart", "Please restart Lumina manually to complete cache invalidation.");
+                            }
+                        });
+                    }).show();
+                }),
                 new SeparatorMenuItem(),
                 manageSettings,
                 newProjectsSetup,

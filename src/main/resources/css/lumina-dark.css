@@ -1570,3 +1570,55 @@
     -fx-text-fill: #B9BECF;
     -fx-font-size: 12px;
 }
+
+/* ============================================================
+   Invalidate Caches Dialog
+   ============================================================ */
+
+.invalidate-dialog {
+    -fx-background-color: #191C26;
+}
+
+.invalidate-title {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.invalidate-description {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+.invalidate-optional {
+    -fx-text-fill: #A6ADC4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 0 2 0;
+}
+
+.invalidate-hint {
+    -fx-text-fill: #697089;
+    -fx-font-size: 11px;
+    -fx-wrap-text: true;
+}
+
+/* Override check box styles for this dialog */
+.invalidate-dialog .check-box {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.invalidate-dialog .check-box .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.invalidate-dialog .check-box:selected .box {
+    -fx-background-color: #3A3122;
+    -fx-border-color: #E8B450;
+}
+.invalidate-dialog .check-box:selected .mark {
+    -fx-background-color: #E8B450;
+}
