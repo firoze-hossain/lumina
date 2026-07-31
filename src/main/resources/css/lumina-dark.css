@@ -1211,3 +1211,167 @@
 .settings-page .slider .axis-minor-tick-mark {
     -fx-stroke: #2C3042;
 }
+
+/* ============================================================
+   Remote Development Dialog
+   ============================================================ */
+
+.remote-dialog {
+    -fx-background-color: #191C26;
+}
+
+.remote-tree {
+    -fx-background-color: #14161E;
+    -fx-background-insets: 0;
+    -fx-padding: 8 0 8 0;
+}
+.remote-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 16 4 16;
+    -fx-background-radius: 0;
+    -fx-font-size: 12px;
+}
+.remote-tree .tree-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.remote-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.remote-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+.remote-tree .tree-cell:selected .arrow {
+    -fx-background-color: #E8B450;
+}
+.remote-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2 6 2 0;
+}
+.remote-tree .tree-cell .label {
+    -fx-text-fill: inherit;
+}
+.remote-tree .tree-cell .tree-disclosure-node .arrow {
+    -fx-background-color: #697089;
+}
+.remote-tree .tree-cell:selected .tree-disclosure-node .arrow {
+    -fx-background-color: #E8B450;
+}
+
+.remote-page {
+    -fx-background-color: #191C26;
+}
+.remote-page-title {
+    -fx-text-fill: #EDEFF6;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+.remote-section-title {
+    -fx-text-fill: #A6ADC4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 0 4 0;
+}
+
+.remote-scroll {
+    -fx-background-color: #191C26;
+    -fx-background: #191C26;
+}
+.remote-scroll > .viewport {
+    -fx-background-color: #191C26;
+}
+.remote-scroll .scroll-bar:horizontal {
+    -fx-opacity: 0;
+}
+
+.remote-placeholder {
+    -fx-text-fill: #697089;
+    -fx-font-size: 13px;
+    -fx-wrap-text: true;
+}
+
+/* Remote cards (like IntelliJ) */
+.remote-card {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 10;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 10;
+    -fx-padding: 16 20 16 20;
+    -fx-cursor: hand;
+}
+.remote-card:hover {
+    -fx-border-color: #E8B450;
+    -fx-background-color: #2A2416;
+}
+.remote-card-icon {
+    -fx-text-fill: #E8B450;
+    -fx-font-size: 24px;
+}
+.remote-card-label {
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 12px;
+}
+
+/* Remote info box */
+.remote-info-box {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 8;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 8;
+    -fx-padding: 12 18 12 18;
+}
+.remote-info-title {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 13px;
+}
+
+/* Remote error */
+.remote-error {
+    -fx-text-fill: #E88A8A;
+    -fx-font-size: 12px;
+    -fx-padding: 4 0 0 0;
+}
+
+/* Remote beta */
+.remote-beta {
+    -fx-text-fill: #697089;
+    -fx-font-size: 12px;
+}
+.remote-link {
+    -fx-text-fill: #56A8F5;
+    -fx-font-size: 12px;
+}
+.remote-link:hover {
+    -fx-text-fill: #87C5FF;
+    -fx-underline: true;
+}
+
+/* Remote labels */
+.remote-label {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.remote-label-idea {
+    -fx-text-fill: #D8DBE6;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 0 0 0;
+}
+
+/* Radio buttons in remote dialog */
+.remote-page .radio-button {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.remote-page .radio-button .radio {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+}
+.remote-page .radio-button:selected .radio {
+    -fx-border-color: #E8B450;
+}
+.remote-page .radio-button:selected .dot {
+    -fx-background-color: #E8B450;
+}

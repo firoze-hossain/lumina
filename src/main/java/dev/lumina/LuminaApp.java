@@ -297,7 +297,9 @@ public class LuminaApp extends Application {
                 recentProjects,
                 item("Close Project", null, e -> closeProject()),
                 new SeparatorMenuItem(),
-                item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
+               // item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
+                // In buildMenuBar(), find the Remote Development item and change it:
+                item("Remote Development…", null, e -> new RemoteDevelopmentDialog(stage).show()),
                 new SeparatorMenuItem(),
 //                item("Settings…", "Shortcut+Alt+S", e -> showInfo("Settings", "IDE settings are not available yet.")),
                 item("Settings…", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
