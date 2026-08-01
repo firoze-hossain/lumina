@@ -1,15 +1,10 @@
 package dev.lumina.ui;
 
-import dev.lumina.util.Settings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -82,9 +77,27 @@ public class SettingsDialog {
 
         // Appearance & Behavior
         TreeItem<String> appearance = new TreeItem<>("Appearance & Behavior");
+
         TreeItem<String> appearanceSub = new TreeItem<>("Appearance");
         TreeItem<String> menus = new TreeItem<>("Menus and Toolbars");
+
+        // System Settings with all sub-pages
         TreeItem<String> system = new TreeItem<>("System Settings");
+        TreeItem<String> dataSharing = new TreeItem<>("Data Sharing");
+        TreeItem<String> dateFormats = new TreeItem<>("Date Formats");
+        TreeItem<String> httpProxy = new TreeItem<>("HTTP Proxy");
+        TreeItem<String> languageRegion = new TreeItem<>("Language and Region");
+        TreeItem<String> passwords = new TreeItem<>("Passwords");
+        TreeItem<String> processElevation = new TreeItem<>("Process Elevation");
+        TreeItem<String> serverCertificates = new TreeItem<>("Server Certificates");
+        TreeItem<String> trustedHosts = new TreeItem<>("Trusted Hosts");
+        TreeItem<String> updates = new TreeItem<>("Updates");
+        system.getChildren().addAll(
+                dataSharing, dateFormats, httpProxy, languageRegion,
+                passwords, processElevation, serverCertificates,
+                trustedHosts, updates
+        );
+
         TreeItem<String> fileColors = new TreeItem<>("File Colors");
         TreeItem<String> scopes = new TreeItem<>("Scopes");
         TreeItem<String> notifications = new TreeItem<>("Notifications");
@@ -94,9 +107,12 @@ public class SettingsDialog {
         TreeItem<String> trustedLocations = new TreeItem<>("Trusted Locations");
         TreeItem<String> pathVariables = new TreeItem<>("Path Variables");
         TreeItem<String> presentationAssistant = new TreeItem<>("Presentation Assistant");
-        appearance.getChildren().addAll(appearanceSub, menus, system, fileColors, scopes,
+
+        appearance.getChildren().addAll(
+                appearanceSub, menus, system, fileColors, scopes,
                 notifications, dataEditor, quickLists, requiredPlugins,
-                trustedLocations, pathVariables, presentationAssistant);
+                trustedLocations, pathVariables, presentationAssistant
+        );
 
         // Keymap
         TreeItem<String> keymap = new TreeItem<>("Keymap");
@@ -453,18 +469,21 @@ public class SettingsDialog {
             return label;
         }
 
-        /** Show a page based on the selected tree item. */
+        /**
+         * Show a page based on the selected tree item.
+         */
         public void showPage(String pageName) {
-            // For now, we only have the Appearance page fully built.
-            // Other pages show a placeholder.
             getChildren().clear();
 
             if ("Appearance".equals(pageName)) {
-                // Rebuild the appearance page (it was removed when we cleared)
                 buildAppearancePage();
             } else if ("Menus and Toolbars".equals(pageName)) {
                 buildMenusToolbarsPage();
-            }  else {
+            } else if ("System Settings".equals(pageName)) {
+                buildSystemSettingsPage();
+            } else if (isSystemSettingsSubPage(pageName)) {
+                buildSystemSettingsSubPage(pageName);
+            } else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
                 title.getStyleClass().add("settings-page-title");
@@ -485,6 +504,10 @@ public class SettingsDialog {
                 getChildren().addAll(scroll);
             }
         }
+
+        /**
+         * Builds the Menus and Toolbars page.
+         */
         private void buildMenusToolbarsPage() {
             SettingsMenusToolbarsPage page = new SettingsMenusToolbarsPage();
             ScrollPane scroll = new ScrollPane(page);
@@ -494,14 +517,63 @@ public class SettingsDialog {
             VBox.setVgrow(scroll, Priority.ALWAYS);
             getChildren().addAll(scroll);
         }
-        /** Load saved settings from disk. */
+
+        /**
+         * Helper method to check if a page is a System Settings sub-page.
+         */
+        private boolean isSystemSettingsSubPage(String pageName) {
+            return List.of(
+                    "Data Sharing",
+                    "Date Formats",
+                    "HTTP Proxy",
+                    "Language and Region",
+                    "Passwords",
+                    "Process Elevation",
+                    "Server Certificates",
+                    "Trusted Hosts",
+                    "Updates"
+            ).contains(pageName);
+        }
+
+        /**
+         * Build the System Settings page (shows Data Sharing by default).
+         */
+        private void buildSystemSettingsPage() {
+            SettingsSystemPage page = new SettingsSystemPage();
+            ScrollPane scroll = new ScrollPane(page);
+            scroll.setFitToWidth(true);
+            scroll.getStyleClass().add("settings-scroll");
+            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            VBox.setVgrow(scroll, Priority.ALWAYS);
+            getChildren().addAll(scroll);
+        }
+
+        /**
+         * Build a specific System Settings sub-page.
+         */
+        private void buildSystemSettingsSubPage(String pageName) {
+            SettingsSystemPage page = new SettingsSystemPage();
+            page.showSubPage(pageName);
+            ScrollPane scroll = new ScrollPane(page);
+            scroll.setFitToWidth(true);
+            scroll.getStyleClass().add("settings-scroll");
+            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            VBox.setVgrow(scroll, Priority.ALWAYS);
+            getChildren().addAll(scroll);
+        }
+
+        /**
+         * Load saved settings from disk.
+         */
         private void load() {
             // Read from Settings.properties if you want persistence
             // For now, use defaults that match the screenshots
             // (all checkboxes off by default, matching the screenshots)
         }
 
-        /** Save settings to disk. */
+        /**
+         * Save settings to disk.
+         */
         public void save() {
             // Persist settings using dev.lumina.util.Settings
             // Example:

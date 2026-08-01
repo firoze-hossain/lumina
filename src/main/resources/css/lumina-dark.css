@@ -2140,3 +2140,52 @@
     -fx-background-color: #3A3122;
     -fx-text-fill: #F2D9A6;
 }
+/* ============================================================
+   Settings — System Settings pages
+   ============================================================ */
+
+.settings-radio {
+    -fx-text-fill: #B9BECF;
+    -fx-font-size: 12px;
+}
+.settings-radio .radio {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+}
+.settings-radio:selected .radio {
+    -fx-border-color: #E8B450;
+}
+.settings-radio:selected .dot {
+    -fx-background-color: #E8B450;
+}
+
+.settings-link {
+    -fx-text-fill: #56A8F5;
+    -fx-font-size: 12px;
+}
+.settings-link:hover {
+    -fx-text-fill: #87C5FF;
+    -fx-underline: true;
+}
+
+.settings-list {
+    -fx-background-color: #14161F;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.settings-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 10 4 10;
+    -fx-font-size: 12px;
+}
+.settings-list .list-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.settings-list .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
