@@ -483,7 +483,27 @@ public class SettingsDialog {
                 buildSystemSettingsPage();
             } else if (isSystemSettingsSubPage(pageName)) {
                 buildSystemSettingsSubPage(pageName);
-            } else {
+            }
+            else if ("File Colors".equals(pageName)) {
+                buildFileColorsPage();
+            } else if ("Scopes".equals(pageName)) {
+                buildScopesPage();
+            } else if ("Notifications".equals(pageName)) {
+                buildNotificationsPage();
+            } else if ("Data Editor and Viewer".equals(pageName)) {
+                buildDataEditorPage();
+            } else if ("Quick Lists".equals(pageName)) {
+                buildQuickListsPage();
+            } else if ("Required Plugins".equals(pageName)) {
+                buildRequiredPluginsPage();
+            } else if ("Trusted Locations".equals(pageName)) {
+                buildTrustedLocationsPage();
+            } else if ("Path Variables".equals(pageName)) {
+                buildPathVariablesPage();
+            } else if ("Presentation Assistant".equals(pageName)) {
+                buildPresentationAssistantPage();
+            }
+            else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
                 title.getStyleClass().add("settings-page-title");
@@ -517,7 +537,60 @@ public class SettingsDialog {
             VBox.setVgrow(scroll, Priority.ALWAYS);
             getChildren().addAll(scroll);
         }
+        private void buildFileColorsPage() {
+            SettingsFileColorsPage page = new SettingsFileColorsPage();
+            wrapInScroll(page);
+        }
 
+        private void buildScopesPage() {
+            SettingsScopesPage page = new SettingsScopesPage();
+            wrapInScroll(page);
+        }
+
+        private void buildNotificationsPage() {
+            SettingsNotificationsPage page = new SettingsNotificationsPage();
+            wrapInScroll(page);
+        }
+
+        private void buildDataEditorPage() {
+            SettingsDataEditorPage page = new SettingsDataEditorPage();
+            wrapInScroll(page);
+        }
+
+        private void buildQuickListsPage() {
+            SettingsQuickListsPage page = new SettingsQuickListsPage();
+            wrapInScroll(page);
+        }
+
+        private void buildRequiredPluginsPage() {
+            SettingsRequiredPluginsPage page = new SettingsRequiredPluginsPage();
+            wrapInScroll(page);
+        }
+
+        private void buildTrustedLocationsPage() {
+            SettingsTrustedLocationsPage page = new SettingsTrustedLocationsPage();
+            wrapInScroll(page);
+        }
+
+        private void buildPathVariablesPage() {
+            SettingsPathVariablesPage page = new SettingsPathVariablesPage();
+            wrapInScroll(page);
+        }
+
+        private void buildPresentationAssistantPage() {
+            SettingsPresentationAssistantPage page = new SettingsPresentationAssistantPage();
+            wrapInScroll(page);
+        }
+
+        // 🔴 ADD: Helper method to wrap in scroll pane
+        private void wrapInScroll(VBox page) {
+            ScrollPane scroll = new ScrollPane(page);
+            scroll.setFitToWidth(true);
+            scroll.getStyleClass().add("settings-scroll");
+            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            VBox.setVgrow(scroll, Priority.ALWAYS);
+            getChildren().addAll(scroll);
+        }
         /**
          * Helper method to check if a page is a System Settings sub-page.
          */
