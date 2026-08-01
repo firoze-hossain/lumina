@@ -124,7 +124,28 @@ public class SettingsDialog {
 
         // Editor
         TreeItem<String> editor = new TreeItem<>("Editor");
-
+        editor.getChildren().addAll(
+                new TreeItem<>("General"),
+                new TreeItem<>("Code Editing"),
+                new TreeItem<>("Font"),
+                new TreeItem<>("Color Scheme"),
+                new TreeItem<>("Code Style"),
+                new TreeItem<>("Inspections"),
+                new TreeItem<>("File and Code Templates"),
+                new TreeItem<>("File Encodings"),
+                new TreeItem<>("Live Templates"),
+                new TreeItem<>("File Types"),
+                new TreeItem<>("Copyright"),
+                new TreeItem<>("Inlay Hints"),
+                new TreeItem<>("Duplicates"),
+                new TreeItem<>("Emmet"),
+                new TreeItem<>("Intentions"),
+                new TreeItem<>("Language Injections"),
+                new TreeItem<>("Natural Languages"),
+                new TreeItem<>("Reader Mode"),
+                new TreeItem<>("TextMate Bundles"),
+                new TreeItem<>("TODO")
+        );
         // Plugins
         TreeItem<String> plugins = new TreeItem<>("Plugins");
 
@@ -519,6 +540,8 @@ public class SettingsDialog {
                     pageName.equals("Plugins") ||
                     pageName.equals("Other")) {
                 buildKeymapPage();
+            }else if ("Editor".equals(pageName)) {
+                buildEditorPage();
             }
             else {
                 // Placeholder for other pages
@@ -541,11 +564,16 @@ public class SettingsDialog {
                 getChildren().addAll(scroll);
             }
         }
+        private void buildEditorPage() {
+            SettingsEditorPage page = new SettingsEditorPage();
+            wrapInScroll(page);
+        }
         // 🔴 ADD this method after buildPresentationAssistantPage()
         private void buildKeymapPage() {
             SettingsKeymapPage page = new SettingsKeymapPage();
             wrapInScroll(page);
         }
+
         /**
          * Builds the Menus and Toolbars page.
          */
@@ -604,7 +632,15 @@ public class SettingsDialog {
         }
 
         // 🔴 ADD: Helper method to wrap in scroll pane
-        private void wrapInScroll(VBox page) {
+//        private void wrapInScroll(VBox page) {
+//            ScrollPane scroll = new ScrollPane(page);
+//            scroll.setFitToWidth(true);
+//            scroll.getStyleClass().add("settings-scroll");
+//            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+//            VBox.setVgrow(scroll, Priority.ALWAYS);
+//            getChildren().addAll(scroll);
+//        }
+        private void wrapInScroll(javafx.scene.Node page) {
             ScrollPane scroll = new ScrollPane(page);
             scroll.setFitToWidth(true);
             scroll.getStyleClass().add("settings-scroll");
