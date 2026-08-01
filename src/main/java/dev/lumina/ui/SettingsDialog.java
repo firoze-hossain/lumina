@@ -116,11 +116,11 @@ public class SettingsDialog {
 
         // Keymap
         TreeItem<String> keymap = new TreeItem<>("Keymap");
-        keymap.getChildren().addAll(
-                new TreeItem<>("Editor"),
-                new TreeItem<>("Plugins"),
-                new TreeItem<>("Version Control")
-        );
+//        keymap.getChildren().addAll(
+//                new TreeItem<>("Editor"),
+//                new TreeItem<>("Plugins"),
+//                new TreeItem<>("Version Control")
+//        );
 
         // Editor
         TreeItem<String> editor = new TreeItem<>("Editor");
@@ -503,6 +503,23 @@ public class SettingsDialog {
             } else if ("Presentation Assistant".equals(pageName)) {
                 buildPresentationAssistantPage();
             }
+            else if ("Keymap".equals(pageName) ||
+                    pageName.equals("Editor Actions") ||
+                    pageName.equals("Main Menu") ||
+                    pageName.equals("Tool Windows") ||
+                    pageName.equals("External Tools") ||
+                    pageName.equals("External Build Systems") ||
+                    pageName.equals("Version Control Systems") ||
+                    pageName.equals("Debugger Actions") ||
+                    pageName.equals("Remote External Tools") ||
+                    pageName.equals("Database") ||
+                    pageName.equals("Macros") ||
+                    pageName.equals("Intentions") ||
+                    pageName.equals("Quick Lists") ||
+                    pageName.equals("Plugins") ||
+                    pageName.equals("Other")) {
+                buildKeymapPage();
+            }
             else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
@@ -524,7 +541,11 @@ public class SettingsDialog {
                 getChildren().addAll(scroll);
             }
         }
-
+        // 🔴 ADD this method after buildPresentationAssistantPage()
+        private void buildKeymapPage() {
+            SettingsKeymapPage page = new SettingsKeymapPage();
+            wrapInScroll(page);
+        }
         /**
          * Builds the Menus and Toolbars page.
          */
