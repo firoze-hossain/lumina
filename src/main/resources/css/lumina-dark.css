@@ -2079,3 +2079,64 @@
     -fx-text-fill: #87C5FF;
     -fx-border-color: #3574F0;
 }
+/* ============================================================
+   Settings — Menus and Toolbars page
+   ============================================================ */
+
+.settings-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 3 8 3 12;
+    -fx-background-radius: 0;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Inter", sans-serif;
+}
+.settings-tree .tree-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.settings-tree .tree-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}
+.settings-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+.settings-tree .tree-cell:selected .arrow {
+    -fx-background-color: #E8B450;
+}
+.settings-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2 4 2 0;
+}
+.settings-tree .tree-cell .label {
+    -fx-text-fill: inherit;
+}
+.settings-tree .tree-cell:selected .label {
+    -fx-text-fill: #F2D9A6;
+}
+
+/* Separator in tree */
+.settings-tree .tree-cell:empty {
+    -fx-text-fill: #697089;
+    -fx-font-size: 10px;
+}
+
+/* Action list for "Add..." dialog */
+.action-list {
+    -fx-background-color: #14161F;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.action-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 4 10 4 10;
+    -fx-font-size: 12px;
+}
+.action-list .list-cell:hover {
+    -fx-background-color: #1F2230;
+}
+.action-list .list-cell:selected {
+    -fx-background-color: #3A3122;
+    -fx-text-fill: #F2D9A6;
+}

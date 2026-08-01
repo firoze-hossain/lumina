@@ -462,7 +462,9 @@ public class SettingsDialog {
             if ("Appearance".equals(pageName)) {
                 // Rebuild the appearance page (it was removed when we cleared)
                 buildAppearancePage();
-            } else {
+            } else if ("Menus and Toolbars".equals(pageName)) {
+                buildMenusToolbarsPage();
+            }  else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
                 title.getStyleClass().add("settings-page-title");
@@ -483,7 +485,15 @@ public class SettingsDialog {
                 getChildren().addAll(scroll);
             }
         }
-
+        private void buildMenusToolbarsPage() {
+            SettingsMenusToolbarsPage page = new SettingsMenusToolbarsPage();
+            ScrollPane scroll = new ScrollPane(page);
+            scroll.setFitToWidth(true);
+            scroll.getStyleClass().add("settings-scroll");
+            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            VBox.setVgrow(scroll, Priority.ALWAYS);
+            getChildren().addAll(scroll);
+        }
         /** Load saved settings from disk. */
         private void load() {
             // Read from Settings.properties if you want persistence
