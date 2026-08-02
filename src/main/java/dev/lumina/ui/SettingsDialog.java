@@ -124,8 +124,23 @@ public class SettingsDialog {
 
         // Editor
         TreeItem<String> editor = new TreeItem<>("Editor");
+        TreeItem<String> general = new TreeItem<>("General");
+        general.getChildren().addAll(
+                new TreeItem<>("Auto Import"),
+                new TreeItem<>("Appearance"),
+                new TreeItem<>("Breadcrumbs"),
+                new TreeItem<>("Code Completion"),
+                new TreeItem<>("Code Folding"),
+                new TreeItem<>("Console"),
+                new TreeItem<>("Editor Tabs"),
+                new TreeItem<>("Gutter Icons"),
+                new TreeItem<>("Inline Completion"),
+                new TreeItem<>("Postfix Completion"),
+                new TreeItem<>("Smart Keys"),
+                new TreeItem<>("Sticky Lines")
+        );
         editor.getChildren().addAll(
-                new TreeItem<>("General"),
+                general,
                 new TreeItem<>("Code Editing"),
                 new TreeItem<>("Font"),
                 new TreeItem<>("Color Scheme"),
@@ -540,8 +555,29 @@ public class SettingsDialog {
                     pageName.equals("Plugins") ||
                     pageName.equals("Other")) {
                 buildKeymapPage();
-            }else if ("Editor".equals(pageName)) {
-                buildEditorPage();
+            }else if ("Editor".equals(pageName) ||
+                    pageName.equals("General") ||
+                    pageName.equals("Code Editing") ||
+                    pageName.equals("Font") ||
+                    pageName.equals("Color Scheme") ||
+                    pageName.equals("Code Style") ||
+                    pageName.equals("Inspections") ||
+                    pageName.equals("File and Code Templates") ||
+                    pageName.equals("File Encodings") ||
+                    pageName.equals("Live Templates") ||
+                    pageName.equals("File Types") ||
+                    pageName.equals("Copyright") ||
+                    pageName.equals("Inlay Hints") ||
+                    pageName.equals("Duplicates") ||
+                    pageName.equals("Emmet") ||
+                    pageName.equals("Intentions") ||
+                    pageName.equals("Language Injections") ||
+                    pageName.equals("Natural Languages") ||
+                    pageName.equals("Reader Mode") ||
+                    pageName.equals("TextMate Bundles") ||
+                    pageName.equals("TODO")) {
+                // Pass the page name to the editor page
+                buildEditorPage(pageName);
             }
             else {
                 // Placeholder for other pages
@@ -568,6 +604,13 @@ public class SettingsDialog {
             SettingsEditorPage page = new SettingsEditorPage();
             wrapInScroll(page);
         }
+        // Update buildEditorPage to accept a page name parameter
+        private void buildEditorPage(String pageName) {
+            SettingsEditorPage page = new SettingsEditorPage();
+            page.showEditorPage(pageName);
+            wrapInScroll(page);
+        }
+
         // 🔴 ADD this method after buildPresentationAssistantPage()
         private void buildKeymapPage() {
             SettingsKeymapPage page = new SettingsKeymapPage();
