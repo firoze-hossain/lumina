@@ -248,8 +248,10 @@ public class SettingsEditorPage extends VBox {
 
         if ("Editor".equals(pageName)) {
             showEditorOverview();
-        } else if (pageName.equals("General") ||
-                pageName.equals("Auto Import") ||
+        }else if (pageName.equals("Auto Import")) {
+            showAutoImportPage();
+        }  else if (pageName.equals("General") ||
+           //     pageName.equals("Auto Import") ||
                 pageName.equals("Appearance") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -307,5 +309,11 @@ public class SettingsEditorPage extends VBox {
         VBox box = new VBox(12, title, placeholder);
         box.setPadding(new Insets(8, 0, 0, 0));
         contentArea.getChildren().add(box);
+    }
+
+    // 🔴 ADD: Auto Import page method
+    private void showAutoImportPage() {
+        SettingsAutoImportPage page = new SettingsAutoImportPage();
+        contentArea.getChildren().add(page);
     }
 }
