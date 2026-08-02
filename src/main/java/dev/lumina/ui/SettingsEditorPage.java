@@ -218,6 +218,24 @@ public class SettingsEditorPage extends VBox {
     /**
      * Called from SettingsDialog to show the appropriate sub-page.
      */
+//    public void showEditorPage(String pageName) {
+//        contentArea.getChildren().clear();
+//
+//        // Update the title based on selection
+//        if ("Editor".equals(pageName)) {
+//            pageTitle.setText("Editor");
+//        } else {
+//            pageTitle.setText("Editor > " + pageName);
+//        }
+//
+//        if ("Editor".equals(pageName)) {
+//            showEditorOverview();
+//        } else if ("General".equals(pageName)) {
+//            showGeneralPage();
+//        } else {
+//            showPlaceholderPage(pageName);
+//        }
+//    }
     public void showEditorPage(String pageName) {
         contentArea.getChildren().clear();
 
@@ -230,11 +248,39 @@ public class SettingsEditorPage extends VBox {
 
         if ("Editor".equals(pageName)) {
             showEditorOverview();
-        } else if ("General".equals(pageName)) {
+        } else if (pageName.equals("General") ||
+                pageName.equals("Auto Import") ||
+                pageName.equals("Appearance") ||
+                pageName.equals("Breadcrumbs") ||
+                pageName.equals("Code Completion") ||
+                pageName.equals("Code Folding") ||
+                pageName.equals("Console") ||
+                pageName.equals("Editor Tabs") ||
+                pageName.equals("Gutter Icons") ||
+                pageName.equals("Inline Completion") ||
+                pageName.equals("Postfix Completion") ||
+                pageName.equals("Sticky Lines")) {
             showGeneralPage();
-        } else {
+        }
+        // 🔴 FIX: Handle Smart Keys and all its sub-items
+        else if (pageName.equals("Smart Keys") ||
+                pageName.equals("YAML") ||
+                pageName.equals("HTML/CSS") ||
+                pageName.equals("JSON") ||
+                pageName.equals("Rust") ||
+                pageName.equals("Markdown") ||
+                pageName.equals("SQL") ||
+                pageName.equals("JavaScript")) {
+            showSmartKeysPage();
+        }
+        else {
             showPlaceholderPage(pageName);
         }
+    }
+    // 🔴 ADD: Smart Keys page method
+    private void showSmartKeysPage() {
+        SettingsSmartKeysPage page = new SettingsSmartKeysPage();
+        contentArea.getChildren().add(page);
     }
 
     private void showEditorOverview() {

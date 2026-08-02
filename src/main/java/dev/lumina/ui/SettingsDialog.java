@@ -136,9 +136,24 @@ public class SettingsDialog {
                 new TreeItem<>("Gutter Icons"),
                 new TreeItem<>("Inline Completion"),
                 new TreeItem<>("Postfix Completion"),
-                new TreeItem<>("Smart Keys"),
+               // new TreeItem<>("Smart Keys"),
                 new TreeItem<>("Sticky Lines")
+
         );
+        // 🔴 ADD: Smart Keys with sub-items
+        TreeItem<String> smartKeys = new TreeItem<>("Smart Keys");
+        smartKeys.getChildren().addAll(
+                new TreeItem<>("YAML"),
+                new TreeItem<>("HTML/CSS"),
+                new TreeItem<>("JSON"),
+                new TreeItem<>("Rust"),
+                new TreeItem<>("Markdown"),
+                new TreeItem<>("SQL"),
+                new TreeItem<>("JavaScript")
+        );
+
+// Add Smart Keys to General
+        general.getChildren().add(smartKeys);
         editor.getChildren().addAll(
                 general,
                 new TreeItem<>("Code Editing"),
@@ -508,6 +523,101 @@ public class SettingsDialog {
         /**
          * Show a page based on the selected tree item.
          */
+//        public void showPage(String pageName) {
+//            getChildren().clear();
+//
+//            if ("Appearance".equals(pageName)) {
+//                buildAppearancePage();
+//            } else if ("Menus and Toolbars".equals(pageName)) {
+//                buildMenusToolbarsPage();
+//            } else if ("System Settings".equals(pageName)) {
+//                buildSystemSettingsPage();
+//            } else if (isSystemSettingsSubPage(pageName)) {
+//                buildSystemSettingsSubPage(pageName);
+//            }
+//            else if ("File Colors".equals(pageName)) {
+//                buildFileColorsPage();
+//            } else if ("Scopes".equals(pageName)) {
+//                buildScopesPage();
+//            } else if ("Notifications".equals(pageName)) {
+//                buildNotificationsPage();
+//            } else if ("Data Editor and Viewer".equals(pageName)) {
+//                buildDataEditorPage();
+//            } else if ("Quick Lists".equals(pageName)) {
+//                buildQuickListsPage();
+//            } else if ("Required Plugins".equals(pageName)) {
+//                buildRequiredPluginsPage();
+//            } else if ("Trusted Locations".equals(pageName)) {
+//                buildTrustedLocationsPage();
+//            } else if ("Path Variables".equals(pageName)) {
+//                buildPathVariablesPage();
+//            } else if ("Presentation Assistant".equals(pageName)) {
+//                buildPresentationAssistantPage();
+//            }
+//            else if ("Keymap".equals(pageName) ||
+//                    pageName.equals("Editor Actions") ||
+//                    pageName.equals("Main Menu") ||
+//                    pageName.equals("Tool Windows") ||
+//                    pageName.equals("External Tools") ||
+//                    pageName.equals("External Build Systems") ||
+//                    pageName.equals("Version Control Systems") ||
+//                    pageName.equals("Debugger Actions") ||
+//                    pageName.equals("Remote External Tools") ||
+//                    pageName.equals("Database") ||
+//                    pageName.equals("Macros") ||
+//                    pageName.equals("Intentions") ||
+//                    pageName.equals("Quick Lists") ||
+//                    pageName.equals("Plugins") ||
+//                    pageName.equals("Other")) {
+//                buildKeymapPage();
+//            }else if ("Editor".equals(pageName) ||
+//                    pageName.equals("General") ||
+//                    pageName.equals("Code Editing") ||
+//                    pageName.equals("Font") ||
+//                    pageName.equals("Color Scheme") ||
+//                    pageName.equals("Code Style") ||
+//                    pageName.equals("Inspections") ||
+//                    pageName.equals("File and Code Templates") ||
+//                    pageName.equals("File Encodings") ||
+//                    pageName.equals("Live Templates") ||
+//                    pageName.equals("File Types") ||
+//                    pageName.equals("Copyright") ||
+//                    pageName.equals("Inlay Hints") ||
+//                    pageName.equals("Duplicates") ||
+//                    pageName.equals("Emmet") ||
+//                    pageName.equals("Intentions") ||
+//                    pageName.equals("Language Injections") ||
+//                    pageName.equals("Natural Languages") ||
+//                    pageName.equals("Reader Mode") ||
+//                    pageName.equals("TextMate Bundles") ||
+//                    pageName.equals("TODO")) {
+//                // Pass the page name to the editor page
+//                buildEditorPage(pageName);
+//            }
+//            else {
+//                // Placeholder for other pages
+//                Label title = new Label(pageName);
+//                title.getStyleClass().add("settings-page-title");
+//
+//                Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
+//                placeholder.getStyleClass().add("settings-placeholder");
+//
+//                VBox box = new VBox(20, title, placeholder);
+//                box.setPadding(new Insets(40, 24, 20, 24));
+//                box.getStyleClass().add("settings-page");
+//
+//                ScrollPane scroll = new ScrollPane(box);
+//                scroll.setFitToWidth(true);
+//                scroll.getStyleClass().add("settings-scroll");
+//                scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+//                VBox.setVgrow(scroll, Priority.ALWAYS);
+//
+//                getChildren().addAll(scroll);
+//            }
+//        }
+        /**
+         * Show a page based on the selected tree item.
+         */
         public void showPage(String pageName) {
             getChildren().clear();
 
@@ -519,8 +629,7 @@ public class SettingsDialog {
                 buildSystemSettingsPage();
             } else if (isSystemSettingsSubPage(pageName)) {
                 buildSystemSettingsSubPage(pageName);
-            }
-            else if ("File Colors".equals(pageName)) {
+            } else if ("File Colors".equals(pageName)) {
                 buildFileColorsPage();
             } else if ("Scopes".equals(pageName)) {
                 buildScopesPage();
@@ -538,8 +647,7 @@ public class SettingsDialog {
                 buildPathVariablesPage();
             } else if ("Presentation Assistant".equals(pageName)) {
                 buildPresentationAssistantPage();
-            }
-            else if ("Keymap".equals(pageName) ||
+            } else if ("Keymap".equals(pageName) ||
                     pageName.equals("Editor Actions") ||
                     pageName.equals("Main Menu") ||
                     pageName.equals("Tool Windows") ||
@@ -555,8 +663,30 @@ public class SettingsDialog {
                     pageName.equals("Plugins") ||
                     pageName.equals("Other")) {
                 buildKeymapPage();
-            }else if ("Editor".equals(pageName) ||
+            }
+            // 🔴 FIX: Add Smart Keys and all its sub-items here
+            else if ("Editor".equals(pageName) ||
                     pageName.equals("General") ||
+                    pageName.equals("Auto Import") ||
+                    pageName.equals("Appearance") ||
+                    pageName.equals("Breadcrumbs") ||
+                    pageName.equals("Code Completion") ||
+                    pageName.equals("Code Folding") ||
+                    pageName.equals("Console") ||
+                    pageName.equals("Editor Tabs") ||
+                    pageName.equals("Gutter Icons") ||
+                    pageName.equals("Inline Completion") ||
+                    pageName.equals("Postfix Completion") ||
+                    pageName.equals("Sticky Lines") ||
+                    // 🔴 ADD Smart Keys and sub-items
+                    pageName.equals("Smart Keys") ||
+                    pageName.equals("YAML") ||
+                    pageName.equals("HTML/CSS") ||
+                    pageName.equals("JSON") ||
+                    pageName.equals("Rust") ||
+                    pageName.equals("Markdown") ||
+                    pageName.equals("SQL") ||
+                    pageName.equals("JavaScript") ||
                     pageName.equals("Code Editing") ||
                     pageName.equals("Font") ||
                     pageName.equals("Color Scheme") ||
@@ -578,8 +708,7 @@ public class SettingsDialog {
                     pageName.equals("TODO")) {
                 // Pass the page name to the editor page
                 buildEditorPage(pageName);
-            }
-            else {
+            } else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
                 title.getStyleClass().add("settings-page-title");
