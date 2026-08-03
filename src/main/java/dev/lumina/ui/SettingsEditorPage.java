@@ -63,6 +63,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Code Folding")) {
             showCodeFoldingPage();
         }
+        else if (pageName.equals("Console")) {
+            showConsolePage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -86,6 +89,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showConsolePage() {
+        SettingsConsolePage page = new SettingsConsolePage();
+        contentArea.getChildren().add(page);
     }
     private void showCodeFoldingPage() {
         SettingsCodeFoldingPage page = new SettingsCodeFoldingPage();
