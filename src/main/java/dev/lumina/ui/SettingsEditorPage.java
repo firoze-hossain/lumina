@@ -104,6 +104,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Font")) {
             showFontPage();
         }
+        else if (pageName.equals("Inspections")) {
+            showInspectionsPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -127,6 +130,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showInspectionsPage() {
+        SettingsInspectionsPage page = new SettingsInspectionsPage();
+        contentArea.getChildren().add(page);
     }
     private void showCodeEditingPage() {
         SettingsCodeEditingPage page = new SettingsCodeEditingPage();
