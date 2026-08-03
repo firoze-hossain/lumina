@@ -1,15 +1,27 @@
 package dev.lumina.ui;
 
+import java.util.List;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-
-import java.util.List;
 
 /**
  * IntelliJ-style Settings dialog — exactly matching the two screenshots.
@@ -55,7 +67,7 @@ public class SettingsDialog {
         // When tree selection changes, update the page
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
-                currentPage.showPage(selected.getValue());
+                currentPage.showPage(selected);
             }
         });
 
@@ -732,12 +744,33 @@ public class SettingsDialog {
         /**
          * Show a page based on the selected tree item.
          */
-        public void showPage(String pageName) {
+        public void showPage(TreeItem<String> selected) {
             getChildren().clear();
 
-            // 🔴 FIX: Check Editor and its sub-pages FIRST
-            // This includes "Editor", "General", "Auto Import", "Appearance" (under Editor), etc.
-            if ("Editor".equals(pageName) ||
+            String pageName = selected.getValue();
+
+            // Determine ancestor path to disambiguate identical names (e.g. "Appearance")
+            TreeItem<String> ancestor = selected.getParent();
+            boolean underAppearanceGroup = false;
+            boolean underEditorGroup = false;
+            while (ancestor != null) {
+                String v = ancestor.getValue();
+                if (v != null) {
+                    if (v.equals("Appearance & Behavior")) underAppearanceGroup = true;
+                    if (v.equals("Editor")) underEditorGroup = true;
+                }
+                ancestor = ancestor.getParent();
+            }
+
+            // If the selected node is under the top-level "Appearance & Behavior" group,
+            // treat its "Appearance" as the top-level appearance page. Otherwise if it's
+            // under "Editor" treat it as an editor sub-page.
+            if (underAppearanceGroup && "Appearance".equals(pageName)) {
+                buildAppearancePage();
+                return;
+            }
+
+            if (underEditorGroup || "Editor".equals(pageName) ||
                     pageName.equals("General") ||
                     pageName.equals("Auto Import") ||
                     pageName.equals("Appearance") ||
@@ -779,10 +812,10 @@ public class SettingsDialog {
                     pageName.equals("TODO")) {
                 // Pass the page name to the editor page
                 buildEditorPage(pageName);
-            } else if ("Appearance".equals(pageName)) {
-                // 🔴 This is the Appearance & Behavior top-level page
-                buildAppearancePage();
-            } else if ("Menus and Toolbars".equals(pageName)) {
+                return;
+            }
+
+            if ("Menus and Toolbars".equals(pageName)) {
                 buildMenusToolbarsPage();
             } else if ("System Settings".equals(pageName)) {
                 buildSystemSettingsPage();
