@@ -107,6 +107,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Inspections")) {
             showInspectionsPage();
         }
+        else if (pageName.equals("Color Scheme")) {
+            showColorSchemePage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -137,6 +140,11 @@ public class SettingsEditorPage extends VBox {
     }
     private void showCodeEditingPage() {
         SettingsCodeEditingPage page = new SettingsCodeEditingPage();
+        contentArea.getChildren().add(page);
+    }
+    // In SettingsEditorPage.java, add this method:
+    private void showColorSchemePage() {
+        SettingsColorSchemePage page = new SettingsColorSchemePage();
         contentArea.getChildren().add(page);
     }
     private void showFontPage() {
