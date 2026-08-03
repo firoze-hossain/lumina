@@ -75,6 +75,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Inline Completion")) {
             showInlineCompletionPage();
         }
+        else if (pageName.equals("Postfix Completion")) {
+            showPostfixCompletionPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -98,6 +101,11 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+
+    private void showPostfixCompletionPage() {
+        SettingsPostfixCompletionPage page = new SettingsPostfixCompletionPage();
+        contentArea.getChildren().add(page);
     }
     private void showInlineCompletionPage() {
         SettingsInlineCompletionPage page = new SettingsInlineCompletionPage();
