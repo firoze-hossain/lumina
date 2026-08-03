@@ -77,6 +77,8 @@ public class SettingsEditorPage extends VBox {
         }
         else if (pageName.equals("Postfix Completion")) {
             showPostfixCompletionPage();
+        }else if (pageName.equals("Sticky Lines")) {
+            showStickyLinesPage();
         }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
@@ -102,7 +104,10 @@ public class SettingsEditorPage extends VBox {
             showPlaceholderPage(pageName);
         }
     }
-
+    private void showStickyLinesPage() {
+        SettingsStickyLinesPage page = new SettingsStickyLinesPage();
+        contentArea.getChildren().add(page);
+    }
     private void showPostfixCompletionPage() {
         SettingsPostfixCompletionPage page = new SettingsPostfixCompletionPage();
         contentArea.getChildren().add(page);
