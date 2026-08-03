@@ -83,6 +83,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("YAML")) {
             showSmartKeysYAMLPage();
         }
+        else if (pageName.equals("HTML/CSS")) {
+            showSmartKeysHTMLCSSPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -109,6 +112,10 @@ public class SettingsEditorPage extends VBox {
     }
     private void showStickyLinesPage() {
         SettingsStickyLinesPage page = new SettingsStickyLinesPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showSmartKeysHTMLCSSPage() {
+        SettingsSmartKeysHTMLCSSPage page = new SettingsSmartKeysHTMLCSSPage();
         contentArea.getChildren().add(page);
     }
     private void showSmartKeysYAMLPage() {
