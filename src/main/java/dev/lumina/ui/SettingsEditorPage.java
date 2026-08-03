@@ -86,6 +86,18 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("HTML/CSS")) {
             showSmartKeysHTMLCSSPage();
         }
+        else if (pageName.equals("JSON")) {
+            showSmartKeysJSONPage();
+        } else if (pageName.equals("Rust")) {
+            showSmartKeysRustPage();
+        } else if (pageName.equals("Markdown")) {
+            showSmartKeysMarkdownPage();
+        }
+        else if (pageName.equals("SQL")) {
+            showSmartKeysSQLPage();
+        } else if (pageName.equals("JavaScript")) {
+            showSmartKeysJavaScriptPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -116,6 +128,29 @@ public class SettingsEditorPage extends VBox {
     }
     private void showSmartKeysHTMLCSSPage() {
         SettingsSmartKeysHTMLCSSPage page = new SettingsSmartKeysHTMLCSSPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showSmartKeysJSONPage() {
+        SettingsSmartKeysJSONPage page = new SettingsSmartKeysJSONPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showSmartKeysSQLPage() {
+        SettingsSmartKeysSQLPage page = new SettingsSmartKeysSQLPage();
+        contentArea.getChildren().add(page);
+    }
+
+    private void showSmartKeysJavaScriptPage() {
+        SettingsSmartKeysJavaScriptPage page = new SettingsSmartKeysJavaScriptPage();
+        contentArea.getChildren().add(page);
+    }
+
+    private void showSmartKeysRustPage() {
+        SettingsSmartKeysRustPage page = new SettingsSmartKeysRustPage();
+        contentArea.getChildren().add(page);
+    }
+
+    private void showSmartKeysMarkdownPage() {
+        SettingsSmartKeysMarkdownPage page = new SettingsSmartKeysMarkdownPage();
         contentArea.getChildren().add(page);
     }
     private void showSmartKeysYAMLPage() {
