@@ -54,7 +54,10 @@ public class SettingsEditorPage extends VBox {
             showAutoImportPage();
         } else if (pageName.equals("Appearance")) {
             showAppearancePage();
-        } else if (pageName.equals("General") ||
+        }else if (pageName.equals("Breadcrumbs")) {
+            showBreadcrumbsPage();
+        }
+        else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
                 pageName.equals("Code Folding") ||
@@ -78,7 +81,10 @@ public class SettingsEditorPage extends VBox {
             showPlaceholderPage(pageName);
         }
     }
-
+    private void showBreadcrumbsPage() {
+        SettingsBreadcrumbsPage page = new SettingsBreadcrumbsPage();
+        contentArea.getChildren().add(page);
+    }
     private void showEditorOverview() {
         Label info = new Label("Select a category from the left to configure specific editor settings.");
         info.getStyleClass().add("settings-hint");
