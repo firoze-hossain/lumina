@@ -98,6 +98,12 @@ public class SettingsEditorPage extends VBox {
         } else if (pageName.equals("JavaScript")) {
             showSmartKeysJavaScriptPage();
         }
+        else if (pageName.equals("Code Editing")) {
+            showCodeEditingPage();
+        }
+        else if (pageName.equals("Font")) {
+            showFontPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -122,6 +128,15 @@ public class SettingsEditorPage extends VBox {
             showPlaceholderPage(pageName);
         }
     }
+    private void showCodeEditingPage() {
+        SettingsCodeEditingPage page = new SettingsCodeEditingPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showFontPage() {
+        SettingsFontPage page = new SettingsFontPage();
+        contentArea.getChildren().add(page);
+    }
+
     private void showStickyLinesPage() {
         SettingsStickyLinesPage page = new SettingsStickyLinesPage();
         contentArea.getChildren().add(page);
