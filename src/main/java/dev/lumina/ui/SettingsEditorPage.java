@@ -72,6 +72,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Gutter Icons")) {
             showGutterIconsPage();
         }
+        else if (pageName.equals("Inline Completion")) {
+            showInlineCompletionPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -95,6 +98,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showInlineCompletionPage() {
+        SettingsInlineCompletionPage page = new SettingsInlineCompletionPage();
+        contentArea.getChildren().add(page);
     }
     private void showGutterIconsPage() {
         SettingsGutterIconsPage page = new SettingsGutterIconsPage();
