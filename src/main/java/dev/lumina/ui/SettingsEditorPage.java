@@ -66,6 +66,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Console")) {
             showConsolePage();
         }
+        else if (pageName.equals("Editor Tabs")) {
+            showEditorTabsPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -89,6 +92,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showEditorTabsPage() {
+        SettingsEditorTabsPage page = new SettingsEditorTabsPage();
+        contentArea.getChildren().add(page);
     }
     private void showConsolePage() {
         SettingsConsolePage page = new SettingsConsolePage();
