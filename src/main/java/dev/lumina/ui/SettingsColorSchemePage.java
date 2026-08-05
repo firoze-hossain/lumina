@@ -273,7 +273,8 @@ public class SettingsColorSchemePage extends VBox {
             // return the dedicated General page node
             return new SettingsColorSchemeGeneralPage();
         } else if (pageName.equals("Language Defaults")) {
-            page.getChildren().addAll(new Label(pageName), buildLanguageDefaultsContent());
+           // page.getChildren().addAll(new Label(pageName), buildLanguageDefaultsContent());
+            return new SettingsColorSchemeLanguageDefaultsPage();
         } else if (pageName.equals("Color Scheme Font")) {
             page.getChildren().addAll(new Label(pageName), buildFontContent());
         } else if (pageName.equals("Console Font")) {
