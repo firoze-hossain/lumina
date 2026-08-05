@@ -1,4 +1,4 @@
-// SettingsColorSchemePage.java
+// SettingsColorSchemePage.java - COMPLETE FIXED
 package dev.lumina.ui;
 
 import java.util.HashMap;
@@ -6,6 +6,7 @@ import java.util.Map;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -34,7 +35,13 @@ public class SettingsColorSchemePage extends VBox {
     private final TreeView<String> schemeTree = new TreeView<>();
     private final VBox contentArea = new VBox(14);
     private final VBox quickLinksPane;
-    private final Map<String, javafx.scene.Node> pageCache = new HashMap<>();
+    private final Map<String, Node> pageCache = new HashMap<>();
+    private final HBox mainLayout = new HBox(16);
+
+    // Pages that should take full width (no tree or quick links)
+    private static final String[] FULL_WIDTH_PAGES = {
+            "General", "Language Defaults", "Color Scheme Font"
+    };
 
     public SettingsColorSchemePage() {
         getStyleClass().add("settings-page");
@@ -44,7 +51,6 @@ public class SettingsColorSchemePage extends VBox {
         // ============================================================
         // Main layout: Tree on left, content on right
         // ============================================================
-        HBox mainLayout = new HBox(16);
         mainLayout.setPadding(new Insets(4, 0, 8, 0));
 
         // Build the scheme tree
@@ -63,7 +69,10 @@ public class SettingsColorSchemePage extends VBox {
         contentArea.setPadding(new Insets(4, 0, 0, 0));
         HBox.setHgrow(contentArea, Priority.ALWAYS);
 
-        // Show default page (General)
+        // Initially show all three panels
+        mainLayout.getChildren().addAll(schemeTree, quickLinksPane, contentArea);
+
+        // Show default page (General) - this will update the layout
         showSchemePage("General");
 
         // Tree selection listener
@@ -82,9 +91,14 @@ public class SettingsColorSchemePage extends VBox {
             schemeTree.getSelectionModel().select(generalItem);
         }
 
-        mainLayout.getChildren().addAll(schemeTree, quickLinksPane, contentArea);
-
         getChildren().addAll(mainLayout);
+    }
+
+    private boolean isFullWidthPage(String pageName) {
+        for (String p : FULL_WIDTH_PAGES) {
+            if (p.equals(pageName)) return true;
+        }
+        return false;
     }
 
     /**
@@ -97,7 +111,6 @@ public class SettingsColorSchemePage extends VBox {
             schemeTree.getSelectionModel().select(item);
             showSchemePage(pageName);
         } else {
-            // default
             TreeItem<String> generalItem = findItem(schemeTree.getRoot(), "General");
             if (generalItem != null) schemeTree.getSelectionModel().select(generalItem);
             showSchemePage("General");
@@ -173,67 +186,67 @@ public class SettingsColorSchemePage extends VBox {
         TreeItem<String> images = new TreeItem<>("Images");
 
         root.getChildren().addAll(
-            general,
-            languageDefaults,
-            colorSchemeFont,
-            consoleFont,
-            codeWithMe,
-            consoleColors,
-            debugger,
-            diffMerge,
-            jvmLogging,
-            userDefinedFileTypes,
-            vcs,
-            // Language-specific
-            java,
-            angularTemplate,
-            contextFreeGrammar,
-            css,
-            dataEditor,
-            database,
-            diagrams,
-            dockerfile,
-            editorConfig,
-            freemarker,
-            gitlabCI,
-            gradleDeclarative,
-            groovy,
-            html,
-            httpRequest,
-            javascript,
-            jpaHibernate,
-            json,
-            jsonPath,
-            jsp,
-            jupyter,
-            kotlin,
-            kubernetes,
-            less,
-            lombok,
-            markdown,
-            micronautEL,
-            mongodbJSON,
-            postcss,
-            properties,
-            protocolBuffer,
-            protocolBufferText,
-            qute,
-            regexp,
-            rust,
-            sass,
-            shellScript,
-            springEL,
-            sql,
-            tableDiff,
-            toml,
-            typescript,
-            velocity,
-            xml,
-            xpath,
-            xslt,
-            yaml,
-            byScope,
-            images
+                general,
+                languageDefaults,
+                colorSchemeFont,
+                consoleFont,
+                codeWithMe,
+                consoleColors,
+                debugger,
+                diffMerge,
+                jvmLogging,
+                userDefinedFileTypes,
+                vcs,
+                // Language-specific
+                java,
+                angularTemplate,
+                contextFreeGrammar,
+                css,
+                dataEditor,
+                database,
+                diagrams,
+                dockerfile,
+                editorConfig,
+                freemarker,
+                gitlabCI,
+                gradleDeclarative,
+                groovy,
+                html,
+                httpRequest,
+                javascript,
+                jpaHibernate,
+                json,
+                jsonPath,
+                jsp,
+                jupyter,
+                kotlin,
+                kubernetes,
+                less,
+                lombok,
+                markdown,
+                micronautEL,
+                mongodbJSON,
+                postcss,
+                properties,
+                protocolBuffer,
+                protocolBufferText,
+                qute,
+                regexp,
+                rust,
+                sass,
+                shellScript,
+                springEL,
+                sql,
+                tableDiff,
+                toml,
+                typescript,
+                velocity,
+                xml,
+                xpath,
+                xslt,
+                yaml,
+                byScope,
+                images
         );
 
         return root;
@@ -253,30 +266,47 @@ public class SettingsColorSchemePage extends VBox {
     private void showSchemePage(String pageName) {
         contentArea.getChildren().clear();
 
+        boolean isFullWidth = isFullWidthPage(pageName);
+
+        // Clear and rebuild the layout
+        mainLayout.getChildren().clear();
+
+        if (isFullWidth) {
+            // For full-width pages, only show content
+            mainLayout.getChildren().add(contentArea);
+            HBox.setHgrow(contentArea, Priority.ALWAYS);
+        } else {
+            // For normal pages, show all three
+            mainLayout.getChildren().addAll(schemeTree, quickLinksPane, contentArea);
+            HBox.setHgrow(contentArea, Priority.ALWAYS);
+            // Make sure tree and quick links are visible
+            schemeTree.setVisible(true);
+            schemeTree.setManaged(true);
+            quickLinksPane.setVisible(true);
+            quickLinksPane.setManaged(true);
+        }
+
         // Check if page is in cache
         if (pageCache.containsKey(pageName)) {
             contentArea.getChildren().add(pageCache.get(pageName));
             return;
         }
 
-        javafx.scene.Node page = createPage(pageName);
+        Node page = createPage(pageName);
         pageCache.put(pageName, page);
         contentArea.getChildren().add(page);
     }
 
-    private javafx.scene.Node createPage(String pageName) {
+    private Node createPage(String pageName) {
         VBox page = new VBox(12);
         page.setPadding(new Insets(4, 0, 0, 0));
 
-        // For General we now use a separate UI class
         if (pageName.equals("General")) {
-            // return the dedicated General page node
             return new SettingsColorSchemeGeneralPage();
         } else if (pageName.equals("Language Defaults")) {
-           // page.getChildren().addAll(new Label(pageName), buildLanguageDefaultsContent());
             return new SettingsColorSchemeLanguageDefaultsPage();
         } else if (pageName.equals("Color Scheme Font")) {
-            page.getChildren().addAll(new Label(pageName), buildFontContent());
+            return new SettingsColorSchemeFontPage();
         } else if (pageName.equals("Console Font")) {
             page.getChildren().addAll(new Label(pageName), buildConsoleFontContent());
         } else if (pageName.equals("Console Colors")) {
@@ -288,176 +318,12 @@ public class SettingsColorSchemePage extends VBox {
         } else if (pageName.equals("VCS")) {
             page.getChildren().addAll(new Label(pageName), buildVCSContent());
         } else {
-            // Language-specific pages - show placeholder with sample color settings
             Label title = new Label(pageName);
             title.getStyleClass().add("settings-section");
             page.getChildren().addAll(title, buildLanguageContent(pageName));
         }
 
         return page;
-    }
-
-    private VBox buildGeneralContent() {
-        VBox box = new VBox(6);
-        box.setPadding(new Insets(4, 0, 8, 20));
-
-        // Scheme dropdown
-        HBox schemeRow = new HBox(8);
-        schemeRow.setAlignment(Pos.CENTER_LEFT);
-        Label schemeLabel = new Label("Scheme:");
-        schemeLabel.getStyleClass().add("settings-label");
-        ComboBox<String> schemeCombo = new ComboBox<>();
-        schemeCombo.getItems().addAll("Island's Dark Theme default", "Darcula", "IntelliJ Light");
-        schemeCombo.getSelectionModel().selectFirst();
-        schemeCombo.getStyleClass().add("settings-combo");
-        schemeCombo.setPrefWidth(220);
-        schemeRow.getChildren().addAll(schemeLabel, schemeCombo);
-
-        // Buttons
-        HBox buttonRow = new HBox(8);
-        buttonRow.setAlignment(Pos.CENTER_LEFT);
-        Button exportBtn = new Button("Export...");
-        exportBtn.getStyleClass().add("dialog-secondary");
-        Button importBtn = new Button("Import...");
-        importBtn.getStyleClass().add("dialog-secondary");
-        Button duplicateBtn = new Button("Duplicate...");
-        duplicateBtn.getStyleClass().add("dialog-secondary");
-        Button resetBtn = new Button("Reset");
-        resetBtn.getStyleClass().add("dialog-secondary");
-        resetBtn.setStyle("-fx-border-color: #E5534B; -fx-text-fill: #E5534B;");
-        buttonRow.getChildren().addAll(exportBtn, importBtn, duplicateBtn, resetBtn);
-
-        // Panel: left = categories (accordion), right = preview (code area)
-        VBox panel = new VBox(8);
-        panel.setPadding(new Insets(12));
-        BorderStroke stroke = new BorderStroke(javafx.scene.paint.Color.web("#2C3042"), BorderStrokeStyle.SOLID, new CornerRadii(6), new BorderWidths(1));
-        panel.setBorder(new Border(stroke));
-
-        // Accordion of categories (collapsed by default)
-        javafx.scene.control.Accordion acc = new javafx.scene.control.Accordion();
-        String[] cats = {"Code","Editor","Errors and Warnings","Hyperlinks","Identifiers","Line Coverage","Live Templates","Popups and Hints","Preview","Search Results","Text"};
-        for (String c : cats) {
-            javafx.scene.control.TitledPane tp = new javafx.scene.control.TitledPane(c, new VBox());
-            tp.setCollapsible(true);
-            acc.getPanes().add(tp);
-        }
-        acc.setPrefWidth(380);
-
-        // Preview area - simulate a code editor with colored tokens using existing CSS
-        VBox codeArea = new VBox(4);
-        codeArea.getStyleClass().add("code-area");
-        codeArea.setPadding(new Insets(12));
-        codeArea.setPrefWidth(520);
-
-        // Sample lines
-        Label l1 = new Label("// TODO: Visit JB Web resources:");
-        l1.getStyleClass().addAll("sx-comment");
-        Label l2 = new Label("JetBrains Home Page: http://www.jetbrains.com");
-        l2.getStyleClass().addAll("sx-keyword");
-        Label l3 = new Label("ReferenceHyperlink");
-        l3.getStyleClass().addAll("sx-method");
-
-        Label sep = new Label("");
-        sep.setPrefHeight(6);
-
-        // Second block of sample lines
-        Label l4 = new Label("Search:");
-        l4.getStyleClass().addAll("sx-keyword");
-        Label l5 = new Label("result = \"text, text, text\";");
-        l5.getStyleClass().addAll("sx-string");
-
-        codeArea.getChildren().addAll(l1, l2, l3, sep, l4, l5);
-
-        ScrollPane previewScroll = new ScrollPane(codeArea);
-        previewScroll.setFitToWidth(true);
-        previewScroll.setPrefViewportHeight(300);
-        previewScroll.getStyleClass().add("settings-scroll");
-
-        HBox contentRow = new HBox(12, acc, previewScroll);
-        HBox.setHgrow(previewScroll, Priority.ALWAYS);
-
-        panel.getChildren().add(contentRow);
-
-        box.getChildren().addAll(schemeRow, buttonRow, panel);
-        return box;
-    }
-
-    private VBox buildLanguageDefaultsContent() {
-        VBox box = new VBox(6);
-        box.setPadding(new Insets(4, 0, 8, 20));
-
-        Label desc = new Label("Configure default color settings for all languages.");
-        desc.getStyleClass().add("settings-hint");
-        desc.setWrapText(true);
-
-        // Sample color settings
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(6);
-        grid.setPadding(new Insets(8, 0, 0, 0));
-
-        String[][] items = {
-            {"Default", "#D8DBE6", "Bold", "Italic"},
-            {"Keywords", "#CF8E6D", "Bold", "Normal"},
-            {"Strings", "#6AAB73", "Normal", "Normal"},
-            {"Comments", "#7A7E85", "Normal", "Italic"},
-            {"Numbers", "#2AACB8", "Normal", "Normal"},
-            {"Types", "#BCBEC4", "Normal", "Normal"},
-            {"Methods", "#56A8F5", "Normal", "Normal"},
-            {"Annotations", "#B3AE60", "Normal", "Normal"}
-        };
-
-        for (int i = 0; i < items.length; i++) {
-            Label name = new Label(items[i][0]);
-            name.getStyleClass().add("settings-label");
-            Label color = new Label("■");
-            color.setStyle("-fx-text-fill: " + items[i][1] + "; -fx-font-size: 16px;");
-            CheckBox bold = new CheckBox("Bold");
-            bold.setSelected(items[i][2].equals("Bold"));
-            bold.getStyleClass().add("settings-check");
-            CheckBox italic = new CheckBox("Italic");
-            italic.setSelected(items[i][3].equals("Italic"));
-            italic.getStyleClass().add("settings-check");
-            grid.add(name, 0, i);
-            grid.add(color, 1, i);
-            grid.add(bold, 2, i);
-            grid.add(italic, 3, i);
-        }
-
-        box.getChildren().addAll(desc, grid);
-        return box;
-    }
-
-    private VBox buildFontContent() {
-        VBox box = new VBox(6);
-        box.setPadding(new Insets(4, 0, 8, 20));
-
-        HBox fontRow = new HBox(8);
-        fontRow.setAlignment(Pos.CENTER_LEFT);
-        Label fontLabel = new Label("Font:");
-        fontLabel.getStyleClass().add("settings-label");
-        ComboBox<String> fontCombo = new ComboBox<>();
-        fontCombo.getItems().addAll("JetBrains Mono", "Consolas", "Menlo", "Monaco");
-        fontCombo.getSelectionModel().selectFirst();
-        fontCombo.getStyleClass().add("settings-combo");
-        fontCombo.setPrefWidth(180);
-        fontRow.getChildren().addAll(fontLabel, fontCombo);
-
-        HBox sizeRow = new HBox(8);
-        sizeRow.setAlignment(Pos.CENTER_LEFT);
-        Label sizeLabel = new Label("Size:");
-        sizeLabel.getStyleClass().add("settings-label");
-        Spinner<Integer> sizeSpinner = new Spinner<>(8, 30, 13);
-        sizeSpinner.setPrefWidth(70);
-        sizeSpinner.getStyleClass().add("settings-spinner");
-        sizeRow.getChildren().addAll(sizeLabel, sizeSpinner);
-
-        CheckBox ligatures = new CheckBox("Enable ligatures");
-        ligatures.setSelected(false);
-        ligatures.getStyleClass().add("settings-check");
-
-        box.getChildren().addAll(fontRow, sizeRow, ligatures);
-        return box;
     }
 
     private VBox buildConsoleFontContent() {
@@ -501,11 +367,11 @@ public class SettingsColorSchemePage extends VBox {
         grid.setPadding(new Insets(8, 0, 0, 0));
 
         String[][] items = {
-            {"Standard output", "#D8DBE6"},
-            {"Error output", "#E5534B"},
-            {"System output", "#8FCE8F"},
-            {"Debug output", "#56A8F5"},
-            {"Warning output", "#D8A657"}
+                {"Standard output", "#D8DBE6"},
+                {"Error output", "#E5534B"},
+                {"System output", "#8FCE8F"},
+                {"Debug output", "#56A8F5"},
+                {"Warning output", "#D8A657"}
         };
 
         for (int i = 0; i < items.length; i++) {
@@ -537,10 +403,10 @@ public class SettingsColorSchemePage extends VBox {
         grid.setPadding(new Insets(8, 0, 0, 0));
 
         String[][] items = {
-            {"Current execution line", "#3A3122"},
-            {"Breakpoint line", "#2A1A1A"},
-            {"Disabled breakpoint", "#4A3A3A"},
-            {"Exception breakpoint", "#5A2A2A"}
+                {"Current execution line", "#3A3122"},
+                {"Breakpoint line", "#2A1A1A"},
+                {"Disabled breakpoint", "#4A3A3A"},
+                {"Exception breakpoint", "#5A2A2A"}
         };
 
         for (int i = 0; i < items.length; i++) {
@@ -572,10 +438,10 @@ public class SettingsColorSchemePage extends VBox {
         grid.setPadding(new Insets(8, 0, 0, 0));
 
         String[][] items = {
-            {"Added lines", "#2A4A2A"},
-            {"Modified lines", "#3A3A1A"},
-            {"Deleted lines", "#4A2A2A"},
-            {"Conflict lines", "#5A2A2A"}
+                {"Added lines", "#2A4A2A"},
+                {"Modified lines", "#3A3A1A"},
+                {"Deleted lines", "#4A2A2A"},
+                {"Conflict lines", "#5A2A2A"}
         };
 
         for (int i = 0; i < items.length; i++) {
@@ -607,11 +473,11 @@ public class SettingsColorSchemePage extends VBox {
         grid.setPadding(new Insets(8, 0, 0, 0));
 
         String[][] items = {
-            {"Added", "#2A4A2A"},
-            {"Modified", "#3A3A1A"},
-            {"Deleted", "#4A2A2A"},
-            {"Conflicted", "#5A2A2A"},
-            {"Ignored", "#2A2A2A"}
+                {"Added", "#2A4A2A"},
+                {"Modified", "#3A3A1A"},
+                {"Deleted", "#4A2A2A"},
+                {"Conflicted", "#5A2A2A"},
+                {"Ignored", "#2A2A2A"}
         };
 
         for (int i = 0; i < items.length; i++) {
@@ -638,21 +504,20 @@ public class SettingsColorSchemePage extends VBox {
         desc.getStyleClass().add("settings-hint");
         desc.setWrapText(true);
 
-        // Sample color settings for the language
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(6);
         grid.setPadding(new Insets(8, 0, 0, 0));
 
         String[][] items = {
-            {"Keywords", "#CF8E6D", "Bold"},
-            {"Strings", "#6AAB73", "Normal"},
-            {"Comments", "#7A7E85", "Italic"},
-            {"Numbers", "#2AACB8", "Normal"},
-            {"Types", "#BCBEC4", "Normal"},
-            {"Methods", "#56A8F5", "Normal"},
-            {"Annotations", "#B3AE60", "Normal"},
-            {"Operators", "#A8AEC4", "Normal"}
+                {"Keywords", "#CF8E6D", "Bold"},
+                {"Strings", "#6AAB73", "Normal"},
+                {"Comments", "#7A7E85", "Italic"},
+                {"Numbers", "#2AACB8", "Normal"},
+                {"Types", "#BCBEC4", "Normal"},
+                {"Methods", "#56A8F5", "Normal"},
+                {"Annotations", "#B3AE60", "Normal"},
+                {"Operators", "#A8AEC4", "Normal"}
         };
 
         for (int i = 0; i < items.length; i++) {
@@ -681,7 +546,6 @@ public class SettingsColorSchemePage extends VBox {
 
     /**
      * Build the right-side quick links list that mirrors the many options shown in the screenshots.
-     * This returns a vertical box containing a description label and a scrollable FlowPane of links.
      */
     private VBox buildQuickLinksPane() {
         VBox box = new VBox(6);
@@ -697,7 +561,6 @@ public class SettingsColorSchemePage extends VBox {
         links.setPrefWidth(260);
         links.setMaxWidth(Double.MAX_VALUE);
 
-        // Use the scheme tree to populate the links in the same order
         if (schemeTree.getRoot() != null) {
             for (TreeItem<String> item : schemeTree.getRoot().getChildren()) {
                 if (item.getValue() == null) continue;
@@ -706,7 +569,6 @@ public class SettingsColorSchemePage extends VBox {
                 link.setWrapText(true);
                 link.setMaxWidth(Double.MAX_VALUE);
                 link.setPrefWidth(240);
-                // clicking a link selects the corresponding tree item and shows that page
                 link.setOnAction(evt -> {
                     TreeItem<String> found = findItem(schemeTree.getRoot(), item.getValue());
                     if (found != null) {
@@ -725,7 +587,6 @@ public class SettingsColorSchemePage extends VBox {
         scroller.setMaxWidth(Double.MAX_VALUE);
         scroller.getStyleClass().add("settings-quicklinks-scroll");
 
-        // Put a visible border around links to match screenshots
         BorderStroke stroke = new BorderStroke(javafx.scene.paint.Color.web("#2A2A2A"), BorderStrokeStyle.SOLID, new CornerRadii(4), new BorderWidths(1));
         box.setBorder(new Border(stroke));
         box.setPadding(new Insets(8));
