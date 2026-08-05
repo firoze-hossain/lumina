@@ -1,13 +1,30 @@
 // SettingsColorSchemePage.java
 package dev.lumina.ui;
 
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.layout.Border;
+import javafx.scene.layout.BorderStroke;
+import javafx.scene.layout.BorderStrokeStyle;
+import javafx.scene.layout.BorderWidths;
+import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 /**
  * IntelliJ-style Editor > Color Scheme settings page.
@@ -17,6 +34,7 @@ public class SettingsColorSchemePage extends VBox {
 
     private final TreeView<String> schemeTree = new TreeView<>();
     private final VBox contentArea = new VBox(14);
+    private final VBox quickLinksPane;
     private final Map<String, javafx.scene.Node> pageCache = new HashMap<>();
 
     public SettingsColorSchemePage() {
@@ -36,6 +54,10 @@ public class SettingsColorSchemePage extends VBox {
         schemeTree.getStyleClass().add("settings-tree");
         schemeTree.setShowRoot(false);
         schemeTree.setRoot(buildSchemeTree());
+
+        // Quick-links pane (separate middle/right column)
+        quickLinksPane = buildQuickLinksPane();
+        quickLinksPane.setPrefWidth(520);
 
         // Content area on the right
         contentArea.setPadding(new Insets(4, 0, 0, 0));
@@ -60,7 +82,7 @@ public class SettingsColorSchemePage extends VBox {
             schemeTree.getSelectionModel().select(generalItem);
         }
 
-        mainLayout.getChildren().addAll(schemeTree, contentArea);
+        mainLayout.getChildren().addAll(schemeTree, quickLinksPane, contentArea);
 
         getChildren().addAll(mainLayout);
     }
@@ -231,6 +253,7 @@ public class SettingsColorSchemePage extends VBox {
 
         Label title = new Label(pageName);
         title.getStyleClass().add("settings-section");
+        // page-specific content follows; quick links are handled in the dedicated pane to the right
 
         // For each page, show appropriate content
         if (pageName.equals("General")) {
@@ -585,6 +608,53 @@ public class SettingsColorSchemePage extends VBox {
         }
 
         box.getChildren().addAll(desc, grid);
+        return box;
+    }
+
+    /**
+     * Build the right-side quick links list that mirrors the many options shown in the screenshots.
+     * This returns a vertical box containing a description label and a scrollable FlowPane of links.
+     */
+    private VBox buildQuickLinksPane() {
+        VBox box = new VBox(6);
+        box.setPadding(new Insets(0, 0, 8, 0));
+
+        Label header = new Label("Configure colors and the font for source code and console output:");
+        header.getStyleClass().add("settings-hint");
+
+        FlowPane links = new FlowPane();
+        links.setVgap(6);
+        links.setHgap(24);
+        links.setPrefWrapLength(520); // allow wrapping into multiple columns
+
+        // Use the scheme tree to populate the links in the same order
+        if (schemeTree.getRoot() != null) {
+            for (TreeItem<String> item : schemeTree.getRoot().getChildren()) {
+                if (item.getValue() == null) continue;
+                Hyperlink link = new Hyperlink(item.getValue());
+                link.getStyleClass().add("settings-link");
+                // clicking a link selects the corresponding tree item and shows that page
+                link.setOnAction(evt -> {
+                    TreeItem<String> found = findItem(schemeTree.getRoot(), item.getValue());
+                    if (found != null) {
+                        schemeTree.getSelectionModel().select(found);
+                        schemeTree.scrollTo(schemeTree.getRow(found));
+                    }
+                });
+                links.getChildren().add(link);
+            }
+        }
+
+        ScrollPane scroller = new ScrollPane(links);
+        scroller.setFitToWidth(true);
+        scroller.setPrefViewportHeight(360);
+        scroller.getStyleClass().add("settings-quicklinks-scroll");
+
+        // Put a visible border around links to match screenshots
+        BorderStroke stroke = new BorderStroke(javafx.scene.paint.Color.web("#2A2A2A"), BorderStrokeStyle.SOLID, new CornerRadii(4), new BorderWidths(1));
+        box.setBorder(new Border(stroke));
+        box.setPadding(new Insets(8));
+        box.getChildren().addAll(header, scroller);
         return box;
     }
 }
