@@ -40,7 +40,7 @@ public class SettingsColorSchemePage extends VBox {
 
     // Pages that should take full width (no tree or quick links)
     private static final String[] FULL_WIDTH_PAGES = {
-            "General", "Language Defaults", "Color Scheme Font","Console Font"
+            "General", "Language Defaults", "Color Scheme Font","Console Font", "Code With Me", "Console Colors", "Debugger"
     };
 
     public SettingsColorSchemePage() {
@@ -309,10 +309,12 @@ public class SettingsColorSchemePage extends VBox {
             return new SettingsColorSchemeFontPage();
         } else if (pageName.equals("Console Font")) {
             return new SettingsConsoleFontPage();
+        } else if (pageName.equals("Code With Me")) {
+            return new SettingsCodeWithMePage();
         } else if (pageName.equals("Console Colors")) {
-            page.getChildren().addAll(new Label(pageName), buildConsoleColorsContent());
+            return new SettingsConsoleColorsPage();
         } else if (pageName.equals("Debugger")) {
-            page.getChildren().addAll(new Label(pageName), buildDebuggerContent());
+            return new SettingsDebuggerPage();
         } else if (pageName.equals("Diff & Merge")) {
             page.getChildren().addAll(new Label(pageName), buildDiffMergeContent());
         } else if (pageName.equals("VCS")) {
