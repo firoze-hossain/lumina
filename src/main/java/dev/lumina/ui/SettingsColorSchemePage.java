@@ -55,9 +55,10 @@ public class SettingsColorSchemePage extends VBox {
         schemeTree.setShowRoot(false);
         schemeTree.setRoot(buildSchemeTree());
 
-        // Quick-links pane (separate middle/right column)
+        // Quick-links pane (separate middle column)
         quickLinksPane = buildQuickLinksPane();
-        quickLinksPane.setPrefWidth(520);
+        quickLinksPane.setPrefWidth(280);
+        quickLinksPane.setMinWidth(260);
 
         // Content area on the right
         contentArea.setPadding(new Insets(4, 0, 0, 0));
@@ -85,6 +86,23 @@ public class SettingsColorSchemePage extends VBox {
         mainLayout.getChildren().addAll(schemeTree, quickLinksPane, contentArea);
 
         getChildren().addAll(mainLayout);
+    }
+
+    /**
+     * Select a specific page inside the color-scheme tree.
+     */
+    public void selectPage(String pageName) {
+        if (schemeTree.getRoot() == null) return;
+        TreeItem<String> item = findItem(schemeTree.getRoot(), pageName);
+        if (item != null) {
+            schemeTree.getSelectionModel().select(item);
+            showSchemePage(pageName);
+        } else {
+            // default
+            TreeItem<String> generalItem = findItem(schemeTree.getRoot(), "General");
+            if (generalItem != null) schemeTree.getSelectionModel().select(generalItem);
+            showSchemePage("General");
+        }
     }
 
     private TreeItem<String> buildSchemeTree() {
@@ -251,29 +269,28 @@ public class SettingsColorSchemePage extends VBox {
         VBox page = new VBox(12);
         page.setPadding(new Insets(4, 0, 0, 0));
 
-        Label title = new Label(pageName);
-        title.getStyleClass().add("settings-section");
-        // page-specific content follows; quick links are handled in the dedicated pane to the right
-
-        // For each page, show appropriate content
+        // For General we now use a separate UI class
         if (pageName.equals("General")) {
-            page.getChildren().addAll(title, buildGeneralContent());
+            // return the dedicated General page node
+            return new SettingsColorSchemeGeneralPage();
         } else if (pageName.equals("Language Defaults")) {
-            page.getChildren().addAll(title, buildLanguageDefaultsContent());
+            page.getChildren().addAll(new Label(pageName), buildLanguageDefaultsContent());
         } else if (pageName.equals("Color Scheme Font")) {
-            page.getChildren().addAll(title, buildFontContent());
+            page.getChildren().addAll(new Label(pageName), buildFontContent());
         } else if (pageName.equals("Console Font")) {
-            page.getChildren().addAll(title, buildConsoleFontContent());
+            page.getChildren().addAll(new Label(pageName), buildConsoleFontContent());
         } else if (pageName.equals("Console Colors")) {
-            page.getChildren().addAll(title, buildConsoleColorsContent());
+            page.getChildren().addAll(new Label(pageName), buildConsoleColorsContent());
         } else if (pageName.equals("Debugger")) {
-            page.getChildren().addAll(title, buildDebuggerContent());
+            page.getChildren().addAll(new Label(pageName), buildDebuggerContent());
         } else if (pageName.equals("Diff & Merge")) {
-            page.getChildren().addAll(title, buildDiffMergeContent());
+            page.getChildren().addAll(new Label(pageName), buildDiffMergeContent());
         } else if (pageName.equals("VCS")) {
-            page.getChildren().addAll(title, buildVCSContent());
+            page.getChildren().addAll(new Label(pageName), buildVCSContent());
         } else {
             // Language-specific pages - show placeholder with sample color settings
+            Label title = new Label(pageName);
+            title.getStyleClass().add("settings-section");
             page.getChildren().addAll(title, buildLanguageContent(pageName));
         }
 
@@ -310,7 +327,58 @@ public class SettingsColorSchemePage extends VBox {
         resetBtn.setStyle("-fx-border-color: #E5534B; -fx-text-fill: #E5534B;");
         buttonRow.getChildren().addAll(exportBtn, importBtn, duplicateBtn, resetBtn);
 
-        box.getChildren().addAll(schemeRow, buttonRow);
+        // Panel: left = categories (accordion), right = preview (code area)
+        VBox panel = new VBox(8);
+        panel.setPadding(new Insets(12));
+        BorderStroke stroke = new BorderStroke(javafx.scene.paint.Color.web("#2C3042"), BorderStrokeStyle.SOLID, new CornerRadii(6), new BorderWidths(1));
+        panel.setBorder(new Border(stroke));
+
+        // Accordion of categories (collapsed by default)
+        javafx.scene.control.Accordion acc = new javafx.scene.control.Accordion();
+        String[] cats = {"Code","Editor","Errors and Warnings","Hyperlinks","Identifiers","Line Coverage","Live Templates","Popups and Hints","Preview","Search Results","Text"};
+        for (String c : cats) {
+            javafx.scene.control.TitledPane tp = new javafx.scene.control.TitledPane(c, new VBox());
+            tp.setCollapsible(true);
+            acc.getPanes().add(tp);
+        }
+        acc.setPrefWidth(380);
+
+        // Preview area - simulate a code editor with colored tokens using existing CSS
+        VBox codeArea = new VBox(4);
+        codeArea.getStyleClass().add("code-area");
+        codeArea.setPadding(new Insets(12));
+        codeArea.setPrefWidth(520);
+
+        // Sample lines
+        Label l1 = new Label("// TODO: Visit JB Web resources:");
+        l1.getStyleClass().addAll("sx-comment");
+        Label l2 = new Label("JetBrains Home Page: http://www.jetbrains.com");
+        l2.getStyleClass().addAll("sx-keyword");
+        Label l3 = new Label("ReferenceHyperlink");
+        l3.getStyleClass().addAll("sx-method");
+
+        Label sep = new Label("");
+        sep.setPrefHeight(6);
+
+        // Second block of sample lines
+        Label l4 = new Label("Search:");
+        l4.getStyleClass().addAll("sx-keyword");
+        Label l5 = new Label("result = \"text, text, text\";");
+        l5.getStyleClass().addAll("sx-string");
+
+        codeArea.getChildren().addAll(l1, l2, l3, sep, l4, l5);
+
+        ScrollPane previewScroll = new ScrollPane(codeArea);
+        previewScroll.setFitToWidth(true);
+        previewScroll.setPrefViewportHeight(300);
+        previewScroll.getStyleClass().add("settings-scroll");
+
+        HBox contentRow = new HBox(12, acc, previewScroll);
+        HBox.setHgrow(previewScroll, Priority.ALWAYS);
+
+        panel.getChildren().add(contentRow);
+
+        box.getChildren().addAll(schemeRow, buttonRow, panel);
         return box;
     }
 
@@ -621,11 +689,13 @@ public class SettingsColorSchemePage extends VBox {
 
         Label header = new Label("Configure colors and the font for source code and console output:");
         header.getStyleClass().add("settings-hint");
+        header.setWrapText(true);
+        header.setMaxWidth(260);
 
-        FlowPane links = new FlowPane();
-        links.setVgap(6);
-        links.setHgap(24);
-        links.setPrefWrapLength(520); // allow wrapping into multiple columns
+        VBox links = new VBox(10);
+        links.setFillWidth(true);
+        links.setPrefWidth(260);
+        links.setMaxWidth(Double.MAX_VALUE);
 
         // Use the scheme tree to populate the links in the same order
         if (schemeTree.getRoot() != null) {
@@ -633,6 +703,9 @@ public class SettingsColorSchemePage extends VBox {
                 if (item.getValue() == null) continue;
                 Hyperlink link = new Hyperlink(item.getValue());
                 link.getStyleClass().add("settings-link");
+                link.setWrapText(true);
+                link.setMaxWidth(Double.MAX_VALUE);
+                link.setPrefWidth(240);
                 // clicking a link selects the corresponding tree item and shows that page
                 link.setOnAction(evt -> {
                     TreeItem<String> found = findItem(schemeTree.getRoot(), item.getValue());
@@ -647,7 +720,9 @@ public class SettingsColorSchemePage extends VBox {
 
         ScrollPane scroller = new ScrollPane(links);
         scroller.setFitToWidth(true);
+        scroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroller.setPrefViewportHeight(360);
+        scroller.setMaxWidth(Double.MAX_VALUE);
         scroller.getStyleClass().add("settings-quicklinks-scroll");
 
         // Put a visible border around links to match screenshots

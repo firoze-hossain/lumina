@@ -818,11 +818,14 @@ public class SettingsDialog {
             TreeItem<String> ancestor = selected.getParent();
             boolean underAppearanceGroup = false;
             boolean underEditorGroup = false;
+            boolean underColorScheme = false;
             while (ancestor != null) {
                 String v = ancestor.getValue();
                 if (v != null) {
                     if (v.equals("Appearance & Behavior")) underAppearanceGroup = true;
                     if (v.equals("Editor")) underEditorGroup = true;
+                    if (v.equals("Color Scheme")) underEditorGroup = true; // keep Editor group flag
+                    if (v.equals("Color Scheme")) underColorScheme = true;
                 }
                 ancestor = ancestor.getParent();
             }
@@ -832,6 +835,12 @@ public class SettingsDialog {
             // under "Editor" treat it as an editor sub-page.
             if (underAppearanceGroup && "Appearance".equals(pageName)) {
                 buildAppearancePage();
+                return;
+            }
+
+            // If the selected node is under Editor -> Color Scheme, route to the Color Scheme page
+            if (underColorScheme) {
+                buildColorSchemePage(pageName);
                 return;
             }
 
@@ -1012,6 +1021,12 @@ public class SettingsDialog {
 
         private void buildPresentationAssistantPage() {
             SettingsPresentationAssistantPage page = new SettingsPresentationAssistantPage();
+            wrapInScroll(page);
+        }
+
+        private void buildColorSchemePage(String pageName) {
+            SettingsColorSchemePage page = new SettingsColorSchemePage();
+            page.selectPage(pageName);
             wrapInScroll(page);
         }
 
