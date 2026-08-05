@@ -40,7 +40,12 @@ public class SettingsColorSchemePage extends VBox {
 
     // Pages that should take full width (no tree or quick links)
     private static final String[] FULL_WIDTH_PAGES = {
-            "General", "Language Defaults", "Color Scheme Font","Console Font", "Code With Me", "Console Colors", "Debugger"
+            "General", "Language Defaults", "Color Scheme Font",
+            "Console Font",
+            "Code With Me", "Console Colors",
+            "Debugger","JVM Logging",
+            "User-Defined File Types", "Diff & Merge", "VCS", "Java",
+            "Angular Template", "Context Free Grammar", "CSS"
     };
 
     public SettingsColorSchemePage() {
@@ -316,10 +321,24 @@ public class SettingsColorSchemePage extends VBox {
         } else if (pageName.equals("Debugger")) {
             return new SettingsDebuggerPage();
         } else if (pageName.equals("Diff & Merge")) {
-            page.getChildren().addAll(new Label(pageName), buildDiffMergeContent());
+            return new SettingsDiffMergePage();
         } else if (pageName.equals("VCS")) {
-            page.getChildren().addAll(new Label(pageName), buildVCSContent());
-        } else {
+            return new SettingsVCSPage();
+        } else if (pageName.equals("JVM Logging")) {
+            return new SettingsJVMLoggingPage();
+        } else if (pageName.equals("User-Defined File Types")) {
+            return new SettingsUserDefinedFileTypesPage();
+        }
+        else if (pageName.equals("Java")) {
+            return new SettingsJavaPage();
+        } else if (pageName.equals("Angular Template")) {
+            return new SettingsAngularTemplatePage();
+        } else if (pageName.equals("Context Free Grammar")) {
+            return new SettingsContextFreeGrammarPage();
+        } else if (pageName.equals("CSS")) {
+            return new SettingsCSSPage();
+        }
+        else {
             Label title = new Label(pageName);
             title.getStyleClass().add("settings-section");
             page.getChildren().addAll(title, buildLanguageContent(pageName));
