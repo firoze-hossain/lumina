@@ -28,7 +28,8 @@ public class SettingsTableDiffPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Added", "Changed", "Deleted", "Error", "Ignored", "Modified", "Separator"};
+        String[] items = {"Excluded from diff", "Fuzzy match - matched", "Fuzzy match - mismatched",
+            "Inserted text", "Removed text", "Modified text", "Fuzzy matched/mismatch text"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -43,6 +44,18 @@ public class SettingsTableDiffPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        HBox inheritRow = new HBox(8);
+        inheritRow.setPadding(new Insets(8, 0, 8, 0));
+        inheritRow.setAlignment(Pos.CENTER_LEFT);
+        Label inheritLabel = new Label("Inherit values from:");
+        inheritLabel.getStyleClass().add("settings-label");
+        ComboBox<String> inheritCombo = new ComboBox<>();
+        inheritCombo.getItems().addAll("Code → Injected language fragment", "General");
+        inheritCombo.getSelectionModel().selectFirst();
+        inheritCombo.getStyleClass().add("settings-combo");
+        inheritCombo.setPrefWidth(300);
+        inheritRow.getChildren().addAll(inheritLabel, inheritCombo);
+
+        getChildren().addAll(schemeRow, itemsBox, inheritRow);
     }
 }

@@ -25,12 +25,13 @@ public class SettingsXSLTPage extends VBox {
         themeLink.getStyleClass().add("settings-link");
         schemeRow.getChildren().addAll(schemeLabel, schemeCombo, themeLink);
 
-        VBox itemsBox = new VBox(4);
-        itemsBox.setPadding(new Insets(12, 0, 12, 0));
+        Label xsltLabel = new Label("XSLT Directive");
+        xsltLabel.getStyleClass().add("settings-section");
 
-        String[] items = {"Attribute name", "Attribute value", "Comment", "Keyword", "Tag",
-            "Tag name", "Tag tree (level 1)", "Tag tree (level 2)", "Tag tree (level 3)",
-            "Tag tree (level 4)", "Tag tree (level 5)", "Tag tree (level 6)", "XPath expression"};
+        VBox itemsBox = new VBox(4);
+        itemsBox.setPadding(new Insets(4, 0, 12, 0));
+
+        String[] items = {"XSLT Directive"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -45,6 +46,67 @@ public class SettingsXSLTPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        Label settingsLabel = new Label("Settings");
+        settingsLabel.getStyleClass().add("settings-section");
+
+        HBox settingsRow = new HBox(16);
+        settingsRow.setPadding(new Insets(4, 0, 8, 20));
+        settingsRow.setAlignment(Pos.CENTER_LEFT);
+        String[] settings = {"Bold", "Italic", "Foreground", "Background", "Error stripe mark", "Effects", "Borderred"};
+        for (String s : settings) {
+            if (s.equals("Foreground") || s.equals("Background") || s.equals("Error stripe mark")) {
+                HBox box = new HBox(4);
+                box.setAlignment(Pos.CENTER_LEFT);
+                Label color = new Label("■");
+                color.setStyle("-fx-text-fill: #2B2D30; -fx-font-size: 14px;");
+                Button btn = new Button("Choose...");
+                btn.getStyleClass().add("dialog-secondary");
+                btn.setPrefWidth(70);
+                box.getChildren().addAll(color, btn);
+                settingsRow.getChildren().add(box);
+            } else {
+                CheckBox cb = new CheckBox(s);
+                cb.setSelected(true);
+                cb.getStyleClass().add("settings-check");
+                settingsRow.getChildren().add(cb);
+            }
+        }
+
+        HBox inheritRow = new HBox(8);
+        inheritRow.setPadding(new Insets(8, 0, 8, 0));
+        inheritRow.setAlignment(Pos.CENTER_LEFT);
+        Label inheritLabel = new Label("Inherit values from:");
+        inheritLabel.getStyleClass().add("settings-label");
+        ComboBox<String> inheritCombo = new ComboBox<>();
+        inheritCombo.getItems().addAll("Template language", "Language Defaults");
+        inheritCombo.getSelectionModel().selectFirst();
+        inheritCombo.getStyleClass().add("settings-combo");
+        inheritCombo.setPrefWidth(200);
+        inheritRow.getChildren().addAll(inheritLabel, inheritCombo);
+
+        VBox previewBox = new VBox(4);
+        previewBox.setPadding(new Insets(12));
+        previewBox.setStyle("-fx-background-color: #1F2230; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6;");
+        Label p1 = new Label("<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"1.0\">");
+        p1.setStyle("-fx-text-fill: #CF8E6D;");
+        Label p2 = new Label("    <xsl:template match=\"/hello-world\">");
+        p2.setStyle("-fx-text-fill: #56A8F5;");
+        Label p3 = new Label("    <html>");
+        p3.setStyle("-fx-text-fill: #6AAB73;");
+        Label p4 = new Label("        <body>");
+        p4.setStyle("-fx-text-fill: #6AAB73;");
+        Label p5 = new Label("            <xsl:value-of select=\"greeting\"/>");
+        p5.setStyle("-fx-text-fill: #56A8F5;");
+        Label p6 = new Label("        </body>");
+        p6.setStyle("-fx-text-fill: #6AAB73;");
+        Label p7 = new Label("    </html>");
+        p7.setStyle("-fx-text-fill: #6AAB73;");
+        Label p8 = new Label("    </xsl:template>");
+        p8.setStyle("-fx-text-fill: #56A8F5;");
+        Label p9 = new Label("</xsl:stylesheet>");
+        p9.setStyle("-fx-text-fill: #CF8E6D;");
+        previewBox.getChildren().addAll(p1, p2, p3, p4, p5, p6, p7, p8, p9);
+
+        getChildren().addAll(schemeRow, xsltLabel, itemsBox, settingsLabel, settingsRow, inheritRow, previewBox);
     }
 }
