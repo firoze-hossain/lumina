@@ -45,7 +45,12 @@ public class SettingsColorSchemePage extends VBox {
             "Code With Me", "Console Colors",
             "Debugger","JVM Logging",
             "User-Defined File Types", "Diff & Merge", "VCS", "Java",
-            "Angular Template", "Context Free Grammar", "CSS"
+            "Angular Template", "Context Free Grammar",
+            "CSS","Data Editor and Viewer",
+            "Database", "Diagrams",
+            "Dockerfile", "EditorConfig", "FreeMarker",
+            "GitLab CI Expression", "Gradle Declarative Configuration",
+            "Groovy", "HTML", "HTTP Request", "JavaScript"
     };
 
     public SettingsColorSchemePage() {
@@ -337,6 +342,31 @@ public class SettingsColorSchemePage extends VBox {
             return new SettingsContextFreeGrammarPage();
         } else if (pageName.equals("CSS")) {
             return new SettingsCSSPage();
+        }
+        else if (pageName.equals("Data Editor and Viewer")) {
+            return new SettingsDataEditorViewerPage();
+        } else if (pageName.equals("Database")) {
+            return new SettingsDatabasePage();
+        } else if (pageName.equals("Diagrams")) {
+            return new SettingsDiagramsPage();
+        } else if (pageName.equals("Dockerfile")) {
+            return new SettingsDockerfilePage();
+        } else if (pageName.equals("EditorConfig")) {
+            return new SettingsEditorConfigPage();
+        } else if (pageName.equals("FreeMarker")) {
+            return new SettingsFreeMarkerPage();
+        } else if (pageName.equals("GitLab CI Expression")) {
+            return new SettingsGitLabCIExpressionPage();
+        } else if (pageName.equals("Gradle Declarative Configuration")) {
+            return new SettingsGradleDeclarativePage();
+        } else if (pageName.equals("Groovy")) {
+            return new SettingsGroovyPage();
+        } else if (pageName.equals("HTML")) {
+            return new SettingsHTMLPage();
+        } else if (pageName.equals("HTTP Request")) {
+            return new SettingsHTTPRequestPage();
+        } else if (pageName.equals("JavaScript")) {
+            return new SettingsJavaScriptPage();
         }
         else {
             Label title = new Label(pageName);
