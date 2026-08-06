@@ -50,7 +50,15 @@ public class SettingsColorSchemePage extends VBox {
             "Database", "Diagrams",
             "Dockerfile", "EditorConfig", "FreeMarker",
             "GitLab CI Expression", "Gradle Declarative Configuration",
-            "Groovy", "HTML", "HTTP Request", "JavaScript"
+            "Groovy", "HTML", "HTTP Request", "JavaScript",
+            "JPA/Hibernate QL", "JSON", "JSONPath", "JSP",
+            "Jupyter Notebooks", "Kotlin", "Kubernetes", "Less",
+            "Lombok Config", "Markdown", "Micronaut EL", "MongoDB JSON",
+            "PostCSS", "Properties", "Protocol Buffer", "Protocol Buffer Text",
+            "Qute", "RegExp", "Rust", "Sass/SCSS",
+            "Shell Script", "Spring EL", "SQL", "Table Diff",
+            "TOML", "TypeScript", "Velocity", "XML",
+            "XPath", "XSLT", "YAML", "By Scope", "Images"
     };
 
     public SettingsColorSchemePage() {
@@ -367,6 +375,73 @@ public class SettingsColorSchemePage extends VBox {
             return new SettingsHTTPRequestPage();
         } else if (pageName.equals("JavaScript")) {
             return new SettingsJavaScriptPage();
+        }
+        else if (pageName.equals("JPA/Hibernate QL")) {
+            return new SettingsJPAHibernateQLPage();
+        } else if (pageName.equals("JSON")) {
+            return new SettingsJSONPage();
+        } else if (pageName.equals("JSONPath")) {
+            return new SettingsJSONPathPage();
+        } else if (pageName.equals("JSP")) {
+            return new SettingsJSPPage();
+        } else if (pageName.equals("Jupyter Notebooks")) {
+            return new SettingsJupyterNotebooksPage();
+        } else if (pageName.equals("Kotlin")) {
+            return new SettingsKotlinPage();
+        } else if (pageName.equals("Kubernetes")) {
+            return new SettingsKubernetesPage();
+        } else if (pageName.equals("Less")) {
+            return new SettingsLessPage();
+        } else if (pageName.equals("Lombok Config")) {
+            return new SettingsLombokConfigPage();
+        } else if (pageName.equals("Markdown")) {
+            return new SettingsMarkdownPage();
+        } else if (pageName.equals("Micronaut EL")) {
+            return new SettingsMicronautELPage();
+        } else if (pageName.equals("MongoDB JSON")) {
+            return new SettingsMongoDBJSONPage();
+        } else if (pageName.equals("PostCSS")) {
+            return new SettingsPostCSSPage();
+        } else if (pageName.equals("Properties")) {
+            return new SettingsPropertiesPage();
+        } else if (pageName.equals("Protocol Buffer")) {
+            return new SettingsProtocolBufferPage();
+        } else if (pageName.equals("Protocol Buffer Text")) {
+            return new SettingsProtocolBufferTextPage();
+        } else if (pageName.equals("Qute")) {
+            return new SettingsQutePage();
+        } else if (pageName.equals("RegExp")) {
+            return new SettingsRegExpPage();
+        } else if (pageName.equals("Rust")) {
+            return new SettingsRustPage();
+        } else if (pageName.equals("Sass/SCSS")) {
+            return new SettingsSassSCSSPage();
+        } else if (pageName.equals("Shell Script")) {
+            return new SettingsShellScriptPage();
+        } else if (pageName.equals("Spring EL")) {
+            return new SettingsSpringELPage();
+        } else if (pageName.equals("SQL")) {
+            return new SettingsSQLPage();
+        } else if (pageName.equals("Table Diff")) {
+            return new SettingsTableDiffPage();
+        } else if (pageName.equals("TOML")) {
+            return new SettingsTOMLPage();
+        } else if (pageName.equals("TypeScript")) {
+            return new SettingsTypeScriptPage();
+        } else if (pageName.equals("Velocity")) {
+            return new SettingsVelocityPage();
+        } else if (pageName.equals("XML")) {
+            return new SettingsXMLPage();
+        } else if (pageName.equals("XPath")) {
+            return new SettingsXPathPage();
+        } else if (pageName.equals("XSLT")) {
+            return new SettingsXSLTPage();
+        } else if (pageName.equals("YAML")) {
+            return new SettingsYAMLPage();
+        } else if (pageName.equals("By Scope")) {
+            return new SettingsByScopePage();
+        } else if (pageName.equals("Images")) {
+            return new SettingsImagesPage();
         }
         else {
             Label title = new Label(pageName);
