@@ -28,8 +28,8 @@ public class SettingsXPathPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Axis specifier", "Bad character", "Function", "Keyword", "Number",
-            "Operator", "Path separator", "Predicate", "String", "Variable"};
+        String[] items = {"Brackets", "Extension Prefix", "Function", "Keyword", "Name",
+            "Number", "Operator", "Other", "Parentheses", "String"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -44,6 +44,13 @@ public class SettingsXPathPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        VBox previewBox = new VBox(4);
+        previewBox.setPadding(new Insets(12));
+        previewBox.setStyle("-fx-background-color: #1F2230; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6;");
+        Label p1 = new Label("//prefix:*[ext:name() = 'changes']/element[(position() mod 2) = $pos + 1]/parent::*");
+        p1.setStyle("-fx-text-fill: #6AAB73;");
+        previewBox.getChildren().add(p1);
+
+        getChildren().addAll(schemeRow, itemsBox, previewBox);
     }
 }

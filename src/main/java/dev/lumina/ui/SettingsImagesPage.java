@@ -28,7 +28,7 @@ public class SettingsImagesPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Bad image", "Broken image", "Image", "Selected image", "Thumbnail"};
+        String[] items = {"Background", "'Black' cell", "'White' cell", "Grid line"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -43,6 +43,32 @@ public class SettingsImagesPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        Label settingsLabel = new Label("Settings");
+        settingsLabel.getStyleClass().add("settings-section");
+
+        HBox settingsRow = new HBox(16);
+        settingsRow.setPadding(new Insets(4, 0, 8, 20));
+        settingsRow.setAlignment(Pos.CENTER_LEFT);
+        String[] settings = {"Bold", "Italic", "Foreground", "Background", "Error stripe mark", "Effects", "Underscored"};
+        for (String s : settings) {
+            if (s.equals("Foreground") || s.equals("Background") || s.equals("Error stripe mark")) {
+                HBox box = new HBox(4);
+                box.setAlignment(Pos.CENTER_LEFT);
+                Label color = new Label("■");
+                color.setStyle("-fx-text-fill: #1FB0FF; -fx-font-size: 14px;");
+                Button btn = new Button("Choose...");
+                btn.getStyleClass().add("dialog-secondary");
+                btn.setPrefWidth(70);
+                box.getChildren().addAll(color, btn);
+                settingsRow.getChildren().add(box);
+            } else {
+                CheckBox cb = new CheckBox(s);
+                cb.setSelected(true);
+                cb.getStyleClass().add("settings-check");
+                settingsRow.getChildren().add(cb);
+            }
+        }
+
+        getChildren().addAll(schemeRow, itemsBox, settingsLabel, settingsRow);
     }
 }

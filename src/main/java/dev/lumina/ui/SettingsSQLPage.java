@@ -28,8 +28,9 @@ public class SettingsSQLPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Bad character", "Comment", "Function", "Identifier", "Keyword",
-            "Number", "Operator", "Parameter", "Parenthesis", "String", "Variable"};
+        String[] items = {"Bad token", "Braces", "Brackets", "Column", "Comma", "Comment",
+            "Database object", "Dot", "External command", "Keyword", "Label",
+            "Number token", "Outer query column", "Parameter", "Parentheses"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -44,6 +45,23 @@ public class SettingsSQLPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        VBox previewBox = new VBox(4);
+        previewBox.setPadding(new Insets(12));
+        previewBox.setStyle("-fx-background-color: #1F2230; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6;");
+        Label p1 = new Label("create table crm.product (");
+        p1.setStyle("-fx-text-fill: #CF8E6D;");
+        Label p2 = new Label("    id numeric primary key,");
+        p2.setStyle("-fx-text-fill: #56A8F5;");
+        Label p3 = new Label("    title varchar(255) character set utf8");
+        p3.setStyle("-fx-text-fill: #6AAB73;");
+        Label p4 = new Label(");");
+        p4.setStyle("-fx-text-fill: #D8DBE6;");
+        Label p5 = new Label("insert into product");
+        p5.setStyle("-fx-text-fill: #CF8E6D;");
+        Label p6 = new Label("values (1, 'Product1');");
+        p6.setStyle("-fx-text-fill: #6AAB73;");
+        previewBox.getChildren().addAll(p1, p2, p3, p4, p5, p6);
+
+        getChildren().addAll(schemeRow, itemsBox, previewBox);
     }
 }

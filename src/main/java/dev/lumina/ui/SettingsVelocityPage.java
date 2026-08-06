@@ -28,8 +28,10 @@ public class SettingsVelocityPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Braces", "Comment", "Directive", "Dot", "Keyword", "Number",
-            "Reference", "String", "Variable", "Variable usage"};
+        String[] items = {"Bad character", "Braces", "Brackets", "Built-in directive", "Comma",
+            "Comment", "Dot", "Escape character", "Keyword", "Number literal",
+            "Operation sign", "Parentheses", "Reference and macro call",
+            "Scripting background", "Semicolon"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
@@ -44,6 +46,25 @@ public class SettingsVelocityPage extends VBox {
             itemsBox.getChildren().add(row);
         }
 
-        getChildren().addAll(schemeRow, itemsBox);
+        VBox previewBox = new VBox(4);
+        previewBox.setPadding(new Insets(12));
+        previewBox.setStyle("-fx-background-color: #1F2230; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6;");
+        Label p1 = new Label("#* comment *");
+        p1.setStyle("-fx-text-fill: #7A7E85; -fx-font-style: italic;");
+        Label p2 = new Label("comment *#");
+        p2.setStyle("-fx-text-fill: #7A7E85; -fx-font-style: italic;");
+        Label p3 = new Label("$reference.method('string').property");
+        p3.setStyle("-fx-text-fill: #6AAB73;");
+        Label p4 = new Label("## another comment");
+        p4.setStyle("-fx-text-fill: #7A7E85; -fx-font-style: italic;");
+        Label p5 = new Label("#foreach($loopvar in [-4..7])");
+        p5.setStyle("-fx-text-fill: #CF8E6D;");
+        Label p6 = new Label("#set($var = {\"double-quoted $loopvar.toString()\"}, 2:false #fff})");
+        p6.setStyle("-fx-text-fill: #6AAB73;");
+        Label p7 = new Label("#end");
+        p7.setStyle("-fx-text-fill: #CF8E6D;");
+        previewBox.getChildren().addAll(p1, p2, p3, p4, p5, p6, p7);
+
+        getChildren().addAll(schemeRow, itemsBox, previewBox);
     }
 }

@@ -28,8 +28,7 @@ public class SettingsTOMLPage extends VBox {
         VBox itemsBox = new VBox(4);
         itemsBox.setPadding(new Insets(12, 0, 12, 0));
 
-        String[] items = {"Bare key", "Bare key", "Brace", "Bracket", "Comment", "Date and Time",
-            "Dot", "Float", "Integer", "Key", "Key group", "Key path", "String", "Symbol"};
+        String[] items = {"Boolean", "Comments", "Date", "Keys", "Number", "String"};
         for (String item : items) {
             HBox row = new HBox(12);
             row.setAlignment(Pos.CENTER_LEFT);
