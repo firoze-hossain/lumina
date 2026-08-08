@@ -113,6 +113,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("File and Code Templates")) {
             showFileAndCodeTemplatesPage();
         }
+        else if (pageName.equals("File Encodings")) {
+            showFileEncodingsPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -136,6 +139,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showFileEncodingsPage() {
+        SettingsFileEncodingsPage page = new SettingsFileEncodingsPage();
+        contentArea.getChildren().add(page);
     }
     private void showFileAndCodeTemplatesPage() {
         SettingsFileAndCodeTemplatesPage page = new SettingsFileAndCodeTemplatesPage();
