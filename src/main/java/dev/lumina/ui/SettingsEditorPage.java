@@ -179,6 +179,14 @@ public class SettingsEditorPage extends VBox {
             SettingsCopyrightFormattingDTDPage page = new SettingsCopyrightFormattingDTDPage();
             pageTitle.setText("Editor > Copyright > Formatting > DTD");
             contentArea.getChildren().add(page);
+        }else if ("Groovy".equals(pageName)) {
+            SettingsCopyrightFormattingGroovyPage page = new SettingsCopyrightFormattingGroovyPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Groovy");
+            contentArea.getChildren().add(page);
+        } else if ("HTML".equals(pageName)) {
+            SettingsCopyrightFormattingHTMLPage page = new SettingsCopyrightFormattingHTMLPage();
+            pageTitle.setText("Editor > Copyright > Formatting > HTML");
+            contentArea.getChildren().add(page);
         }else {
             // For other languages, show the generic formatting page
             SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
