@@ -232,10 +232,38 @@ public class SettingsDialog {
         );
       // Copyright node with sub-items
         TreeItem<String> copyright = new TreeItem<>("Copyright");
-        copyright.getChildren().addAll(
-                new TreeItem<>("Copyright Profiles"),
-                new TreeItem<>("Formatting")
+        // Copyright Profiles sub-item
+        TreeItem<String> copyrightProfiles = new TreeItem<>("Copyright Profiles");
+
+// Formatting node with all language sub-items
+        TreeItem<String> formatting = new TreeItem<>("Formatting");
+        formatting.getChildren().addAll(
+                new TreeItem<>("CSS"),
+                new TreeItem<>("DTD"),
+                new TreeItem<>("Groovy"),
+                new TreeItem<>("HTML"),
+                new TreeItem<>("Java"),
+                new TreeItem<>("JavaScript"),
+                new TreeItem<>("JSP"),
+                new TreeItem<>("JSPX"),
+                new TreeItem<>("Kotlin"),
+                new TreeItem<>("Less"),
+                new TreeItem<>("PostCSS"),
+                new TreeItem<>("Properties"),
+                new TreeItem<>("Rust"),
+                new TreeItem<>("Sass"),
+                new TreeItem<>("SCSS"),
+                new TreeItem<>("Shell Script"),
+                new TreeItem<>("SPI"),
+                new TreeItem<>("SQL"),
+                new TreeItem<>("SVG"),
+                new TreeItem<>("TypeScript"),
+                new TreeItem<>("Vue template"),
+                new TreeItem<>("XHTML"),
+                new TreeItem<>("XML")
         );
+
+        copyright.getChildren().addAll(copyrightProfiles, formatting);
         editor.getChildren().addAll(
             general,
             new TreeItem<>("Code Editing"),
