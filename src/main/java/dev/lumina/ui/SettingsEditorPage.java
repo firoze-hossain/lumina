@@ -175,7 +175,11 @@ public class SettingsEditorPage extends VBox {
             // Set the title with the language name
             pageTitle.setText("Editor > Copyright > Formatting > CSS");
             contentArea.getChildren().add(page);
-        } else {
+        } else if ("DTD".equals(pageName)) {
+            SettingsCopyrightFormattingDTDPage page = new SettingsCopyrightFormattingDTDPage();
+            pageTitle.setText("Editor > Copyright > Formatting > DTD");
+            contentArea.getChildren().add(page);
+        }else {
             // For other languages, show the generic formatting page
             SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
             contentArea.getChildren().add(page);
