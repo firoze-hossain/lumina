@@ -122,6 +122,14 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("File Types")) {
             showFileTypesPage();
         }
+        else if (pageName.equals("Copyright")) {
+            showCopyrightPage();
+        }
+        else if (pageName.equals("Copyright Profiles")) {
+            showCopyrightProfilesPage();
+        } else if (pageName.equals("Formatting")) {
+            showCopyrightFormattingPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -145,6 +153,18 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showCopyrightProfilesPage() {
+        SettingsCopyrightProfilesPage page = new SettingsCopyrightProfilesPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showCopyrightPage() {
+        SettingsCopyrightPage page = new SettingsCopyrightPage();
+        contentArea.getChildren().add(page);
+    }
+    private void showCopyrightFormattingPage() {
+        SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
+        contentArea.getChildren().add(page);
     }
     private void showFileEncodingsPage() {
         SettingsFileEncodingsPage page = new SettingsFileEncodingsPage();

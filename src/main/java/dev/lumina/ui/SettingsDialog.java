@@ -230,7 +230,12 @@ public class SettingsDialog {
             new TreeItem<>("By Scope"),
             new TreeItem<>("Images")
         );
-
+      // Copyright node with sub-items
+        TreeItem<String> copyright = new TreeItem<>("Copyright");
+        copyright.getChildren().addAll(
+                new TreeItem<>("Copyright Profiles"),
+                new TreeItem<>("Formatting")
+        );
         editor.getChildren().addAll(
             general,
             new TreeItem<>("Code Editing"),
@@ -242,7 +247,7 @@ public class SettingsDialog {
             new TreeItem<>("File Encodings"),
             new TreeItem<>("Live Templates"),
             new TreeItem<>("File Types"),
-            new TreeItem<>("Copyright"),
+                copyright,
             new TreeItem<>("Inlay Hints"),
             new TreeItem<>("Duplicates"),
             new TreeItem<>("Emmet"),
