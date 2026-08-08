@@ -110,6 +110,9 @@ public class SettingsEditorPage extends VBox {
         else if (pageName.equals("Color Scheme")) {
             showColorSchemePage();
         }
+        else if (pageName.equals("File and Code Templates")) {
+            showFileAndCodeTemplatesPage();
+        }
         else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
@@ -133,6 +136,10 @@ public class SettingsEditorPage extends VBox {
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+    private void showFileAndCodeTemplatesPage() {
+        SettingsFileAndCodeTemplatesPage page = new SettingsFileAndCodeTemplatesPage();
+        contentArea.getChildren().add(page);
     }
     private void showInspectionsPage() {
         SettingsInspectionsPage page = new SettingsInspectionsPage();
