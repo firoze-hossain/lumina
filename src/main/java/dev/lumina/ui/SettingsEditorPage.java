@@ -1,9 +1,8 @@
 package dev.lumina.ui;
 
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 
 /**
  * IntelliJ-style Editor settings page.
@@ -54,83 +53,85 @@ public class SettingsEditorPage extends VBox {
             showAutoImportPage();
         } else if (pageName.equals("Appearance")) {
             showAppearancePage();
-        }else if (pageName.equals("Breadcrumbs")) {
+        } else if (pageName.equals("Breadcrumbs")) {
             showBreadcrumbsPage();
-        }
-        else if (pageName.equals("Code Completion")) {
+        } else if (pageName.equals("Code Completion")) {
             showCodeCompletionPage();
-        }
-        else if (pageName.equals("Code Folding")) {
+        } else if (pageName.equals("Code Folding")) {
             showCodeFoldingPage();
-        }
-        else if (pageName.equals("Console")) {
+        } else if (pageName.equals("Console")) {
             showConsolePage();
-        }
-        else if (pageName.equals("Editor Tabs")) {
+        } else if (pageName.equals("Editor Tabs")) {
             showEditorTabsPage();
-        }
-        else if (pageName.equals("Gutter Icons")) {
+        } else if (pageName.equals("Gutter Icons")) {
             showGutterIconsPage();
-        }
-        else if (pageName.equals("Inline Completion")) {
+        } else if (pageName.equals("Inline Completion")) {
             showInlineCompletionPage();
-        }
-        else if (pageName.equals("Postfix Completion")) {
+        } else if (pageName.equals("Postfix Completion")) {
             showPostfixCompletionPage();
-        }else if (pageName.equals("Sticky Lines")) {
+        } else if (pageName.equals("Sticky Lines")) {
             showStickyLinesPage();
-        }
-        else if (pageName.equals("YAML")) {
+        } else if (pageName.equals("YAML")) {
             showSmartKeysYAMLPage();
-        }
-        else if (pageName.equals("HTML/CSS")) {
+        } else if (pageName.equals("HTML/CSS")) {
             showSmartKeysHTMLCSSPage();
-        }
-        else if (pageName.equals("JSON")) {
+        } else if (pageName.equals("JSON")) {
             showSmartKeysJSONPage();
         } else if (pageName.equals("Rust")) {
             showSmartKeysRustPage();
         } else if (pageName.equals("Markdown")) {
             showSmartKeysMarkdownPage();
-        }
-        else if (pageName.equals("SQL")) {
+        } else if (pageName.equals("SQL")) {
             showSmartKeysSQLPage();
         } else if (pageName.equals("JavaScript")) {
             showSmartKeysJavaScriptPage();
-        }
-        else if (pageName.equals("Code Editing")) {
+        } else if (pageName.equals("Code Editing")) {
             showCodeEditingPage();
-        }
-        else if (pageName.equals("Font")) {
+        } else if (pageName.equals("Font")) {
             showFontPage();
-        }
-        else if (pageName.equals("Inspections")) {
+        } else if (pageName.equals("Inspections")) {
             showInspectionsPage();
-        }
-        else if (pageName.equals("Color Scheme")) {
+        } else if (pageName.equals("Color Scheme")) {
             showColorSchemePage();
-        }
-        else if (pageName.equals("File and Code Templates")) {
+        } else if (pageName.equals("File and Code Templates")) {
             showFileAndCodeTemplatesPage();
-        }
-        else if (pageName.equals("File Encodings")) {
+        } else if (pageName.equals("File Encodings")) {
             showFileEncodingsPage();
-        }
-        else if (pageName.equals("Live Templates")) {
+        } else if (pageName.equals("Live Templates")) {
             showLiveTemplatesPage();
-        }
-        else if (pageName.equals("File Types")) {
+        } else if (pageName.equals("File Types")) {
             showFileTypesPage();
-        }
-        else if (pageName.equals("Copyright")) {
+        } else if (pageName.equals("Copyright")) {
             showCopyrightPage();
-        }
-        else if (pageName.equals("Copyright Profiles")) {
+        } else if (pageName.equals("Copyright Profiles")) {
             showCopyrightProfilesPage();
         } else if (pageName.equals("Formatting")) {
             showCopyrightFormattingPage();
-        }
-        else if (pageName.equals("General") ||
+        } else if (pageName.equals("CSS") ||
+                pageName.equals("DTD") ||
+                pageName.equals("Groovy") ||
+                pageName.equals("HTML") ||
+                pageName.equals("Java") ||
+                pageName.equals("JavaScript") ||
+                pageName.equals("JSP") ||
+                pageName.equals("JSPX") ||
+                pageName.equals("Kotlin") ||
+                pageName.equals("Less") ||
+                pageName.equals("PostCSS") ||
+                pageName.equals("Properties") ||
+                pageName.equals("Rust") ||
+                pageName.equals("Sass") ||
+                pageName.equals("SCSS") ||
+                pageName.equals("Shell Script") ||
+                pageName.equals("SPI") ||
+                pageName.equals("SQL") ||
+                pageName.equals("SVG") ||
+                pageName.equals("TypeScript") ||
+                pageName.equals("Vue template") ||
+                pageName.equals("XHTML") ||
+                pageName.equals("XML")) {
+            showCopyrightFormattingSubPage(pageName);
+        } else if (pageName.equals("General") ||
                 pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
                 pageName.equals("Code Folding") ||
@@ -154,47 +155,74 @@ public class SettingsEditorPage extends VBox {
             showPlaceholderPage(pageName);
         }
     }
+
     private void showCopyrightProfilesPage() {
         SettingsCopyrightProfilesPage page = new SettingsCopyrightProfilesPage();
         contentArea.getChildren().add(page);
     }
+
     private void showCopyrightPage() {
         SettingsCopyrightPage page = new SettingsCopyrightPage();
         contentArea.getChildren().add(page);
     }
+
+    // In SettingsEditorPage.java, update the showCopyrightFormattingSubPage method:
+
+    private void showCopyrightFormattingSubPage(String pageName) {
+        // Show the specific page based on the language
+        if (pageName.equals("CSS")) {
+            SettingsCopyrightFormattingCSSPage page = new SettingsCopyrightFormattingCSSPage();
+            // Set the title with the language name
+            pageTitle.setText("Editor > Copyright > Formatting > CSS");
+            contentArea.getChildren().add(page);
+        } else {
+            // For other languages, show the generic formatting page
+            SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
+            contentArea.getChildren().add(page);
+        }
+    }
+
     private void showCopyrightFormattingPage() {
         SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
         contentArea.getChildren().add(page);
     }
+
     private void showFileEncodingsPage() {
         SettingsFileEncodingsPage page = new SettingsFileEncodingsPage();
         contentArea.getChildren().add(page);
     }
+
     private void showFileTypesPage() {
         SettingsFileTypesPage page = new SettingsFileTypesPage();
         contentArea.getChildren().add(page);
     }
+
     private void showFileAndCodeTemplatesPage() {
         SettingsFileAndCodeTemplatesPage page = new SettingsFileAndCodeTemplatesPage();
         contentArea.getChildren().add(page);
     }
+
     private void showLiveTemplatesPage() {
         SettingsLiveTemplatesPage page = new SettingsLiveTemplatesPage();
         contentArea.getChildren().add(page);
     }
+
     private void showInspectionsPage() {
         SettingsInspectionsPage page = new SettingsInspectionsPage();
         contentArea.getChildren().add(page);
     }
+
     private void showCodeEditingPage() {
         SettingsCodeEditingPage page = new SettingsCodeEditingPage();
         contentArea.getChildren().add(page);
     }
+
     // In SettingsEditorPage.java, add this method:
     private void showColorSchemePage() {
         SettingsColorSchemePage page = new SettingsColorSchemePage();
         contentArea.getChildren().add(page);
     }
+
     private void showFontPage() {
         SettingsFontPage page = new SettingsFontPage();
         contentArea.getChildren().add(page);
@@ -204,14 +232,17 @@ public class SettingsEditorPage extends VBox {
         SettingsStickyLinesPage page = new SettingsStickyLinesPage();
         contentArea.getChildren().add(page);
     }
+
     private void showSmartKeysHTMLCSSPage() {
         SettingsSmartKeysHTMLCSSPage page = new SettingsSmartKeysHTMLCSSPage();
         contentArea.getChildren().add(page);
     }
+
     private void showSmartKeysJSONPage() {
         SettingsSmartKeysJSONPage page = new SettingsSmartKeysJSONPage();
         contentArea.getChildren().add(page);
     }
+
     private void showSmartKeysSQLPage() {
         SettingsSmartKeysSQLPage page = new SettingsSmartKeysSQLPage();
         contentArea.getChildren().add(page);
@@ -231,42 +262,52 @@ public class SettingsEditorPage extends VBox {
         SettingsSmartKeysMarkdownPage page = new SettingsSmartKeysMarkdownPage();
         contentArea.getChildren().add(page);
     }
+
     private void showSmartKeysYAMLPage() {
         SettingsSmartKeysYAMLPage page = new SettingsSmartKeysYAMLPage();
         contentArea.getChildren().add(page);
     }
+
     private void showPostfixCompletionPage() {
         SettingsPostfixCompletionPage page = new SettingsPostfixCompletionPage();
         contentArea.getChildren().add(page);
     }
+
     private void showInlineCompletionPage() {
         SettingsInlineCompletionPage page = new SettingsInlineCompletionPage();
         contentArea.getChildren().add(page);
     }
+
     private void showGutterIconsPage() {
         SettingsGutterIconsPage page = new SettingsGutterIconsPage();
         contentArea.getChildren().add(page);
     }
+
     private void showEditorTabsPage() {
         SettingsEditorTabsPage page = new SettingsEditorTabsPage();
         contentArea.getChildren().add(page);
     }
+
     private void showConsolePage() {
         SettingsConsolePage page = new SettingsConsolePage();
         contentArea.getChildren().add(page);
     }
+
     private void showCodeFoldingPage() {
         SettingsCodeFoldingPage page = new SettingsCodeFoldingPage();
         contentArea.getChildren().add(page);
     }
+
     private void showBreadcrumbsPage() {
         SettingsBreadcrumbsPage page = new SettingsBreadcrumbsPage();
         contentArea.getChildren().add(page);
     }
+
     private void showCodeCompletionPage() {
         SettingsCodeCompletionPage page = new SettingsCodeCompletionPage();
         contentArea.getChildren().add(page);
     }
+
     private void showEditorOverview() {
         Label info = new Label("Select a category from the left to configure specific editor settings.");
         info.getStyleClass().add("settings-hint");
