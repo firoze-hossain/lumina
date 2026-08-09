@@ -187,6 +187,26 @@ public class SettingsEditorPage extends VBox {
             SettingsCopyrightFormattingHTMLPage page = new SettingsCopyrightFormattingHTMLPage();
             pageTitle.setText("Editor > Copyright > Formatting > HTML");
             contentArea.getChildren().add(page);
+        }else if ("Java".equals(pageName)) {
+            SettingsCopyrightFormattingJavaPage page = new SettingsCopyrightFormattingJavaPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Java");
+            contentArea.getChildren().add(page);
+        } else if ("JavaScript".equals(pageName)) {
+            SettingsCopyrightFormattingJavaScriptPage page = new SettingsCopyrightFormattingJavaScriptPage();
+            pageTitle.setText("Editor > Copyright > Formatting > JavaScript");
+            contentArea.getChildren().add(page);
+        } else if ("JSP".equals(pageName)) {
+            SettingsCopyrightFormattingJSPPage page = new SettingsCopyrightFormattingJSPPage();
+            pageTitle.setText("Editor > Copyright > Formatting > JSP");
+            contentArea.getChildren().add(page);
+        } else if ("JSPX".equals(pageName)) {
+            SettingsCopyrightFormattingJSPXPage page = new SettingsCopyrightFormattingJSPXPage();
+            pageTitle.setText("Editor > Copyright > Formatting > JSPX");
+            contentArea.getChildren().add(page);
+        } else if ("Kotlin".equals(pageName)) {
+            SettingsCopyrightFormattingKotlinPage page = new SettingsCopyrightFormattingKotlinPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Kotlin");
+            contentArea.getChildren().add(page);
         }else {
             // For other languages, show the generic formatting page
             SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
