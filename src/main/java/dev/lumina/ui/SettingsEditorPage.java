@@ -207,7 +207,23 @@ public class SettingsEditorPage extends VBox {
             SettingsCopyrightFormattingKotlinPage page = new SettingsCopyrightFormattingKotlinPage();
             pageTitle.setText("Editor > Copyright > Formatting > Kotlin");
             contentArea.getChildren().add(page);
-        }else {
+        }else if ("Less".equals(pageName)) {
+            SettingsCopyrightFormattingLessPage page = new SettingsCopyrightFormattingLessPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Less");
+            contentArea.getChildren().add(page);
+        } else if ("PostCSS".equals(pageName)) {
+            SettingsCopyrightFormattingPostCSSPage page = new SettingsCopyrightFormattingPostCSSPage();
+            pageTitle.setText("Editor > Copyright > Formatting > PostCSS");
+            contentArea.getChildren().add(page);
+        } else if ("Properties".equals(pageName)) {
+            SettingsCopyrightFormattingPropertiesPage page = new SettingsCopyrightFormattingPropertiesPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Properties");
+            contentArea.getChildren().add(page);
+        } else if ("Rust".equals(pageName)) {
+            SettingsCopyrightFormattingRustPage page = new SettingsCopyrightFormattingRustPage();
+            pageTitle.setText("Editor > Copyright > Formatting > Rust");
+            contentArea.getChildren().add(page);
+        } else {
             // For other languages, show the generic formatting page
             SettingsCopyrightFormattingPage page = new SettingsCopyrightFormattingPage();
             contentArea.getChildren().add(page);
