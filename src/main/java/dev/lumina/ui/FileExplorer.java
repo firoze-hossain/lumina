@@ -81,14 +81,43 @@ public class FileExplorer extends BorderPane {
      */
     private javafx.scene.control.ContextMenu buildTreeContextMenu() {
         javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
+
+        // Populated proactively on selection change (not lazily inside
+        // setOnShowing) — a ContextMenu created with zero items and only
+        // filled in on show is a known-fragile JavaFX pattern; building the
+        // items ahead of time guarantees they're already there by the time
+        // any right-click can possibly trigger the popup.
+        java.util.function.Consumer<Path> rebuild = p -> {
+            List<javafx.scene.control.MenuItem> items;
+            try {
+                if (p == null) {
+                    items = List.of();
+                } else if (Files.isDirectory(p)) {
+                    items = directoryMenuItems(p);
+                } else {
+                    items = fileMenuItems(p);
+                }
+            } catch (Exception ex) {
+                items = List.of(disabledItem("(menu error: " + ex + ")"));
+            }
+            menu.getItems().setAll(items);
+        };
+
+        tree.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) ->
+                rebuild.accept(sel != null ? sel.getValue() : null));
+        // Safety net in case a right-click ever reaches here before the
+        // selection listener above has run.
         menu.setOnShowing(e -> {
             TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
-            Path p = sel != null ? sel.getValue() : null;
-            menu.getItems().setAll(p == null ? List.of()
-                    : Files.isDirectory(p) ? directoryMenuItems(p)
-                    : fileMenuItems(p));
+            rebuild.accept(sel != null ? sel.getValue() : null);
         });
         return menu;
+    }
+
+    private javafx.scene.control.MenuItem disabledItem(String label) {
+        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
+        item.setDisable(true);
+        return item;
     }
 
     // ---------------------------------------------------------- file node
