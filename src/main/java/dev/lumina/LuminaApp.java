@@ -2146,7 +2146,7 @@ public class LuminaApp extends Application {
             if (!Files.exists(marker)) {
                 Platform.runLater(() -> console.println(
                         "Downloading dependency sources (one-time per project)\u2026"));
-                runMavenQuiet(RunConfiguration.maven(projectRoot,
+                runBuildToolQuiet(RunConfiguration.maven(projectRoot,
                         "-q", "dependency:sources"));
                 try { Files.createDirectories(marker.getParent());
                     Files.writeString(marker, "done"); } catch (IOException ignored) {}
@@ -2218,9 +2218,21 @@ public class LuminaApp extends Application {
         if (RunConfiguration.isMavenProject(projectRoot)) {
             Path cpFile = projectRoot.resolve("target/lumina.cp");
             if (!Files.isRegularFile(cpFile)) {
-                runMavenQuiet(RunConfiguration.maven(projectRoot, "-q",
+                runBuildToolQuiet(RunConfiguration.maven(projectRoot, "-q",
                         "dependency:build-classpath",
                         "-Dmdep.outputFile=target/lumina.cp"));
+            }
+            try {
+                if (Files.isRegularFile(cpFile)) {
+                    String cp = Files.readString(cpFile).trim();
+                    if (!cp.isBlank()) parts.add(cp);
+                }
+            } catch (IOException ignored) {
+            }
+        } else if (RunConfiguration.isGradleProject(projectRoot)) {
+            Path cpFile = projectRoot.resolve("build/lumina.cp");
+            if (!Files.isRegularFile(cpFile)) {
+                resolveGradleClasspath(cpFile);
             }
             try {
                 if (Files.isRegularFile(cpFile)) {
@@ -2233,7 +2245,47 @@ public class LuminaApp extends Application {
         return parts.isEmpty() ? null : String.join(File.pathSeparator, parts);
     }
 
-    private void runMavenQuiet(List<String> cmd) {
+    /**
+     * Gradle has no built-in "print the classpath" plugin the way Maven
+     * does, so this registers a one-off task via an init script (applies
+     * to any project using the java plugin, without touching build.gradle)
+     * that dumps main's runtime classpath to a file \u2014 the Gradle
+     * equivalent of dependency:build-classpath. Without this, Spring Boot
+     * imports in a Gradle project never resolve and every file shows
+     * "package \u2026 does not exist" in Problems, even though the project
+     * itself is fine.
+     */
+    private void resolveGradleClasspath(Path cpFile) {
+        try {
+            Path initScript = Files.createTempFile("lumina-classpath", ".gradle");
+            Files.writeString(initScript, """
+                    allprojects {
+                        afterEvaluate { proj ->
+                            if (proj.plugins.hasPlugin('java')) {
+                                proj.tasks.register('luminaClasspath') {
+                                    doLast {
+                                        def cp = proj.sourceSets.main.runtimeClasspath.files
+                                                .join(File.pathSeparator)
+                                        new File(proj.projectDir, 'build/lumina.cp').parentFile.mkdirs()
+                                        new File(proj.projectDir, 'build/lumina.cp').text = cp
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    """);
+            List<String> cmd = new java.util.ArrayList<>(RunConfiguration.gradleCmd(
+                    projectRoot, "-q", "--init-script", initScript.toString(),
+                    "luminaClasspath"));
+            runBuildToolQuiet(cmd);
+            Files.deleteIfExists(initScript);
+        } catch (IOException ignored) {
+            // no classpath this time; the engine still works on project
+            // sources alone and completion/diagnostics degrade gracefully
+        }
+    }
+
+    private void runBuildToolQuiet(List<String> cmd) {
         try {
             Process p = new ProcessBuilder(cmd)
                     .directory(projectRoot.toFile())
@@ -2519,7 +2571,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.12");
+        Label brand = new Label("Lumina 1.13");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2585,6 +2637,16 @@ public class LuminaApp extends Application {
                 Platform.runLater(() -> openProjectInteractive(dir));
             } catch (IOException ex) {
                 console.println("\u2717 " + ex.getMessage());
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.initOwner(stage);
+                    alert.setTitle("Couldn't Create Project");
+                    alert.setHeaderText("Failed to create \u201c" + spec.name() + "\u201d");
+                    alert.setContentText(ex.getMessage());
+                    alert.getDialogPane().getStylesheets().add(getClass()
+                            .getResource("/css/lumina-dark.css").toExternalForm());
+                    alert.showAndWait();
+                });
             }
         }, "lumina-project-generator");
         worker.setDaemon(true);
@@ -2993,15 +3055,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.12");
+        alert.setHeaderText("Lumina IDE 1.13");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Fix: dependency-picker theming (was falling
-                back to JavaFX's white default) \u2014 plus the
-                Spring wizard, live start.spring.io catalog,
-                multi-window opening, and M1\u2013M5.""");
+                Fix: project-creation failures now show a
+                real dialog (were silent console-only); Gradle
+                projects resolve dependencies for completion
+                and diagnostics, same as Maven.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
