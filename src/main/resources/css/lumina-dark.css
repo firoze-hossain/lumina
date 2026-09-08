@@ -2342,3 +2342,136 @@
     -fx-text-fill: #9AA1B5;
     -fx-font-size: 12px;
 }
+
+/* ============================================================
+   Spring Boot wizard \u2014 page 2: dependency picker
+   (previously missing from the shipped stylesheet; TreeView and
+   CheckBox controls fall back to JavaFX's default light Modena
+   theme \u2014 white background, dark-on-dark checkboxes \u2014 unless
+   every layer below is styled explicitly.)
+   ============================================================ */
+
+.dep-left { -fx-padding: 0; }
+.dep-search-row {
+    -fx-background-color: #1A1D28;
+    -fx-background-radius: 6;
+    -fx-border-color: #333849;
+    -fx-border-radius: 6;
+    -fx-padding: 5 10 5 10;
+}
+.dep-search-glyph { -fx-text-fill: #6B7290; -fx-font-size: 11px; -fx-opacity: 0.8; }
+.dep-search {
+    -fx-background-color: transparent;
+    -fx-text-fill: #E6E9F2;
+    -fx-font-size: 12.5px;
+    -fx-prompt-text-fill: #6B7290;
+}
+
+/* The control itself, its virtual-flow viewport, and every empty row all
+   need an explicit dark fill \u2014 TreeView's Modena default is white and
+   several of these layers do not inherit from -fx-background-color alone. */
+.dep-tree,
+.dep-tree .virtual-flow,
+.dep-tree .virtual-flow .clipped-container,
+.dep-tree .virtual-flow .clipped-container .sheet {
+    -fx-background-color: #1A1D28;
+    -fx-control-inner-background: #1A1D28;
+    -fx-control-inner-background-alt: #1A1D28;
+}
+.dep-tree {
+    -fx-border-color: #333849;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-background-insets: 0;
+    -fx-padding: 2;
+}
+.dep-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 3 8 3 4;
+}
+.dep-tree .tree-cell:empty {
+    -fx-background-color: transparent;
+}
+.dep-tree .tree-cell:selected,
+.dep-tree .tree-cell:filled:selected {
+    -fx-background-color: #262A3A;
+}
+.dep-tree .tree-cell .tree-disclosure-node .arrow {
+    -fx-background-color: #8A91A8;
+}
+.dep-category-cell {
+    -fx-text-fill: #9AA1B5;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+}
+.dep-item-cell { -fx-padding: 1 8 1 0; }
+
+/* CheckBoxes are built in code and set as tree-cell graphics; the app's
+   global .check-box rule normally covers this, but the box/mark are
+   pinned dark here too so this page never depends on load order. */
+.dep-checkbox { -fx-text-fill: #D8DBE6; -fx-font-size: 12.5px; }
+.dep-checkbox .box {
+    -fx-background-color: #1F2230;
+    -fx-border-color: #4A5170;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+.dep-checkbox:selected .box {
+    -fx-background-color: #3A3122;
+    -fx-border-color: -lumen;
+}
+.dep-checkbox:selected .mark { -fx-background-color: -lumen; }
+.dep-checkbox:hover .box { -fx-border-color: #6B7290; }
+
+.dep-right { -fx-padding: 0; }
+.dep-description-box { -fx-min-height: 140; }
+.dep-description-title {
+    -fx-text-fill: #E6E9F2;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.dep-description-body {
+    -fx-text-fill: #A9AFC3;
+    -fx-font-size: 12px;
+    -fx-line-spacing: 2;
+}
+.dep-added-scroll, .dep-added-scroll .viewport {
+    -fx-background-color: transparent;
+}
+.dep-added-box { -fx-background-color: transparent; }
+.dep-added-placeholder { -fx-text-fill: #565D75; -fx-font-size: 12px; }
+.dep-added-row {
+    -fx-background-color: #1A1D28;
+    -fx-background-radius: 5;
+    -fx-padding: 5 8 5 10;
+}
+.dep-added-label { -fx-text-fill: #D8DBE6; -fx-font-size: 12px; }
+.dep-added-remove {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8A91A8;
+    -fx-font-size: 13px;
+    -fx-padding: 0 4 0 4;
+    -fx-cursor: hand;
+}
+.dep-added-remove:hover { -fx-text-fill: #E5534B; }
+
+.wizard-help-button {
+    -fx-background-color: transparent;
+    -fx-border-color: #4A5170;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+    -fx-text-fill: #8A91A8;
+    -fx-min-width: 22;
+    -fx-min-height: 22;
+    -fx-max-width: 22;
+    -fx-max-height: 22;
+    -fx-font-size: 11px;
+    -fx-padding: 0;
+}
+.wizard-help-button:hover { -fx-border-color: #8A91A8; -fx-text-fill: #D8DBE6; }
+
+.dep-catalog-status {
+    -fx-text-fill: #7A8199;
+    -fx-font-size: 10.5px;
+    -fx-font-style: italic;
+}
