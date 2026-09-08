@@ -30,6 +30,9 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.TreeCell;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
@@ -37,7 +40,10 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -72,6 +78,190 @@ public class NewProjectDialog {
             return label + (detail.isBlank() ? "" : "  " + detail);
         }
     }
+
+    /** One selectable Spring Initializr dependency. */
+    private record SpringDep(String id, String label, String description) {
+    }
+
+    /** A collapsible category in the dependency tree, e.g. "Web", "SQL". */
+    private record SpringDepCategory(String name, List<SpringDep> deps) {
+    }
+
+    private static final List<String> FALLBACK_BOOT_VERSIONS =
+            List.of("4.1.1", "4.1.0", "4.0.6", "3.5.8", "3.4.12");
+
+    private static final List<SpringDepCategory> FALLBACK_DEP_CATALOG = List.of(
+            new SpringDepCategory("Developer Tools", List.of(
+                    new SpringDep("native", "GraalVM Native Support",
+                            "Support for compiling Spring applications to native "
+                                    + "executables using the GraalVM native-image compiler."),
+                    new SpringDep("graphql-dgs-codegen", "GraphQL DGS Code Generation",
+                            "Generates Java types from a GraphQL schema for use with "
+                                    + "the Netflix DGS framework."),
+                    new SpringDep("devtools", "Spring Boot DevTools",
+                            "Provides fast application restarts, LiveReload, and "
+                                    + "configurations for enhanced development experience."),
+                    new SpringDep("lombok", "Lombok",
+                            "Java annotation library which helps to reduce boilerplate "
+                                    + "code such as getters, setters, and constructors."),
+                    new SpringDep("configuration-processor", "Spring Configuration Processor",
+                            "Generate metadata for developers to offer contextual help "
+                                    + "and code completion when working with custom "
+                                    + "configuration keys."),
+                    new SpringDep("docker-compose", "Docker Compose Support",
+                            "Provides Docker Compose support for enhanced development "
+                                    + "experience."),
+                    new SpringDep("modulith", "Spring Modulith",
+                            "Support for building modular monolithic applications."))),
+            new SpringDepCategory("Web", List.of(
+                    new SpringDep("web", "Spring Web",
+                            "Build web, including RESTful, applications using Spring "
+                                    + "MVC. Uses Apache Tomcat as the default embedded container."),
+                    new SpringDep("webflux", "Spring Reactive Web",
+                            "Build reactive web applications with Spring WebFlux and "
+                                    + "Netty."),
+                    new SpringDep("graphql", "Spring for GraphQL",
+                            "Build GraphQL applications with Spring for GraphQL and "
+                                    + "GraphQL Java."),
+                    new SpringDep("websocket", "WebSocket",
+                            "Build Servlet-based WebSocket applications with SockJS "
+                                    + "and STOMP."),
+                    new SpringDep("web-services", "Spring Web Services",
+                            "Facilitates contract-first SOAP development."),
+                    new SpringDep("jersey", "Jersey",
+                            "Alternative to Spring MVC with JAX-RS and better "
+                                    + "multi-part form/file upload support."),
+                    new SpringDep("rest-repositories", "Rest Repositories",
+                            "Exposes Spring Data repositories over REST via "
+                                    + "Spring Data REST."),
+                    new SpringDep("hateoas", "Spring HATEOAS",
+                            "Eases the creation of RESTful APIs that follow the "
+                                    + "HATEOAS principle."))),
+            new SpringDepCategory("Template Engines", List.of(
+                    new SpringDep("thymeleaf", "Thymeleaf",
+                            "A modern server-side Java template engine for both web "
+                                    + "and standalone environments."),
+                    new SpringDep("freemarker", "Apache Freemarker",
+                            "A server-side Java template engine for both web and "
+                                    + "standalone environments."),
+                    new SpringDep("mustache", "Mustache",
+                            "A logic-less templating engine, whose template syntax "
+                                    + "is common to many programming languages."),
+                    new SpringDep("groovy-templates", "Groovy Templates",
+                            "A server-side Groovy template engine."))),
+            new SpringDepCategory("Security", List.of(
+                    new SpringDep("security", "Spring Security",
+                            "Highly customizable authentication and access-control "
+                                    + "framework for Spring applications."),
+                    new SpringDep("oauth2-client", "OAuth2 Client",
+                            "Spring Security's OAuth2/OpenID Connect client support."),
+                    new SpringDep("oauth2-resource-server", "OAuth2 Resource Server",
+                            "Spring Security's OAuth2 resource server support."),
+                    new SpringDep("oauth2-authorization-server", "OAuth2 Authorization Server",
+                            "Spring's experimental OAuth2 authorization server support."),
+                    new SpringDep("ldap", "Spring LDAP",
+                            "Makes it easier to build Spring-based applications that "
+                                    + "use the Lightweight Directory Access Protocol."))),
+            new SpringDepCategory("SQL", List.of(
+                    new SpringDep("data-jpa", "Spring Data JPA",
+                            "Persist data in SQL stores with Java Persistence API "
+                                    + "using Spring Data and Hibernate."),
+                    new SpringDep("data-jdbc", "Spring Data JDBC",
+                            "Persist data in SQL stores with plain JDBC using Spring "
+                                    + "Data."),
+                    new SpringDep("data-r2dbc", "Spring Data R2DBC",
+                            "Provides Reactive Relational Database Connectivity to "
+                                    + "persist data in SQL stores using Spring Data."),
+                    new SpringDep("jdbc", "JDBC API",
+                            "Database Connectivity API that defines how a client may "
+                                    + "access a database."),
+                    new SpringDep("postgresql", "PostgreSQL Driver",
+                            "A JDBC and R2DBC driver that allows Java programs to "
+                                    + "connect to a PostgreSQL database."),
+                    new SpringDep("mysql", "MySQL Driver",
+                            "MySQL JDBC driver."),
+                    new SpringDep("h2", "H2 Database",
+                            "Provides a fast in-memory database that supports JDBC "
+                                    + "API and embedded mode."),
+                    new SpringDep("liquibase", "Liquibase Migration",
+                            "Liquibase database migration and source control library."),
+                    new SpringDep("flyway", "Flyway Migration",
+                            "Version control for your database so you can migrate "
+                                    + "with ease and confidence."))),
+            new SpringDepCategory("NoSQL", List.of(
+                    new SpringDep("data-mongodb", "Spring Data MongoDB",
+                            "Store data in flexible, JSON-like documents using "
+                                    + "Spring Data MongoDB."),
+                    new SpringDep("data-redis", "Spring Data Redis",
+                            "Advanced and thread-safe Java Redis client for "
+                                    + "monitoring, pooling and pipelining."),
+                    new SpringDep("data-elasticsearch", "Spring Data Elasticsearch",
+                            "A distributed, RESTful search and analytics engine "
+                                    + "via Spring Data Elasticsearch."),
+                    new SpringDep("data-cassandra", "Spring Data Cassandra",
+                            "A distributed NoSQL database via Spring Data "
+                                    + "Cassandra."))),
+            new SpringDepCategory("Messaging", List.of(
+                    new SpringDep("amqp", "Spring for RabbitMQ",
+                            "Gives your applications a common platform to send and "
+                                    + "receive messages using AMQP."),
+                    new SpringDep("kafka", "Spring for Apache Kafka",
+                            "Publish, subscribe, store, and process streams of "
+                                    + "records via Spring for Apache Kafka."),
+                    new SpringDep("artemis", "Spring for Artemis",
+                            "Gives your applications a common platform to send and "
+                                    + "receive messages using Apache ActiveMQ Artemis."))),
+            new SpringDepCategory("I/O", List.of(
+                    new SpringDep("validation", "Validation",
+                            "Bean Validation with Hibernate validator."),
+                    new SpringDep("batch", "Spring Batch",
+                            "Boot-strap your batch applications with helpful "
+                                    + "autoconfiguration."),
+                    new SpringDep("cache", "Spring Cache Abstraction",
+                            "Provides cache-related operations, such as the update "
+                                    + "of content in the cache."),
+                    new SpringDep("mail", "Java Mail Sender",
+                            "Send email using Java Mail and Spring Framework's "
+                                    + "JavaMailSender."))),
+            new SpringDepCategory("Ops", List.of(
+                    new SpringDep("actuator", "Spring Boot Actuator",
+                            "Supports built in (or custom) endpoints that let you "
+                                    + "monitor and manage your application."))),
+            new SpringDepCategory("Observability", List.of(
+                    new SpringDep("prometheus", "Prometheus",
+                            "Expose actuator metrics in a format that can be "
+                                    + "scraped by a Prometheus server."),
+                    new SpringDep("zipkin", "Distributed Tracing (Zipkin)",
+                            "Enable and report request traces for distributed "
+                                    + "tracing with Zipkin."))),
+            new SpringDepCategory("Testing", List.of(
+                    new SpringDep("testcontainers", "Testcontainers",
+                            "Provide lightweight, throwaway instances of common "
+                                    + "databases or anything else that can run in a "
+                                    + "Docker container for testing."),
+                    new SpringDep("restdocs", "Spring REST Docs",
+                            "Document RESTful services by combining hand-written "
+                                    + "documentation with auto-generated snippets "
+                                    + "produced with Spring MVC Test."),
+                    new SpringDep("cloud-contract-verifier", "Spring Cloud Contract Verifier",
+                            "Moves TDD to the level of software architecture, "
+                                    + "verifying that services adhere to a shared "
+                                    + "contract."))),
+            new SpringDepCategory("Spring Cloud", List.of(
+                    new SpringDep("cloud-eureka", "Eureka Discovery Client",
+                            "A REST based service for locating services for the "
+                                    + "purpose of load balancing and failover."),
+                    new SpringDep("cloud-config-client", "Config Client",
+                            "Client that connects to a Spring Cloud Config Server "
+                                    + "to fetch remote configuration properties."),
+                    new SpringDep("cloud-gateway", "Gateway",
+                            "Provides a simple, effective way to route to APIs and "
+                                    + "provide cross-cutting concerns to them."),
+                    new SpringDep("cloud-resilience4j", "Resilience4j",
+                            "Circuit breaker, retry and rate limiting for Spring "
+                                    + "Boot applications, backed by Resilience4j."),
+                    new SpringDep("cloud-openfeign", "OpenFeign",
+                            "Declarative REST client via Spring Cloud OpenFeign."))));
 
     private static class PropertyEntry {
         private final StringProperty name = new SimpleStringProperty("");
@@ -202,7 +392,7 @@ public class NewProjectDialog {
     private final List<Node> javafxOnlyNodes = new ArrayList<>();
     private final List<Node> javafxHiddenNodes = new ArrayList<>();
     private final Label emptyDescription = new Label("A basic project with free structure.");
-    private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here ↗");
+    private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here \u2197");
     private final VBox generatorSpecificBox = new VBox();
     private final List<Node> springOnlyNodes = new ArrayList<>();
     private final List<Node> jdkNodes = new ArrayList<>();
@@ -239,8 +429,34 @@ public class NewProjectDialog {
     private final Label errorLabel = new Label();
     private final VBox advancedBox = new VBox(10);
 
+    // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
+    private final ComboBox<String> springBootVersionBox = new ComboBox<>(
+            FXCollections.observableArrayList(FALLBACK_BOOT_VERSIONS));
+    private final TextField depSearchField = new TextField();
+    private final Label catalogStatus = new Label(
+            "Loading current versions \u0026 dependencies from start.spring.io\u2026");
+    /** Live categories once fetched; falls back to the bundled list until then. */
+    private List<SpringDepCategory> depCategories = FALLBACK_DEP_CATALOG;
+    private static volatile dev.lumina.project.SpringInitializrMetadata.Metadata
+            cachedMetadata;
+    private static volatile boolean metadataFetchFailed;
+    private boolean metadataFetchStarted;
+    private final TreeView<Object> depTree = new TreeView<>();
+    private final Set<String> selectedDepIds = new LinkedHashSet<>();
+    private final Label depDescriptionTitle = new Label();
+    private final Label depDescriptionBody = new Label();
+    private final VBox addedDepsBox = new VBox(4);
+    private final Label addedDepsPlaceholder = new Label("No dependencies added");
+    private final Button helpButton = new Button("?");
+    private boolean onSpringDepsPage;
+    private StackPane centerStack;
+    private ScrollPane formScroll;
+    private BorderPane springDepsPage;
+
     private HBox dependenciesRow;
     private Button createButton;
+    private Button cancelButton;
+    private Button previousButton;
     private boolean packageEdited;
     private GeneratorEntry selected = NEW_PROJECT_ENTRIES.get(0);
     private JdkEntry selectedJdk = JDK_ENTRIES.get(1);
@@ -255,7 +471,12 @@ public class NewProjectDialog {
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "new-project-dialog");
         root.setLeft(buildGeneratorList());
-        root.setCenter(buildForm());
+        formScroll = buildForm();
+        springDepsPage = buildSpringDependencyPage();
+        springDepsPage.setVisible(false);
+        springDepsPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage);
+        root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
         Scene scene = new Scene(root, 1060, 840);
@@ -277,7 +498,7 @@ public class NewProjectDialog {
         newProjectHeader.setPadding(new Insets(14, 16, 8, 16));
 
         ListView<GeneratorEntry> newProjectList = new ListView<>(
-                javafx.collections.FXCollections.observableArrayList(NEW_PROJECT_ENTRIES));
+                FXCollections.observableArrayList(NEW_PROJECT_ENTRIES));
         newProjectList.getStyleClass().addAll("generator-list", "project-list");
         newProjectList.setCellFactory(this::createGeneratorCell);
 
@@ -286,7 +507,7 @@ public class NewProjectDialog {
         generatorsHeader.setPadding(new Insets(14, 16, 8, 16));
 
         ListView<GeneratorEntry> generatorList = new ListView<>(
-                javafx.collections.FXCollections.observableArrayList(GENERATOR_ENTRIES));
+                FXCollections.observableArrayList(GENERATOR_ENTRIES));
         generatorList.getStyleClass().addAll("generator-list", "project-list");
         generatorList.setCellFactory(this::createGeneratorCell);
 
@@ -319,7 +540,7 @@ public class NewProjectDialog {
         box.getStyleClass().add("generator-panel");
         box.setPrefWidth(240);
         box.setSpacing(8);
-        box.setPadding(new javafx.geometry.Insets(0, 12, 12, 12));
+        box.setPadding(new Insets(0, 12, 12, 12));
         return box;
     }
 
@@ -394,8 +615,8 @@ public class NewProjectDialog {
         angularCliBox.setMaxWidth(Double.MAX_VALUE);
         viteBox.setMaxWidth(Double.MAX_VALUE);
         viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
-        Button nodeMore = compactButton("…");
-        Button cliMore = compactButton("…");
+        Button nodeMore = compactButton("\u2026");
+        Button cliMore = compactButton("\u2026");
         HBox nodeRow = wideRow(nodeRuntimeBox, nodeMore);
         HBox cliRow = wideRow(angularCliBox, cliMore);
         Label nodeLabel = formLabel("Node runtime:");
@@ -412,7 +633,7 @@ public class NewProjectDialog {
                 angularStandaloneCheck, angularDefaultsCheck));
 
         Label viteLabel = formLabel("Vite:");
-        HBox viteRow = wideRow(viteBox, compactButton("…"));
+        HBox viteRow = wideRow(viteBox, compactButton("\u2026"));
         Label templateLabel = formLabel("Template:");
         CheckBox typescript = new CheckBox("Use TypeScript template");
         grid.add(viteLabel, 0, row); grid.add(viteRow, 1, row++);
@@ -516,7 +737,7 @@ public class NewProjectDialog {
 
         Label jdkLabel = formLabel("JDK:");
         grid.add(jdkLabel, 0, row);
-        jdkCombo.setItems(javafx.collections.FXCollections.observableArrayList(JDK_ENTRIES));
+        jdkCombo.setItems(FXCollections.observableArrayList(JDK_ENTRIES));
         jdkCombo.setCellFactory(listView -> createJdkCell());
         jdkCombo.setButtonCell(createJdkButtonCell());
         if (selectedJdk != null) {
@@ -608,12 +829,313 @@ public class NewProjectDialog {
         return scroll;
     }
 
+    // ------------------------------------------------ Spring Boot page 2
+
+    /**
+     * The Spring Initializr-style dependency picker: version dropdown,
+     * searchable checkbox tree on the left, a live description plus the
+     * running "Added dependencies" list on the right \u2014 the same layout
+     * IntelliJ Ultimate uses for its Spring Boot wizard's second page.
+     */
+    private BorderPane buildSpringDependencyPage() {
+        springBootVersionBox.getSelectionModel().select(0);
+        springBootVersionBox.setPrefWidth(160);
+        HBox versionRow = new HBox(10, formLabel("Spring Boot:"), springBootVersionBox);
+        versionRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label depsLabel = new Label("Dependencies:");
+        depsLabel.getStyleClass().add("panel-header");
+
+        depSearchField.setPromptText("Search dependencies\u2026");
+        depSearchField.getStyleClass().add("dep-search");
+        Label searchGlyph = new Label("\uD83D\uDD0D");
+        searchGlyph.getStyleClass().add("dep-search-glyph");
+        HBox searchRow = new HBox(6, searchGlyph, depSearchField);
+        searchRow.getStyleClass().add("dep-search-row");
+        HBox.setHgrow(depSearchField, Priority.ALWAYS);
+
+        depTree.setShowRoot(false);
+        depTree.getStyleClass().add("dep-tree");
+        depTree.setCellFactory(tv -> createDepCell());
+        rebuildDepTree("");
+        VBox.setVgrow(depTree, Priority.ALWAYS);
+
+        depSearchField.textProperty().addListener((obs, old, value) ->
+                rebuildDepTree(value == null ? "" : value.trim()));
+
+        catalogStatus.getStyleClass().add("dep-catalog-status");
+        catalogStatus.setWrapText(true);
+
+        VBox left = new VBox(14, versionRow, depsLabel, searchRow, depTree, catalogStatus);
+        left.getStyleClass().add("dep-left");
+        left.setPrefWidth(560);
+
+        depDescriptionTitle.getStyleClass().add("dep-description-title");
+        depDescriptionTitle.setWrapText(true);
+        depDescriptionBody.getStyleClass().add("dep-description-body");
+        depDescriptionBody.setWrapText(true);
+        VBox descriptionBox = new VBox(6, depDescriptionTitle, depDescriptionBody);
+        descriptionBox.getStyleClass().add("dep-description-box");
+
+        Label addedTitle = new Label("Added dependencies:");
+        addedTitle.getStyleClass().add("panel-header");
+        addedDepsPlaceholder.getStyleClass().add("dep-added-placeholder");
+        addedDepsBox.getStyleClass().add("dep-added-box");
+        ScrollPane addedScroll = new ScrollPane(addedDepsBox);
+        addedScroll.setFitToWidth(true);
+        addedScroll.getStyleClass().add("dep-added-scroll");
+        VBox.setVgrow(addedScroll, Priority.ALWAYS);
+        refreshAddedDeps();
+
+        VBox right = new VBox(16, descriptionBox, addedTitle, addedScroll);
+        right.getStyleClass().add("dep-right");
+        right.setPrefWidth(300);
+
+        HBox layout = new HBox(24, left, right);
+        HBox.setHgrow(left, Priority.ALWAYS);
+        layout.setPadding(new Insets(20, 24, 12, 24));
+
+        BorderPane page = new BorderPane();
+        page.setCenter(layout);
+        ensureLiveCatalog();
+        return page;
+    }
+
+    /**
+     * Uses the metadata already fetched this JVM run, if any; otherwise
+     * fetches start.spring.io/metadata/client once in the background \u2014
+     * exactly what IntelliJ's wizard queries \u2014 and swaps the version
+     * list and dependency tree to the live data on success. On any failure
+     * (offline, timeout, unexpected format) the bundled fallback list stays
+     * in place and the status line says so plainly.
+     */
+    private void ensureLiveCatalog() {
+        if (cachedMetadata != null) {
+            applyMetadata(cachedMetadata);
+            return;
+        }
+        if (metadataFetchFailed) {
+            catalogStatus.setText("Showing offline defaults \u2014 "
+                    + "couldn't reach start.spring.io.");
+            return;
+        }
+        if (metadataFetchStarted) {
+            return;
+        }
+        metadataFetchStarted = true;
+        Thread worker = new Thread(() -> {
+            try {
+                dev.lumina.project.SpringInitializrMetadata.Metadata metadata =
+                        dev.lumina.project.SpringInitializrMetadata.fetch();
+                cachedMetadata = metadata;
+                Platform.runLater(() -> applyMetadata(metadata));
+            } catch (Exception ex) {
+                metadataFetchFailed = true;
+                Platform.runLater(() -> catalogStatus.setText(
+                        "Showing offline defaults \u2014 couldn't reach "
+                                + "start.spring.io (" + ex.getClass().getSimpleName()
+                                + ")."));
+            }
+        }, "lumina-spring-initializr-metadata");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Swap the version box and dependency tree to the live catalog. */
+    private void applyMetadata(
+            dev.lumina.project.SpringInitializrMetadata.Metadata metadata) {
+        String previousVersion = springBootVersionBox.getValue();
+        springBootVersionBox.setItems(
+                FXCollections.observableArrayList(metadata.bootVersions()));
+        String toSelect = !metadata.defaultBootVersion().isBlank()
+                ? metadata.defaultBootVersion() : metadata.bootVersions().get(0);
+        springBootVersionBox.getSelectionModel().select(toSelect);
+        if (previousVersion != null
+                && metadata.bootVersions().contains(previousVersion)) {
+            springBootVersionBox.getSelectionModel().select(previousVersion);
+        }
+
+        List<SpringDepCategory> live = new ArrayList<>();
+        for (dev.lumina.project.SpringInitializrMetadata.Category category
+                : metadata.categories()) {
+            List<SpringDep> deps = new ArrayList<>();
+            for (dev.lumina.project.SpringInitializrMetadata.Dependency dep
+                    : category.dependencies()) {
+                deps.add(new SpringDep(dep.id(), dep.name(), dep.description()));
+            }
+            live.add(new SpringDepCategory(category.name(), deps));
+        }
+        depCategories = live;
+        rebuildDepTree(depSearchField.getText() == null ? ""
+                : depSearchField.getText().trim());
+        catalogStatus.setText("");
+    }
+
+    private TreeCell<Object> createDepCell() {
+        return new TreeCell<>() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("dep-category-cell", "dep-item-cell");
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                if (item instanceof String categoryName) {
+                    setText(categoryName);
+                    setGraphic(null);
+                    getStyleClass().add("dep-category-cell");
+                    return;
+                }
+                SpringDep dep = (SpringDep) item;
+                CheckBox box = new CheckBox(dep.label());
+                box.getStyleClass().add("dep-checkbox");
+                box.setSelected(selectedDepIds.contains(dep.id()));
+                box.selectedProperty().addListener((obs, was, isNow) -> {
+                    if (isNow) selectedDepIds.add(dep.id());
+                    else selectedDepIds.remove(dep.id());
+                    syncDependenciesField();
+                    refreshAddedDeps();
+                });
+                setOnMouseEntered(e -> showDepDescription(dep));
+                getStyleClass().add("dep-item-cell");
+                setGraphic(box);
+                setText(null);
+            }
+        };
+    }
+
+    /** Rebuild the tree; a non-blank filter narrows to matching leaves and
+     *  auto-expands their categories, mirroring IntelliJ's live search. */
+    private void rebuildDepTree(String filter) {
+        String needle = filter.toLowerCase();
+        TreeItem<Object> root = new TreeItem<>("root");
+        for (SpringDepCategory category : depCategories) {
+            List<SpringDep> matches = needle.isEmpty() ? category.deps()
+                    : category.deps().stream()
+                            .filter(d -> d.label().toLowerCase().contains(needle))
+                            .toList();
+            if (matches.isEmpty()) continue;
+            TreeItem<Object> categoryItem = new TreeItem<>(category.name());
+            categoryItem.setExpanded(!needle.isEmpty()
+                    || category.name().equals("Developer Tools"));
+            for (SpringDep dep : matches) {
+                categoryItem.getChildren().add(new TreeItem<>(dep));
+            }
+            root.getChildren().add(categoryItem);
+        }
+        depTree.setRoot(root);
+    }
+
+    private void showDepDescription(SpringDep dep) {
+        depDescriptionTitle.setText(dep.label());
+        depDescriptionBody.setText(dep.description());
+    }
+
+    /** Keeps the legacy comma-separated field in sync so tryCreate() needs
+     *  no changes \u2014 it already reads dependenciesField.getText(). */
+    private void syncDependenciesField() {
+        dependenciesField.setText(String.join(",", selectedDepIds));
+    }
+
+    private void refreshAddedDeps() {
+        addedDepsBox.getChildren().clear();
+        if (selectedDepIds.isEmpty()) {
+            addedDepsBox.getChildren().add(addedDepsPlaceholder);
+            return;
+        }
+        for (String id : selectedDepIds) {
+            SpringDep dep = findDep(id);
+            String label = dep != null ? dep.label() : id;
+            Label text = new Label(label);
+            text.getStyleClass().add("dep-added-label");
+            HBox.setHgrow(text, Priority.ALWAYS);
+            Button remove = new Button("\u00D7");
+            remove.getStyleClass().add("dep-added-remove");
+            remove.setOnAction(e -> {
+                selectedDepIds.remove(id);
+                syncDependenciesField();
+                refreshAddedDeps();
+                depTree.refresh();
+            });
+            HBox row = new HBox(6, text, remove);
+            row.getStyleClass().add("dep-added-row");
+            row.setAlignment(Pos.CENTER_LEFT);
+            addedDepsBox.getChildren().add(row);
+        }
+    }
+
+    private SpringDep findDep(String id) {
+        for (SpringDepCategory category : depCategories) {
+            for (SpringDep dep : category.deps()) {
+                if (dep.id().equals(id)) return dep;
+            }
+        }
+        return null;
+    }
+
+    /** Page 1 \u2192 page 2, after validating the fields page 2 doesn't repeat. */
+    private void goToSpringDepsPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onSpringDepsPage = true;
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        springDepsPage.setVisible(true);
+        springDepsPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(false);
+        cancelButton.setManaged(false);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+    }
+
+    /** Page 2 \u2192 page 1, keeping every already-picked dependency. */
+    private void backToSpringForm() {
+        onSpringDepsPage = false;
+        springDepsPage.setVisible(false);
+        springDepsPage.setManaged(false);
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToSpringDepsPage());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
 
-        Button cancel = new Button("Cancel");
-        cancel.getStyleClass().add("dialog-secondary");
-        cancel.setOnAction(e -> stage.close());
+        helpButton.getStyleClass().add("wizard-help-button");
+        helpButton.setOnAction(e -> showHelp());
+
+        cancelButton = new Button("Cancel");
+        cancelButton.getStyleClass().add("dialog-secondary");
+        cancelButton.setOnAction(e -> stage.close());
+
+        previousButton = new Button("Previous");
+        previousButton.getStyleClass().add("dialog-secondary");
+        previousButton.setOnAction(e -> backToSpringForm());
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
 
         createButton = new Button("Create");
         createButton.getStyleClass().add("dialog-primary");
@@ -623,11 +1145,27 @@ public class NewProjectDialog {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox box = new HBox(10, errorLabel, spacer, createButton, cancel);
+        HBox box = new HBox(10, helpButton, errorLabel, spacer,
+                cancelButton, previousButton, createButton);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(12, 20, 14, 20));
         box.getStyleClass().add("dialog-footer");
         return box;
+    }
+
+    private void showHelp() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(stage);
+        alert.setTitle("New Project");
+        alert.setHeaderText(selected.label());
+        alert.setContentText(selected.generator() == ProjectSpec.Generator.SPRING_BOOT
+                ? "Generates a project via start.spring.io, the same service "
+                        + "IntelliJ uses. Pick a Spring Boot version and any "
+                        + "starters you need, then Create."
+                : "Configure the project on this page, then Create.");
+        alert.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        alert.showAndWait();
     }
 
     private void buildMavenArchetypeForm() {
@@ -670,16 +1208,16 @@ public class NewProjectDialog {
         archetypeVersionBox.getSelectionModel().select("1.4");
         archetypeVersionBox.setPrefWidth(110);
 
-        fields.add(formLabel("Catalog:  ⓘ"), 0, 0);
+        fields.add(formLabel("Catalog:  \u24D8"), 0, 0);
         fields.add(catalog, 1, 0);
-        fields.add(formLabel("Archetype:  ⓘ"), 0, 1);
+        fields.add(formLabel("Archetype:  \u24D8"), 0, 1);
         fields.add(archetype, 1, 1);
         fields.add(formLabel("Version:"), 0, 2);
         fields.add(archetypeVersionBox, 1, 2);
 
         configurePropertiesTable();
         Button addProperty = new Button("+");
-        Button removeProperty = new Button("−");
+        Button removeProperty = new Button("\u2212");
         addProperty.getStyleClass().add("property-button");
         removeProperty.getStyleClass().add("property-button");
         addProperty.setOnAction(e -> {
@@ -700,15 +1238,15 @@ public class NewProjectDialog {
         VBox properties = new VBox(5, propertiesTitle, propertyButtons, propertiesTable);
         properties.getStyleClass().add("maven-properties");
 
-        Label advancedTitle = new Label("⌄  Advanced Settings");
+        Label advancedTitle = new Label("\u2304  Advanced Settings");
         advancedTitle.getStyleClass().add("maven-section-title");
         GridPane advanced = new GridPane();
         advanced.setHgap(12);
         advanced.setVgap(10);
         advanced.getColumnConstraints().addAll(new ColumnConstraints(96), new ColumnConstraints());
-        advanced.add(formLabel("GroupId:  ⓘ"), 0, 0);
+        advanced.add(formLabel("GroupId:  \u24D8"), 0, 0);
         advanced.add(mavenGroupField, 1, 0);
-        advanced.add(formLabel("ArtifactId:  ⓘ"), 0, 1);
+        advanced.add(formLabel("ArtifactId:  \u24D8"), 0, 1);
         advanced.add(mavenArtifactField, 1, 1);
         advanced.add(formLabel("Version:"), 0, 2);
         advanced.add(projectVersionField, 1, 2);
@@ -756,13 +1294,13 @@ public class NewProjectDialog {
         rustStdlibField.setText(toolchainPath + File.separator + "../lib/rustlib/src/rust");
         rustEnvironmentField.setPromptText("Environment variables");
 
-        Button toolchainBrowse = new Button("…");
+        Button toolchainBrowse = new Button("\u2026");
         toolchainBrowse.getStyleClass().add("console-button");
         toolchainBrowse.setOnAction(e -> chooseRustToolchain());
         HBox toolchain = new HBox(8, rustToolchainBox, toolchainBrowse);
         toolchain.setAlignment(Pos.CENTER_LEFT);
 
-        Button stdlibBrowse = new Button("⌂");
+        Button stdlibBrowse = new Button("\u2302");
         stdlibBrowse.getStyleClass().add("console-button");
         stdlibBrowse.setOnAction(e -> chooseRustStdlib());
         HBox stdlib = new HBox(8, rustStdlibField, stdlibBrowse);
@@ -782,11 +1320,11 @@ public class NewProjectDialog {
         settings.add(rustEnvironmentField, 1, 3);
 
         rustTemplates.setAll(
-                new RustTemplate("◉ Binary (application)", "", "binary"),
-                new RustTemplate("◉ Library", "", "library"),
-                new RustTemplate("⌘ Procedural Macro", "github.com/intellij-rust/rust-procmacro-quickstart-template",
+                new RustTemplate("\u25C9 Binary (application)", "", "binary"),
+                new RustTemplate("\u25C9 Library", "", "library"),
+                new RustTemplate("\u2318 Procedural Macro", "github.com/intellij-rust/rust-procmacro-quickstart-template",
                         "Custom:https://github.com/intellij-rust/rust-procmacro-quickstart-template"),
-                new RustTemplate("◈ WebAssembly Lib", "github.com/intellij-rust/wasm-pack-template",
+                new RustTemplate("\u25C8 WebAssembly Lib", "github.com/intellij-rust/wasm-pack-template",
                         "Custom:https://github.com/intellij-rust/wasm-pack-template"));
         rustTemplateTable.setItems(rustTemplates);
         rustTemplateTable.getStyleClass().add("rust-template-table");
@@ -801,7 +1339,7 @@ public class NewProjectDialog {
         Button addTemplate = new Button("+");
         addTemplate.getStyleClass().add("property-button");
         addTemplate.setOnAction(e -> showAddRustTemplate());
-        Button removeTemplate = new Button("−");
+        Button removeTemplate = new Button("\u2212");
         removeTemplate.getStyleClass().add("property-button");
         removeTemplate.setOnAction(e -> {
             RustTemplate selectedTemplate = rustTemplateTable.getSelectionModel().getSelectedItem();
@@ -946,6 +1484,24 @@ public class NewProjectDialog {
     // --------------------------------------------------------------- logic
 
     private void updateForGenerator() {
+        // Switching which generator is selected always returns to page 1,
+        // exactly like IntelliJ's wizard \u2014 mid-wizard state on the Spring
+        // Boot dependency page only survives Previous/Next, not a new pick.
+        if (formScroll != null && springDepsPage != null) {
+            onSpringDepsPage = false;
+            springDepsPage.setVisible(false);
+            springDepsPage.setManaged(false);
+            formScroll.setVisible(true);
+            formScroll.setManaged(true);
+            if (previousButton != null) {
+                previousButton.setVisible(false);
+                previousButton.setManaged(false);
+            }
+            if (cancelButton != null) {
+                cancelButton.setVisible(true);
+                cancelButton.setManaged(true);
+            }
+        }
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
@@ -962,8 +1518,10 @@ public class NewProjectDialog {
             default -> false;
         };
         if (dependenciesRow != null) {
-            dependenciesRow.setVisible(spring);
-            dependenciesRow.setManaged(spring);
+            // Spring Boot picks dependencies on its own wizard page now;
+            // this legacy text field stays hidden and just backs it.
+            dependenciesRow.setVisible(false);
+            dependenciesRow.setManaged(false);
         }
         setNodesVisible(springOnlyNodes, spring);
         setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific);
@@ -988,9 +1546,18 @@ public class NewProjectDialog {
         if (kotlin || groovy) configureBuildOptions(true);
         else if (javafx) configureBuildOptions(false);
         else configureBuildOptions(false);
-        if (createButton != null) createButton.setText(javafx || (specific && generator != ProjectSpec.Generator.HTML
-                && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
-                && generator != ProjectSpec.Generator.VUE && generator != ProjectSpec.Generator.NUXT) ? "Next" : "Create");
+        if (createButton != null) {
+            if (spring) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToSpringDepsPage());
+            } else {
+                createButton.setText(javafx || (specific && generator != ProjectSpec.Generator.HTML
+                        && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
+                        && generator != ProjectSpec.Generator.VUE && generator != ProjectSpec.Generator.NUXT)
+                        ? "Next" : "Create");
+                createButton.setOnAction(e -> tryCreate());
+            }
+        }
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
         rustBox.setVisible(rust);
@@ -1032,7 +1599,7 @@ public class NewProjectDialog {
 
         if (generator == ProjectSpec.Generator.QUARKUS || generator == ProjectSpec.Generator.MICRONAUT) {
             String url = generator == ProjectSpec.Generator.QUARKUS ? "code.quarkus.io" : "launch.micronaut.io";
-            HBox server = new HBox(14, blueText(url), compactButton("⚙"));
+            HBox server = new HBox(14, blueText(url), compactButton("\u2699"));
             form.add(formLabel("Server URL:"), 0, row); form.add(server, 1, row++);
         }
 
@@ -1040,8 +1607,8 @@ public class NewProjectDialog {
             case QUARKUS -> {
                 add(form, row++, "Language:", segments("Java", "Kotlin"));
                 add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
-                add(form, row++, "Group:  ⓘ", text("org.example"));
-                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "Group:  \u24D8", text("org.example"));
+                add(form, row++, "Artifact:  \u24D8", text("demo"));
                 add(form, row++, "JDK:", jdkChoice());
                 add(form, row++, "Java:", choice("21", "17"));
                 form.add(selectedCheck("Add sample code"), 1, row++);
@@ -1050,8 +1617,8 @@ public class NewProjectDialog {
                 add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
                 add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
                 add(form, row++, "Test framework:", segments("JUnit", "Kotest", "Spock"));
-                add(form, row++, "Group:  ⓘ", text("org.example"));
-                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "Group:  \u24D8", text("org.example"));
+                add(form, row++, "Artifact:  \u24D8", text("demo"));
                 add(form, row++, "Application type:", choice("Application", "CLI Application", "Function"));
                 add(form, row++, "JDK:", jdkChoice());
                 add(form, row++, "Java:", choice("21", "17"));
@@ -1061,8 +1628,8 @@ public class NewProjectDialog {
                 add(form, row++, "Application server:", choice("JAX-RS resource", "Servlet, web.xml, index.jsp"));
                 add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
                 add(form, row++, "Build system:", segments("Maven", "Gradle"));
-                add(form, row++, "Group:  ⓘ", text("org.example"));
-                add(form, row++, "Artifact:  ⓘ", text("demo"));
+                add(form, row++, "Group:  \u24D8", text("org.example"));
+                add(form, row++, "Artifact:  \u24D8", text("demo"));
                 add(form, row++, "JDK:", jdkChoice());
             }
             case KTOR -> {
@@ -1070,9 +1637,9 @@ public class NewProjectDialog {
                 add(form, row++, "Artifact:", text("com.example.ktor-sample"));
                 add(form, row++, "Engine:", choice("Netty  Default", "CIO"));
                 form.add(selectedCheck("Add sample code"), 1, row++);
-                Label tutorials = new Label("Start with Ktor Server and Client tutorials ↗");
+                Label tutorials = new Label("Start with Ktor Server and Client tutorials \u2197");
                 tutorials.getStyleClass().add("form-hint"); form.add(tutorials, 1, row++);
-                Label advanced = new Label("⌄  Advanced Settings"); advanced.getStyleClass().add("maven-section-title");
+                Label advanced = new Label("\u2304  Advanced Settings"); advanced.getStyleClass().add("maven-section-title");
                 form.add(advanced, 0, row++, 2, 1);
                 add(form, row++, "Build system:", segments("Gradle", "Kotlin", "Maven"));
                 add(form, row++, "Ktor version:", choice("3.5.1  Default", "3.4.0"));
@@ -1133,7 +1700,7 @@ public class NewProjectDialog {
     private HBox runtime(String value) {
         ComboBox<String> box = choice(value);
         box.setMaxWidth(Double.MAX_VALUE);
-        HBox row = new HBox(6, box, compactButton("…"));
+        HBox row = new HBox(6, box, compactButton("\u2026"));
         HBox.setHgrow(box, Priority.ALWAYS);
         return row;
     }
@@ -1181,86 +1748,15 @@ public class NewProjectDialog {
         }
     }
 
-//    private void showPluginManager() {
-//        Stage dialog = new Stage();
-//        dialog.initOwner(stage);
-//        dialog.initModality(Modality.APPLICATION_MODAL);
-//        dialog.setTitle("Install Plugin");
-//
-//        BorderPane root = new BorderPane();
-//        root.getStyleClass().addAll("app-root", "new-project-dialog");
-//
-//        Label header = new Label("Install Plugin");
-//        header.getStyleClass().add("panel-header");
-//        header.setPadding(new Insets(14, 16, 8, 16));
-//        root.setTop(header);
-//
-//        ListView<String> list = new ListView<>(
-//                javafx.collections.FXCollections.observableArrayList(
-//                        "Go", "PHP", "Python", "Plugin DevKit", "Ruby", "Scala"));
-//        list.getSelectionModel().select(3);
-//        list.setStyle("-fx-background-color: #14161E;");
-//        root.setCenter(list);
-//
-//        Button install = new Button("Install");
-//        install.getStyleClass().add("dialog-primary");
-//        install.setOnAction(e -> {
-//            String plugin = list.getSelectionModel().getSelectedItem();
-//            Alert info = new Alert(Alert.AlertType.INFORMATION);
-//            info.initOwner(dialog);
-//            info.setTitle("Install Plugin");
-//            info.setHeaderText(plugin + " installation");
-//            info.setContentText("Plugin installation is not available yet.");
-//            info.getDialogPane().getStylesheets().add(
-//                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
-//            info.showAndWait();
-//        });
-//
-//        Button manage = new Button("Manage plugins...");
-//        manage.getStyleClass().add("dialog-secondary");
-//        manage.setOnAction(e -> {
-//            Alert info = new Alert(Alert.AlertType.INFORMATION);
-//            info.initOwner(dialog);
-//            info.setTitle("Manage plugins");
-//            info.setHeaderText("Plugin manager coming soon");
-//            info.setContentText("Future versions will let you install and manage plugins "
-//                    + "from a marketplace.");
-//            info.getDialogPane().getStylesheets().add(
-//                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
-//            info.showAndWait();
-//        });
-//
-//        Button close = new Button("Close");
-//        close.getStyleClass().add("dialog-secondary");
-//        close.setOnAction(e -> dialog.close());
-//
-//        HBox footer = new HBox(10, install, manage, close);
-//        footer.setPadding(new Insets(12, 16, 18, 16));
-//        footer.setAlignment(Pos.CENTER_RIGHT);
-//        root.setBottom(footer);
-//
-//        Scene scene = new Scene(root, 360, 420);
-//        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
-//        dialog.setScene(scene);
-//        dialog.showAndWait();
-//    }
-
     private void showPluginManager() {
         try {
-            // Use the new professional PluginManagerDialog
             PluginManagerDialog pm = new PluginManagerDialog(
                     stage,
-                    () -> {
-                        // This callback runs when plugins are installed/uninstalled
-                        Platform.runLater(() -> {
-                            updateForGenerator(); // Refresh the generator list
-                        });
-                    }
+                    () -> Platform.runLater(this::updateForGenerator)
             );
             pm.show();
         } catch (Exception e) {
             e.printStackTrace();
-            // Fallback: show error dialog
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.initOwner(stage);
             alert.setTitle("Plugin Manager Error");
@@ -1444,6 +1940,9 @@ public class NewProjectDialog {
                         : packageField.getText().trim(),
                 javaVersionBox.getValue(),
                 dependenciesField.getText().trim(),
+                selected.generator() == ProjectSpec.Generator.SPRING_BOOT
+                        ? emptyIfDefault(springBootVersionBox.getValue())
+                        : "",
                 catalogCombo.getValue(),
                 selectedArchetype(),
                 archetypeVersionBox.getValue(),
@@ -1461,6 +1960,12 @@ public class NewProjectDialog {
     }
 
     // -------------------------------------------------------------- helpers
+
+    /** The version box always has a concrete selection; "" lets the
+     *  generator fall back to start.spring.io's own default if needed. */
+    private static String emptyIfDefault(String version) {
+        return version == null ? "" : version;
+    }
 
     private Label formLabel(String text) {
         Label l = new Label(text);
@@ -1505,17 +2010,17 @@ public class NewProjectDialog {
 
     private static String generatorGlyph(String label) {
         return switch (label) {
-            case "Java" -> "☕";
-            case "Kotlin", "Ktor" -> "◇";
-            case "Groovy" -> "Ⓖ";
-            case "Rust" -> "◉";
-            case "Empty Project" -> "▱";
-            case "Angular CLI" -> "▲";
-            case "Vite" -> "◆";
-            case "Vue.js" -> "▼";
-            case "React" -> "⚛";
-            case "JavaFX" -> "▣";
-            default -> "·";
+            case "Java" -> "\u2615";
+            case "Kotlin", "Ktor" -> "\u25C7";
+            case "Groovy" -> "\u24BE";
+            case "Rust" -> "\u25C9";
+            case "Empty Project" -> "\u25B1";
+            case "Angular CLI" -> "\u25B2";
+            case "Vite" -> "\u25C6";
+            case "Vue.js" -> "\u25BC";
+            case "React" -> "\u269B";
+            case "JavaFX" -> "\u25A3";
+            default -> "\u00B7";
         };
     }
 }

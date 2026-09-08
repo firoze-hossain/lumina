@@ -207,6 +207,10 @@ public final class ProjectGenerator {
         if (!deps.isBlank()) {
             url.append("&dependencies=").append(enc(deps));
         }
+        String bootVersion = spec.springBootVersion();
+        if (bootVersion != null && !bootVersion.isBlank()) {
+            url.append("&bootVersion=").append(enc(bootVersion));
+        }
 
         log.accept("Requesting project from start.spring.io \u2026");
 

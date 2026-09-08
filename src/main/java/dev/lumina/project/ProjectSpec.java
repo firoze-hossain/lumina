@@ -17,6 +17,7 @@ public record ProjectSpec(
         String packageName,
         String javaVersion,
         String springDependencies, // comma-separated, Spring Boot only
+        String springBootVersion,  // blank = let start.spring.io pick the default
         String archetypeCatalog,
         String archetypeId,
         String archetypeVersion,
