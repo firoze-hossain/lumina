@@ -677,6 +677,12 @@ public class NewProjectDialog {
         typeGradleGroovy.getStyleClass().addAll("segment", "segment-first");
         typeGradleKotlin.getStyleClass().addAll("segment");
         typeMaven.getStyleClass().addAll("segment", "segment-last");
+        javafx.scene.control.Tooltip.install(typeGradleGroovy, new javafx.scene.control.Tooltip(
+                "Generate a Gradle project descriptor written in Groovy."));
+        javafx.scene.control.Tooltip.install(typeGradleKotlin, new javafx.scene.control.Tooltip(
+                "Generate a Gradle project descriptor written in the Kotlin DSL."));
+        javafx.scene.control.Tooltip.install(typeMaven, new javafx.scene.control.Tooltip(
+                "Generate a Maven archive."));
         typeMaven.setSelected(true);
         typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeRow.getStyleClass().add("segmented");
