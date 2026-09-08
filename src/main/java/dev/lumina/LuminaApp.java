@@ -2678,7 +2678,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.17");
+        Label brand = new Label("Lumina 1.18");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2870,18 +2870,59 @@ public class LuminaApp extends Application {
 
     // ---------------------------------------------------- new class/pkg/file
 
+    private final NewJavaClassPopup newJavaClassPopup = new NewJavaClassPopup();
+
     private void newJavaClass() {
         Path dir = targetDirectory();
         if (dir == null) return;
-        prompt("New Java Class", "Class name:", "MyClass").ifPresent(raw -> {
-            String name = raw.replace(".java", "").trim();
-            if (name.isEmpty()) return;
-            String pkg = inferPackage(dir);
-            String body = (pkg.isEmpty() ? "" : "package " + pkg + ";\n\n")
-                    + "public class " + name + " {\n\n}\n";
-            writeAndOpen(dir.resolve(name + ".java"), body);
-        });
+        javafx.geometry.Point2D anchor = fileExplorer.localToScreen(40, 60);
+        double x = anchor != null ? anchor.getX() : stage.getX() + 260;
+        double y = anchor != null ? anchor.getY() : stage.getY() + 200;
+        newJavaClassPopup.show(fileExplorer, x, y,
+                (name, kind) -> createJavaClass(dir, name, kind));
     }
+
+    /**
+     * Creates the chosen kind of Java type, IntelliJ-style: typing a dotted
+     * name ("util.Helpers") creates the intermediate package too, via the
+     * same writeAndOpen() that already makes parent directories.
+     */
+    private void createJavaClass(Path dir, String raw, NewJavaClassPopup.Kind kind) {
+        String cleaned = raw.replace(".java", "").trim();
+        if (cleaned.isEmpty()) return;
+
+        Path targetDir = dir;
+        String simpleName = cleaned;
+        int lastDot = cleaned.lastIndexOf('.');
+        if (lastDot > 0) {
+            String subPackage = cleaned.substring(0, lastDot).replace('.', '/');
+            targetDir = dir.resolve(subPackage);
+            simpleName = cleaned.substring(lastDot + 1);
+        }
+        if (simpleName.isEmpty()) return;
+
+        String pkg = inferPackage(targetDir);
+        String packageLine = pkg.isEmpty() ? "" : "package " + pkg + ";\n\n";
+        String body = switch (kind) {
+            case CLASS -> packageLine + "public class " + simpleName + " {\n\n}\n";
+            case INTERFACE -> packageLine + "public interface " + simpleName + " {\n\n}\n";
+            case RECORD -> packageLine + "public record " + simpleName + "() {\n\n}\n";
+            case ENUM -> packageLine + "public enum " + simpleName + " {\n\n}\n";
+            case ANNOTATION -> packageLine + "public @interface " + simpleName + " {\n\n}\n";
+            case EXCEPTION -> packageLine + "public class " + simpleName + " extends Exception {\n"
+                    + "    public " + simpleName + "(String message) {\n"
+                    + "        super(message);\n"
+                    + "    }\n\n"
+                    + "    public " + simpleName + "(String message, Throwable cause) {\n"
+                    + "        super(message, cause);\n"
+                    + "    }\n"
+                    + "}\n";
+            // JEP-style compact source file: no package, no class wrapper.
+            case COMPACT_SOURCE_FILE -> "void main() {\n    \n}\n";
+        };
+        writeAndOpen(targetDir.resolve(simpleName + ".java"), body);
+    }
+
 
     private void newPackage() {
         Path dir = targetDirectory();
@@ -3198,15 +3239,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.17");
+        alert.setHeaderText("Lumina IDE 1.18");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: project tree context menu now knows
-                source roots and packages too — java-authoring
-                New items (Java Class, package-info.java, etc.)
-                for the java folder and each package node.""");
+                Feature: New Java Class popup — pick
+                Class, Interface, Record, Enum, Annotation,
+                Exception, or a compact source file, with the
+                right boilerplate and dotted-name subpackages.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
