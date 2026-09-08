@@ -71,6 +71,7 @@ public class LuminaApp extends Application {
     private Label statusCaret;
 
     private Path projectRoot;
+    private Path pendingProjectToOpen;
     private int untitledCounter = 1;
     private long lastShiftPress;
 
@@ -204,10 +205,15 @@ public class LuminaApp extends Application {
         refreshRunConfigs();
         refreshGitInfo();
 
-        // reopen the last project unless it was explicitly closed
-        String last = Settings.get(Settings.LAST_PROJECT);
-        if (last != null && Files.isDirectory(Path.of(last))) {
-            openProject(Path.of(last));
+        if (pendingProjectToOpen != null) {
+            // this window was opened via "New Window" for a specific project
+            openProject(pendingProjectToOpen);
+        } else {
+            // reopen the last project unless it was explicitly closed
+            String last = Settings.get(Settings.LAST_PROJECT);
+            if (last != null && Files.isDirectory(Path.of(last))) {
+                openProject(Path.of(last));
+            }
         }
 
         editorTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
@@ -223,8 +229,8 @@ public class LuminaApp extends Application {
             } else {
                 updateBreadcrumbs(null, null);
                 statusCaret.setText("");
-                problemsPanel.show(java.util.List.of());
-                updateProblemsStatus(java.util.List.of());
+                problemsPanel.show(List.of());
+                updateProblemsStatus(List.of());
             }
         });
     }
@@ -266,7 +272,7 @@ public class LuminaApp extends Application {
             none.setDisable(true);
             recentProjects.getItems().add(none);
         } else {
-            recentProjects.getItems().add(item(lastProject, null, e -> openProject(Path.of(lastProject))));
+            recentProjects.getItems().add(item(lastProject, null, e -> openProjectInteractive(Path.of(lastProject))));
         }
         Menu fileProperties = new Menu("File Properties");
         fileProperties.getItems().addAll(
@@ -850,12 +856,12 @@ public class LuminaApp extends Application {
     }
 
     /** Extra env so git authenticates with the signed-in GitHub token. */
-    private java.util.Map<String, String> gitEnv() {
+    private Map<String, String> gitEnv() {
         String token = Settings.get(Settings.GITHUB_TOKEN);
         if (token == null) return null;
         Path askpass = GitHubAuth.ensureAskpass();
         if (askpass == null) return null;
-        java.util.Map<String, String> env = new java.util.HashMap<>();
+        Map<String, String> env = new java.util.HashMap<>();
         env.put("GIT_ASKPASS", askpass.toString());
         env.put("LUMINA_GH_TOKEN", token);
         env.put("GIT_TERMINAL_PROMPT", "0");
@@ -1132,7 +1138,7 @@ public class LuminaApp extends Application {
     private void rerunFailedTests(List<dev.lumina.run.TestReport.Case> failed) {
         if (failed.isEmpty() || projectRoot == null) return;
         if (RunConfiguration.isMavenProject(projectRoot)) {
-            java.util.Map<String, List<String>> byClass = new java.util.LinkedHashMap<>();
+            Map<String, List<String>> byClass = new java.util.LinkedHashMap<>();
             for (var c : failed) {
                 String simple = c.className()
                         .substring(c.className().lastIndexOf('.') + 1);
@@ -1466,7 +1472,7 @@ public class LuminaApp extends Application {
         return null;
     }
 
-    private java.util.Optional<String> promptIdentifier(String title,
+    private Optional<String> promptIdentifier(String title,
                                                         String header,
                                                         String initial) {
         TextInputDialog dialog = new TextInputDialog(initial);
@@ -1475,13 +1481,13 @@ public class LuminaApp extends Application {
         dialog.initOwner(stage);
         dialog.getDialogPane().getStylesheets().add(getClass()
                 .getResource("/css/lumina-dark.css").toExternalForm());
-        java.util.Optional<String> result = dialog.showAndWait()
+        Optional<String> result = dialog.showAndWait()
                 .map(String::trim);
-        if (result.isEmpty()) return java.util.Optional.empty();
+        if (result.isEmpty()) return Optional.empty();
         if (!dev.lumina.refactor.Refactor.isValidIdentifier(result.get())) {
             error(title, "'" + result.get()
                     + "' is not a valid Java identifier.");
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         return result;
     }
@@ -1498,7 +1504,7 @@ public class LuminaApp extends Application {
                     + "try again in a moment.");
             return;
         }
-        java.util.Optional<String> input = promptIdentifier("Rename",
+        Optional<String> input = promptIdentifier("Rename",
                 "Rename '" + word + "' to:", word);
         if (input.isEmpty() || input.get().equals(word)) return;
         final String newName = input.get();
@@ -1508,13 +1514,13 @@ public class LuminaApp extends Application {
         final int line = editor.getCaretLine();
         final int column = editor.getCaretColumn();
         Thread t = new Thread(() -> {
-            java.util.List<dev.lumina.semantics.SemanticEngine.Usage> usages =
-                    java.util.List.of();
+            List<dev.lumina.semantics.SemanticEngine.Usage> usages =
+                    List.of();
             try {
                 usages = engine.findUsages(file, text, line, column);
             } catch (Throwable ignored) {
             }
-            final java.util.List<dev.lumina.semantics.SemanticEngine.Usage>
+            final List<dev.lumina.semantics.SemanticEngine.Usage>
                     found = usages;
             Platform.runLater(() -> {
                 if (found.isEmpty()) {
@@ -1533,8 +1539,8 @@ public class LuminaApp extends Application {
     }
 
     private void applyRename(String oldName, String newName,
-            java.util.List<dev.lumina.semantics.SemanticEngine.Usage> usages) {
-        java.util.Map<Path, java.util.List<
+            List<dev.lumina.semantics.SemanticEngine.Usage> usages) {
+        Map<Path, List<
                 dev.lumina.semantics.SemanticEngine.Usage>> byFile =
                 new java.util.LinkedHashMap<>();
         for (dev.lumina.semantics.SemanticEngine.Usage u : usages) {
@@ -1545,7 +1551,7 @@ public class LuminaApp extends Application {
         }
         int edits = 0;
         Path fileToRename = null;
-        for (Map.Entry<Path, java.util.List<
+        for (Map.Entry<Path, List<
                 dev.lumina.semantics.SemanticEngine.Usage>> entry
                 : byFile.entrySet()) {
             Path path = entry.getKey();
@@ -1557,7 +1563,7 @@ public class LuminaApp extends Application {
             } catch (IOException ex) {
                 continue;
             }
-            java.util.List<dev.lumina.refactor.Refactor.Edit> fileEdits =
+            List<dev.lumina.refactor.Refactor.Edit> fileEdits =
                     new java.util.ArrayList<>();
             for (dev.lumina.semantics.SemanticEngine.Usage u
                     : entry.getValue()) {
@@ -1628,7 +1634,7 @@ public class LuminaApp extends Application {
         int selStart = editor.getSelectionStart();
         int selEnd = editor.getSelectionEnd();
         String text = editor.getEditorText();
-        java.util.Optional<String> input = promptIdentifier("Extract Variable",
+        Optional<String> input = promptIdentifier("Extract Variable",
                 "Variable name:", dev.lumina.refactor.Refactor
                         .guessVarName(selected));
         if (input.isEmpty()) return;
@@ -1676,7 +1682,7 @@ public class LuminaApp extends Application {
             error("Extract Method", plan.reason());
             return;
         }
-        java.util.Optional<String> input = promptIdentifier("Extract Method",
+        Optional<String> input = promptIdentifier("Extract Method",
                 "Method name:", "extracted");
         if (input.isEmpty()) return;
         String name = input.get();
@@ -1696,7 +1702,7 @@ public class LuminaApp extends Application {
 
     /** M3: reflect the current file's diagnostics in the status bar. */
     private void updateProblemsStatus(
-            java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
+            List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
         if (statusProblems == null) return;
         long errors = diags.stream()
                 .filter(d -> d.severity()
@@ -1735,7 +1741,7 @@ public class LuminaApp extends Application {
             try {
                 target = engine.docTargetAt(file, text, line, column);
                 if (target != null && target.isProject()) {
-                    java.util.List<String> lines = target.file().equals(file)
+                    List<String> lines = target.file().equals(file)
                             ? text.lines().toList()
                             : Files.readAllLines(target.file());
                     doc = dev.lumina.semantics.Docs.javadocAbove(
@@ -1784,7 +1790,7 @@ public class LuminaApp extends Application {
         final Path file = editor.getPath();
         final int line = editor.getCaretLine();
         Thread t = new Thread(() -> {
-            java.util.List<dev.lumina.semantics.Docs.Signature> signatures =
+            List<dev.lumina.semantics.Docs.Signature> signatures =
                     engine.signaturesFor(file, text, line,
                             call.receiver(), call.method());
             Platform.runLater(() -> {
@@ -2422,7 +2428,7 @@ public class LuminaApp extends Application {
             console.runSequence("git clone " + url,
                     List.of(List.of("git", "clone", url, target.toString())),
                     parent.toPath(), gitEnv(),
-                    () -> openProject(target));
+                    () -> openProjectInteractive(target));
         });
     }
 
@@ -2508,7 +2514,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.9");
+        Label brand = new Label("Lumina 1.10");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2571,13 +2577,76 @@ public class LuminaApp extends Application {
         Thread worker = new Thread(() -> {
             try {
                 Path dir = ProjectGenerator.generate(spec, console::println);
-                Platform.runLater(() -> openProject(dir));
+                Platform.runLater(() -> openProjectInteractive(dir));
             } catch (IOException ex) {
                 console.println("\u2717 " + ex.getMessage());
             }
         }, "lumina-project-generator");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    /**
+     * IntelliJ-style gate in front of every "open this directory as a
+     * project" action (new project creation, Open Folder, git clone,
+     * Recent Projects). When this window has nothing open yet, the project
+     * opens here immediately \u2014 no prompt, exactly like a fresh IntelliJ
+     * window. Otherwise it asks Cancel / New Window / This Window, and
+     * remembers the choice if "Don't ask again" was checked.
+     */
+    private void openProjectInteractive(Path dir) {
+        Path target = dir.toAbsolutePath().normalize();
+        if (projectRoot == null) {
+            openProject(dir);
+            return;
+        }
+        if (target.equals(projectRoot.toAbsolutePath().normalize())) {
+            stage.toFront();
+            stage.requestFocus();
+            return;
+        }
+        String remembered = Settings.get(Settings.OPEN_PROJECT_MODE);
+        if ("NEW_WINDOW".equals(remembered)) {
+            openInNewWindow(dir);
+            return;
+        }
+        if ("THIS_WINDOW".equals(remembered)) {
+            replaceInThisWindow(dir);
+            return;
+        }
+        OpenProjectChoiceDialog.show(stage, dir.getFileName().toString(),
+                (choice, rememberChoice) -> {
+                    switch (choice) {
+                        case NEW_WINDOW -> {
+                            if (rememberChoice) {
+                                Settings.put(Settings.OPEN_PROJECT_MODE, "NEW_WINDOW");
+                            }
+                            openInNewWindow(dir);
+                        }
+                        case THIS_WINDOW -> {
+                            if (rememberChoice) {
+                                Settings.put(Settings.OPEN_PROJECT_MODE, "THIS_WINDOW");
+                            }
+                            replaceInThisWindow(dir);
+                        }
+                        case CANCEL -> console.println(
+                                "Open cancelled \u2014 '" + dir.getFileName()
+                                        + "' was not opened. Files remain at " + dir);
+                    }
+                });
+    }
+
+    /** Opens dir in a brand-new top-level window; this window is untouched. */
+    private void openInNewWindow(Path dir) {
+        LuminaApp app = new LuminaApp();
+        app.pendingProjectToOpen = dir;
+        app.start(new Stage());
+    }
+
+    /** Replaces this window's project with dir, clearing the old one first. */
+    private void replaceInThisWindow(Path dir) {
+        closeProject();
+        openProject(dir);
     }
 
     private void openProject(Path dir) {
@@ -2768,7 +2837,7 @@ public class LuminaApp extends Application {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Open Folder");
         File dir = chooser.showDialog(stage);
-        if (dir != null) openProject(dir.toPath());
+        if (dir != null) openProjectInteractive(dir.toPath());
     }
 
     private void openFile(Path path) {
@@ -2818,7 +2887,7 @@ public class LuminaApp extends Application {
         tab.setEditorContextMenu(buildEditorContextMenu());
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
-            java.util.List<dev.lumina.semantics.Completion.Item> items =
+            List<dev.lumina.semantics.Completion.Item> items =
                     new java.util.ArrayList<>();
             dev.lumina.semantics.SemanticEngine engine = semantics;
             if (engine != null && file != null) {
@@ -2841,12 +2910,12 @@ public class LuminaApp extends Application {
         });
         // M3: compile-on-idle diagnostics for project .java files.
         tab.setDiagnosticsProvider((file, text) -> {
-            if (projectRoot == null) return java.util.List.of();
+            if (projectRoot == null) return List.of();
             String cp = ensureClasspath();
             String classes = projectRoot.resolve("target/classes").toString();
             String full = cp == null || cp.isBlank() ? classes
-                    : cp + java.io.File.pathSeparator + classes;
-            java.util.List<Path> roots = new java.util.ArrayList<>();
+                    : cp + File.pathSeparator + classes;
+            List<Path> roots = new java.util.ArrayList<>();
             for (String rel : new String[]{"src/main/java", "src/test/java"}) {
                 Path root = projectRoot.resolve(rel);
                 if (Files.isDirectory(root)) roots.add(root);
@@ -2919,14 +2988,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.9");
+        alert.setHeaderText("Lumina IDE 1.10");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase M5: refactoring \u2014 semantic rename with
-                preview (Shift+F6), extract variable & method.
-                Plus live errors, quick docs, completion.""");
+                Phase: multi-window project opening \u2014
+                Cancel / New Window / This Window, IntelliJ-style.
+                Plus M1\u2013M5: semantics, completion, live
+                errors, quick docs, and refactoring.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

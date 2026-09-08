@@ -15,6 +15,8 @@ public final class Settings {
     public static final String DB_USER = "db.user";
     public static final String GITHUB_TOKEN = "github.token";
     public static final String GITHUB_USER = "github.user";
+    /** Remembered choice from the "Open Project" prompt: NEW_WINDOW or THIS_WINDOW. */
+    public static final String OPEN_PROJECT_MODE = "openProject.mode";
 
     private static final Path FILE = Path.of(
             System.getProperty("user.home"), ".lumina", "lumina.properties");
