@@ -2678,7 +2678,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.15");
+        Label brand = new Label("Lumina 1.16");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -3198,15 +3198,14 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.15");
+        alert.setHeaderText("Lumina IDE 1.16");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: full IntelliJ-style project tree
-                context menu — New submenu, module vs.
-                directory variants, real New Class/Package/File/
-                Directory, Rename, Copy Path, and more scaffolded.""");
+                Fix: project tree right-click menu was empty
+                for root/src/main — items now build proactively
+                on selection instead of lazily on show.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
