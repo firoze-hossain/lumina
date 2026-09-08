@@ -79,21 +79,19 @@ public class FileExplorer extends BorderPane {
      * regular directory, and the project root (module) each get genuinely
      * different IntelliJ menus \u2014 not the same items with some hidden.
      */
+    private enum NodeKind { ROOT, SOURCE_ROOT, PACKAGE, DIRECTORY }
+
     private javafx.scene.control.ContextMenu buildTreeContextMenu() {
         javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
 
-        // Populated proactively on selection change (not lazily inside
-        // setOnShowing) — a ContextMenu created with zero items and only
-        // filled in on show is a known-fragile JavaFX pattern; building the
-        // items ahead of time guarantees they're already there by the time
-        // any right-click can possibly trigger the popup.
-        java.util.function.Consumer<Path> rebuild = p -> {
+        java.util.function.Consumer<TreeItem<Path>> rebuild = item -> {
+            Path p = item != null ? item.getValue() : null;
             List<javafx.scene.control.MenuItem> items;
             try {
                 if (p == null) {
                     items = List.of();
                 } else if (Files.isDirectory(p)) {
-                    items = directoryMenuItems(p);
+                    items = directoryMenuItems(p, kindOf(p, item));
                 } else {
                     items = fileMenuItems(p);
                 }
@@ -104,14 +102,27 @@ public class FileExplorer extends BorderPane {
         };
 
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) ->
-                rebuild.accept(sel != null ? sel.getValue() : null));
+                rebuild.accept(sel));
         // Safety net in case a right-click ever reaches here before the
         // selection listener above has run.
-        menu.setOnShowing(e -> {
-            TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
-            rebuild.accept(sel != null ? sel.getValue() : null);
-        });
+        menu.setOnShowing(e -> rebuild.accept(tree.getSelectionModel().getSelectedItem()));
         return menu;
+    }
+
+    private NodeKind kindOf(Path p, TreeItem<Path> item) {
+        if (p.equals(rootPath)) return NodeKind.ROOT;
+        if (item instanceof LazyPathItem li && li.isPackage) return NodeKind.PACKAGE;
+        if (isSourceRoot(p)) return NodeKind.SOURCE_ROOT;
+        return NodeKind.DIRECTORY;
+    }
+
+    /** A java/kotlin source root: .../src/main/java, .../src/test/java, etc. */
+    private static boolean isSourceRoot(Path p) {
+        String s = p.toString().replace('\\', '/');
+        for (String lang : new String[]{"java", "kotlin"}) {
+            if (s.endsWith("/src/main/" + lang) || s.endsWith("/src/test/" + lang)) return true;
+        }
+        return false;
     }
 
     private javafx.scene.control.MenuItem disabledItem(String label) {
@@ -145,11 +156,12 @@ public class FileExplorer extends BorderPane {
 
     // ------------------------------------------------- directory / root node
 
-    private List<javafx.scene.control.MenuItem> directoryMenuItems(Path p) {
-        boolean isRoot = p.equals(rootPath);
+    private List<javafx.scene.control.MenuItem> directoryMenuItems(Path p, NodeKind kind) {
+        boolean isRoot = kind == NodeKind.ROOT;
+        boolean isSourceish = kind == NodeKind.SOURCE_ROOT || kind == NodeKind.PACKAGE;
         List<javafx.scene.control.MenuItem> items = new java.util.ArrayList<>();
 
-        items.add(newMenu(p, isRoot));
+        items.add(newMenu(p, kind));
         items.add(new javafx.scene.control.SeparatorMenuItem());
         items.add(action("Cut", () -> ph("Cut")));
         items.add(action("Copy", () -> ph("Copy")));
@@ -183,6 +195,14 @@ public class FileExplorer extends BorderPane {
             items.add(action("Rebuild Module '" + p.getFileName() + "'",
                     () -> ph("Rebuild Module")));
             items.add(new javafx.scene.control.SeparatorMenuItem());
+        } else if (isSourceish) {
+            // IntelliJ names this after the enclosing module/source-set;
+            // Lumina doesn't model source sets yet, so "<default>" stands
+            // in for a plain java/ root and the package name for a package.
+            String label = kind == NodeKind.PACKAGE
+                    ? p.getFileName().toString() : "<default>";
+            items.add(action("Rebuild '" + label + "'", () -> ph("Rebuild")));
+            items.add(new javafx.scene.control.SeparatorMenuItem());
         }
 
         items.add(placeholderMenu("Open In"));
@@ -193,7 +213,7 @@ public class FileExplorer extends BorderPane {
         items.add(new javafx.scene.control.SeparatorMenuItem());
         items.add(action("Compare With\u2026", () -> ph("Compare With")));
 
-        if (isRoot) {
+        if (isRoot || kind == NodeKind.SOURCE_ROOT) {
             items.add(new javafx.scene.control.SeparatorMenuItem());
             items.add(action("Open Module Settings", () -> run(onOpenModuleSettings, p)));
         }
@@ -207,6 +227,8 @@ public class FileExplorer extends BorderPane {
 
         if (isRoot) {
             items.add(placeholderMenu("Maven"));
+        }
+        if (isRoot || isSourceish) {
             items.add(placeholderMenu("GitHub Copilot"));
             items.add(action("Upgrade Java Runtime and Frameworks",
                     () -> ph("Upgrade Java Runtime and Frameworks")));
@@ -214,15 +236,48 @@ public class FileExplorer extends BorderPane {
         return items;
     }
 
-    /** The "New" submenu: Module (root only), then every file/resource type
-     *  IntelliJ offers. Java Class/Package/File/Directory are wired to
-     *  Lumina's real creation flow; the rest are scaffolded for later. */
-    private javafx.scene.control.Menu newMenu(Path dir, boolean isRoot) {
+    /**
+     * The "New" submenu, shaped per node kind exactly like IntelliJ:
+     * a plain directory (src, main, resources) gets the generic file-type
+     * list; a java/kotlin source root additionally gets "Java Compact
+     * File" and the module-only "Module..." entry sits above everything
+     * for the project root; a package node gets the same Java-authoring
+     * items as a source root, minus "Java Compact File". Java Class,
+     * Package, File, and Directory are wired to Lumina's real creation
+     * flow; the rest are scaffolded for later.
+     */
+    private javafx.scene.control.Menu newMenu(Path dir, NodeKind kind) {
         javafx.scene.control.Menu menu = new javafx.scene.control.Menu("New");
-        if (isRoot) {
+        if (kind == NodeKind.ROOT) {
             menu.getItems().add(action("Module\u2026", () -> ph("Module")));
             menu.getItems().add(new javafx.scene.control.SeparatorMenuItem());
         }
+
+        boolean sourceRoot = kind == NodeKind.SOURCE_ROOT;
+        boolean packageNode = kind == NodeKind.PACKAGE;
+
+        if (sourceRoot || packageNode) {
+            menu.getItems().add(action("Java Class", () -> run(onNewJavaClass, dir)));
+            if (sourceRoot) {
+                menu.getItems().add(action("Java Compact File",
+                        () -> ph("Java Compact File")));
+            }
+            menu.getItems().add(action("Kotlin Class/File", () -> ph("Kotlin Class/File")));
+            menu.getItems().add(action("File", () -> run(onNewFile, dir)));
+            menu.getItems().add(action("Package", () -> run(onNewPackage, dir)));
+            menu.getItems().add(action("FXML File", () -> ph("FXML File")));
+            menu.getItems().add(action("JavaFX Application", () -> ph("JavaFX Application")));
+            menu.getItems().add(action("package-info.java", () -> ph("package-info.java")));
+            javafx.scene.control.MenuItem moduleInfo =
+                    action("module-info.java", () -> ph("module-info.java"));
+            moduleInfo.setDisable(true);   // IntelliJ grays this out once one exists
+            menu.getItems().add(moduleInfo);
+            menu.getItems().add(new javafx.scene.control.SeparatorMenuItem());
+            menu.getItems().add(action("Kotlin Notebook", () -> ph("Kotlin Notebook")));
+            menu.getItems().add(action("Resource Bundle", () -> ph("Resource Bundle")));
+            return menu;
+        }
+
         menu.getItems().addAll(
                 action("Java Class", () -> run(onNewJavaClass, dir)),
                 action("Package", () -> run(onNewPackage, dir)),
