@@ -1955,6 +1955,28 @@ public class NewProjectDialog {
                 rust ? selectedRustTemplate().value() : "",
                 rustEnvironmentField.getText().trim());
 
+        Path targetDir = spec.projectDir();
+        boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
+                || selected.generator() == ProjectSpec.Generator.RUST;
+        if (requiresEmptySlot && java.nio.file.Files.exists(targetDir)) {
+            errorLabel.setText("A file or folder already exists at " + targetDir
+                    + " \u2014 choose a different name or location.");
+            return;
+        }
+        if (java.nio.file.Files.isDirectory(targetDir)) {
+            try (var entries = java.nio.file.Files.list(targetDir)) {
+                if (entries.findAny().isPresent()) {
+                    errorLabel.setText("The folder " + targetDir
+                            + " already exists and is not empty \u2014 "
+                            + "choose a different name or location.");
+                    return;
+                }
+            } catch (IOException ex) {
+                errorLabel.setText("Can't read " + targetDir + ": " + ex.getMessage());
+                return;
+            }
+        }
+
         stage.close();
         onCreate.accept(spec);
     }
