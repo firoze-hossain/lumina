@@ -299,6 +299,21 @@ public class EditorTab extends Tab {
         this.onHintClicked = handler;
     }
 
+    private int addStartersLine = -1;   // 0-based paragraph, -1 = no hint
+    private Runnable onAddStartersClicked;
+
+    /** Show a clickable "+ Add Starters..." hint above the given line
+     *  (IntelliJ's CodeVision hint above <dependencies>/dependencies {}).
+     *  Pass -1 to remove it \u2014 e.g. the file isn't a Spring build file. */
+    public void setAddStartersLine(int paragraph) {
+        this.addStartersLine = paragraph;
+        Platform.runLater(this::refreshInlineHints);
+    }
+
+    public void setOnAddStartersClicked(Runnable handler) {
+        this.onAddStartersClicked = handler;
+    }
+
     /**
      * Draw "author" hints pinned to the RIGHT edge of the editor, aligned with
      * each class/method declaration line (IntelliJ-style). Clicking a hint
@@ -307,6 +322,24 @@ public class EditorTab extends Tab {
     private void refreshInlineHints() {
         if (hintOverlay == null) return;
         hintOverlay.getChildren().clear();
+
+        if (addStartersLine >= 0 && addStartersLine < codeArea.getParagraphs().size()) {
+            lineBoundsAt(addStartersLine).ifPresent(b -> {
+                javafx.scene.control.Label link =
+                        new javafx.scene.control.Label("+ Add Starters\u2026");
+                link.getStyleClass().add("add-starters-hint");
+                link.setCursor(javafx.scene.Cursor.HAND);
+                link.setOnMouseClicked(e -> {
+                    if (onAddStartersClicked != null) onAddStartersClicked.run();
+                });
+                link.applyCss();
+                link.layout();
+                link.setLayoutX(b.getMinX());
+                link.setLayoutY(b.getMinY() - 20);
+                hintOverlay.getChildren().add(link);
+            });
+        }
+
         if (blameLines == null) return;   // hints stay visible in both modes
 
         for (int i = 0; i < codeArea.getParagraphs().size() && i < blameLines.size(); i++) {

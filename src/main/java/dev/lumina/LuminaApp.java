@@ -1705,6 +1705,104 @@ public class LuminaApp extends Application {
         editor.replaceRange(from, to, callLine);
     }
 
+    // ---------------------------------------------------- "Add Starters"
+
+    /**
+     * Shows a "+ Add Starters..." hint above &lt;dependencies&gt;
+     * (pom.xml) or dependencies { (build.gradle) for a Spring Boot
+     * project \u2014 the same IntelliJ Ultimate feature, opened from an
+     * already-open build file instead of the New Project wizard.
+     */
+    private void wireAddStarters(EditorTab tab) {
+        Path path = tab.getPath();
+        if (path == null) {
+            tab.setAddStartersLine(-1);
+            return;
+        }
+        String fileName = path.getFileName().toString();
+        boolean gradle = fileName.equals("build.gradle") || fileName.equals("build.gradle.kts");
+        boolean maven = fileName.equals("pom.xml");
+        if (!gradle && !maven) {
+            tab.setAddStartersLine(-1);
+            return;
+        }
+        String text = tab.getEditorText();
+        if (!text.contains("org.springframework.boot")) {
+            tab.setAddStartersLine(-1);
+            return;
+        }
+        int line = lineIndexOf(text, maven ? "<dependencies>" : "dependencies {");
+        if (line < 0) {
+            tab.setAddStartersLine(-1);
+            return;
+        }
+        tab.setAddStartersLine(line);
+        tab.setOnAddStartersClicked(() -> showAddStartersDialog(tab, gradle));
+    }
+
+    private static int lineIndexOf(String text, String needle) {
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].contains(needle)) return i;
+        }
+        return -1;
+    }
+
+    private void showAddStartersDialog(EditorTab tab, boolean gradle) {
+        Path path = tab.getPath();
+        if (path == null) return;
+        String text = tab.getEditorText();
+        String bootVersion = detectBootVersion(text, gradle);
+        java.util.Set<String> present = detectPresentDependencyIds(text);
+        new AddStartersDialog(stage, path, gradle, bootVersion, present, () -> {
+            try {
+                tab.setEditorText(Files.readString(path));
+                tab.markSaved(path);
+                wireAddStarters(tab);
+                console.println("\u2713 Starters added to " + path.getFileName());
+            } catch (IOException ex) {
+                console.println("Add Starters: could not refresh the editor \u2014 "
+                        + ex.getMessage());
+            }
+        }).show();
+    }
+
+    private static String detectBootVersion(String text, boolean gradle) {
+        java.util.regex.Matcher m = gradle
+                ? java.util.regex.Pattern.compile(
+                        "org\\.springframework\\.boot['\"]\\s+version\\s+['\"]([\\d.]+)['\"]")
+                        .matcher(text)
+                : java.util.regex.Pattern.compile(
+                        "spring-boot-starter-parent</artifactId>\\s*<version>([\\d.]+)</version>",
+                        java.util.regex.Pattern.DOTALL).matcher(text);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /**
+     * Best-effort reverse mapping from what's already in the file back to
+     * Initializr dependency ids, so Add Starters can gray out and pre-check
+     * what's already there. Anything it can't recognize (custom or
+     * hand-added dependencies) is simply not pre-checked \u2014 it is never
+     * touched or removed either way.
+     */
+    private static java.util.Set<String> detectPresentDependencyIds(String text) {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("spring-boot-starter-([a-zA-Z0-9-]+)").matcher(text);
+        while (m.find()) ids.add(m.group(1));
+        if (text.contains("spring-boot-devtools")) ids.add("devtools");
+        if (text.contains(":lombok") || text.contains(">lombok<")) ids.add("lombok");
+        if (text.contains("spring-boot-configuration-processor")) {
+            ids.add("configuration-processor");
+        }
+        if (text.contains(":postgresql") || text.contains(">postgresql<")) ids.add("postgresql");
+        if (text.contains("mysql-connector")) ids.add("mysql");
+        if (text.contains(":h2") || text.contains(">h2<")) ids.add("h2");
+        if (text.contains("liquibase-core")) ids.add("liquibase");
+        if (text.contains("flyway-core")) ids.add("flyway");
+        return ids;
+    }
+
     /** M3: reflect the current file's diagnostics in the status bar. */
     private void updateProblemsStatus(
             List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
@@ -2571,7 +2669,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.13");
+        Label brand = new Label("Lumina 1.14");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2952,6 +3050,7 @@ public class LuminaApp extends Application {
 
     private void addTab(EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
+        wireAddStarters(tab);
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
             List<dev.lumina.semantics.Completion.Item> items =
@@ -3055,15 +3154,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.13");
+        alert.setHeaderText("Lumina IDE 1.14");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Fix: project-creation failures now show a
-                real dialog (were silent console-only); Gradle
-                projects resolve dependencies for completion
-                and diagnostics, same as Maven.""");
+                Feature: Add Starters — inline hint
+                above <dependencies> in pom.xml/build.gradle
+                opens the same dependency picker as New Project,
+                to add starters to an existing Spring Boot app.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

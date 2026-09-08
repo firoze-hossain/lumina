@@ -2475,3 +2475,22 @@
     -fx-font-size: 10.5px;
     -fx-font-style: italic;
 }
+
+/* ============================================================
+   "Add Starters" inline hint + dialog extras
+   ============================================================ */
+
+.add-starters-hint {
+    -fx-text-fill: #7A8199;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+    -fx-background-color: #1A1D28;
+    -fx-background-radius: 4;
+    -fx-padding: 1 6 1 6;
+}
+.add-starters-hint:hover { -fx-text-fill: -lumen; -fx-underline: true; }
+.dep-already-present {
+    -fx-text-fill: #565D75;
+    -fx-font-size: 10.5px;
+    -fx-font-style: italic;
+}
