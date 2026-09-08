@@ -32,6 +32,15 @@ public class FileExplorer extends BorderPane {
     private java.util.function.Consumer<Path> onRun;
     private java.util.function.Consumer<Path> onRunTest;
     private java.util.function.Consumer<Path> onDelete;
+    private java.util.function.Consumer<Path> onRename;
+    private java.util.function.Consumer<Path> onNewJavaClass;
+    private java.util.function.Consumer<Path> onNewPackage;
+    private java.util.function.Consumer<Path> onNewFile;
+    private java.util.function.Consumer<Path> onNewDirectory;
+    private java.util.function.Consumer<Path> onCopyPath;
+    private java.util.function.Consumer<Path> onOpenModuleSettings;
+    /** Menu label of the item clicked, for scaffolding not wired up yet. */
+    private java.util.function.Consumer<String> onPlaceholder;
 
     /** Wire run/test/delete actions used by the tree's right-click menu. */
     public void setActions(java.util.function.Consumer<Path> run,
@@ -42,41 +51,194 @@ public class FileExplorer extends BorderPane {
         this.onDelete = delete;
     }
 
+    /**
+     * Wires the rest of the IntelliJ-style project-tree menu: New Class/
+     * Package/File/Directory, Rename, Copy Path, Open Module Settings, and
+     * a catch-all for every scaffolded item that has no behavior yet.
+     */
+    public void setExtendedActions(java.util.function.Consumer<Path> rename,
+                                   java.util.function.Consumer<Path> newJavaClass,
+                                   java.util.function.Consumer<Path> newPackage,
+                                   java.util.function.Consumer<Path> newFile,
+                                   java.util.function.Consumer<Path> newDirectory,
+                                   java.util.function.Consumer<Path> copyPath,
+                                   java.util.function.Consumer<Path> openModuleSettings,
+                                   java.util.function.Consumer<String> placeholder) {
+        this.onRename = rename;
+        this.onNewJavaClass = newJavaClass;
+        this.onNewPackage = newPackage;
+        this.onNewFile = newFile;
+        this.onNewDirectory = newDirectory;
+        this.onCopyPath = copyPath;
+        this.onOpenModuleSettings = openModuleSettings;
+        this.onPlaceholder = placeholder;
+    }
+
+    /**
+     * The tree menu is rebuilt fresh every time it opens, because a file, a
+     * regular directory, and the project root (module) each get genuinely
+     * different IntelliJ menus \u2014 not the same items with some hidden.
+     */
     private javafx.scene.control.ContextMenu buildTreeContextMenu() {
         javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
-        javafx.scene.control.MenuItem open =
-                treeItem("Open", p -> onOpenFile.accept(p));
-        javafx.scene.control.MenuItem run =
-                treeItem("\u25B6  Run", p -> { if (onRun != null) onRun.accept(p); });
-        javafx.scene.control.MenuItem test =
-                treeItem("\u2705  Run Test", p -> { if (onRunTest != null) onRunTest.accept(p); });
-        javafx.scene.control.MenuItem delete =
-                treeItem("Delete\u2026", p -> { if (onDelete != null) onDelete.accept(p); });
-
         menu.setOnShowing(e -> {
             TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
             Path p = sel != null ? sel.getValue() : null;
-            boolean isJava = p != null && p.getFileName().toString().endsWith(".java");
-            boolean isTest = p != null && p.toString().replace('\\', '/')
-                    .contains("/src/test/java/");
-            open.setVisible(p != null && Files.isRegularFile(p));
-            run.setVisible(isJava && !isTest);
-            test.setVisible(isJava && isTest);
-            delete.setVisible(p != null);
+            menu.getItems().setAll(p == null ? List.of()
+                    : Files.isDirectory(p) ? directoryMenuItems(p)
+                    : fileMenuItems(p));
         });
-        menu.getItems().addAll(open, run, test,
-                new javafx.scene.control.SeparatorMenuItem(), delete);
         return menu;
     }
 
-    private javafx.scene.control.MenuItem treeItem(String text,
-                                                   java.util.function.Consumer<Path> action) {
-        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(text);
-        item.setOnAction(e -> {
-            TreeItem<Path> sel = tree.getSelectionModel().getSelectedItem();
-            if (sel != null) action.accept(sel.getValue());
-        });
+    // ---------------------------------------------------------- file node
+
+    private List<javafx.scene.control.MenuItem> fileMenuItems(Path p) {
+        boolean isJava = p.getFileName().toString().endsWith(".java");
+        boolean isTest = p.toString().replace('\\', '/').contains("/src/test/java/");
+        List<javafx.scene.control.MenuItem> items = new java.util.ArrayList<>();
+        items.add(action("Open", () -> onOpenFile.accept(p)));
+        if (isJava && !isTest) items.add(action("\u25B6  Run", () -> run(onRun, p)));
+        if (isJava && isTest) items.add(action("\u2705  Run Test", () -> run(onRunTest, p)));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Cut", () -> ph("Cut")));
+        items.add(action("Copy", () -> ph("Copy")));
+        items.add(action("Copy Path/Reference\u2026", () -> run(onCopyPath, p)));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Rename\u2026", () -> run(onRename, p)));
+        items.add(placeholderMenu("Refactor"));
+        items.add(action("Delete\u2026", () -> run(onDelete, p)));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Local History\u2026", () -> ph("Local History")));
+        items.add(action("Compare With\u2026", () -> ph("Compare With")));
+        return items;
+    }
+
+    // ------------------------------------------------- directory / root node
+
+    private List<javafx.scene.control.MenuItem> directoryMenuItems(Path p) {
+        boolean isRoot = p.equals(rootPath);
+        List<javafx.scene.control.MenuItem> items = new java.util.ArrayList<>();
+
+        items.add(newMenu(p, isRoot));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Cut", () -> ph("Cut")));
+        items.add(action("Copy", () -> ph("Copy")));
+        items.add(action("Copy Path/Reference\u2026", () -> run(onCopyPath, p)));
+        items.add(action("Paste", () -> ph("Paste")));
+        items.add(action("Paste from History\u2026", () -> ph("Paste from History")));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Find Usages", () -> ph("Find Usages")));
+        items.add(action("Find in Files\u2026", () -> ph("Find in Files")));
+        items.add(action("Replace in Files\u2026", () -> ph("Replace in Files")));
+        items.add(placeholderMenu("Analyze"));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Rename\u2026", () -> ph("Rename")));
+        items.add(placeholderMenu("Refactor"));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Bookmarks", () -> ph("Bookmarks")));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Reformat Code", () -> ph("Reformat Code")));
+        items.add(action("Optimize Imports", () -> ph("Optimize Imports")));
+
+        if (isRoot) {
+            items.add(action("Remove Module", () -> ph("Remove Module")));
+        } else {
+            items.add(action("Delete\u2026", () -> run(onDelete, p)));
+        }
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+
+        if (isRoot) {
+            items.add(action("Build Module '" + p.getFileName() + "'",
+                    () -> ph("Build Module")));
+            items.add(action("Rebuild Module '" + p.getFileName() + "'",
+                    () -> ph("Rebuild Module")));
+            items.add(new javafx.scene.control.SeparatorMenuItem());
+        }
+
+        items.add(placeholderMenu("Open In"));
+        items.add(placeholderMenu("Local History"));
+        items.add(placeholderMenu("Git"));
+        items.add(action("Repair IDE on File", () -> ph("Repair IDE on File")));
+        items.add(action("Reload from Disk", this::refresh));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
+        items.add(action("Compare With\u2026", () -> ph("Compare With")));
+
+        if (isRoot) {
+            items.add(new javafx.scene.control.SeparatorMenuItem());
+            items.add(action("Open Module Settings", () -> run(onOpenModuleSettings, p)));
+        }
+        items.add(placeholderMenu("Mark Directory As"));
+
+        if (isRoot) {
+            items.add(action("Analyze Dependencies\u2026", () -> ph("Analyze Dependencies")));
+        }
+        items.add(placeholderMenu("Diagrams"));
+        items.add(action("Create Gist\u2026", () -> ph("Create Gist")));
+
+        if (isRoot) {
+            items.add(placeholderMenu("Maven"));
+            items.add(placeholderMenu("GitHub Copilot"));
+            items.add(action("Upgrade Java Runtime and Frameworks",
+                    () -> ph("Upgrade Java Runtime and Frameworks")));
+        }
+        return items;
+    }
+
+    /** The "New" submenu: Module (root only), then every file/resource type
+     *  IntelliJ offers. Java Class/Package/File/Directory are wired to
+     *  Lumina's real creation flow; the rest are scaffolded for later. */
+    private javafx.scene.control.Menu newMenu(Path dir, boolean isRoot) {
+        javafx.scene.control.Menu menu = new javafx.scene.control.Menu("New");
+        if (isRoot) {
+            menu.getItems().add(action("Module\u2026", () -> ph("Module")));
+            menu.getItems().add(new javafx.scene.control.SeparatorMenuItem());
+        }
+        menu.getItems().addAll(
+                action("Java Class", () -> run(onNewJavaClass, dir)),
+                action("Package", () -> run(onNewPackage, dir)),
+                action("Directory", () -> run(onNewDirectory, dir)),
+                action("File", () -> run(onNewFile, dir)),
+                action("Scratch File", () -> ph("Scratch File")),
+                new javafx.scene.control.SeparatorMenuItem(),
+                action("Kotlin Script", () -> ph("Kotlin Script")),
+                action("Kotlin Notebook", () -> ph("Kotlin Notebook")),
+                action("JavaScript File", () -> ph("JavaScript File")),
+                action("TypeScript File", () -> ph("TypeScript File")),
+                action("HTML File", () -> ph("HTML File")),
+                action("Stylesheet", () -> ph("Stylesheet")),
+                action("Dockerfile", () -> ph("Dockerfile")),
+                action("Dev Container Config\u2026", () -> ph("Dev Container Config")),
+                action("HTTP Request", () -> ph("HTTP Request")),
+                action("OpenAPI Specification", () -> ph("OpenAPI Specification")),
+                action("Kubernetes Resource", () -> ph("Kubernetes Resource")),
+                action("Helm Chart", () -> ph("Helm Chart")),
+                action("Resource Bundle", () -> ph("Resource Bundle")),
+                action("EditorConfig File", () -> ph("EditorConfig File")),
+                action("Data Source in Path", () -> ph("Data Source in Path")));
+        return menu;
+    }
+
+    private javafx.scene.control.Menu placeholderMenu(String label) {
+        javafx.scene.control.Menu menu = new javafx.scene.control.Menu(label);
+        javafx.scene.control.MenuItem soon = new javafx.scene.control.MenuItem("(coming soon)");
+        soon.setDisable(true);
+        menu.getItems().add(soon);
+        return menu;
+    }
+
+    private javafx.scene.control.MenuItem action(String label, Runnable action) {
+        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
+        item.setOnAction(e -> action.run());
         return item;
+    }
+
+    private void run(java.util.function.Consumer<Path> handler, Path p) {
+        if (handler != null) handler.accept(p);
+    }
+
+    private void ph(String feature) {
+        if (onPlaceholder != null) onPlaceholder.accept(feature);
     }
 
     public FileExplorer(Consumer<Path> onOpenFile,

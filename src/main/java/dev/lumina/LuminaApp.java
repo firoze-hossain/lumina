@@ -99,6 +99,15 @@ public class LuminaApp extends Application {
                 file -> { openFile(file); Platform.runLater(this::runCurrentFile); },
                 file -> { openFile(file); Platform.runLater(this::runCurrentTestClass); },
                 this::deleteFromTree);
+        fileExplorer.setExtendedActions(
+                p -> renameSelectedFile(),
+                p -> newJavaClass(),
+                p -> newPackage(),
+                p -> newFile(),
+                p -> newDirectory(),
+                this::copyPathToClipboard,
+                p -> showComingSoon("Open Module Settings"),
+                this::showComingSoon);
 
         editorTabs = new TabPane();
         editorTabs.getStyleClass().add("editor-tabs");
@@ -2669,7 +2678,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.14");
+        Label brand = new Label("Lumina 1.15");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2901,6 +2910,41 @@ public class LuminaApp extends Application {
             if (name.isEmpty()) return;
             writeAndOpen(dir.resolve(name), "");
         });
+    }
+
+    private void newDirectory() {
+        Path dir = targetDirectory();
+        if (dir == null) return;
+        prompt("New Directory", "Directory name:", "folder").ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            try {
+                Files.createDirectories(dir.resolve(name));
+                fileExplorer.refresh();
+            } catch (IOException ex) {
+                error("Could not create directory", ex.getMessage());
+            }
+        });
+    }
+
+    private void copyPathToClipboard(Path p) {
+        if (p == null) return;
+        javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+        content.putString(p.toAbsolutePath().toString());
+        javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
+        console.println("\u2713 Copied path: " + p.toAbsolutePath());
+    }
+
+    /** Scaffolded menu items land here until they get real behavior. */
+    private void showComingSoon(String feature) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(stage);
+        alert.setTitle(feature);
+        alert.setHeaderText(feature);
+        alert.setContentText("Coming in a later phase.");
+        alert.getDialogPane().getStylesheets().add(getClass()
+                .getResource("/css/lumina-dark.css").toExternalForm());
+        alert.showAndWait();
     }
 
     private void renameSelectedFile() {
@@ -3154,15 +3198,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.14");
+        alert.setHeaderText("Lumina IDE 1.15");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: Add Starters — inline hint
-                above <dependencies> in pom.xml/build.gradle
-                opens the same dependency picker as New Project,
-                to add starters to an existing Spring Boot app.""");
+                Feature: full IntelliJ-style project tree
+                context menu — New submenu, module vs.
+                directory variants, real New Class/Package/File/
+                Directory, Rename, Copy Path, and more scaffolded.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
