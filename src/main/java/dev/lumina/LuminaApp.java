@@ -2514,7 +2514,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.10");
+        Label brand = new Label("Lumina 1.11");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2988,15 +2988,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.10");
+        alert.setHeaderText("Lumina IDE 1.11");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase: multi-window project opening \u2014
-                Cancel / New Window / This Window, IntelliJ-style.
-                Plus M1\u2013M5: semantics, completion, live
-                errors, quick docs, and refactoring.""");
+                Phase: Spring Boot wizard \u2014 dependency
+                picker with a live catalog from start.spring.io
+                (falls back offline), plus multi-window opening
+                and M1\u2013M5 (semantics through refactoring).""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
