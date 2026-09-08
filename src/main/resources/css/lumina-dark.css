@@ -2311,3 +2311,34 @@
 .settings-table .placeholder .label {
     -fx-text-fill: #565D75;
 }
+/* ============================================================
+   Open Project prompt (Cancel / New Window / This Window)
+   ============================================================ */
+
+.open-project-dialog {
+    -fx-background-color: #23262F;
+}
+.open-project-icon {
+    -fx-font-size: 22px;
+    -fx-text-fill: #6C9BD6;
+    -fx-background-color: #1B2733;
+    -fx-background-radius: 50%;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-max-width: 34;
+    -fx-max-height: 34;
+    -fx-alignment: center;
+}
+.open-project-header {
+    -fx-text-fill: #E6E9F2;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.open-project-message {
+    -fx-text-fill: #B9BFCF;
+    -fx-font-size: 12.5px;
+}
+.open-project-checkbox {
+    -fx-text-fill: #9AA1B5;
+    -fx-font-size: 12px;
+}
