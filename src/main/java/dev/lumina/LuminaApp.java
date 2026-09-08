@@ -302,6 +302,11 @@ public class LuminaApp extends Application {
                 item("Open…", "Shortcut+O", e -> openFolderDialog()),
                 recentProjects,
                 item("Close Project", null, e -> closeProject()),
+                item("Reset \"Open Project\" Prompt", null, e -> {
+                    Settings.put(Settings.OPEN_PROJECT_MODE, null);
+                    console.println("\u2713 The Open Project prompt (Cancel / New "
+                            + "Window / This Window) will ask again next time.");
+                }),
                 new SeparatorMenuItem(),
                // item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
                 // In buildMenuBar(), find the Remote Development item and change it:
@@ -2514,7 +2519,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.11");
+        Label brand = new Label("Lumina 1.12");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2988,15 +2993,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.11");
+        alert.setHeaderText("Lumina IDE 1.12");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Phase: Spring Boot wizard \u2014 dependency
-                picker with a live catalog from start.spring.io
-                (falls back offline), plus multi-window opening
-                and M1\u2013M5 (semantics through refactoring).""");
+                Fix: dependency-picker theming (was falling
+                back to JavaFX's white default) \u2014 plus the
+                Spring wizard, live start.spring.io catalog,
+                multi-window opening, and M1\u2013M5.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
