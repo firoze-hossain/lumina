@@ -2494,3 +2494,54 @@
     -fx-font-size: 10.5px;
     -fx-font-style: italic;
 }
+
+/* ============================================================
+   New Java Class popup
+   ============================================================ */
+
+.new-class-popup {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 10;
+    -fx-border-color: #333849;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.2, 0, 8);
+}
+.new-class-title {
+    -fx-text-fill: #E6E9F2;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+    -fx-max-width: infinity;
+}
+.new-class-name {
+    -fx-background-color: #14161E;
+    -fx-text-fill: #E6E9F2;
+    -fx-border-color: #333849;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-font-size: 13px;
+    -fx-padding: 6 10 6 10;
+}
+.new-class-kinds {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.new-class-kinds .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 5 8 5 6;
+}
+.new-class-kinds .list-cell:selected { -fx-background-color: #2A2E42; }
+.new-class-icon {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-border-width: 1.4;
+    -fx-border-radius: 50%;
+    -fx-background-radius: 50%;
+    -fx-min-width: 20;
+    -fx-min-height: 20;
+    -fx-max-width: 20;
+    -fx-max-height: 20;
+    -fx-alignment: center;
+}
+.new-class-label { -fx-text-fill: #D8DBE6; -fx-font-size: 12.5px; }
