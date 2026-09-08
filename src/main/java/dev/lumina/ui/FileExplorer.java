@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -387,9 +389,67 @@ public class FileExplorer extends BorderPane {
         setCenter(tree);
     }
 
-    /** Re-scan the currently opened folder (e.g. after saving a new file). */
+    /** Re-scan the currently opened folder (e.g. after saving a new file).
+     *  Never collapses the tree \u2014 whatever was expanded stays expanded,
+     *  exactly like IntelliJ's background refresh. */
     public void refresh() {
-        if (rootPath != null) setRoot(rootPath);
+        refresh(null);
+    }
+
+    /** Same as refresh(), and also reveals+selects a specific new path
+     *  (e.g. a file just created) once the tree is rebuilt. */
+    public void refresh(Path reveal) {
+        if (rootPath == null) return;
+        Set<Path> expanded = new LinkedHashSet<>();
+        collectExpanded(tree.getRoot(), expanded);
+        Path previouslySelected = getSelectedPath();
+        setRoot(rootPath);
+        for (Path p : expanded) expandTo(p);
+        if (reveal != null) {
+            selectFile(reveal);
+        } else if (previouslySelected != null) {
+            selectFile(previouslySelected);
+        }
+    }
+
+    private void collectExpanded(TreeItem<Path> node, Set<Path> out) {
+        if (node == null || !node.isExpanded()) return;
+        out.add(node.getValue().toAbsolutePath().normalize());
+        for (TreeItem<Path> child : node.getChildren()) collectExpanded(child, out);
+    }
+
+    /** Every currently expanded folder, absolute paths \u2014 for session save. */
+    public Set<Path> getExpandedPaths() {
+        Set<Path> out = new LinkedHashSet<>();
+        collectExpanded(tree.getRoot(), out);
+        return out;
+    }
+
+    /** Expand every ancestor down to (and including) target, lazy-loading
+     *  children along the way, without changing the current selection.
+     *  Used both by refresh() (restoring prior expansion) and by session
+     *  restore on project open. */
+    public void expandTo(Path target) {
+        if (tree.getRoot() == null || target == null) return;
+        Path t = target.toAbsolutePath().normalize();
+        TreeItem<Path> current = tree.getRoot();
+        Path rootValue = current.getValue().toAbsolutePath().normalize();
+        if (!t.startsWith(rootValue)) return;
+        boolean progressed = true;
+        while (progressed && !current.getValue()
+                .toAbsolutePath().normalize().equals(t)) {
+            progressed = false;
+            current.setExpanded(true);
+            for (TreeItem<Path> child : current.getChildren()) {
+                Path cv = child.getValue().toAbsolutePath().normalize();
+                if (t.equals(cv) || t.startsWith(cv)) {
+                    current = child;
+                    progressed = true;
+                    break;
+                }
+            }
+        }
+        current.setExpanded(true);
     }
 
     /** The path selected in the tree, or null when nothing is selected. */
@@ -406,28 +466,34 @@ public class FileExplorer extends BorderPane {
     public void selectFile(Path target) {
         if (tree.getRoot() == null || target == null) return;
         Path t = target.toAbsolutePath().normalize();
-        TreeItem<Path> current = tree.getRoot();
-        Path rootValue = current.getValue().toAbsolutePath().normalize();
+        Path rootValue = tree.getRoot().getValue().toAbsolutePath().normalize();
         if (!t.startsWith(rootValue)) return;
-
-        boolean progressed = true;
-        while (progressed && !current.getValue()
-                .toAbsolutePath().normalize().equals(t)) {
-            progressed = false;
-            current.setExpanded(true);
-            for (TreeItem<Path> child : current.getChildren()) {
-                Path cv = child.getValue().toAbsolutePath().normalize();
-                if (t.equals(cv) || t.startsWith(cv)) {
-                    current = child;
-                    progressed = true;
-                    break;
-                }
-            }
-        }
-        current.setExpanded(true);
+        expandTo(t);
+        TreeItem<Path> current = findItem(t);
+        if (current == null) return;
         tree.getSelectionModel().select(current);
         int row = tree.getRow(current);
         if (row >= 0) tree.scrollTo(Math.max(0, row - 5));
+    }
+
+    /** Find the TreeItem for an already-expanded/loaded path, or null. */
+    private TreeItem<Path> findItem(Path target) {
+        TreeItem<Path> current = tree.getRoot();
+        if (current == null) return null;
+        Path t = target.toAbsolutePath().normalize();
+        while (!current.getValue().toAbsolutePath().normalize().equals(t)) {
+            TreeItem<Path> next = null;
+            for (TreeItem<Path> child : current.getChildren()) {
+                Path cv = child.getValue().toAbsolutePath().normalize();
+                if (t.equals(cv) || t.startsWith(cv)) {
+                    next = child;
+                    break;
+                }
+            }
+            if (next == null) return null;
+            current = next;
+        }
+        return current;
     }
 
     // ------------------------------------------------------------ tree cell

@@ -204,6 +204,7 @@ public class LuminaApp extends Application {
         stage.setTitle("Lumina");
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> {
+            saveSession();
             console.shutdown();
             terminal.stop();
             dbPanel.shutdown();
@@ -2678,7 +2679,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.18");
+        Label brand = new Label("Lumina 1.19");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2836,19 +2837,70 @@ public class LuminaApp extends Application {
         initSemanticEngine(dir);
         terminal.start(dir);
 
-        try (Stream<Path> walk = Files.walk(dir)) {
-            Optional<Path> toOpen = walk
-                    .filter(p -> p.toString().endsWith(".java"))
-                    .filter(p -> !p.toString().contains("target")
-                            && !p.toString().contains(File.separator + "build" + File.separator))
-                    .sorted((a, b) -> Integer.compare(rank(a), rank(b)))
-                    .findFirst();
-            toOpen.ifPresent(this::openFile);
-        } catch (IOException ignored) {
+        // IntelliJ-style session restore: the tree's expansion and the
+        // exact tabs that were open (with the same one focused) come back
+        // exactly as they were left. Only a project with no saved session
+        // yet (first-ever open) falls back to the old "guess the entry
+        // point" heuristic.
+        dev.lumina.util.ProjectSession.State session =
+                dev.lumina.util.ProjectSession.load(dir);
+        for (String rel : session.expanded()) {
+            fileExplorer.expandTo(dir.resolve(rel));
+        }
+        if (!session.openFiles().isEmpty()) {
+            Path toFocus = null;
+            for (String rel : session.openFiles()) {
+                Path f = dir.resolve(rel);
+                if (Files.isRegularFile(f)) {
+                    openFile(f);
+                    if (rel.equals(session.activeFile())) toFocus = f;
+                }
+            }
+            if (toFocus != null) {
+                Path focusTarget = toFocus;
+                Platform.runLater(() -> {
+                    for (Tab t : editorTabs.getTabs()) {
+                        if (t instanceof EditorTab et
+                                && focusTarget.equals(et.getPath())) {
+                            editorTabs.getSelectionModel().select(t);
+                            break;
+                        }
+                    }
+                });
+            }
+        } else {
+            try (Stream<Path> walk = Files.walk(dir)) {
+                Optional<Path> toOpen = walk
+                        .filter(p -> p.toString().endsWith(".java"))
+                        .filter(p -> !p.toString().contains("target")
+                                && !p.toString().contains(File.separator + "build" + File.separator))
+                        .sorted((a, b) -> Integer.compare(rank(a), rank(b)))
+                        .findFirst();
+                toOpen.ifPresent(this::openFile);
+            } catch (IOException ignored) {
+            }
         }
     }
 
+    /** Snapshots the tree's expanded folders and the open tabs so the next
+     *  time this project opens, it looks exactly like it does right now. */
+    private void saveSession() {
+        if (projectRoot == null) return;
+        java.util.Set<Path> expanded = fileExplorer.getExpandedPaths();
+        java.util.List<Path> open = new java.util.ArrayList<>();
+        Path active = null;
+        Tab selectedTab = editorTabs.getSelectionModel().getSelectedItem();
+        for (Tab t : editorTabs.getTabs()) {
+            if (t instanceof EditorTab et && et.getPath() != null) {
+                open.add(et.getPath());
+                if (t == selectedTab) active = et.getPath();
+            }
+        }
+        dev.lumina.util.ProjectSession.save(projectRoot, expanded, open, active);
+    }
+
     private void closeProject() {
+        saveSession();
         projectRoot = null;
         editorTabs.getTabs().clear();
         fileExplorer.setRoot(null);
@@ -2931,8 +2983,9 @@ public class LuminaApp extends Application {
             String pkg = raw.trim();
             if (pkg.isEmpty()) return;
             try {
-                Files.createDirectories(dir.resolve(pkg.replace('.', '/')));
-                fileExplorer.refresh();
+                Path created = dir.resolve(pkg.replace('.', '/'));
+                Files.createDirectories(created);
+                fileExplorer.refresh(created);
             } catch (IOException ex) {
                 error("Could not create package", ex.getMessage());
             }
@@ -2960,8 +3013,9 @@ public class LuminaApp extends Application {
             String name = raw.trim();
             if (name.isEmpty()) return;
             try {
-                Files.createDirectories(dir.resolve(name));
-                fileExplorer.refresh();
+                Path created = dir.resolve(name);
+                Files.createDirectories(created);
+                fileExplorer.refresh(created);
             } catch (IOException ex) {
                 error("Could not create directory", ex.getMessage());
             }
@@ -3047,7 +3101,7 @@ public class LuminaApp extends Application {
             }
             Files.createDirectories(file.getParent());
             Files.writeString(file, content);
-            fileExplorer.refresh();
+            fileExplorer.refresh(file);
             openFile(file);
         } catch (IOException ex) {
             error("Could not create file", ex.getMessage());
@@ -3239,15 +3293,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.18");
+        alert.setHeaderText("Lumina IDE 1.19");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: New Java Class popup — pick
-                Class, Interface, Record, Enum, Annotation,
-                Exception, or a compact source file, with the
-                right boilerplate and dotted-name subpackages.""");
+                Fix: project tree no longer collapses on new
+                file/class/package creation. Feature: session
+                restore — tree expansion and open tabs come
+                back exactly as left, IntelliJ-style.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
