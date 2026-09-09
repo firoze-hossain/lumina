@@ -1937,8 +1937,12 @@ public class LuminaApp extends Application {
      * M1: build the semantic engine in the background. Navigation works via
      * the old heuristics until it is ready (IntelliJ's "dumb mode" pattern).
      */
+    private volatile List<dev.lumina.spring.SpringConfigMetadata.Property> springProperties
+            = List.of();
+
     private void initSemanticEngine(Path dir) {
         semantics = null;
+        springProperties = List.of();
         Thread t = new Thread(() -> {
             console.println("Semantic engine: indexing project\u2026");
             String classpath = ensureClasspath();   // cached in target/lumina.cp
@@ -1953,9 +1957,33 @@ public class LuminaApp extends Application {
                         + engine.jarCount() + " dependency jars. Ctrl+Click and "
                         + "Find Usages are now exact.");
             }
+            if (looksLikeSpringBoot(dir) && classpath != null) {
+                List<dev.lumina.spring.SpringConfigMetadata.Property> props =
+                        dev.lumina.spring.SpringConfigMetadata.scan(classpath);
+                if (!props.isEmpty() && projectRoot != null && projectRoot.equals(dir)) {
+                    springProperties = props;
+                    console.println("\u2713 Spring Boot config completion ready \u2014 "
+                            + props.size() + " properties from "
+                            + "application.properties/.yml starters on the classpath.");
+                }
+            }
         }, "lumina-semantics-init");
         t.setDaemon(true);
         t.start();
+    }
+
+    private static boolean looksLikeSpringBoot(Path dir) {
+        try {
+            for (String name : new String[]{"pom.xml", "build.gradle", "build.gradle.kts"}) {
+                Path f = dir.resolve(name);
+                if (Files.isRegularFile(f)
+                        && Files.readString(f).contains("org.springframework.boot")) {
+                    return true;
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return false;
     }
 
     /** Heuristic go-to-declaration: types by name, methods by signature scan. */
@@ -2679,7 +2707,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.19");
+        Label brand = new Label("Lumina 1.20");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -3042,6 +3070,48 @@ public class LuminaApp extends Application {
         alert.showAndWait();
     }
 
+    private static boolean isSpringConfigFile(Path file) {
+        String n = file.getFileName().toString();
+        return n.equals("application.properties") || n.equals("application.yml")
+                || n.equals("application.yaml")
+                || (n.endsWith(".properties") && n.startsWith("application"))
+                || ((n.endsWith(".yml") || n.endsWith(".yaml")) && n.startsWith("application"));
+    }
+
+    private List<dev.lumina.semantics.Completion.Item> springPropertyCompletions(String prefix) {
+        List<dev.lumina.spring.SpringConfigMetadata.Property> props = springProperties;
+        if (prefix.isEmpty() || props.isEmpty()) return List.of();
+        List<dev.lumina.semantics.Completion.Item> items = new java.util.ArrayList<>();
+        String needle = prefix.toLowerCase();
+        for (var p : props) {
+            if (!p.name().toLowerCase().contains(needle)) continue;
+            StringBuilder detail = new StringBuilder();
+            if (!p.type().isEmpty()) detail.append(simplePropertyType(p.type()));
+            if (!p.description().isEmpty()) {
+                if (!detail.isEmpty()) detail.append("  \u2014  ");
+                detail.append(firstSentence(p.description()));
+            }
+            items.add(new dev.lumina.semantics.Completion.Item(p.name(), p.name(),
+                    p.name(), detail.toString(),
+                    dev.lumina.semantics.Completion.Kind.FIELD, null, 0));
+            if (items.size() >= 60) break;
+        }
+        return items;
+    }
+
+    private static String simplePropertyType(String fqcn) {
+        int lt = fqcn.indexOf('<');
+        String base = lt < 0 ? fqcn : fqcn.substring(0, lt);
+        int dot = base.lastIndexOf('.');
+        return dot < 0 ? base : base.substring(dot + 1);
+    }
+
+    private static String firstSentence(String description) {
+        int dot = description.indexOf(". ");
+        String s = dot < 0 ? description : description.substring(0, dot + 1);
+        return s.length() > 90 ? s.substring(0, 90) + "\u2026" : s;
+    }
+
     private void renameSelectedFile() {
         Path selected = fileExplorer.getSelectedPath();
         if (selected == null || !Files.isRegularFile(selected)) {
@@ -3192,6 +3262,9 @@ public class LuminaApp extends Application {
         wireAddStarters(tab);
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
+            if (file != null && isSpringConfigFile(file)) {
+                return springPropertyCompletions(ctx.prefix());
+            }
             List<dev.lumina.semantics.Completion.Item> items =
                     new java.util.ArrayList<>();
             dev.lumina.semantics.SemanticEngine engine = semantics;
@@ -3293,15 +3366,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.19");
+        alert.setHeaderText("Lumina IDE 1.20");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Fix: project tree no longer collapses on new
-                file/class/package creation. Feature: session
-                restore — tree expansion and open tabs come
-                back exactly as left, IntelliJ-style.""");
+                Feature: Spring-aware completion —
+                application.properties/.yml keys from your real
+                starters, JPA derived-query-method suggestions,
+                and Java-version-aware parsing (pom/gradle).""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

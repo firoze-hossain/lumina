@@ -134,13 +134,20 @@ public class EditorTab extends Tab {
             String ch = e.getCharacter();
             if (ch == null || ch.isEmpty()) return;
             char c = ch.charAt(0);
-            if (c == '.') {
+            boolean configFile = isSpringConfigFile();
+            if (c == '.' && !configFile) {
                 Platform.runLater(this::triggerCompletion);
             } else if (c == '(') {
                 completionPopup.hide();
                 if (paramInfoTrigger != null) {
                     Platform.runLater(paramInfoTrigger);
                 }
+            } else if (configFile && (Character.isLetterOrDigit(c)
+                    || c == '.' || c == '-' || c == '_')) {
+                // application.properties / .yml: continuous key completion,
+                // not just after a dot \u2014 IntelliJ completes these live.
+                Platform.runLater(completionPopup.isShowing()
+                        ? this::refilterCompletion : this::triggerCompletion);
             } else if (completionPopup.isShowing()) {
                 if (Character.isLetterOrDigit(c) || c == '_') {
                     Platform.runLater(this::refilterCompletion);
@@ -798,12 +805,19 @@ public class EditorTab extends Tab {
     }
 
     /** Compute the caret context and ask the provider on a worker thread. */
+    private boolean isSpringConfigFile() {
+        if (path == null) return false;
+        String n = path.getFileName().toString();
+        return n.endsWith(".properties") || n.endsWith(".yml") || n.endsWith(".yaml");
+    }
+
     private void triggerCompletion() {
         if (completionProvider == null || !codeArea.isEditable()) return;
         String text = codeArea.getText();
         int caret = codeArea.getCaretPosition();
-        dev.lumina.semantics.Completion.Context ctx =
-                dev.lumina.semantics.Completion.contextAt(text, caret);
+        dev.lumina.semantics.Completion.Context ctx = isSpringConfigFile()
+                ? dev.lumina.semantics.Completion.contextForProperties(text, caret)
+                : dev.lumina.semantics.Completion.contextAt(text, caret);
         if (ctx == null) {
             completionPopup.hide();
             return;
@@ -841,9 +855,12 @@ public class EditorTab extends Tab {
             return;
         }
         String prefix = codeArea.getText(start, caret);
+        boolean configFile = isSpringConfigFile();
         for (int i = 0; i < prefix.length(); i++) {
             char c = prefix.charAt(i);
-            if (!Character.isLetterOrDigit(c) && c != '_') {
+            boolean allowed = Character.isLetterOrDigit(c) || c == '_'
+                    || (configFile && (c == '.' || c == '-'));
+            if (!allowed) {
                 completionPopup.hide();
                 return;
             }
