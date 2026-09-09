@@ -811,13 +811,21 @@ public class EditorTab extends Tab {
         return n.endsWith(".properties") || n.endsWith(".yml") || n.endsWith(".yaml");
     }
 
+    private boolean isYamlConfigFile() {
+        if (path == null) return false;
+        String n = path.getFileName().toString();
+        return n.endsWith(".yml") || n.endsWith(".yaml");
+    }
+
     private void triggerCompletion() {
         if (completionProvider == null || !codeArea.isEditable()) return;
         String text = codeArea.getText();
         int caret = codeArea.getCaretPosition();
-        dev.lumina.semantics.Completion.Context ctx = isSpringConfigFile()
-                ? dev.lumina.semantics.Completion.contextForProperties(text, caret)
-                : dev.lumina.semantics.Completion.contextAt(text, caret);
+        dev.lumina.semantics.Completion.Context ctx = isYamlConfigFile()
+                ? dev.lumina.semantics.Completion.contextForYaml(text, caret)
+                : isSpringConfigFile()
+                        ? dev.lumina.semantics.Completion.contextForProperties(text, caret)
+                        : dev.lumina.semantics.Completion.contextAt(text, caret);
         if (ctx == null) {
             completionPopup.hide();
             return;

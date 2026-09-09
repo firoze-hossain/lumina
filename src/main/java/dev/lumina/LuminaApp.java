@@ -529,6 +529,8 @@ public class LuminaApp extends Application {
                         e -> quickDocAtCaret()),
                 item("Parameter Info", "Shortcut+Shift+P",
                         e -> showParameterInfo()),
+                item("Go to Implementation(s)", "Shortcut+Alt+B",
+                        e -> goToImplementation()),
                 item("Find Usages", "Alt+F7", e -> {
                     EditorTab tab = currentEditor();
                     if (tab != null) showUsages(tab.wordAtCaret());
@@ -2707,7 +2709,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.20");
+        Label brand = new Label("Lumina 1.21");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -2854,6 +2856,7 @@ public class LuminaApp extends Application {
 
     private void openProject(Path dir) {
         projectRoot = dir;
+        dev.lumina.project.LuminaFolderGenerator.ensure(dir, dir.getFileName().toString());
         fileExplorer.setRoot(dir);
         projectChip.setText("\uD83D\uDCC1 " + dir.getFileName());
         stage.setTitle("Lumina \u2014 " + dir.getFileName());
@@ -3070,6 +3073,65 @@ public class LuminaApp extends Application {
         alert.showAndWait();
     }
 
+    /**
+     * Nested-path-aware yaml completion: fullPrefix is the dotted ancestor
+     * chain plus whatever's typed on the current line (built by
+     * Completion.contextForYaml). Each suggestion is only the *next*
+     * segment under that path \u2014 a leaf property name if one exists at
+     * exactly that depth, or an intermediate key (shown with "\u2026") when
+     * there's more nesting below it, exactly like IntelliJ's yaml
+     * completion never spells out the whole remaining path at once.
+     */
+    private List<dev.lumina.semantics.Completion.Item> springYamlCompletions(String fullPrefix) {
+        List<dev.lumina.spring.SpringConfigMetadata.Property> props = springProperties;
+        if (props.isEmpty()) return List.of();
+        String ancestor;
+        String local;
+        int lastDot = fullPrefix.lastIndexOf('.');
+        if (lastDot < 0) {
+            ancestor = "";
+            local = fullPrefix;
+        } else {
+            ancestor = fullPrefix.substring(0, lastDot);
+            local = fullPrefix.substring(lastDot + 1);
+        }
+        String ancestorDot = ancestor.isEmpty() ? "" : ancestor + ".";
+        java.util.LinkedHashMap<String, dev.lumina.spring.SpringConfigMetadata.Property> bySegment =
+                new java.util.LinkedHashMap<>();
+        for (var p : props) {
+            if (!ancestor.isEmpty() && !p.name().startsWith(ancestorDot)) continue;
+            String remainder = ancestor.isEmpty() ? p.name()
+                    : p.name().substring(ancestorDot.length());
+            if (remainder.isEmpty()) continue;
+            int dot = remainder.indexOf('.');
+            String nextSegment = dot < 0 ? remainder : remainder.substring(0, dot);
+            if (!dev.lumina.semantics.Completion.matches(local, nextSegment)) continue;
+            bySegment.putIfAbsent(nextSegment, p);
+        }
+        List<dev.lumina.semantics.Completion.Item> items = new java.util.ArrayList<>();
+        for (var entry : bySegment.entrySet()) {
+            String seg = entry.getKey();
+            var p = entry.getValue();
+            boolean isLeaf = p.name().equals(ancestorDot + seg);
+            String detail;
+            if (isLeaf) {
+                StringBuilder d = new StringBuilder();
+                if (!p.type().isEmpty()) d.append(simplePropertyType(p.type()));
+                if (!p.description().isEmpty()) {
+                    if (!d.isEmpty()) d.append("  \u2014  ");
+                    d.append(firstSentence(p.description()));
+                }
+                detail = d.toString();
+            } else {
+                detail = "\u2026";
+            }
+            items.add(new dev.lumina.semantics.Completion.Item(seg, seg, seg,
+                    detail, dev.lumina.semantics.Completion.Kind.FIELD, null, 0));
+            if (items.size() >= 60) break;
+        }
+        return items;
+    }
+
     private static boolean isSpringConfigFile(Path file) {
         String n = file.getFileName().toString();
         return n.equals("application.properties") || n.equals("application.yml")
@@ -3110,6 +3172,49 @@ public class LuminaApp extends Application {
         int dot = description.indexOf(". ");
         String s = dot < 0 ? description : description.substring(0, dot + 1);
         return s.length() > 90 ? s.substring(0, 90) + "\u2026" : s;
+    }
+
+    /** IntelliJ's Ctrl+Alt+B: @Autowired field/interface \u2192 its concrete
+     *  Spring-annotated implementation, not just the contract. */
+    private void goToImplementation() {
+        EditorTab editor = currentEditor();
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+        if (editor == null || editor.getPath() == null) return;
+        if (engine == null) {
+            console.println("Go to Implementation needs the semantic engine "
+                    + "(still indexing\u2026)");
+            return;
+        }
+        final Path file = editor.getPath();
+        final String text = editor.getEditorText();
+        final int line = editor.getCaretLine();
+        final int column = editor.getCaretColumn();
+        Thread t = new Thread(() -> {
+            List<dev.lumina.semantics.SemanticEngine.Location> impls =
+                    List.of();
+            try {
+                impls = engine.findImplementations(file, text, line, column);
+            } catch (Throwable ignored) {
+            }
+            final List<dev.lumina.semantics.SemanticEngine.Location> found = impls;
+            Platform.runLater(() -> {
+                if (found.isEmpty()) {
+                    console.println("No Spring-annotated implementation found "
+                            + "for the symbol at the caret.");
+                } else if (found.size() == 1) {
+                    openFileAtLine(found.get(0).file(), found.get(0).line());
+                } else {
+                    List<UsagesDialog.Hit> rows = found.stream()
+                            .map(loc -> new UsagesDialog.Hit(loc.file(), loc.line(),
+                                    loc.file().getFileName().toString(), false))
+                            .toList();
+                    new UsagesDialog(stage, projectRoot, "implementations",
+                            rows, this::openFileAtLine).show();
+                }
+            });
+        }, "lumina-goto-impl");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void renameSelectedFile() {
@@ -3263,7 +3368,10 @@ public class LuminaApp extends Application {
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
             if (file != null && isSpringConfigFile(file)) {
-                return springPropertyCompletions(ctx.prefix());
+                String n = file.getFileName().toString();
+                return (n.endsWith(".yml") || n.endsWith(".yaml"))
+                        ? springYamlCompletions(ctx.prefix())
+                        : springPropertyCompletions(ctx.prefix());
             }
             List<dev.lumina.semantics.Completion.Item> items =
                     new java.util.ArrayList<>();
@@ -3366,15 +3474,15 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.20");
+        alert.setHeaderText("Lumina IDE 1.21");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: Spring-aware completion —
-                application.properties/.yml keys from your real
-                starters, JPA derived-query-method suggestions,
-                and Java-version-aware parsing (pom/gradle).""");
+                Feature: library-type completion (JpaRepository
+                etc.), nested yaml completion, Go to
+                Implementation(s), per-kind file icons, and a
+                real .lumina/ project folder (Lumina's own name).""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());

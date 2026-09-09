@@ -179,6 +179,7 @@ public final class ProjectGenerator {
                 build/
                 .gradle/
                 .idea/
+                .lumina/
                 *.class
                 *.log
                 """);
