@@ -90,6 +90,25 @@ public final class Completion {
         return humps.toString();
     }
 
+    /**
+     * Context for application.properties / application.yml key completion:
+     * the prefix is everything typed so far on the current line, stopping
+     * once a value has started (a properties "=" or a yaml "key: value").
+     * Returns null once a value is present, since keys aren't being typed
+     * anymore at that point.
+     */
+    public static Context contextForProperties(String text, int caret) {
+        if (caret < 0 || caret > text.length()) return null;
+        int lineStart = text.lastIndexOf('\n', caret - 1) + 1;
+        String linePrefix = text.substring(lineStart, caret);
+        if (linePrefix.contains("=")) return null;
+        int colon = linePrefix.indexOf(':');
+        if (colon >= 0 && !linePrefix.substring(colon + 1).isBlank()) return null;
+        String trimmed = linePrefix.stripLeading();
+        int keyStart = caret - trimmed.length();
+        return new Context(false, "", trimmed, keyStart);
+    }
+
     // -------------------------------------------------------------- imports
 
     /** True when inserting fqcn requires adding an import to this source. */

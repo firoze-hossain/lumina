@@ -129,11 +129,12 @@ public final class SemanticEngine {
     public static SemanticEngine create(Path projectRoot, String classpath,
                                         Consumer<String> log) {
         try {
+            ParserConfiguration.LanguageLevel languageLevel = detectLanguageLevel(projectRoot);
             CombinedTypeSolver solver = new CombinedTypeSolver();
             solver.add(new ReflectionTypeSolver());   // JDK classes
 
             ParserConfiguration srcConfig = new ParserConfiguration()
-                    .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+                    .setLanguageLevel(languageLevel);
 
             List<Path> roots = new ArrayList<>();
             for (String rel : new String[]{"src/main/java", "src/test/java"}) {
@@ -203,15 +204,65 @@ public final class SemanticEngine {
                     ClassLoader.getPlatformClassLoader());
 
             ParserConfiguration config = new ParserConfiguration()
-                    .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21)
+                    .setLanguageLevel(languageLevel)
                     .setSymbolResolver(new JavaSymbolSolver(solver));
 
+            if (log != null) {
+                log.accept("Semantic engine: parsing as " + languageLevel);
+            }
             return new SemanticEngine(projectRoot, roots,
                     new JavaParser(config), jars, typeIndex, loader);
         } catch (Throwable t) {
             if (log != null) log.accept("Semantic engine failed to start: " + t);
             return null;
         }
+    }
+
+    /**
+     * Reads the project's own configured Java version out of pom.xml
+     * (java.version / maven.compiler.release / maven.compiler.source) or
+     * build.gradle(.kts) (JavaLanguageVersion.of(N) / sourceCompatibility)
+     * so the parser accepts exactly the language features that project
+     * actually targets \u2014 var/records/sealed types on 17+, but not features
+     * an older-targeted project couldn't use. Falls back to JAVA_21 (the
+     * newest level this JavaParser version reliably supports) when nothing
+     * is found, which stays permissive rather than rejecting valid code.
+     */
+    private static ParserConfiguration.LanguageLevel detectLanguageLevel(Path projectRoot) {
+        try {
+            Path pom = projectRoot.resolve("pom.xml");
+            if (Files.isRegularFile(pom)) {
+                String text = Files.readString(pom);
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                        "<(?:java\\.version|maven\\.compiler\\.release"
+                                + "|maven\\.compiler\\.source)>\\s*(1\\.)?(\\d+)\\s*<")
+                        .matcher(text);
+                if (m.find()) return levelFor(Integer.parseInt(m.group(2)));
+            }
+            for (String name : new String[]{"build.gradle", "build.gradle.kts"}) {
+                Path gradle = projectRoot.resolve(name);
+                if (!Files.isRegularFile(gradle)) continue;
+                String text = Files.readString(gradle);
+                java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("JavaLanguageVersion\\.of\\((\\d+)\\)").matcher(text);
+                if (m.find()) return levelFor(Integer.parseInt(m.group(1)));
+                m = java.util.regex.Pattern.compile(
+                        "(?:sourceCompatibility|targetCompatibility)\\s*=\\s*"
+                                + "['\"]?(?:JavaVersion\\.VERSION_)?(1\\.)?(\\d+)").matcher(text);
+                if (m.find()) return levelFor(Integer.parseInt(m.group(2)));
+            }
+        } catch (Exception ignored) {
+        }
+        return ParserConfiguration.LanguageLevel.JAVA_21;
+    }
+
+    /** Rounds down to the nearest LTS level this JavaParser build reliably
+     *  names, rather than guessing at less-common intermediate constants. */
+    private static ParserConfiguration.LanguageLevel levelFor(int version) {
+        if (version <= 8) return ParserConfiguration.LanguageLevel.JAVA_8;
+        if (version <= 11) return ParserConfiguration.LanguageLevel.JAVA_11;
+        if (version <= 17) return ParserConfiguration.LanguageLevel.JAVA_17;
+        return ParserConfiguration.LanguageLevel.JAVA_21;
     }
 
     // ------------------------------------------------------------- parsing
@@ -851,6 +902,7 @@ public final class SemanticEngine {
                             simpleType(m.getType().asString()),
                             m.getParameters().isEmpty()));
                 }
+                items.addAll(jpaMethodNameSuggestions(cu, caretLine, prefix));
             }
             if (!prefix.isEmpty()) {
                 String filePkg = filePackage(text);
@@ -879,6 +931,97 @@ public final class SemanticEngine {
     }
 
     // ------------------------------------------------------- member listing
+
+    private static final java.util.Set<String> JPA_REPOSITORY_MARKERS = java.util.Set.of(
+            "JpaRepository", "CrudRepository", "PagingAndSortingRepository",
+            "ListCrudRepository", "ListPagingAndSortingRepository",
+            "ReactiveCrudRepository", "MongoRepository", "ReactiveMongoRepository");
+
+    /**
+     * Spring Data JPA's signature feature: typing a new method name inside
+     * a repository interface (one extending JpaRepository&lt;Entity, Id&gt;
+     * or a sibling) suggests derived query names \u2014 findByX, existsByX,
+     * countByX, deleteByX \u2014 built from the entity's real declared field
+     * names, resolved from project source. Empty outside a repository
+     * interface or when the entity type can't be found in the project.
+     */
+    private List<Completion.Item> jpaMethodNameSuggestions(CompilationUnit cu,
+                                                            int caretLine, String prefix) {
+        List<Completion.Item> out = new ArrayList<>();
+        if (prefix.isEmpty()) return out;
+        try {
+            for (ClassOrInterfaceDeclaration decl
+                    : cu.findAll(ClassOrInterfaceDeclaration.class)) {
+                if (!decl.isInterface() || !rangeContainsLine(decl, caretLine)) continue;
+                for (ClassOrInterfaceType ext : decl.getExtendedTypes()) {
+                    if (!JPA_REPOSITORY_MARKERS.contains(ext.getNameAsString())) continue;
+                    var typeArgs = ext.getTypeArguments();
+                    if (typeArgs.isEmpty() || typeArgs.get().isEmpty()) continue;
+                    String entitySimple = typeArgs.get().get(0).asString();
+                    List<String> stringFields = new ArrayList<>();
+                    for (String field : entityFieldNames(entitySimple, stringFields)) {
+                        String cap = Character.toUpperCase(field.charAt(0))
+                                + field.substring(1);
+                        String entityRef = "List<" + entitySimple + ">";
+                        jpaItem(out, prefix, "findBy" + cap,
+                                entityRef + " \u2014 Spring Data derived query");
+                        jpaItem(out, prefix, "existsBy" + cap,
+                                "boolean \u2014 Spring Data derived query");
+                        jpaItem(out, prefix, "countBy" + cap,
+                                "long \u2014 Spring Data derived query");
+                        jpaItem(out, prefix, "deleteBy" + cap,
+                                "void \u2014 Spring Data derived query");
+                        if (stringFields.contains(field)) {
+                            jpaItem(out, prefix, "findBy" + cap + "Containing",
+                                    entityRef + " \u2014 LIKE %value%");
+                            jpaItem(out, prefix, "findBy" + cap + "ContainingIgnoreCase",
+                                    entityRef + " \u2014 LIKE %value%, case-insensitive");
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
+    private static void jpaItem(List<Completion.Item> out, String prefix,
+                                String name, String detail) {
+        if (!Completion.matches(prefix, name)) return;
+        out.add(new Completion.Item(name, name, name + "()", ": " + detail,
+                Completion.Kind.METHOD, null, 1));
+    }
+
+    /** Non-static field names of a project-source entity, by simple name;
+     *  also collects which of those are String-typed into stringFieldsOut. */
+    private List<String> entityFieldNames(String simpleTypeName,
+                                          List<String> stringFieldsOut) {
+        List<String> fqcns = typeIndex.get(simpleTypeName);
+        if (fqcns == null || fqcns.isEmpty()) return List.of();
+        Path source = sourceFileFor(fqcns.get(0));
+        if (source == null) return List.of();
+        CompilationUnit entityCu = parse(source, null);
+        if (entityCu == null) return List.of();
+        List<String> fields = new ArrayList<>();
+        for (FieldDeclaration fd : entityCu.findAll(FieldDeclaration.class)) {
+            if (isStaticField(fd)) continue;
+            for (VariableDeclarator v : fd.getVariables()) {
+                fields.add(v.getNameAsString());
+                if (v.getType().asString().equals("String")) {
+                    stringFieldsOut.add(v.getNameAsString());
+                }
+            }
+        }
+        return fields;
+    }
+
+    private static boolean isStaticField(FieldDeclaration fd) {
+        try {
+            return fd.isStatic();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     private List<Completion.Item> membersOf(String fqcn, boolean staticOnly,
                                             boolean includePrivate,
