@@ -524,13 +524,18 @@ public class FileExplorer extends BorderPane {
             }
         }
 
+        private final java.util.Map<Path, String> javaKindGlyphCache =
+                new java.util.concurrent.ConcurrentHashMap<>();
+
         private String glyphFor(Path p, LazyPathItem node) {
             if (Files.isDirectory(p)) {
                 if (node != null && node.isPackage) return "\uD83D\uDDC2\uFE0F"; // card index
                 return "\uD83D\uDCC1";                                            // folder
             }
             String n = p.getFileName().toString().toLowerCase();
-            if (n.endsWith(".java")) return "\u2615";
+            if (n.endsWith(".java")) {
+                return javaKindGlyphCache.computeIfAbsent(p, FileExplorer::detectJavaGlyph);
+            }
             if (n.endsWith(".class")) return "\u2699\uFE0F";
             if (n.endsWith(".xml") || n.endsWith(".pom")) return "\uD83E\uDDFE";
             if (n.endsWith(".md") || n.endsWith(".txt")) return "\uD83D\uDCC4";
@@ -539,6 +544,35 @@ public class FileExplorer extends BorderPane {
             if (n.startsWith(".git")) return "\uD83D\uDD00";
             return "\uD83D\uDCC4";
         }
+    }
+
+    /**
+     * IntelliJ-style per-kind file icons: a class, interface, enum, record,
+     * and annotation each look different in the tree. Detected by scanning
+     * just the first top-level type declaration \u2014 no full parse needed,
+     * and cheap enough to run once per file (results are cached).
+     */
+    private static String detectJavaGlyph(Path p) {
+        try (var in = Files.newInputStream(p)) {
+            String head = new String(in.readNBytes(4096), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                    "\\b(?:public|private|protected|static|final|abstract|sealed"
+                            + "|non-sealed|strictfp)\\s+(?:(?:public|private|protected|static"
+                            + "|final|abstract|sealed|non-sealed|strictfp)\\s+)*"
+                            + "(class|interface|enum|record|@interface)\\s+[A-Za-z_]")
+                    .matcher(head);
+            if (m.find()) {
+                return switch (m.group(1)) {
+                    case "interface" -> "\uD83D\uDD37";     // blue diamond
+                    case "enum" -> "\uD83D\uDD36";           // orange diamond
+                    case "record" -> "\uD83D\uDCCB";         // clipboard
+                    case "@interface" -> "\uD83C\uDFF7\uFE0F"; // tag
+                    default -> "\u2615";                     // class
+                };
+            }
+        } catch (Exception ignored) {
+        }
+        return "\u2615";
     }
 
     private static String abbreviate(Path p) {

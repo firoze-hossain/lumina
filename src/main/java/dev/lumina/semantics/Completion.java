@@ -109,6 +109,47 @@ public final class Completion {
         return new Context(false, "", trimmed, keyStart);
     }
 
+    /**
+     * Context for application.yml key completion: unlike flat .properties
+     * files, a yaml key is only ever the leaf segment typed on the current
+     * line \u2014 the parent path is reconstructed by walking upward through
+     * shallower-indented ancestor keys, so prefix carries the *full* dotted
+     * path (e.g. "spring.datasource.ur") for the provider to match against
+     * real property names, while prefixStart still points at just the
+     * local fragment on the current line for correct in-place insertion.
+     */
+    public static Context contextForYaml(String text, int caret) {
+        if (caret < 0 || caret > text.length()) return null;
+        int lineStart = text.lastIndexOf('\n', caret - 1) + 1;
+        String linePrefix = text.substring(lineStart, caret);
+        int colon = linePrefix.indexOf(':');
+        if (colon >= 0 && !linePrefix.substring(colon + 1).isBlank()) return null;
+        String trimmed = linePrefix.stripLeading();
+        if (trimmed.startsWith("-") || trimmed.startsWith("#")) return null;
+        int keyStart = caret - trimmed.length();
+        int myIndent = linePrefix.length() - trimmed.length();
+
+        String[] priorLines = text.substring(0, lineStart).split("\n", -1);
+        List<String> ancestors = new ArrayList<>();
+        int neededIndent = myIndent;
+        for (int i = priorLines.length - 1; i >= 0 && neededIndent > 0; i--) {
+            String line = priorLines[i];
+            String lineTrimmed = line.stripLeading();
+            if (lineTrimmed.isBlank()) continue;
+            int indent = line.length() - lineTrimmed.length();
+            if (indent < neededIndent) {
+                int c = lineTrimmed.indexOf(':');
+                String key = c < 0 ? lineTrimmed.trim() : lineTrimmed.substring(0, c).trim();
+                if (key.isEmpty() || key.startsWith("#") || key.startsWith("-")) break;
+                ancestors.add(0, key);
+                neededIndent = indent;
+            }
+        }
+        String fullPrefix = ancestors.isEmpty() ? trimmed
+                : String.join(".", ancestors) + "." + trimmed;
+        return new Context(false, "", fullPrefix, keyStart);
+    }
+
     // -------------------------------------------------------------- imports
 
     /** True when inserting fqcn requires adding an import to this source. */

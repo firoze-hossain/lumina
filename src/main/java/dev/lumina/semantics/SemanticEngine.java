@@ -85,6 +85,7 @@ public final class SemanticEngine {
     private final JavaParser parser;
     private final int jarCount;
     private final Map<String, List<String>> typeIndex;   // simple -> fqcns
+    private final Map<String, List<String>> libraryTypeIndex;   // simple -> fqcns, from jars
     private final ClassLoader dependencyLoader;
 
     private static final int CACHE_SIZE = 64;
@@ -104,12 +105,14 @@ public final class SemanticEngine {
     private SemanticEngine(Path projectRoot, List<Path> sourceRoots,
                            JavaParser parser, int jarCount,
                            Map<String, List<String>> typeIndex,
+                           Map<String, List<String>> libraryTypeIndex,
                            ClassLoader dependencyLoader) {
         this.projectRoot = projectRoot;
         this.sourceRoots = sourceRoots;
         this.parser = parser;
         this.jarCount = jarCount;
         this.typeIndex = typeIndex;
+        this.libraryTypeIndex = libraryTypeIndex;
         this.dependencyLoader = dependencyLoader;
     }
 
@@ -180,6 +183,41 @@ public final class SemanticEngine {
                 }
             }
 
+            // Type-name completion must also offer library types (Spring,
+            // JPA, etc.) — not just project classes and a curated JDK list.
+            // Every dependency jar's top-level public class names are
+            // indexed once here, the same technique javac/IDEs use for
+            // classpath lookups.
+            Map<String, List<String>> libraryTypeIndex = new java.util.HashMap<>();
+            int libraryClassesIndexed = 0;
+            for (Path jar : jarPaths) {
+                if (libraryClassesIndexed > 60_000) break;   // safety cap
+                try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(jar.toFile())) {
+                    java.util.Enumeration<? extends java.util.zip.ZipEntry> entries =
+                            zip.entries();
+                    while (entries.hasMoreElements()) {
+                        String name = entries.nextElement().getName();
+                        if (!name.endsWith(".class") || name.indexOf('$') >= 0
+                                || name.startsWith("META-INF/")) {
+                            continue;
+                        }
+                        String fqcn = name.substring(0, name.length() - 6)
+                                .replace('/', '.');
+                        int dot = fqcn.lastIndexOf('.');
+                        String simple = dot < 0 ? fqcn : fqcn.substring(dot + 1);
+                        if (simple.isEmpty() || !Character.isUpperCase(simple.charAt(0))) {
+                            continue;
+                        }
+                        List<String> list = libraryTypeIndex.computeIfAbsent(
+                                simple, k -> new ArrayList<>(2));
+                        if (list.size() < 3) list.add(fqcn);   // cap ambiguous names
+                        libraryClassesIndexed++;
+                    }
+                } catch (Exception ignored) {
+                    // unreadable jar: its types just won't be suggested
+                }
+            }
+
             // M2: classloader over dependency jars + compiled output, used to
             // reflect members of library types (the completion "PSI" for JARs).
             List<java.net.URL> urls = new ArrayList<>();
@@ -211,7 +249,7 @@ public final class SemanticEngine {
                 log.accept("Semantic engine: parsing as " + languageLevel);
             }
             return new SemanticEngine(projectRoot, roots,
-                    new JavaParser(config), jars, typeIndex, loader);
+                    new JavaParser(config), jars, typeIndex, libraryTypeIndex, loader);
         } catch (Throwable t) {
             if (log != null) log.accept("Semantic engine failed to start: " + t);
             return null;
@@ -906,6 +944,7 @@ public final class SemanticEngine {
             }
             if (!prefix.isEmpty()) {
                 String filePkg = filePackage(text);
+                java.util.Set<String> offered = new java.util.HashSet<>();
                 for (Map.Entry<String, List<String>> e : typeIndex.entrySet()) {
                     if (!Completion.matches(prefix, e.getKey())) continue;
                     String fq = e.getValue().stream()
@@ -915,9 +954,22 @@ public final class SemanticEngine {
                     items.add(new Completion.Item(e.getKey(), e.getKey(),
                             e.getKey(), packageOf(fq),
                             Completion.Kind.CLASS, fq, 0));
+                    offered.add(e.getKey());
+                }
+                // Library types (Spring, JPA, Jackson, whatever's on the
+                // classpath) — project types of the same simple name win.
+                for (Map.Entry<String, List<String>> e : libraryTypeIndex.entrySet()) {
+                    if (offered.contains(e.getKey())) continue;
+                    if (!Completion.matches(prefix, e.getKey())) continue;
+                    String fq = e.getValue().get(0);
+                    items.add(new Completion.Item(e.getKey(), e.getKey(),
+                            e.getKey(), packageOf(fq),
+                            Completion.Kind.CLASS, fq, 0));
+                    offered.add(e.getKey());
                 }
                 for (int i = 0; i < JDK_TYPES.length; i += 2) {
                     String simple = JDK_TYPES[i];
+                    if (offered.contains(simple)) continue;
                     if (!Completion.matches(prefix, simple)) continue;
                     items.add(new Completion.Item(simple, simple, simple,
                             packageOf(JDK_TYPES[i + 1]),
@@ -928,6 +980,76 @@ public final class SemanticEngine {
             // partial results are fine
         }
         return finishItems(items);
+    }
+
+    // ===================================================== go to implementation
+
+    private static final java.util.Set<String> SPRING_BEAN_ANNOTATIONS = java.util.Set.of(
+            "Service", "Component", "Repository", "Controller", "RestController");
+
+    /**
+     * IntelliJ's Ctrl+Alt+B: resolves the interface type at the caret (a
+     * field/parameter's declared type, or the type name itself) and finds
+     * every project class that both implements it and carries a Spring
+     * stereotype annotation \u2014 the concrete bean, not just the contract.
+     * Empty when the caret isn't on an interface reference, or when no
+     * annotated implementation exists in the project.
+     */
+    public List<Location> findImplementations(Path file, String text, int line, int column) {
+        try {
+            CompilationUnit cu = parse(file, text);
+            if (cu == null) return List.of();
+            SimpleName target = nameAt(cu, line, column);
+            if (target == null) return List.of();
+            Node parent = target.getParentNode().orElse(null);
+            if (parent == null) return List.of();
+
+            String typeSimple = null;
+            if (parent instanceof ClassOrInterfaceType type && type.getName() == target) {
+                typeSimple = target.getIdentifier();
+            } else if (parent instanceof NameExpr || parent instanceof VariableDeclarator
+                    || parent instanceof Parameter) {
+                String declaredType = declaredTypeOf(file, text, line, target.getIdentifier());
+                if (declaredType != null) {
+                    typeSimple = declaredType.contains(".")
+                            ? declaredType.substring(declaredType.lastIndexOf('.') + 1)
+                            : declaredType;
+                }
+            }
+            if (typeSimple == null) return List.of();
+            return findSpringImplementations(typeSimple);
+        } catch (Throwable t) {
+            return List.of();
+        }
+    }
+
+    private List<Location> findSpringImplementations(String interfaceSimple) {
+        List<String> candidates = typeIndex.get(interfaceSimple);
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Path interfaceSource = sourceFileFor(candidates.get(0));
+        if (interfaceSource == null) return List.of();
+        CompilationUnit ifaceCu = parse(interfaceSource, null);
+        boolean isInterface = ifaceCu != null
+                && ifaceCu.findAll(ClassOrInterfaceDeclaration.class).stream()
+                        .anyMatch(d -> d.isInterface()
+                                && d.getNameAsString().equals(interfaceSimple));
+        if (!isInterface) return List.of();
+
+        List<Location> out = new ArrayList<>();
+        scanProject(interfaceSimple, (path, unit, lines) -> {
+            for (ClassOrInterfaceDeclaration d
+                    : unit.findAll(ClassOrInterfaceDeclaration.class)) {
+                if (d.isInterface()) continue;
+                boolean implementsIt = d.getImplementedTypes().stream()
+                        .anyMatch(t -> t.getNameAsString().equals(interfaceSimple));
+                if (!implementsIt) continue;
+                boolean isBean = d.getAnnotations().stream()
+                        .anyMatch(a -> SPRING_BEAN_ANNOTATIONS.contains(a.getNameAsString()));
+                if (!isBean) continue;
+                out.add(new Location(path, beginLine(d)));
+            }
+        });
+        return out;
     }
 
     // ------------------------------------------------------- member listing
