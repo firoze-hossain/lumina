@@ -621,6 +621,7 @@ public class EditorTab extends Tab {
             dev.lumina.diagnostics.JavaDiagnostics.Diag>> diagnosticsListener;
     private volatile int editGeneration;
     private javafx.scene.control.Tooltip diagTooltip;
+    private String diagTooltipKey;
     private Runnable paramInfoTrigger;
 
     /**
@@ -720,28 +721,55 @@ public class EditorTab extends Tab {
         return null;
     }
 
+    /**
+     * IntelliJ-style diagnostic popup: a severity dot ahead of the message,
+     * a border colored red for errors / amber for warnings, and the same
+     * "More actions... Alt+Enter" hint IntelliJ shows under every inspection
+     * tooltip \u2014 instead of a single-color plain-text tooltip.
+     */
     private void updateDiagTooltip(
             dev.lumina.diagnostics.JavaDiagnostics.Diag diag) {
         if (diag == null) {
             if (diagTooltip != null) {
                 javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
                 diagTooltip = null;
+                diagTooltipKey = null;
             }
             return;
         }
-        if (diagTooltip != null
-                && diag.message().equals(diagTooltip.getText())) {
+        boolean isError = diag.severity()
+                == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR;
+        String key = diag.severity() + "|" + diag.message();
+        if (diagTooltip != null && key.equals(diagTooltipKey)) {
             return;
         }
         if (diagTooltip != null) {
             javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
         }
-        diagTooltip = new javafx.scene.control.Tooltip(diag.message());
+
+        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4);
+        dot.setFill(javafx.scene.paint.Color.web(isError ? "#E5534B" : "#D8A657"));
+        javafx.scene.control.Label message = new javafx.scene.control.Label(diag.message());
+        message.setWrapText(true);
+        message.setMaxWidth(480);
+        message.getStyleClass().add("diag-tooltip-message");
+        javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(6, dot, message);
+        row.setAlignment(javafx.geometry.Pos.TOP_LEFT);
+        javafx.scene.layout.HBox.setMargin(dot, new javafx.geometry.Insets(3, 0, 0, 0));
+
+        javafx.scene.control.Label hint =
+                new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
+        hint.getStyleClass().add("diag-tooltip-hint");
+
+        javafx.scene.layout.VBox box = new javafx.scene.layout.VBox(5, row, hint);
+
+        diagTooltip = new javafx.scene.control.Tooltip();
+        diagTooltip.setGraphic(box);
         diagTooltip.setShowDelay(javafx.util.Duration.millis(250));
-        diagTooltip.setWrapText(true);
-        diagTooltip.setMaxWidth(520);
-        diagTooltip.getStyleClass().add("diag-tooltip");
+        diagTooltip.getStyleClass().setAll("diag-tooltip",
+                isError ? "diag-tooltip-error" : "diag-tooltip-warning");
         javafx.scene.control.Tooltip.install(codeArea, diagTooltip);
+        diagTooltipKey = key;
     }
 
     // ------------------------------------------------------------ docs (M4)

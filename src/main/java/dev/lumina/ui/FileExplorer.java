@@ -1,6 +1,7 @@
 package dev.lumina.ui;
 
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TreeCell;
@@ -514,7 +515,9 @@ public class FileExplorer extends BorderPane {
                     ? node.displayName
                     : (item.getFileName() != null ? item.getFileName().toString()
                     : item.toString());
-            setText(glyphFor(item, node) + "  " + display);
+            setText(display);
+            setGraphic(iconFor(item, node));
+            setContentDisplay(ContentDisplay.LEFT);
 
             if (isRoot) {
                 Label pathLabel = new Label(abbreviate(item));
@@ -524,27 +527,35 @@ public class FileExplorer extends BorderPane {
             }
         }
 
-        private final java.util.Map<Path, String> javaKindGlyphCache =
-                new java.util.concurrent.ConcurrentHashMap<>();
-
-        private String glyphFor(Path p, LazyPathItem node) {
+        private Node iconFor(Path p, LazyPathItem node) {
+            String kind;
             if (Files.isDirectory(p)) {
-                if (node != null && node.isPackage) return "\uD83D\uDDC2\uFE0F"; // card index
-                return "\uD83D\uDCC1";                                            // folder
+                kind = node != null && node.isPackage ? "package" : "folder";
+            } else {
+                String n = p.getFileName().toString().toLowerCase();
+                if (n.endsWith(".java")) {
+                    kind = javaKindCache.computeIfAbsent(p, FileExplorer::detectJavaKind);
+                } else if (n.endsWith(".class")) {
+                    kind = "bytecode";
+                } else if (n.endsWith(".xml") || n.endsWith(".pom")) {
+                    kind = "xml";
+                } else if (n.endsWith(".md") || n.endsWith(".txt")) {
+                    kind = "text";
+                } else if (n.endsWith(".properties") || n.endsWith(".yml")
+                        || n.endsWith(".yaml")) {
+                    kind = "config";
+                } else if (n.startsWith(".git")) {
+                    kind = "git";
+                } else {
+                    kind = "file";
+                }
             }
-            String n = p.getFileName().toString().toLowerCase();
-            if (n.endsWith(".java")) {
-                return javaKindGlyphCache.computeIfAbsent(p, FileExplorer::detectJavaGlyph);
-            }
-            if (n.endsWith(".class")) return "\u2699\uFE0F";
-            if (n.endsWith(".xml") || n.endsWith(".pom")) return "\uD83E\uDDFE";
-            if (n.endsWith(".md") || n.endsWith(".txt")) return "\uD83D\uDCC4";
-            if (n.endsWith(".properties") || n.endsWith(".yml")
-                    || n.endsWith(".yaml")) return "\u2699\uFE0F";
-            if (n.startsWith(".git")) return "\uD83D\uDD00";
-            return "\uD83D\uDCC4";
+            return buildIcon(kind);
         }
     }
+
+    private final java.util.Map<Path, String> javaKindCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * IntelliJ-style per-kind file icons: a class, interface, enum, record,
@@ -552,7 +563,7 @@ public class FileExplorer extends BorderPane {
      * just the first top-level type declaration \u2014 no full parse needed,
      * and cheap enough to run once per file (results are cached).
      */
-    private static String detectJavaGlyph(Path p) {
+    private static String detectJavaKind(Path p) {
         try (var in = Files.newInputStream(p)) {
             String head = new String(in.readNBytes(4096), java.nio.charset.StandardCharsets.UTF_8);
             java.util.regex.Matcher m = java.util.regex.Pattern.compile(
@@ -561,18 +572,75 @@ public class FileExplorer extends BorderPane {
                             + "|final|abstract|sealed|non-sealed|strictfp)\\s+)*"
                             + "(class|interface|enum|record|@interface)\\s+[A-Za-z_]")
                     .matcher(head);
-            if (m.find()) {
-                return switch (m.group(1)) {
-                    case "interface" -> "\uD83D\uDD37";     // blue diamond
-                    case "enum" -> "\uD83D\uDD36";           // orange diamond
-                    case "record" -> "\uD83D\uDCCB";         // clipboard
-                    case "@interface" -> "\uD83C\uDFF7\uFE0F"; // tag
-                    default -> "\u2615";                     // class
-                };
-            }
+            if (m.find()) return m.group(1);
         } catch (Exception ignored) {
         }
-        return "\u2615";
+        return "class";
+    }
+
+    /**
+     * Every file/folder icon is hand-drawn with JavaFX shapes instead of
+     * color emoji. Glyphs outside the Basic Multilingual Plane (the blue
+     * diamond used for interfaces, the folder and card-index emoji, etc.)
+     * render as an empty box on systems with no color-emoji font installed
+     * \u2014 which is exactly why the interface icon (and others) went missing.
+     * Small colored shapes render identically on every platform.
+     */
+    private static Node buildIcon(String kind) {
+        return switch (kind) {
+            case "folder" -> folderShape("#DCB67A");
+            case "package" -> folderShape("#5A8FC2");
+            case "interface" -> kindCircle("I", "#22A783");
+            case "enum" -> kindCircle("E", "#D9A03D");
+            case "record" -> kindCircle("R", "#8A65D6");
+            case "@interface" -> kindCircle("@", "#D9A03D");
+            case "bytecode" -> letterBadge("\u2699", "#8B92A6", 13);
+            case "xml" -> letterBadge("</>", "#8FCE8F", 8);
+            case "text" -> letterBadge("\u2261", "#8B92A6", 12);
+            case "config" -> letterBadge("\u2699", "#D9A03D", 11);
+            case "git" -> kindCircle("git", "#E5534B", 7);
+            case "file" -> letterBadge("\u2731", "#697089", 9);
+            default -> kindCircle("C", "#3592C4");   // class
+        };
+    }
+
+    private static Node sized(javafx.scene.Node n) {
+        javafx.scene.layout.StackPane pane = new javafx.scene.layout.StackPane(n);
+        pane.setPrefSize(15, 15);
+        pane.setMinSize(15, 15);
+        pane.setMaxSize(15, 15);
+        return pane;
+    }
+
+    private static Node kindCircle(String letter, String colorHex) {
+        return kindCircle(letter, colorHex, letter.length() > 1 ? 7 : 9);
+    }
+
+    private static Node kindCircle(String letter, String colorHex, double fontSize) {
+        javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(6.5);
+        circle.setFill(javafx.scene.paint.Color.web(colorHex));
+        javafx.scene.control.Label text = new javafx.scene.control.Label(letter);
+        text.setStyle("-fx-text-fill: #0B0E14; -fx-font-size: " + fontSize
+                + "px; -fx-font-weight: bold;");
+        return sized(new javafx.scene.layout.StackPane(circle, text));
+    }
+
+    private static Node letterBadge(String glyph, String colorHex, double fontSize) {
+        javafx.scene.control.Label text = new javafx.scene.control.Label(glyph);
+        text.setStyle("-fx-text-fill: " + colorHex + "; -fx-font-size: " + fontSize
+                + "px; -fx-font-weight: bold;");
+        return sized(text);
+    }
+
+    private static Node folderShape(String colorHex) {
+        // Polygon has no arc-corner API (that's Rectangle-only), so the
+        // folder-tab silhouette is just straight edges - still unmistakably
+        // a folder shape at this size.
+        javafx.scene.shape.Polygon folder = new javafx.scene.shape.Polygon(
+                0, 2,   4, 2,   5.5, 0,   13, 0,   13, 2,
+                13, 10, 0, 10);
+        folder.setFill(javafx.scene.paint.Color.web(colorHex));
+        return sized(folder);
     }
 
     private static String abbreviate(Path p) {
