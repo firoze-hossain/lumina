@@ -326,7 +326,35 @@
     -fx-cursor: hand;
 }
 .right-rail-button:hover { -fx-background-color: #2C3042; }
-.right-rail-button:selected { -fx-background-color: #3574F0; -fx-text-fill: white; }
+.right-rail-button:selected { -fx-background-color: #3574F0; }
+.right-rail-button:selected .label { -fx-text-fill: white; }
+
+/* The rail alone drives which tool window shows, so the right dock's own
+   tab-header strip (the row of text tabs IntelliJ never shows here) is
+   collapsed to nothing instead of duplicating the rail's icons. */
+.right-tabs > .tab-header-area {
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+    -fx-min-height: 0;
+    -fx-padding: 0;
+    -fx-opacity: 0;
+}
+.right-tool-titlebar {
+    -fx-background-color: #1A1D28;
+    -fx-padding: 7 10 7 12;
+    -fx-border-color: transparent transparent #232636 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.right-tool-title { -fx-text-fill: #C9CDDC; -fx-font-size: 12px; -fx-font-weight: bold; }
+.right-tool-close {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+    -fx-padding: 2 6 2 6;
+    -fx-background-radius: 4;
+}
+.right-tool-close:hover { -fx-background-color: #2C3042; -fx-text-fill: #C9CDDC; }
 .right-tool-heading { -fx-text-fill: #EDEFF6; -fx-font-weight: bold; -fx-font-size: 14px; }
 .right-tool-empty { -fx-text-fill: #848BA3; -fx-line-spacing: 5; }
 .db-add-source {
@@ -917,9 +945,16 @@
     -fx-text-fill: #E6E9F2;
     -fx-font-size: 12px;
     -fx-background-radius: 8;
-    -fx-border-color: #E5534B;
     -fx-border-radius: 8;
-    -fx-padding: 7 11 7 11;
+    -fx-padding: 9 12 8 12;
+}
+.diag-tooltip-error   { -fx-border-color: #E5534B; }
+.diag-tooltip-warning { -fx-border-color: #D8A657; }
+.diag-tooltip-message { -fx-text-fill: #E6E9F2; -fx-font-size: 12px; }
+.diag-tooltip-hint {
+    -fx-text-fill: #697089;
+    -fx-font-size: 10.5px;
+    -fx-padding: 3 0 0 10;
 }
 
 .problems-panel { -fx-background-color: #14161F; }

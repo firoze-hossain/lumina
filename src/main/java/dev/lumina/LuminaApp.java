@@ -57,8 +57,10 @@ public class LuminaApp extends Application {
     private MenuButton branchButton;
     private Button githubButton;
     private ComboBox<RunConfiguration> runConfigBox;
+    private Button runButton;
     private Button stopButton;
-    private Button restartButton;
+    private RightToolRail rightRail;
+    private Label rightToolTitle;
     private TestResultsPanel testsPanel;
     private long testRunStart;
     private Runnable lastTestRun;
@@ -137,11 +139,20 @@ public class LuminaApp extends Application {
             EditorTab editor = currentEditor();
             if (editor != null) editor.goToLine(line);
         });
-        // IntelliJ-style button states: stop is red only while running.
+        // IntelliJ-style button states: stop is red only while running, and
+        // the Run button turns into Rerun in the exact same toolbar slot
+        // while something from this session is already running.
         console.setOnRunningChanged(running -> {
             stopButton.setDisable(!running);
             stopButton.getStyleClass().remove("stop-active");
             if (running) stopButton.getStyleClass().add("stop-active");
+
+            runButton.setText(running ? "\u27F3" : "\u25B6");
+            runButton.getStyleClass().removeAll("tool-run", "tool-restart");
+            runButton.getStyleClass().add(running ? "tool-restart" : "tool-run");
+            runButton.setTooltip(new Tooltip(running
+                    ? "Rerun \u2014 restart the last run (Ctrl/Cmd+R)"
+                    : "Run selected configuration (Ctrl/Cmd+R)"));
         });
         bottomTabs.getStyleClass().add("tool-tabs");
         bottomTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
@@ -163,17 +174,41 @@ public class LuminaApp extends Application {
                 toolTab("Database", dbPanel), toolTab("Maven", mavenPanel),
                 toolTab("Services", rightPlaceholder("Services", "No services are running")),
                 toolTab("GitHub Copilot", rightPlaceholder("GitHub Copilot", "Ask Copilot\n\nAI assistance is ready when GitHub Copilot is connected.")));
-        rightTabs.getStyleClass().add("tool-tabs");
+        // No tab-header strip here: which panel shows is driven entirely by
+        // rightRail below, exactly like IntelliJ's own tool windows, which
+        // never show a row of text tabs above their content.
+        rightTabs.getStyleClass().addAll("tool-tabs", "right-tabs");
         rightTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         rightTabs.getSelectionModel().select(3);
+
+        rightToolTitle = new Label();
+        rightToolTitle.getStyleClass().add("right-tool-title");
+        Button rightToolClose = new Button("\u2715");
+        rightToolClose.getStyleClass().add("right-tool-close");
+        rightToolClose.setTooltip(new Tooltip("Hide"));
+        rightToolClose.setOnAction(e -> toggleRightPanel(false));
+        Region rightTitleSpacer = new Region();
+        HBox.setHgrow(rightTitleSpacer, Priority.ALWAYS);
+        HBox rightToolTitleBar = new HBox(rightToolTitle, rightTitleSpacer, rightToolClose);
+        rightToolTitleBar.getStyleClass().add("right-tool-titlebar");
+        rightToolTitleBar.setAlignment(Pos.CENTER_LEFT);
+        rightTabs.getSelectionModel().selectedItemProperty().addListener(
+                (obs, old, sel) -> rightToolTitle.setText(sel != null ? sel.getText() : ""));
+        rightToolTitle.setText(rightTabs.getSelectionModel().getSelectedItem().getText());
+
         rightDock = new BorderPane(rightTabs);
-        rightDock.setRight(new RightToolRail(index -> {
-            rightTabs.getSelectionModel().select(index);
-            toggleRightPanel(true);
-        }));
+        rightDock.setTop(rightToolTitleBar);
         rightDock.getStyleClass().add("right-tool-dock");
         rightDock.setMinWidth(300);
         SplitPane.setResizableWithParent(rightDock, false);
+
+        // The icon rail itself is a permanent fixture flush against the
+        // window's right edge \u2014 outside the split \u2014 so it stays put and
+        // visible even while the docked tool window (rightDock) is closed,
+        // matching IntelliJ instead of disappearing along with the panel.
+        rightRail = new RightToolRail(this::onRightRailSelect);
+        rightRail.select(rightTabs.getSelectionModel().getSelectedIndex());
+        root.setRight(rightRail);
 
         outerSplit = new SplitPane(horizontalSplit, rightDock);
         outerSplit.setDividerPositions(0.74);
@@ -744,21 +779,26 @@ public class LuminaApp extends Application {
         runConfigBox.getStyleClass().add("run-config-box");
         runConfigBox.setPrefWidth(240);
 
-        Button runBtn = toolButton("\u25B6", "Run selected configuration (Ctrl/Cmd+R)");
-        runBtn.getStyleClass().add("tool-run");
-        runBtn.setOnAction(e -> runSelectedConfig());
+        // Run occupies one toolbar slot for its whole life: it reads "Run"
+        // until something starts, then becomes "Rerun" in that exact same
+        // spot (matching IntelliJ's new-UI run widget) instead of showing a
+        // second, separate restart button next to it.
+        runButton = toolButton("\u25B6", "Run selected configuration (Ctrl/Cmd+R)");
+        runButton.getStyleClass().add("tool-run");
+        runButton.setOnAction(e -> {
+            if (!stopButton.isDisabled()) {          // something is running
+                if (!console.restartLast()) runSelectedConfig();
+            } else {
+                runSelectedConfig();
+            }
+        });
 
-        Button debugBtn = new Button("Debug \uD83D\uDC1E");
+        Button debugBtn = new Button("Debug", bugIcon());
+        debugBtn.setGraphicTextGap(6);
         debugBtn.getStyleClass().addAll("tool-button", "tool-debug");
         debugBtn.setTooltip(new Tooltip(
                 "Debug (Ctrl/Cmd+D) \u2014 launches with JDWP on port 5005 and attaches jdb"));
         debugBtn.setOnAction(e -> debugSelectedConfig());
-
-        restartButton = toolButton("\u27F3", "Rerun \u2014 restart the last run");
-        restartButton.getStyleClass().add("tool-restart");
-        restartButton.setOnAction(e -> {
-            if (!console.restartLast()) runSelectedConfig();
-        });
 
         stopButton = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
         stopButton.getStyleClass().add("tool-stop");
@@ -780,7 +820,7 @@ public class LuminaApp extends Application {
         });
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
-                runConfigBox, runBtn, debugBtn, restartButton, stopButton,
+                runConfigBox, runButton, debugBtn, stopButton,
                 searchBtn, githubButton, sideBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -793,6 +833,36 @@ public class LuminaApp extends Application {
         b.getStyleClass().add("tool-button");
         b.setTooltip(new Tooltip(tip));
         return b;
+    }
+
+    /**
+     * Small vector "bug" glyph for the Debug button, drawn with shapes
+     * instead of the ladybug emoji \u2014 emoji outside the Basic Multilingual
+     * Plane (like \uD83D\uDC1E) render as a blank box on systems with no
+     * color-emoji font installed, which is why Debug looked icon-less.
+     */
+    private javafx.scene.Node bugIcon() {
+        javafx.scene.shape.Ellipse body = new javafx.scene.shape.Ellipse(4.2, 5.2);
+        body.setFill(javafx.scene.paint.Color.web("#5FB865"));
+        javafx.scene.shape.Circle head = new javafx.scene.shape.Circle(2.1);
+        head.setFill(javafx.scene.paint.Color.web("#5FB865"));
+        head.setTranslateY(-6.4);
+        javafx.scene.Group legs = new javafx.scene.Group();
+        for (int i = -1; i <= 1; i++) {
+            for (int side = -1; side <= 1; side += 2) {
+                javafx.scene.shape.Line leg = new javafx.scene.shape.Line(
+                        0, i * 3.0, side * 6.0, i * 3.0);
+                leg.setStroke(javafx.scene.paint.Color.web("#3C7A40"));
+                leg.setStrokeWidth(1.1);
+                legs.getChildren().add(leg);
+            }
+        }
+        javafx.scene.layout.StackPane pane =
+                new javafx.scene.layout.StackPane(legs, body, head);
+        pane.setPrefSize(15, 15);
+        pane.setMinSize(15, 15);
+        pane.setMaxSize(15, 15);
+        return pane;
     }
 
     // -------------------------------------------------------------- git chip
@@ -2630,6 +2700,7 @@ public class LuminaApp extends Application {
     private void showRightPanel(int tabIndex) {
         toggleRightPanel(true);
         rightTabs.getSelectionModel().select(tabIndex);
+        rightRail.select(tabIndex);
     }
 
     private void toggleRightPanel(boolean show) {
@@ -2638,6 +2709,23 @@ public class LuminaApp extends Application {
             outerSplit.setDividerPositions(0.74);
         } else if (!show) {
             outerSplit.getItems().remove(rightDock);
+            rightRail.clearSelection();
+        }
+    }
+
+    /**
+     * A rail icon click either opens that tool (switching to it if the
+     * panel is already open on a different one), or \u2014 clicked a second
+     * time on the tool that's already showing \u2014 closes the panel, exactly
+     * like clicking an already-active IntelliJ tool-window icon.
+     */
+    private void onRightRailSelect(int index) {
+        boolean alreadyShowingThis = outerSplit.getItems().contains(rightDock)
+                && rightTabs.getSelectionModel().getSelectedIndex() == index;
+        if (alreadyShowingThis) {
+            toggleRightPanel(false);
+        } else {
+            showRightPanel(index);
         }
     }
 
