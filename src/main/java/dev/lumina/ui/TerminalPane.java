@@ -1,73 +1,91 @@
 package dev.lumina.ui;
 
+import com.pty4j.PtyProcess;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.StyleClassedTextArea;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Built-in terminal backed by the system shell (bash/zsh on Unix, cmd on
- * Windows), rendered as a single continuous view \u2014 like IntelliJ's own
- * terminal \u2014 instead of a scrolling log with a separate input box glued
- * underneath it. Typing happens directly in the same scrolling area, right
- * after the prompt; there's no second widget stealing space at the bottom.
+ * Built-in terminal, backed by a real pseudo-terminal (pty4j \u2014 the library
+ * IntelliJ's own terminal is built on) when it's available, falling back to
+ * a plain OS pipe if the native pty layer can't load on this machine.
  *
- * <p><b>What this is and isn't:</b> commands run through a plain OS pipe,
- * not a real pseudo-terminal (PTY), so this fakes the interactive parts a
- * PTY would normally give you for free: it locally echoes what you type
- * (a real pipe has no echo of its own) and only sends a command to the
- * shell once you press Enter. That means:
- * <ul>
- *   <li>Normal commands, git, mvn, ls, colored output \u2014 all work.</li>
- *   <li>Ctrl+C can't deliver a real SIGINT the way a PTY's line discipline
- *       does (that signal only exists at the PTY level) \u2014 here it kills
- *       and restarts the shell instead, which stops a stuck command but
- *       isn't the same thing.</li>
- *   <li>Full-screen terminal apps (vim, htop, less) need a real PTY and
- *       won't render correctly here.</li>
- * </ul>
- * A real PTY (the same {@code pty4j} library IntelliJ itself uses) would
- * close both gaps, but it's a new native-library dependency in a modular
- * app \u2014 worth doing as a deliberate follow-up you can test, not something
- * to wire in blind.
+ * <p>With a real pty, the shell does everything a terminal normally does:
+ * echoes what you type, redraws the line on backspace/tab-completion, and
+ * receives Ctrl+C as a genuine SIGINT (that translation happens in the
+ * kernel's tty driver, which only exists for a real pty \u2014 a plain pipe
+ * can't do it at any level of application code). So instead of locally
+ * faking an echo and re-implementing line editing, keystrokes are now
+ * forwarded to the shell as raw bytes and whatever the shell sends back is
+ * just rendered as-is \u2014 the same model a real terminal uses.
+ *
+ * <p>Rendering still isn't a full VT100/xterm emulator: SGR color codes are
+ * decoded, and {@code \r}, {@code \n}, backspace, and line-erase are handled
+ * well enough for normal shell use and readline redraws, but there's no
+ * cursor-addressing or alternate-screen-buffer support. That's the one gap
+ * that keeps full-screen apps (vim, htop, less) from rendering correctly \u2014
+ * everything else (git, mvn, ls, interactive prompts, Ctrl+C, tab
+ * completion, arrow-key history) works like a real terminal now.
  */
 public class TerminalPane extends BorderPane {
 
     private final StyleClassedTextArea output = new StyleClassedTextArea();
-    private final StringBuilder currentLine = new StringBuilder();
+    private final Label ghost = new Label();
     private final List<String> history = new ArrayList<>();
-    private int historyIndex = -1;
-    private int inputStart = 0;
+    private final StringBuilder typedThisLine = new StringBuilder();
+    // Mirrors the shell's own cursor position within typedThisLine, best
+    // effort only (we don't see the shell's real line-editor state) -- used
+    // solely to keep ghost-suggestion matching sane across Left/Right/Home/
+    // End; the actual editing/rendering always comes from the shell itself.
+    private int typedCursorPos = 0;
+    private String acceptedSuggestion = null;
 
     private Process shell;
-    private BufferedWriter stdin;
+    private boolean usingPty;
+    private OutputStream stdin;
     private Path workingDir = Path.of(System.getProperty("user.home"));
 
-    // ---- ANSI handling state (persists across chunks of streamed output) ----
+    // Position-aware write cursor: writePos is where the next character
+    // lands; lineStart is where the current logical line began. When
+    // writePos < document length we're "overwriting" (a \r or backspace
+    // moved us back), matching how readline redraws a line in place.
+    private int writePos = 0;
+    private int lineStart = 0;
     private String pendingAnsi = "";
     private String currentStyle = null;
+
     private static final Pattern CSI = Pattern.compile("\u001B\\[[0-9;?]*[ -/]*[@-~]");
     private static final Pattern OSC = Pattern.compile("\u001B][^\u0007\u001B]*(\u0007|\u001B\\\\)");
+    private static final Path HISTORY_FILE =
+            Path.of(System.getProperty("user.home"), ".lumina", "terminal_history");
+    private static final int MAX_HISTORY = 500;
 
     public TerminalPane() {
         getStyleClass().add("terminal-pane");
+        loadHistory();
 
         Button restart = new Button("\u21BB");
         restart.getStyleClass().add("console-button");
@@ -77,23 +95,38 @@ public class TerminalPane extends BorderPane {
         Button clear = new Button("\u2715");
         clear.getStyleClass().add("console-button");
         clear.setTooltip(new Tooltip("Clear"));
-        clear.setOnAction(e -> { output.clear(); inputStart = 0; });
+        clear.setOnAction(e -> {
+            output.clear();
+            writePos = 0;
+            lineStart = 0;
+        });
 
         VBox rail = new VBox(6, restart, clear);
         rail.getStyleClass().add("terminal-rail");
         rail.setAlignment(Pos.TOP_CENTER);
         rail.setPadding(new Insets(6, 4, 6, 4));
 
-        output.setEditable(false);   // suppress RichTextFX's own default typing
-                                      // behavior; input is handled manually
-                                      // below so it lands in the right place
+        output.setEditable(false);   // input is forwarded to the shell by
+                                      // hand below; RichTextFX's own default
+                                      // typing behavior stays switched off
         output.setWrapText(true);
         output.getStyleClass().add("terminal-output");
         output.setOnKeyTyped(this::onKeyTyped);
-        output.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::onKeyPressed);
+        output.addEventFilter(KeyEvent.KEY_PRESSED, this::onKeyPressed);
+
+        ghost.getStyleClass().add("terminal-ghost-suggestion");
+        ghost.setMouseTransparent(true);
+        ghost.setVisible(false);
+        StackPane overlay = new StackPane(new VirtualizedScrollPane<>(output), ghost);
+        StackPane.setAlignment(ghost, Pos.TOP_LEFT);
+        output.caretBoundsProperty().addListener((obs, old, bounds) ->
+                bounds.ifPresent(b -> {
+                    ghost.setLayoutX(b.getMaxX() + 1);
+                    ghost.setLayoutY(b.getMinY());
+                }));
 
         setLeft(rail);
-        setCenter(new VirtualizedScrollPane<>(output));
+        setCenter(overlay);
         setMinHeight(120);
     }
 
@@ -102,28 +135,45 @@ public class TerminalPane extends BorderPane {
         stop();
         this.workingDir = dir != null ? dir : Path.of(System.getProperty("user.home"));
         output.clear();
-        inputStart = 0;
+        writePos = 0;
+        lineStart = 0;
         pendingAnsi = "";
         currentStyle = null;
-        currentLine.setLength(0);
+        typedThisLine.setLength(0);
+        typedCursorPos = 0;
+        hideGhost();
 
-        List<String> cmd = shellCommand();
-        ProcessBuilder pb = new ProcessBuilder(cmd)
-                .directory(workingDir.toFile())
-                .redirectErrorStream(true);
-        pb.environment().put("TERM", "xterm-256color");
+        String[] cmd = shellCommand();
+        Map<String, String> env = new java.util.HashMap<>(System.getenv());
+        env.put("TERM", "xterm-256color");
+
         try {
-            shell = pb.start();
-        } catch (IOException e) {
-            append("Could not start shell " + cmd + ": " + e.getMessage() + "\n");
-            return;
+            shell = PtyProcess.exec(cmd, env, workingDir.toString());
+            usingPty = true;
+        } catch (Throwable ptyFailure) {
+            // Native pty layer didn't load on this machine (missing binary
+            // for this OS/arch, permissions, etc.) \u2014 fall back to a plain
+            // pipe rather than leaving the terminal dead.
+            usingPty = false;
+            try {
+                ProcessBuilder pb = new ProcessBuilder(cmd)
+                        .directory(workingDir.toFile())
+                        .redirectErrorStream(true);
+                pb.environment().put("TERM", "xterm-256color");
+                shell = pb.start();
+                append("[real pty unavailable (" + ptyFailure.getClass().getSimpleName()
+                        + "), falling back to a plain pipe \u2014 echo/history are still "
+                        + "handled by the shell if it supports it]\n");
+            } catch (IOException e) {
+                append("Could not start shell: " + e.getMessage() + "\n");
+                return;
+            }
         }
-        stdin = new BufferedWriter(new OutputStreamWriter(
-                shell.getOutputStream(), StandardCharsets.UTF_8));
+        stdin = shell.getOutputStream();
 
         Process p = shell;
         Thread reader = new Thread(() -> {
-            char[] buf = new char[2048];
+            char[] buf = new char[4096];
             try (InputStreamReader in = new InputStreamReader(
                     p.getInputStream(), StandardCharsets.UTF_8)) {
                 int n;
@@ -132,11 +182,10 @@ public class TerminalPane extends BorderPane {
                 }
             } catch (IOException ignored) {
             }
-            if (p == shell) append("\n[shell exited]\n");
+            if (p == shell) Platform.runLater(() -> append("\n[shell exited]\n"));
         }, "lumina-terminal-reader");
         reader.setDaemon(true);
         reader.start();
-        promptForInput();
     }
 
     public void stop() {
@@ -146,142 +195,211 @@ public class TerminalPane extends BorderPane {
     }
 
     public void focusInput() {
-        Platform.runLater(() -> {
-            output.requestFocus();
-            output.moveTo(output.getLength());
-        });
+        Platform.runLater(output::requestFocus);
     }
 
     /** Programmatically run a command in this terminal (e.g. jdb attach). */
     public void sendCommand(String command) {
-        Platform.runLater(() -> {
-            focusInput();
-            currentLine.setLength(0);
-            currentLine.append(command);
-            int pos = output.getLength();
-            output.insertText(pos, command);
-            output.moveTo(output.getLength());
-            submitLine();
-        });
+        Platform.runLater(() -> sendRaw(command + "\r"));
     }
 
     // ---------------------------------------------------------------- input
 
-    /** Shows a fresh prompt and opens the input line right after it, in
-     *  the same scrolling view \u2014 no separate input widget. */
-    private void promptForInput() {
-        Platform.runLater(() -> {
-            String folder = workingDir.getFileName() != null
-                    ? workingDir.getFileName().toString() : workingDir.toString();
-            int start = output.getLength();
-            output.appendText(folder + " % ");
-            output.setStyleClass(start, output.getLength(), "terminal-prompt-inline");
-            inputStart = output.getLength();
-            currentLine.setLength(0);
-            output.moveTo(output.getLength());
-            output.requestFollowCaret();
-        });
-    }
-
-    private void onKeyTyped(javafx.scene.input.KeyEvent e) {
+    private void onKeyTyped(KeyEvent e) {
         String ch = e.getCharacter();
         if (ch.isEmpty()) return;
         char c = ch.charAt(0);
-        if (c < 0x20 || c == 0x7F) return;   // control chars handled in onKeyPressed
-        ensureCaretAtEnd();
-        currentLine.append(ch);
-        output.insertText(output.getLength(), ch);
-        output.moveTo(output.getLength());
+        if (c < 0x20 || c == 0x7F) return;   // control chars handled below
+        typedThisLine.insert(typedCursorPos, ch);
+        typedCursorPos += ch.length();
+        updateGhost();
+        sendRaw(ch);
         e.consume();
     }
 
-    private void onKeyPressed(javafx.scene.input.KeyEvent e) {
+    private void onKeyPressed(KeyEvent e) {
         KeyCode code = e.getCode();
         if (code == KeyCode.ENTER) {
-            submitLine();
+            commitLine();
+            sendRaw("\r");
             e.consume();
-        } else if (code == KeyCode.BACK_SPACE) {
-            ensureCaretAtEnd();
-            if (currentLine.length() > 0) {
-                currentLine.deleteCharAt(currentLine.length() - 1);
-                int end = output.getLength();
-                output.deleteText(end - 1, end);
+        } else if (code == KeyCode.RIGHT) {
+            if (acceptedSuggestionAvailable()) {
+                String rest = currentGhostRemainder();
+                typedThisLine.append(rest);
+                typedCursorPos = typedThisLine.length();
+                hideGhost();
+                sendRaw(rest);
+            } else {
+                if (typedCursorPos < typedThisLine.length()) typedCursorPos++;
+                hideGhost();
+                sendRaw("\u001B[C");
             }
             e.consume();
+        } else if (code == KeyCode.TAB) {
+            if (acceptedSuggestionAvailable()) {
+                String rest = currentGhostRemainder();
+                typedThisLine.append(rest);
+                typedCursorPos = typedThisLine.length();
+                hideGhost();
+                sendRaw(rest);
+            } else {
+                sendRaw("\t");   // let the shell's own tab-completion run
+            }
+            e.consume();
+        } else if (code == KeyCode.BACK_SPACE) {
+            if (typedCursorPos > 0) {
+                typedThisLine.deleteCharAt(typedCursorPos - 1);
+                typedCursorPos--;
+            }
+            updateGhost();
+            sendRaw("\u007F");
+            e.consume();
         } else if (code == KeyCode.UP) {
-            navigateHistory(-1);
+            sendRaw("\u001B[A");
             e.consume();
         } else if (code == KeyCode.DOWN) {
-            navigateHistory(1);
+            sendRaw("\u001B[B");
             e.consume();
-        } else if (code == KeyCode.C && (e.isControlDown() || e.isShortcutDown())
+        } else if (code == KeyCode.LEFT) {
+            if (typedCursorPos > 0) typedCursorPos--;
+            hideGhost();
+            sendRaw("\u001B[D");
+            e.consume();
+        } else if (code == KeyCode.HOME) {
+            typedCursorPos = 0;
+            hideGhost();
+            sendRaw("\u0001");   // readline: beginning-of-line
+            e.consume();
+        } else if (code == KeyCode.END) {
+            typedCursorPos = typedThisLine.length();
+            sendRaw("\u0005");   // readline: end-of-line
+            updateGhost();
+            e.consume();
+        } else if ((code == KeyCode.C) && (e.isControlDown() || e.isShortcutDown())
                 && output.getSelectedText().isEmpty()) {
-            // Not a real SIGINT (that needs a PTY's line discipline) \u2014 best
-            // effort is restarting the shell so a stuck command doesn't
-            // wedge the whole terminal.
-            append("^C\n");
-            start(workingDir);
+            typedThisLine.setLength(0);
+            typedCursorPos = 0;
+            hideGhost();
+            sendRaw("\u0003");   // real SIGINT, via the pty's line discipline
             e.consume();
-        } else if (code == KeyCode.LEFT || code == KeyCode.RIGHT
-                || code == KeyCode.HOME || code == KeyCode.END) {
-            e.consume();   // no free caret movement in the simplified line model
+        } else if (code == KeyCode.D && (e.isControlDown() || e.isShortcutDown())) {
+            sendRaw("\u0004");
+            e.consume();
         }
     }
 
-    private void ensureCaretAtEnd() {
-        if (output.getCaretPosition() != output.getLength()) {
-            output.moveTo(output.getLength());
-        }
-    }
-
-    private void submitLine() {
-        String line = currentLine.toString();
-        output.appendText("\n");
+    private void sendRaw(String s) {
         if (shell == null || !shell.isAlive()) {
             start(workingDir);
-            return;
+            if (shell == null) return;
         }
-        if (!line.isBlank()) {
-            history.add(line);
-        }
-        historyIndex = history.size();
         try {
-            stdin.write(line);
-            stdin.newLine();
+            stdin.write(s.getBytes(StandardCharsets.UTF_8));
             stdin.flush();
-        } catch (IOException e) {
-            append("[could not write to shell: " + e.getMessage() + "]\n");
+        } catch (IOException ex) {
+            append("[could not write to shell: " + ex.getMessage() + "]\n");
         }
-        promptForInput();
     }
 
-    private void navigateHistory(int delta) {
-        if (history.isEmpty()) return;
-        historyIndex = Math.max(0, Math.min(history.size(), historyIndex + delta));
-        String replacement = historyIndex < history.size() ? history.get(historyIndex) : "";
-        output.deleteText(inputStart, output.getLength());
-        output.insertText(inputStart, replacement);
-        currentLine.setLength(0);
-        currentLine.append(replacement);
-        output.moveTo(output.getLength());
+    private void commitLine() {
+        String line = typedThisLine.toString();
+        if (!line.isBlank() && (history.isEmpty()
+                || !history.get(history.size() - 1).equals(line))) {
+            history.add(line);
+            if (history.size() > MAX_HISTORY) history.remove(0);
+            saveHistoryAsync();
+        }
+        typedThisLine.setLength(0);
+        typedCursorPos = 0;
+        hideGhost();
+    }
+
+    // ----------------------------------------------------- ghost suggestion
+
+    private void updateGhost() {
+        // Only suggest when the cursor is at the end of the line \u2014 a
+        // completion inserted mid-line wouldn't make sense, and we don't
+        // truly track the shell's own cursor position, just this best
+        // guess, so keep it to the one case that's unambiguous.
+        String prefix = typedThisLine.toString();
+        if (prefix.isBlank() || typedCursorPos != typedThisLine.length()) {
+            hideGhost();
+            return;
+        }
+        String match = null;
+        for (int i = history.size() - 1; i >= 0; i--) {
+            String h = history.get(i);
+            if (h.startsWith(prefix) && h.length() > prefix.length()) {
+                match = h;
+                break;
+            }
+        }
+        if (match == null) {
+            hideGhost();
+            return;
+        }
+        acceptedSuggestion = match;
+        ghost.setText(match.substring(prefix.length()));
+        ghost.setVisible(true);
+    }
+
+    private boolean acceptedSuggestionAvailable() {
+        return ghost.isVisible() && acceptedSuggestion != null;
+    }
+
+    private String currentGhostRemainder() {
+        return acceptedSuggestion != null
+                ? acceptedSuggestion.substring(typedThisLine.length()) : "";
+    }
+
+    private void hideGhost() {
+        ghost.setVisible(false);
+        acceptedSuggestion = null;
+    }
+
+    private void loadHistory() {
+        try {
+            if (Files.exists(HISTORY_FILE)) {
+                List<String> lines = Files.readAllLines(HISTORY_FILE, StandardCharsets.UTF_8);
+                history.addAll(new LinkedHashSet<>(lines));
+                while (history.size() > MAX_HISTORY) history.remove(0);
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void saveHistoryAsync() {
+        List<String> snapshot = new ArrayList<>(history);
+        Thread t = new Thread(() -> {
+            try {
+                Files.createDirectories(HISTORY_FILE.getParent());
+                Files.write(HISTORY_FILE, snapshot, StandardCharsets.UTF_8);
+            } catch (IOException ignored) {
+            }
+        }, "lumina-terminal-history-save");
+        t.setDaemon(true);
+        t.start();
     }
 
     // -------------------------------------------------------------- helpers
 
-    private static List<String> shellCommand() {
+    private static String[] shellCommand() {
         String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("win")) return List.of("cmd.exe");
+        if (os.contains("win")) return new String[]{"cmd.exe"};
         String sh = System.getenv("SHELL");
-        return List.of(sh != null && !sh.isBlank() ? sh : "/bin/bash");
+        return new String[]{sh != null && !sh.isBlank() ? sh : "/bin/bash", "-i"};
     }
 
     // ------------------------------------------------------- ANSI decoding
 
     /**
-     * Appends a chunk of raw shell output, translating ANSI SGR color codes
-     * into style classes on the styled text area and dropping other escape
-     * sequences (cursor movement, screen clears, OSC title-setting) that a
-     * scrolling log can't meaningfully act on anyway.
+     * Appends a chunk of raw shell output. Handles the escapes a normal
+     * interactive shell actually relies on for line editing ({@code \r},
+     * backspace, erase-to-end-of-line, SGR colors) by writing through the
+     * position-aware {@link #writeChars} instead of blindly appending, so
+     * readline redrawing the prompt after a backspace looks like an edit
+     * rather than printing a second copy of the line.
      */
     private void append(String text) {
         Platform.runLater(() -> {
@@ -291,46 +409,91 @@ public class TerminalPane extends BorderPane {
             int i = 0;
             while (i < combined.length()) {
                 char c = combined.charAt(i);
-                if (c != '\u001B') {
-                    plain.append(c);
+                if (c == '\r') {
+                    flush(plain);
+                    writePos = lineStart;
                     i++;
-                    continue;
-                }
-                String rest = combined.substring(i);
-                Matcher csi = CSI.matcher(rest);
-                Matcher osc = OSC.matcher(rest);
-                if (csi.lookingAt()) {
+                } else if (c == '\n') {
                     flush(plain);
-                    String seq = csi.group();
-                    if (seq.endsWith("m")) currentStyle = mapSgr(seq);
-                    i += seq.length();
-                } else if (osc.lookingAt()) {
+                    writePos = output.getLength();
+                    output.appendText("\n");
+                    writePos++;
+                    lineStart = writePos;
+                    i++;
+                } else if (c == '\b') {
                     flush(plain);
-                    i += osc.group().length();
-                } else if (rest.length() < 24) {
-                    // Might be a sequence split across two stream reads \u2014 hold
-                    // it back and complete it once more bytes arrive.
-                    pendingAnsi = rest;
-                    break;
+                    if (writePos > lineStart) writePos--;
+                    i++;
+                } else if (c == '\u001B') {
+                    flush(plain);
+                    String rest = combined.substring(i);
+                    Matcher csi = CSI.matcher(rest);
+                    Matcher osc = OSC.matcher(rest);
+                    if (csi.lookingAt()) {
+                        String seq = csi.group();
+                        if (seq.endsWith("m")) {
+                            currentStyle = mapSgr(seq);
+                        } else if (seq.endsWith("K")) {
+                            eraseToEndOfLine();
+                        }
+                        i += seq.length();
+                    } else if (osc.lookingAt()) {
+                        i += osc.group().length();
+                    } else if (rest.length() < 24) {
+                        pendingAnsi = rest;   // sequence split across reads
+                        break;
+                    } else {
+                        i++;   // unrecognized escape, drop just the ESC
+                    }
                 } else {
-                    // Not a recognized/completable escape \u2014 drop just the ESC.
+                    plain.append(c);
                     i++;
                 }
             }
             flush(plain);
+            output.moveTo(output.getLength());
+            output.requestFollowCaret();
         });
     }
 
     private void flush(StringBuilder plain) {
-        if (plain.isEmpty()) return;
-        int start = output.getLength();
-        output.appendText(plain.toString());
-        output.setStyleClass(start, output.getLength(),
-                currentStyle == null ? "" : currentStyle);
-        plain.setLength(0);
-        inputStart = output.getLength();
-        output.moveTo(output.getLength());
-        output.requestFollowCaret();
+        if (!plain.isEmpty()) {
+            writeChars(plain.toString(), currentStyle);
+            plain.setLength(0);
+        }
+    }
+
+    /** Writes at {@link #writePos}, overwriting in place if a \r/backspace
+     *  moved it before the end of the document (matches how a real
+     *  terminal redraws a line), or appending normally otherwise. */
+    private void writeChars(String s, String style) {
+        if (s.isEmpty()) return;
+        int docLen = output.getLength();
+        String styleClass = style == null ? "" : style;
+        if (writePos >= docLen) {
+            output.insertText(docLen, s);
+            output.setStyleClass(docLen, docLen + s.length(), styleClass);
+            writePos = docLen + s.length();
+            return;
+        }
+        int overwriteEnd = Math.min(docLen, writePos + s.length());
+        int overwriteLen = overwriteEnd - writePos;
+        output.replaceText(writePos, overwriteEnd, s.substring(0, overwriteLen));
+        output.setStyleClass(writePos, writePos + overwriteLen, styleClass);
+        writePos += overwriteLen;
+        if (overwriteLen < s.length()) {
+            String rest = s.substring(overwriteLen);
+            output.insertText(writePos, rest);
+            output.setStyleClass(writePos, writePos + rest.length(), styleClass);
+            writePos += rest.length();
+        }
+    }
+
+    private void eraseToEndOfLine() {
+        String text = output.getText();
+        int nextNewline = text.indexOf('\n', writePos);
+        int end = nextNewline == -1 ? text.length() : nextNewline;
+        if (end > writePos) output.deleteText(writePos, end);
     }
 
     /** Maps the numeric codes in an SGR sequence like "\e[1;32m" to a style class. */
