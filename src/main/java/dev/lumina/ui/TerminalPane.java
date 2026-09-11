@@ -4,13 +4,10 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.StyleClassedTextArea;
 
@@ -27,22 +24,37 @@ import java.util.regex.Pattern;
 
 /**
  * Built-in terminal backed by the system shell (bash/zsh on Unix, cmd on
- * Windows). Streams are piped, so line-based commands work (git, mvn, ls…);
- * full-screen TUI apps (vim, htop) need a real PTY and are out of scope.
+ * Windows), rendered as a single continuous view \u2014 like IntelliJ's own
+ * terminal \u2014 instead of a scrolling log with a separate input box glued
+ * underneath it. Typing happens directly in the same scrolling area, right
+ * after the prompt; there's no second widget stealing space at the bottom.
  *
- * <p>Output renders through a {@link StyleClassedTextArea} with basic ANSI
- * SGR color support, instead of a plain {@code TextArea}: most real shell
- * prompts (oh-my-zsh, starship, colored `ls`/`git`) send color escape codes,
- * which a plain text box shows as literal garbage like {@code ^[[32m} \u2014
- * that garbled-looking output is almost certainly what "not good" meant.
+ * <p><b>What this is and isn't:</b> commands run through a plain OS pipe,
+ * not a real pseudo-terminal (PTY), so this fakes the interactive parts a
+ * PTY would normally give you for free: it locally echoes what you type
+ * (a real pipe has no echo of its own) and only sends a command to the
+ * shell once you press Enter. That means:
+ * <ul>
+ *   <li>Normal commands, git, mvn, ls, colored output \u2014 all work.</li>
+ *   <li>Ctrl+C can't deliver a real SIGINT the way a PTY's line discipline
+ *       does (that signal only exists at the PTY level) \u2014 here it kills
+ *       and restarts the shell instead, which stops a stuck command but
+ *       isn't the same thing.</li>
+ *   <li>Full-screen terminal apps (vim, htop, less) need a real PTY and
+ *       won't render correctly here.</li>
+ * </ul>
+ * A real PTY (the same {@code pty4j} library IntelliJ itself uses) would
+ * close both gaps, but it's a new native-library dependency in a modular
+ * app \u2014 worth doing as a deliberate follow-up you can test, not something
+ * to wire in blind.
  */
 public class TerminalPane extends BorderPane {
 
     private final StyleClassedTextArea output = new StyleClassedTextArea();
-    private final TextField input = new TextField();
-    private final Label promptLabel = new Label();
+    private final StringBuilder currentLine = new StringBuilder();
     private final List<String> history = new ArrayList<>();
     private int historyIndex = -1;
+    private int inputStart = 0;
 
     private Process shell;
     private BufferedWriter stdin;
@@ -57,9 +69,6 @@ public class TerminalPane extends BorderPane {
     public TerminalPane() {
         getStyleClass().add("terminal-pane");
 
-        Label title = new Label("Terminal");
-        title.getStyleClass().add("panel-header");
-
         Button restart = new Button("\u21BB");
         restart.getStyleClass().add("console-button");
         restart.setTooltip(new Tooltip("Restart"));
@@ -68,41 +77,23 @@ public class TerminalPane extends BorderPane {
         Button clear = new Button("\u2715");
         clear.getStyleClass().add("console-button");
         clear.setTooltip(new Tooltip("Clear"));
-        clear.setOnAction(e -> output.clear());
+        clear.setOnAction(e -> { output.clear(); inputStart = 0; });
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        VBox rail = new VBox(6, restart, clear);
+        rail.getStyleClass().add("terminal-rail");
+        rail.setAlignment(Pos.TOP_CENTER);
+        rail.setPadding(new Insets(6, 4, 6, 4));
 
-        HBox header = new HBox(10, title, spacer, restart, clear);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(6, 10, 6, 12));
-        header.getStyleClass().add("console-header");
-
-        output.setEditable(false);
+        output.setEditable(false);   // suppress RichTextFX's own default typing
+                                      // behavior; input is handled manually
+                                      // below so it lands in the right place
         output.setWrapText(true);
         output.getStyleClass().add("terminal-output");
+        output.setOnKeyTyped(this::onKeyTyped);
+        output.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::onKeyPressed);
 
-        promptLabel.getStyleClass().add("terminal-prompt");
-
-        input.getStyleClass().add("terminal-input");
-        input.setOnAction(e -> submit());
-        input.setOnKeyPressed(e -> {
-            switch (e.getCode()) {
-                case UP -> navigateHistory(-1);
-                case DOWN -> navigateHistory(1);
-                default -> { }
-            }
-        });
-        HBox.setHgrow(input, Priority.ALWAYS);
-
-        HBox inputRow = new HBox(6, promptLabel, input);
-        inputRow.setAlignment(Pos.CENTER_LEFT);
-        inputRow.setPadding(new Insets(4, 12, 8, 12));
-        inputRow.getStyleClass().add("terminal-input-row");
-
-        setTop(header);
+        setLeft(rail);
         setCenter(new VirtualizedScrollPane<>(output));
-        setBottom(inputRow);
         setMinHeight(120);
     }
 
@@ -110,17 +101,19 @@ public class TerminalPane extends BorderPane {
     public void start(Path dir) {
         stop();
         this.workingDir = dir != null ? dir : Path.of(System.getProperty("user.home"));
-        promptLabel.setText(shortPrompt(workingDir));
         output.clear();
+        inputStart = 0;
         pendingAnsi = "";
         currentStyle = null;
+        currentLine.setLength(0);
 
         List<String> cmd = shellCommand();
+        ProcessBuilder pb = new ProcessBuilder(cmd)
+                .directory(workingDir.toFile())
+                .redirectErrorStream(true);
+        pb.environment().put("TERM", "xterm-256color");
         try {
-            shell = new ProcessBuilder(cmd)
-                    .directory(workingDir.toFile())
-                    .redirectErrorStream(true)
-                    .start();
+            shell = pb.start();
         } catch (IOException e) {
             append("Could not start shell " + cmd + ": " + e.getMessage() + "\n");
             return;
@@ -139,10 +132,11 @@ public class TerminalPane extends BorderPane {
                 }
             } catch (IOException ignored) {
             }
-            append("\n[shell exited]\n");
+            if (p == shell) append("\n[shell exited]\n");
         }, "lumina-terminal-reader");
         reader.setDaemon(true);
         reader.start();
+        promptForInput();
     }
 
     public void stop() {
@@ -152,26 +146,101 @@ public class TerminalPane extends BorderPane {
     }
 
     public void focusInput() {
-        Platform.runLater(input::requestFocus);
+        Platform.runLater(() -> {
+            output.requestFocus();
+            output.moveTo(output.getLength());
+        });
     }
 
     /** Programmatically run a command in this terminal (e.g. jdb attach). */
     public void sendCommand(String command) {
         Platform.runLater(() -> {
-            input.setText(command);
-            submit();
+            focusInput();
+            currentLine.setLength(0);
+            currentLine.append(command);
+            int pos = output.getLength();
+            output.insertText(pos, command);
+            output.moveTo(output.getLength());
+            submitLine();
         });
     }
 
     // ---------------------------------------------------------------- input
 
-    private void submit() {
-        String line = input.getText();
-        input.clear();
+    /** Shows a fresh prompt and opens the input line right after it, in
+     *  the same scrolling view \u2014 no separate input widget. */
+    private void promptForInput() {
+        Platform.runLater(() -> {
+            String folder = workingDir.getFileName() != null
+                    ? workingDir.getFileName().toString() : workingDir.toString();
+            int start = output.getLength();
+            output.appendText(folder + " % ");
+            output.setStyleClass(start, output.getLength(), "terminal-prompt-inline");
+            inputStart = output.getLength();
+            currentLine.setLength(0);
+            output.moveTo(output.getLength());
+            output.requestFollowCaret();
+        });
+    }
+
+    private void onKeyTyped(javafx.scene.input.KeyEvent e) {
+        String ch = e.getCharacter();
+        if (ch.isEmpty()) return;
+        char c = ch.charAt(0);
+        if (c < 0x20 || c == 0x7F) return;   // control chars handled in onKeyPressed
+        ensureCaretAtEnd();
+        currentLine.append(ch);
+        output.insertText(output.getLength(), ch);
+        output.moveTo(output.getLength());
+        e.consume();
+    }
+
+    private void onKeyPressed(javafx.scene.input.KeyEvent e) {
+        KeyCode code = e.getCode();
+        if (code == KeyCode.ENTER) {
+            submitLine();
+            e.consume();
+        } else if (code == KeyCode.BACK_SPACE) {
+            ensureCaretAtEnd();
+            if (currentLine.length() > 0) {
+                currentLine.deleteCharAt(currentLine.length() - 1);
+                int end = output.getLength();
+                output.deleteText(end - 1, end);
+            }
+            e.consume();
+        } else if (code == KeyCode.UP) {
+            navigateHistory(-1);
+            e.consume();
+        } else if (code == KeyCode.DOWN) {
+            navigateHistory(1);
+            e.consume();
+        } else if (code == KeyCode.C && (e.isControlDown() || e.isShortcutDown())
+                && output.getSelectedText().isEmpty()) {
+            // Not a real SIGINT (that needs a PTY's line discipline) \u2014 best
+            // effort is restarting the shell so a stuck command doesn't
+            // wedge the whole terminal.
+            append("^C\n");
+            start(workingDir);
+            e.consume();
+        } else if (code == KeyCode.LEFT || code == KeyCode.RIGHT
+                || code == KeyCode.HOME || code == KeyCode.END) {
+            e.consume();   // no free caret movement in the simplified line model
+        }
+    }
+
+    private void ensureCaretAtEnd() {
+        if (output.getCaretPosition() != output.getLength()) {
+            output.moveTo(output.getLength());
+        }
+    }
+
+    private void submitLine() {
+        String line = currentLine.toString();
+        output.appendText("\n");
         if (shell == null || !shell.isAlive()) {
             start(workingDir);
+            return;
         }
-        if (stdin == null) return;
         if (!line.isBlank()) {
             history.add(line);
         }
@@ -183,13 +252,18 @@ public class TerminalPane extends BorderPane {
         } catch (IOException e) {
             append("[could not write to shell: " + e.getMessage() + "]\n");
         }
+        promptForInput();
     }
 
     private void navigateHistory(int delta) {
         if (history.isEmpty()) return;
         historyIndex = Math.max(0, Math.min(history.size(), historyIndex + delta));
-        input.setText(historyIndex < history.size() ? history.get(historyIndex) : "");
-        input.end();
+        String replacement = historyIndex < history.size() ? history.get(historyIndex) : "";
+        output.deleteText(inputStart, output.getLength());
+        output.insertText(inputStart, replacement);
+        currentLine.setLength(0);
+        currentLine.append(replacement);
+        output.moveTo(output.getLength());
     }
 
     // -------------------------------------------------------------- helpers
@@ -199,18 +273,6 @@ public class TerminalPane extends BorderPane {
         if (os.contains("win")) return List.of("cmd.exe");
         String sh = System.getenv("SHELL");
         return List.of(sh != null && !sh.isBlank() ? sh : "/bin/bash");
-    }
-
-    private static String abbreviate(Path p) {
-        String home = System.getProperty("user.home");
-        String s = p.toAbsolutePath().toString();
-        return s.startsWith(home) ? "~" + s.substring(home.length()) : s;
-    }
-
-    /** e.g. "lumina %" \u2014 a short, real-looking shell prompt for the input row. */
-    private static String shortPrompt(Path dir) {
-        String folder = dir.getFileName() != null ? dir.getFileName().toString() : abbreviate(dir);
-        return folder + " %";
     }
 
     // ------------------------------------------------------- ANSI decoding
@@ -266,6 +328,7 @@ public class TerminalPane extends BorderPane {
         output.setStyleClass(start, output.getLength(),
                 currentStyle == null ? "" : currentStyle);
         plain.setLength(0);
+        inputStart = output.getLength();
         output.moveTo(output.getLength());
         output.requestFollowCaret();
     }
