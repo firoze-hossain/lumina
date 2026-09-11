@@ -2877,9 +2877,9 @@ public class LuminaApp extends Application {
 
     private void showMoreToolWindows() {
         ContextMenu menu = new ContextMenu(
-                item("Bookmarks", "Cmd+2", e -> showComingSoon("Bookmarks")),
-                item("Find", "Cmd+3", e -> goToFile()),
-                item("Debug", "Cmd+5", e -> onBottomRailSelect(0)),
+                item("Bookmarks", "Shortcut+2", e -> showComingSoon("Bookmarks")),
+                item("Find", "Shortcut+3", e -> goToFile()),
+                item("Debug", "Shortcut+5", e -> onBottomRailSelect(0)),
                 item("Spring", null, e -> showComingSoon("Spring")),
                 item("Coverage", null, e -> showComingSoon("Coverage")),
                 item("GitHub Copilot Multiple Code Suggestions", null,

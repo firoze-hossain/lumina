@@ -682,27 +682,16 @@
 }
 .terminal-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
 .terminal-output .text { -fx-fill: #C9CDDC; }
-.terminal-input-row {
-    -fx-background-color: #101219;
-    -fx-border-color: #1E2230 transparent transparent transparent;
-    -fx-border-width: 1 0 0 0;
+.terminal-output .caret { -fx-stroke: #E4E7F1; -fx-stroke-width: 1.6; }
+.terminal-output .terminal-prompt-inline { -fx-fill: -lumen; -fx-font-weight: bold; }
+
+/* Slim always-visible left icon strip \u2014 IntelliJ puts Restart/Clear here
+   instead of a header row, so the terminal content keeps the full height. */
+.terminal-rail {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent #1E2230 transparent transparent;
+    -fx-border-width: 0 1 0 0;
 }
-.terminal-prompt {
-    -fx-text-fill: -lumen;
-    -fx-font-weight: bold;
-    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
-    -fx-font-size: 12px;
-}
-.terminal-input {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-text-fill: #E4E7F1;
-    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
-    -fx-font-size: 12px;
-    -fx-prompt-text-fill: #4A5068;
-    -fx-padding: 2 0 2 0;
-}
-.terminal-input:focused { -fx-border-color: transparent; }
 
 /* ANSI SGR foreground colors (standard 30-37, bright 90-97) */
 .terminal-output .ansi-fg-30 { -fx-fill: #5B6272; }
