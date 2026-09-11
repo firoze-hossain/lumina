@@ -357,6 +357,27 @@
 .right-tool-close:hover { -fx-background-color: #2C3042; -fx-text-fill: #C9CDDC; }
 .right-tool-heading { -fx-text-fill: #EDEFF6; -fx-font-weight: bold; -fx-font-size: 14px; }
 .right-tool-empty { -fx-text-fill: #848BA3; -fx-line-spacing: 5; }
+
+/* ---------------------------------------------- left tool windows (M4) */
+
+.commit-panel, .pull-requests-panel, .structure-panel, .git-log-panel {
+    -fx-background-color: #14161E;
+}
+.commit-changes-scroll { -fx-background-color: transparent; }
+.commit-changes-scroll > .viewport { -fx-background-color: transparent; }
+.commit-message {
+    -fx-control-inner-background: #1A1D28;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 12px;
+}
+.pr-row { -fx-padding: 4 0 4 0; }
+.pr-link { -fx-text-fill: #6FA8E0; -fx-font-size: 12px; }
+.pr-link:hover { -fx-text-fill: #8FC0F0; }
+.git-log-subject { -fx-text-fill: #C9CDDC; -fx-font-size: 12px; }
+.structure-panel .tree-view, .git-log-panel .list-view {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: #14161E;
+}
 .db-add-source {
     -fx-background-color: transparent;
     -fx-text-fill: #C9CDDC;
@@ -651,7 +672,6 @@
 /* --------------------------------------------------------------- terminal */
 
 .terminal-pane { -fx-background-color: #101219; }
-.terminal-cwd { -fx-text-fill: #565D75; -fx-font-size: 11px; }
 .terminal-output,
 .terminal-output .content {
     -fx-background-color: #101219;
@@ -661,12 +681,18 @@
     -fx-highlight-fill: #3A3122;
 }
 .terminal-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
+.terminal-output .text { -fx-fill: #C9CDDC; }
 .terminal-input-row {
     -fx-background-color: #101219;
     -fx-border-color: #1E2230 transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
-.terminal-prompt { -fx-text-fill: -lumen; -fx-font-weight: bold; }
+.terminal-prompt {
+    -fx-text-fill: -lumen;
+    -fx-font-weight: bold;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 12px;
+}
 .terminal-input {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
@@ -677,6 +703,24 @@
     -fx-padding: 2 0 2 0;
 }
 .terminal-input:focused { -fx-border-color: transparent; }
+
+/* ANSI SGR foreground colors (standard 30-37, bright 90-97) */
+.terminal-output .ansi-fg-30 { -fx-fill: #5B6272; }
+.terminal-output .ansi-fg-31 { -fx-fill: #E5534B; }
+.terminal-output .ansi-fg-32 { -fx-fill: #6FCF7A; }
+.terminal-output .ansi-fg-33 { -fx-fill: #D8A657; }
+.terminal-output .ansi-fg-34 { -fx-fill: #6FA8E0; }
+.terminal-output .ansi-fg-35 { -fx-fill: #C58AF0; }
+.terminal-output .ansi-fg-36 { -fx-fill: #5FC7C7; }
+.terminal-output .ansi-fg-37 { -fx-fill: #C9CDDC; }
+.terminal-output .ansi-fg-90 { -fx-fill: #7A8199; }
+.terminal-output .ansi-fg-91 { -fx-fill: #F27C74; }
+.terminal-output .ansi-fg-92 { -fx-fill: #8FE89A; }
+.terminal-output .ansi-fg-93 { -fx-fill: #F2C875; }
+.terminal-output .ansi-fg-94 { -fx-fill: #8FC0F0; }
+.terminal-output .ansi-fg-95 { -fx-fill: #DDAAF6; }
+.terminal-output .ansi-fg-96 { -fx-fill: #86E0E0; }
+.terminal-output .ansi-fg-97 { -fx-fill: #EDEFF6; }
 
 /* --------------------------------------------------------- go to file */
 

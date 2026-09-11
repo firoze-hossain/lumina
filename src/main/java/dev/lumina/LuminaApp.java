@@ -47,6 +47,12 @@ public class LuminaApp extends Application {
     private TabPane bottomTabs;
     private TabPane rightTabs;
     private BorderPane rightDock;
+    private TabPane leftTabs;
+    private BorderPane leftDock;
+    private CommitPanel commitPanel;
+    private PullRequestsPanel pullRequestsPanel;
+    private StructurePanel structurePanel;
+    private GitLogPanel gitLogPanel;
     private SplitPane outerSplit;
     private MavenPanel mavenPanel;
     private DatabasePanel dbPanel;
@@ -85,12 +91,8 @@ public class LuminaApp extends Application {
         root.getStyleClass().add("app-root");
         root.setTop(new VBox(buildMenuBar(), buildToolBar()));
 
-        iconRail = new IconRail(
-                this::toggleProjectPanel,
-                this::toggleBottomPanel,
-                this::showTerminal,
-                this::runSelectedConfig,
-                this::showNewProjectDialog);
+        iconRail = new IconRail(this::onLeftRailSelect, this::showMoreToolWindows,
+                this::onBottomRailSelect);
         root.setLeft(iconRail);
 
         fileExplorer = new FileExplorer(this::openFile, () -> {
@@ -134,7 +136,8 @@ public class LuminaApp extends Application {
                 toolTab("Run", console),
                 toolTab("Tests", testsPanel),
                 toolTab("Problems", problemsPanel),
-                toolTab("Terminal", terminal));
+                toolTab("Terminal", terminal),
+                toolTab("Git", gitLogPanel = new GitLogPanel(() -> projectRoot)));
         problemsPanel.setOnJump(line -> {
             EditorTab editor = currentEditor();
             if (editor != null) editor.goToLine(line);
@@ -161,9 +164,54 @@ public class LuminaApp extends Application {
         verticalSplit.setOrientation(Orientation.VERTICAL);
         verticalSplit.setDividerPositions(0.70);
 
-        horizontalSplit = new SplitPane(fileExplorer, verticalSplit);
+        // Left tool windows, selected from the top group of the icon rail:
+        // Project / Commit / Pull Requests / Structure, one at a time, no
+        // tab-header strip of its own (mirrors the right dock below).
+        commitPanel = new CommitPanel(() -> projectRoot, console::println);
+        pullRequestsPanel = new PullRequestsPanel(() -> projectRoot,
+                () -> Settings.get(Settings.GITHUB_TOKEN),
+                () -> Settings.get(Settings.GITHUB_USER),
+                this::showGitHubSignIn, this::openBrowser);
+        structurePanel = new StructurePanel();
+        structurePanel.setOnJumpToLine(line -> {
+            EditorTab editor = currentEditor();
+            if (editor != null) editor.goToLine(line);
+        });
+
+        leftTabs = new TabPane(
+                toolTab("Project", fileExplorer),
+                toolTab("Commit", commitPanel),
+                toolTab("Pull Requests", pullRequestsPanel),
+                toolTab("Structure", structurePanel));
+        leftTabs.getStyleClass().addAll("tool-tabs", "right-tabs", "left-tabs");
+        leftTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        leftTabs.getSelectionModel().select(0);
+
+        Label leftToolTitle = new Label("Project");
+        leftToolTitle.getStyleClass().add("right-tool-title");
+        Button leftToolClose = new Button("\u2715");
+        leftToolClose.getStyleClass().add("right-tool-close");
+        leftToolClose.setTooltip(new Tooltip("Hide"));
+        leftToolClose.setOnAction(e -> toggleLeftPanel(false));
+        Region leftTitleSpacer = new Region();
+        HBox.setHgrow(leftTitleSpacer, Priority.ALWAYS);
+        HBox leftToolTitleBar = new HBox(leftToolTitle, leftTitleSpacer, leftToolClose);
+        leftToolTitleBar.getStyleClass().add("right-tool-titlebar");
+        leftToolTitleBar.setAlignment(Pos.CENTER_LEFT);
+        leftTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            leftToolTitle.setText(sel != null ? sel.getText() : "");
+            refreshLeftPanel();
+        });
+
+        leftDock = new BorderPane(leftTabs);
+        leftDock.setTop(leftToolTitleBar);
+        leftDock.getStyleClass().add("right-tool-dock");
+        leftDock.setMinWidth(230);
+        SplitPane.setResizableWithParent(leftDock, false);
+
+        horizontalSplit = new SplitPane(leftDock, verticalSplit);
         horizontalSplit.setDividerPositions(0.22);
-        SplitPane.setResizableWithParent(fileExplorer, false);
+        iconRail.selectTop(0);
 
         // Right tool windows, selected from a compact IntelliJ-style vertical rail.
         mavenPanel = new MavenPanel(this::runBuildGoal);
@@ -271,11 +319,13 @@ public class LuminaApp extends Application {
                 et.focusEditor();
                 problemsPanel.show(et.getDiagnostics());
                 updateProblemsStatus(et.getDiagnostics());
+                if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
             } else {
                 updateBreadcrumbs(null, null);
                 statusCaret.setText("");
                 problemsPanel.show(List.of());
                 updateProblemsStatus(List.of());
+                if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
             }
         });
     }
@@ -481,7 +531,7 @@ public class LuminaApp extends Application {
         Menu toolWindows = new Menu("Tool Windows");
         toolWindows.getItems().addAll(
                 item("Project", null, e -> toggleProjectPanel(
-                        !horizontalSplit.getItems().contains(fileExplorer))),
+                        !horizontalSplit.getItems().contains(leftDock))),
                 item("Run", null, e -> showRunPanel()),
                 item("Terminal", null, e -> showTerminal()),
                 item("Maven / Build", null, e -> showRightPanel(3)),
@@ -686,11 +736,10 @@ public class LuminaApp extends Application {
         window.getItems().addAll(layouts, activeWindow, editorTabsMenu, notifications, processes, new SeparatorMenuItem(),
                 disabled("Next Project Window"), disabled("Previous Project Window"), new SeparatorMenuItem(),
                 item("Toggle Project Panel", null, e -> toggleProjectPanel(
-                        !horizontalSplit.getItems().contains(fileExplorer))),
+                        !horizontalSplit.getItems().contains(leftDock))),
                 item("Toggle Bottom Panel", null, e -> {
                     boolean show = !verticalSplit.getItems().contains(bottomTabs);
                     toggleBottomPanel(show);
-                    iconRail.setBottomSelected(show);
                 }), new CheckMenuItem("Lumina"));
 
         // ---- Help
@@ -1187,7 +1236,7 @@ public class LuminaApp extends Application {
                 testsPanel.showResults(suites);
                 if (!suites.isEmpty()) {
                     toggleBottomPanel(true);
-                    iconRail.setBottomSelected(true);
+                    iconRail.clearBottomSelection();
                     bottomTabs.getSelectionModel().select(1);   // Tests tab
                 }
             });
@@ -2731,16 +2780,18 @@ public class LuminaApp extends Application {
 
     // ---------------------------------------------------------- tool windows
 
+    /** Run/Tests open the bottom panel without a dedicated rail icon (same
+     *  as IntelliJ: those are triggered by running, not clicked open). */
     private void showRunPanel() {
         toggleBottomPanel(true);
-        iconRail.setBottomSelected(true);
+        iconRail.clearBottomSelection();
         bottomTabs.getSelectionModel().select(0);
     }
 
     private void showTerminal() {
         toggleBottomPanel(true);
-        iconRail.setBottomSelected(true);
         bottomTabs.getSelectionModel().select(3);
+        iconRail.selectBottom(0);
         terminal.focusInput();
     }
 
@@ -2750,16 +2801,129 @@ public class LuminaApp extends Application {
             verticalSplit.setDividerPositions(0.70);
         } else if (!show) {
             verticalSplit.getItems().remove(bottomTabs);
+            iconRail.clearBottomSelection();
         }
     }
 
+    /** Bottom rail: 0=Terminal, 1=Problems, 2=Git \u2014 mapped onto the bottom
+     *  dock's actual tab indices (2=Problems, 3=Terminal, 4=Git). */
+    private void onBottomRailSelect(int railIndex) {
+        int tabIndex = switch (railIndex) {
+            case 0 -> 3;   // Terminal
+            case 1 -> 2;   // Problems
+            default -> 4;  // Git
+        };
+        boolean alreadyShowingThis = verticalSplit.getItems().contains(bottomTabs)
+                && bottomTabs.getSelectionModel().getSelectedIndex() == tabIndex;
+        if (alreadyShowingThis) {
+            toggleBottomPanel(false);
+            return;
+        }
+        toggleBottomPanel(true);
+        bottomTabs.getSelectionModel().select(tabIndex);
+        iconRail.selectBottom(railIndex);
+        if (railIndex == 0) terminal.focusInput();
+        if (railIndex == 2) gitLogPanel.refresh();
+    }
+
     private void toggleProjectPanel(boolean show) {
-        if (show && !horizontalSplit.getItems().contains(fileExplorer)) {
-            horizontalSplit.getItems().add(0, fileExplorer);
+        toggleLeftPanel(show);
+        if (show) leftTabs.getSelectionModel().select(0);
+    }
+
+    private void toggleLeftPanel(boolean show) {
+        if (show && !horizontalSplit.getItems().contains(leftDock)) {
+            horizontalSplit.getItems().add(0, leftDock);
             horizontalSplit.setDividerPositions(0.22);
         } else if (!show) {
-            horizontalSplit.getItems().remove(fileExplorer);
+            horizontalSplit.getItems().remove(leftDock);
+            iconRail.clearTopSelection();
         }
+    }
+
+    /** Left rail: 0=Project, 1=Commit, 2=Pull Requests, 3=Structure. */
+    private void onLeftRailSelect(int index) {
+        boolean alreadyShowingThis = horizontalSplit.getItems().contains(leftDock)
+                && leftTabs.getSelectionModel().getSelectedIndex() == index;
+        if (alreadyShowingThis) {
+            toggleLeftPanel(false);
+            return;
+        }
+        toggleLeftPanel(true);
+        leftTabs.getSelectionModel().select(index);
+        iconRail.selectTop(index);
+    }
+
+    /** Refreshes whichever left tool window just became visible. */
+    private void refreshLeftPanel() {
+        switch (leftTabs.getSelectionModel().getSelectedIndex()) {
+            case 1 -> commitPanel.refresh();
+            case 2 -> pullRequestsPanel.refresh();
+            case 3 -> refreshStructurePanel();
+            default -> { }
+        }
+    }
+
+    private void refreshStructurePanel() {
+        EditorTab editor = currentEditor();
+        if (editor == null || editor.getPath() == null) {
+            structurePanel.showOutline(null, null);
+            return;
+        }
+        String name = editor.getPath().getFileName() != null
+                ? editor.getPath().getFileName().toString() : "";
+        structurePanel.showOutline(name, editor.getEditorText());
+    }
+
+    private void showMoreToolWindows() {
+        ContextMenu menu = new ContextMenu(
+                item("Bookmarks", "Cmd+2", e -> showComingSoon("Bookmarks")),
+                item("Find", "Cmd+3", e -> goToFile()),
+                item("Debug", "Cmd+5", e -> onBottomRailSelect(0)),
+                item("Spring", null, e -> showComingSoon("Spring")),
+                item("Coverage", null, e -> showComingSoon("Coverage")),
+                item("GitHub Copilot Multiple Code Suggestions", null,
+                        e -> showComingSoon("GitHub Copilot")),
+                item("Hierarchy", null, e -> showComingSoon("Hierarchy")),
+                item("Learn", null, e -> showComingSoon("Learn")),
+                item("Persistence", null, e -> showComingSoon("Persistence")),
+                item("Profiler", null, e -> showComingSoon("Profiler")),
+                item("TODO", null, e -> showTodoList()));
+        menu.show(iconRail, javafx.geometry.Side.RIGHT, 0, -220);
+    }
+
+    /** Scans open project .java files for TODO/FIXME comments. */
+    private void showTodoList() {
+        if (projectRoot == null) {
+            showComingSoon("TODO");
+            return;
+        }
+        Thread t = new Thread(() -> {
+            List<String> hits = new java.util.ArrayList<>();
+            try (Stream<Path> paths = Files.walk(projectRoot)) {
+                paths.filter(p -> p.toString().endsWith(".java")).forEach(p -> {
+                    try {
+                        List<String> lines = Files.readAllLines(p, StandardCharsets.UTF_8);
+                        for (int i = 0; i < lines.size(); i++) {
+                            String l = lines.get(i);
+                            if (l.contains("TODO") || l.contains("FIXME")) {
+                                hits.add(projectRoot.relativize(p) + ":" + (i + 1) + "  "
+                                        + l.trim());
+                            }
+                        }
+                    } catch (IOException ignored) {
+                    }
+                });
+            } catch (IOException ignored) {
+            }
+            Platform.runLater(() -> {
+                showRunPanel();
+                console.println("--- TODO / FIXME (" + hits.size() + ") ---");
+                hits.forEach(console::println);
+            });
+        }, "lumina-todo-scan");
+        t.setDaemon(true);
+        t.start();
     }
 
     // -------------------------------------------------------------- navigate

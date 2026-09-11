@@ -66,6 +66,32 @@ public final class GitService {
         return exec(dir, "status", "--short", "--branch");
     }
 
+    /** Stage the given repo-relative paths (or all changes if empty). */
+    public static Result add(Path dir, List<String> paths) {
+        List<String> args = new ArrayList<>(List.of("add"));
+        if (paths.isEmpty()) {
+            args.add("-A");
+        } else {
+            args.add("--");
+            args.addAll(paths);
+        }
+        return exec(dir, args.toArray(new String[0]));
+    }
+
+    public static Result commit(Path dir, String message) {
+        return exec(dir, "commit", "-m", message);
+    }
+
+    public static Result push(Path dir) {
+        return exec(dir, "push");
+    }
+
+    /** {@code git log}, one line per commit, most recent first. */
+    public static Result log(Path dir, int maxCount) {
+        return exec(dir, "log", "-" + maxCount,
+                "--date=relative", "--pretty=format:%h\u0001%an\u0001%ad\u0001%s");
+    }
+
     // ----------------------------------------------------------------- blame
 
     public record BlameLine(String author, String date, String summary) {
