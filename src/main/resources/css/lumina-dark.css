@@ -683,7 +683,6 @@
 .terminal-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
 .terminal-output .text { -fx-fill: #C9CDDC; }
 .terminal-output .caret { -fx-stroke: #E4E7F1; -fx-stroke-width: 1.6; }
-.terminal-output .terminal-prompt-inline { -fx-fill: -lumen; -fx-font-weight: bold; }
 
 /* Slim always-visible left icon strip \u2014 IntelliJ puts Restart/Clear here
    instead of a header row, so the terminal content keeps the full height. */
@@ -691,6 +690,12 @@
     -fx-background-color: #14161E;
     -fx-border-color: transparent #1E2230 transparent transparent;
     -fx-border-width: 0 1 0 0;
+}
+.terminal-ghost-suggestion {
+    -fx-text-fill: #4A5068;
+    -fx-font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Menlo", monospace;
+    -fx-font-size: 12px;
+    -fx-padding: 0;
 }
 
 /* ANSI SGR foreground colors (standard 30-37, bright 90-97) */
