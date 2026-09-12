@@ -39,16 +39,33 @@ public final class TerminalToolWindow extends BorderPane {
     private final TabPane tabs = new TabPane();
     private final Supplier<Path> projectRoot;
     private final Runnable onOpenSettings;
+    private final Runnable onAllSessionsClosed;
     private int sessionCounter = 0;
+    private boolean everHadSession = false;
 
-    public TerminalToolWindow(Supplier<Path> projectRoot, Runnable onOpenSettings) {
+    public TerminalToolWindow(Supplier<Path> projectRoot, Runnable onOpenSettings,
+                               Runnable onAllSessionsClosed) {
         this.projectRoot = projectRoot;
         this.onOpenSettings = onOpenSettings;
+        this.onAllSessionsClosed = onAllSessionsClosed;
         getStyleClass().add("terminal-tool-window");
         tabs.getStyleClass().addAll("tool-tabs", "terminal-tabs");
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
-            if (sel != null && sel.getStyleClass().contains("new-tab-sentinel")) {
+            if (sel == null || !sel.getStyleClass().contains("new-tab-sentinel")) return;
+            if (everHadSession && tabs.getTabs().size() == 1) {
+                // The user just closed their last remaining session tab
+                // (as opposed to this being the very first, construction-
+                // time selection, before any session has existed yet) --
+                // don't silently spawn a replacement; closing the last tab
+                // closes the terminal, the same way re-clicking its rail
+                // icon would. Numbering resets too, matching IntelliJ:
+                // the next session starts fresh as "Local" again, not
+                // picking up from some high count of long-closed tabs.
+                everHadSession = false;
+                sessionCounter = 0;
+                if (onAllSessionsClosed != null) onAllSessionsClosed.run();
+            } else {
                 addSessionTab(null);
             }
         });
@@ -83,6 +100,13 @@ public final class TerminalToolWindow extends BorderPane {
         if (active != null) active.focusInput();
     }
 
+    /** True if a real session tab is currently active (as opposed to the
+     *  "+/\u25be" sentinel being the only thing left, e.g. right after the
+     *  last session tab was closed). */
+    public boolean hasSession() {
+        return activePane() != null;
+    }
+
     public void sendCommand(String command) {
         TerminalPane active = activePane();
         if (active != null) active.sendCommand(command);
@@ -101,6 +125,7 @@ public final class TerminalToolWindow extends BorderPane {
 
     private Tab addSessionTabIn(Path dir, String shellOverride) {
         sessionCounter++;
+        everHadSession = true;
         String base = defaultTabName();
         String name = sessionCounter == 1 ? base : base + " (" + sessionCounter + ")";
         TerminalPane pane = new TerminalPane();
@@ -134,13 +159,15 @@ public final class TerminalToolWindow extends BorderPane {
         plus.setClosable(false);
 
         Label plusLabel = new Label("+");
+        plusLabel.getStyleClass().add("terminal-tab-plus");
         Button dropdown = new Button("\u25BE");
         dropdown.getStyleClass().add("terminal-tab-dropdown");
         dropdown.setOnMouseClicked(ev -> {
             ev.consume();   // don't also trigger the sentinel's own selection
             showShellMenu(dropdown);
         });
-        HBox graphic = new HBox(4, plusLabel, dropdown);
+        HBox graphic = new HBox(2, plusLabel, dropdown);
+        graphic.getStyleClass().add("terminal-tab-new-session");
         graphic.setAlignment(Pos.CENTER);
         plus.setGraphic(graphic);
         plus.setContent(new Region());

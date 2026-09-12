@@ -126,7 +126,13 @@ public class LuminaApp extends Application {
 
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
-        terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings);
+        terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings,
+                () -> {
+                    // Closing the last terminal session tab closes the
+                    // whole tool window, same as re-clicking its rail icon.
+                    toggleBottomPanel(false);
+                    iconRail.clearBottomSelection();
+                });
         testsPanel = new TestResultsPanel();
         testsPanel.setNavigator(this::openTestSource);
         testsPanel.setHandlers(
@@ -2792,6 +2798,7 @@ public class LuminaApp extends Application {
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(3);
         iconRail.selectBottom(0);
+        ensureTerminalSession();
         terminal.focusInput();
     }
 
@@ -2822,8 +2829,24 @@ public class LuminaApp extends Application {
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(tabIndex);
         iconRail.selectBottom(railIndex);
-        if (railIndex == 0) terminal.focusInput();
+        if (railIndex == 0) {
+            ensureTerminalSession();
+            terminal.focusInput();
+        }
         if (railIndex == 2) gitLogPanel.refresh();
+    }
+
+    /** Reopening the Terminal tool window after every session tab was
+     *  closed shouldn't leave you staring at just the "+" button \u2014 spin
+     *  up a fresh session automatically, same as IntelliJ does. Only fires
+     *  when there's truly no active session; an already-running one is
+     *  left alone rather than being restarted every time you switch back
+     *  to it. */
+    private void ensureTerminalSession() {
+        if (!terminal.hasSession()) {
+            terminal.start(projectRoot != null ? projectRoot
+                    : Path.of(System.getProperty("user.home")));
+        }
     }
 
     private void toggleProjectPanel(boolean show) {

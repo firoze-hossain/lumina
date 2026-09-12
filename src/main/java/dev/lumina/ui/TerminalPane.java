@@ -60,8 +60,17 @@ public class TerminalPane extends BorderPane {
     private final StyleClassedTextArea output = new StyleClassedTextArea();
     private final Label ghost = new Label();
     private final Rectangle cursor = new Rectangle();
+    // Re-syncing the cursor's position on every blink tick (not just when
+    // the caret-bounds listener fires) is a deliberate safety net: if a
+    // bounds update is ever missed right after new output streams in (a
+    // timing/layout edge case that's hard to fully pin down without a live
+    // RichTextFX session to inspect), the cursor self-heals within one
+    // blink cycle instead of staying stuck wherever it last was.
     private final Timeline cursorBlink = new Timeline(
-            new KeyFrame(Duration.millis(600), e -> cursor.setVisible(!cursor.isVisible())));
+            new KeyFrame(Duration.millis(600), e -> {
+                cursor.setVisible(!cursor.isVisible());
+                resyncCursorPosition();
+            }));
     private final List<String> history = new ArrayList<>();
     private final StringBuilder typedThisLine = new StringBuilder();
     // Mirrors the shell's own cursor position within typedThisLine, best
@@ -139,8 +148,7 @@ public class TerminalPane extends BorderPane {
         StackPane.setAlignment(cursor, Pos.TOP_LEFT);
         output.caretBoundsProperty().addListener((obs, old, bounds) ->
                 bounds.ifPresent(b -> {
-                    ghost.setLayoutX(b.getMaxX() + 1);
-                    ghost.setLayoutY(b.getMinY());
+                    positionGhost(b);
                     positionCursor(b);
                     // Any caret movement (typing, a fresh prompt) resets the
                     // blink to visible, matching a real terminal instead of
@@ -149,32 +157,64 @@ public class TerminalPane extends BorderPane {
                     cursorBlink.playFromStart();
                 }));
 
-        setLeft(rail);
+        setRight(rail);
         setCenter(overlay);
         setMinHeight(120);
     }
 
-    private void positionCursor(javafx.geometry.Bounds b) {
-        double charWidth = b.getWidth() > 0 ? b.getWidth() : 8;
-        cursor.setLayoutX(b.getMinX());
+    private void positionGhost(javafx.geometry.Bounds screenBounds) {
+        javafx.scene.Node parent = ghost.getParent();
+        if (parent == null) return;
+        javafx.geometry.Point2D topRight =
+                parent.screenToLocal(screenBounds.getMaxX(), screenBounds.getMinY());
+        if (topRight == null) return;
+        ghost.setLayoutX(topRight.getX() + 1);
+        ghost.setLayoutY(topRight.getY());
+    }
+
+    private void positionCursor(javafx.geometry.Bounds screenBounds) {
+        // caretBoundsProperty() reports bounds in SCREEN coordinates (it's
+        // meant for positioning popups), not local ones \u2014 using them
+        // directly as this overlay's layoutX/Y, without converting through
+        // screenToLocal, is what was landing the cursor near the corner of
+        // the terminal instead of at the actual caret position.
+        javafx.scene.Node parent = cursor.getParent();
+        if (parent == null) return;
+        javafx.geometry.Point2D topLeft =
+                parent.screenToLocal(screenBounds.getMinX(), screenBounds.getMinY());
+        javafx.geometry.Point2D bottomRight =
+                parent.screenToLocal(screenBounds.getMaxX(), screenBounds.getMaxY());
+        if (topLeft == null || bottomRight == null) return;   // not on screen yet
+        double charWidth = bottomRight.getX() - topLeft.getX();
+        if (charWidth <= 0) charWidth = 8;
+        double charHeight = bottomRight.getY() - topLeft.getY();
+        cursor.setLayoutX(topLeft.getX());
         switch (Settings.get(Settings.TERMINAL_CURSOR_SHAPE) == null
                 ? "Block" : Settings.get(Settings.TERMINAL_CURSOR_SHAPE)) {
             case "Underline" -> {
-                cursor.setLayoutY(b.getMaxY() - 2);
+                cursor.setLayoutY(bottomRight.getY() - 2);
                 cursor.setWidth(charWidth);
                 cursor.setHeight(2);
             }
             case "Vertical Line" -> {
-                cursor.setLayoutY(b.getMinY());
+                cursor.setLayoutY(topLeft.getY());
                 cursor.setWidth(2);
-                cursor.setHeight(b.getHeight());
+                cursor.setHeight(charHeight);
             }
             default -> {   // Block
-                cursor.setLayoutY(b.getMinY());
+                cursor.setLayoutY(topLeft.getY());
                 cursor.setWidth(charWidth);
-                cursor.setHeight(b.getHeight());
+                cursor.setHeight(charHeight);
             }
         }
+    }
+
+    /** Re-reads the caret's current bounds and repositions the cursor
+     *  overlay to match \u2014 called after every batch of output and on
+     *  every blink tick, so the cursor can't end up stuck wherever it was
+     *  before the prompt actually finished streaming in. */
+    private void resyncCursorPosition() {
+        output.caretBoundsProperty().getValue().ifPresent(this::positionCursor);
     }
 
     private void applyCursorShape() {
@@ -551,6 +591,10 @@ public class TerminalPane extends BorderPane {
             flush(plain);
             output.moveTo(output.getLength());
             output.requestFollowCaret();
+            // Bounds right after moveTo() can reflect a layout pass that
+            // hasn't caught up with the just-inserted text yet; deferring
+            // one pulse gives layout time to settle before we trust them.
+            Platform.runLater(this::resyncCursorPosition);
         });
     }
 

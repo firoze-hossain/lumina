@@ -688,12 +688,14 @@
    see TerminalPane's `cursor` field. */
 .terminal-output .caret { -fx-stroke-width: 0; }
 
-/* Slim always-visible left icon strip \u2014 IntelliJ puts Restart/Clear here
-   instead of a header row, so the terminal content keeps the full height. */
+/* Slim always-visible icon strip \u2014 IntelliJ puts Restart/Clear here
+   instead of a header row, so the terminal content keeps the full height.
+   On the right edge (not left), matching where such action strips
+   normally sit in IntelliJ's own console-style tool windows. */
 .terminal-rail {
     -fx-background-color: #14161E;
-    -fx-border-color: transparent #1E2230 transparent transparent;
-    -fx-border-width: 0 1 0 0;
+    -fx-border-color: transparent transparent transparent #1E2230;
+    -fx-border-width: 0 0 0 1;
 }
 .terminal-ghost-suggestion {
     -fx-text-fill: #4A5068;
@@ -704,16 +706,45 @@
 .terminal-cursor { -fx-fill: #E4E7F1; -fx-opacity: 0.75; }
 
 /* Terminal session tab strip ("+" / dropdown), inside the Terminal tool
-   window at the bottom dock. */
-.terminal-tabs .tab-header-area { -fx-padding: 0 4 0 4; }
+   window at the bottom dock. Styled as real bordered icon buttons (same
+   visual language as .console-button elsewhere) rather than bare text,
+   since plain colored glyphs at normal tab-label scale read as stray
+   punctuation, not as clickable controls. */
+.terminal-tabs .tab-header-area { -fx-padding: 2 4 2 4; }
+.terminal-tab-new-session {
+    -fx-padding: 0 4 0 6;
+    -fx-spacing: 3;
+}
+.terminal-tab-plus {
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-border-color: #3A4058;
+    -fx-border-radius: 4;
+    -fx-padding: 1 8 3 8;
+}
+.new-tab-sentinel:hover .terminal-tab-plus {
+    -fx-text-fill: #EDEFF6;
+    -fx-border-color: -lumen;
+    -fx-background-color: #232636;
+}
 .terminal-tab-dropdown {
     -fx-background-color: transparent;
-    -fx-text-fill: #848BA3;
-    -fx-font-size: 9px;
-    -fx-padding: 0 2 0 2;
+    -fx-background-radius: 4;
+    -fx-border-color: #3A4058;
+    -fx-border-radius: 4;
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 10px;
+    -fx-padding: 4 6 4 6;
     -fx-cursor: hand;
 }
-.terminal-tab-dropdown:hover { -fx-text-fill: #C9CDDC; }
+.terminal-tab-dropdown:hover {
+    -fx-background-color: #232636;
+    -fx-border-color: -lumen;
+    -fx-text-fill: #EDEFF6;
+}
 .new-tab-sentinel .tab-label { -fx-padding: 0; }
 
 /* ANSI SGR foreground colors (standard 30-37, bright 90-97) */
