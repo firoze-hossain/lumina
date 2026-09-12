@@ -3645,6 +3645,7 @@ public class LuminaApp extends Application {
 
     private void addTab(EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
+        tab.setContextMenu(buildEditorTabContextMenu(tab));
         wireAddStarters(tab);
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
@@ -3712,6 +3713,195 @@ public class LuminaApp extends Application {
         editorTabs.getTabs().add(tab);
         editorTabs.getSelectionModel().select(tab);
         tab.focusEditor();
+    }
+
+    // ------------------------------------------------- editor tab right-click
+
+    /**
+     * Right-click menu for an editor tab header, laid out to match
+     * IntelliJ's own item-for-item. Close/Pin/Copy Path/Rename/Annotate/
+     * Open In are real; Split (no split-editor support exists),
+     * multi-window, Kotlin conversion, Gist creation, and Copilot are
+     * shown \u2014 matching the layout \u2014 but honestly disabled rather than
+     * faked, since none of those subsystems exist in Lumina.
+     */
+    private ContextMenu buildEditorTabContextMenu(EditorTab tab) {
+        ContextMenu menu = new ContextMenu();
+
+        MenuItem close = new MenuItem("Close");
+        close.setOnAction(e -> editorTabs.getTabs().remove(tab));
+
+        MenuItem closeOthers = new MenuItem("Close Other Tabs");
+        closeOthers.setOnAction(e -> closeEditorTabsWhere(t -> t != tab && !isPinned(t)));
+
+        MenuItem closeAll = new MenuItem("Close All Tabs");
+        closeAll.setOnAction(e -> closeEditorTabsWhere(t -> !isPinned(t)));
+
+        MenuItem closeUnmodified = new MenuItem("Close Unmodified Tabs");
+        closeUnmodified.setOnAction(e -> closeEditorTabsWhere(
+                t -> !isPinned(t) && t instanceof EditorTab et && !et.isDirty()));
+
+        MenuItem closeLeft = new MenuItem("Close Tabs to the Left");
+        closeLeft.setOnAction(e -> closeEditorTabsRelativeTo(tab, true));
+
+        MenuItem closeRight = new MenuItem("Close Tabs to the Right");
+        closeRight.setOnAction(e -> closeEditorTabsRelativeTo(tab, false));
+
+        MenuItem copyPath = new MenuItem("Copy Path/Reference\u2026");
+        copyPath.setOnAction(e -> copyPathToClipboard(tab.getPath()));
+
+        MenuItem splitRight = disabled("Split Right");
+        MenuItem splitMoveRight = disabled("Split and Move Right");
+        MenuItem splitDown = disabled("Split Down");
+        MenuItem splitMoveDown = disabled("Split and Move Down");
+
+        MenuItem pin = new MenuItem(tab.isPinned() ? "Unpin Tab" : "Pin Tab");
+        pin.setOnAction(e -> tab.setPinned(!tab.isPinned()));
+
+        MenuItem newWindow = disabled("Open Tab in New Window");
+        MenuItem configureTabs = item("Configure Editor Tabs\u2026", null,
+                e -> showComingSoon("Configure Editor Tabs"));
+
+        Menu bookmarks = new Menu("Bookmarks");
+        bookmarks.getItems().add(disabled("Toggle Bookmark"));
+
+        MenuItem overrideFileType = disabled("Override File Type");
+
+        Menu openIn = new Menu("Open In");
+        MenuItem openInTerminal = new MenuItem("Terminal");
+        openInTerminal.setDisable(tab.getPath() == null);
+        openInTerminal.setOnAction(e -> openTabLocationInTerminal(tab));
+        MenuItem openInFileManager = new MenuItem(systemFileManagerLabel());
+        openInFileManager.setDisable(tab.getPath() == null);
+        openInFileManager.setOnAction(e -> revealInFileManager(tab));
+        openIn.getItems().addAll(openInTerminal, openInFileManager);
+
+        Menu localHistory = new Menu("Local History");
+        localHistory.getItems().add(disabled("Show History"));
+
+        Menu git = new Menu("Git");
+        MenuItem annotate = new MenuItem("Annotate with Git Blame");
+        annotate.setDisable(tab.getPath() == null);
+        annotate.setOnAction(e -> {
+            editorTabs.getSelectionModel().select(tab);
+            toggleBlame();
+        });
+        git.getItems().add(annotate);
+
+        MenuItem rename = new MenuItem("Rename File\u2026");
+        rename.setDisable(tab.getPath() == null);
+        rename.setOnAction(e -> renameTabFile(tab));
+
+        MenuItem convertKotlin = disabled("Convert Java File to Kotlin File");
+        MenuItem createGist = disabled("Create Gist\u2026");
+
+        MenuItem addToChat = disabled("Add file to Chat");
+        Menu copilot = new Menu("GitHub Copilot");
+        copilot.getItems().add(disabled("Open Chat"));
+        MenuItem upgrade = disabled("Upgrade Java Runtime and Frameworks");
+
+        menu.getItems().addAll(
+                close, closeOthers, closeAll, closeUnmodified, closeLeft, closeRight,
+                new SeparatorMenuItem(),
+                copyPath,
+                new SeparatorMenuItem(),
+                splitRight, splitMoveRight, splitDown, splitMoveDown,
+                new SeparatorMenuItem(),
+                pin, newWindow, configureTabs,
+                new SeparatorMenuItem(),
+                bookmarks,
+                new SeparatorMenuItem(),
+                overrideFileType,
+                new SeparatorMenuItem(),
+                openIn,
+                new SeparatorMenuItem(),
+                localHistory, git,
+                new SeparatorMenuItem(),
+                rename,
+                new SeparatorMenuItem(),
+                convertKotlin, createGist,
+                new SeparatorMenuItem(),
+                addToChat, copilot, upgrade);
+        menu.setOnShowing(e -> pin.setText(tab.isPinned() ? "Unpin Tab" : "Pin Tab"));
+        return menu;
+    }
+
+    private static boolean isPinned(Tab t) {
+        return t instanceof EditorTab et && et.isPinned();
+    }
+
+    private void closeEditorTabsWhere(java.util.function.Predicate<Tab> predicate) {
+        List<Tab> toClose = new java.util.ArrayList<>();
+        for (Tab t : editorTabs.getTabs()) {
+            if (predicate.test(t)) toClose.add(t);
+        }
+        editorTabs.getTabs().removeAll(toClose);
+    }
+
+    private void closeEditorTabsRelativeTo(Tab reference, boolean toTheLeft) {
+        int idx = editorTabs.getTabs().indexOf(reference);
+        if (idx < 0) return;
+        List<Tab> toClose = new java.util.ArrayList<>();
+        List<Tab> tabs = editorTabs.getTabs();
+        for (int i = 0; i < tabs.size(); i++) {
+            boolean onTargetSide = toTheLeft ? i < idx : i > idx;
+            if (onTargetSide && !isPinned(tabs.get(i))) toClose.add(tabs.get(i));
+        }
+        tabs.removeAll(toClose);
+    }
+
+    private void openTabLocationInTerminal(EditorTab tab) {
+        if (tab.getPath() == null) return;
+        Path dir = tab.getPath().getParent();
+        toggleBottomPanel(true);
+        bottomTabs.getSelectionModel().select(3);
+        iconRail.selectBottom(0);
+        terminal.openNewSessionIn(dir);
+    }
+
+    private void revealInFileManager(EditorTab tab) {
+        if (tab.getPath() == null) return;
+        if (!java.awt.Desktop.isDesktopSupported()) {
+            showComingSoon(systemFileManagerLabel());
+            return;
+        }
+        try {
+            java.awt.Desktop.getDesktop().open(tab.getPath().getParent().toFile());
+        } catch (IOException ex) {
+            error("Could not open " + systemFileManagerLabel(), ex.getMessage());
+        }
+    }
+
+    private static String systemFileManagerLabel() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("mac")) return "Finder";
+        if (os.contains("win")) return "Explorer";
+        return "Files";
+    }
+
+    private void renameTabFile(EditorTab tab) {
+        Path path = tab.getPath();
+        if (path == null) return;
+        String currentName = path.getFileName().toString();
+        Optional<String> input = prompt("Rename File", "New name:", currentName);
+        if (input.isEmpty() || input.get().isBlank()
+                || input.get().equals(currentName)) {
+            return;
+        }
+        Path target = path.resolveSibling(input.get().trim());
+        if (Files.exists(target)) {
+            error("Rename", target.getFileName() + " already exists here.");
+            return;
+        }
+        try {
+            Files.writeString(path, tab.getEditorText());
+            Files.move(path, target);
+            tab.markSaved(target);
+            fileExplorer.refresh(target);
+            console.println("\u2713 Renamed to " + target.getFileName());
+        } catch (IOException ex) {
+            error("Could not rename file", ex.getMessage());
+        }
     }
 
     private void saveCurrent(boolean saveAs) {
