@@ -682,7 +682,11 @@
 }
 .terminal-output { -fx-background-insets: 0; -fx-padding: 4 8 4 8; }
 .terminal-output .text { -fx-fill: #C9CDDC; }
-.terminal-output .caret { -fx-stroke: #E4E7F1; -fx-stroke-width: 1.6; }
+/* RichTextFX's own caret is switched off (0-width) since it's a plain-line
+   caret that also doesn't reliably show on a non-editable area; the block/
+   underline/vertical-line cursor is drawn ourselves as an overlay instead,
+   see TerminalPane's `cursor` field. */
+.terminal-output .caret { -fx-stroke-width: 0; }
 
 /* Slim always-visible left icon strip \u2014 IntelliJ puts Restart/Clear here
    instead of a header row, so the terminal content keeps the full height. */
@@ -697,6 +701,20 @@
     -fx-font-size: 12px;
     -fx-padding: 0;
 }
+.terminal-cursor { -fx-fill: #E4E7F1; -fx-opacity: 0.75; }
+
+/* Terminal session tab strip ("+" / dropdown), inside the Terminal tool
+   window at the bottom dock. */
+.terminal-tabs .tab-header-area { -fx-padding: 0 4 0 4; }
+.terminal-tab-dropdown {
+    -fx-background-color: transparent;
+    -fx-text-fill: #848BA3;
+    -fx-font-size: 9px;
+    -fx-padding: 0 2 0 2;
+    -fx-cursor: hand;
+}
+.terminal-tab-dropdown:hover { -fx-text-fill: #C9CDDC; }
+.new-tab-sentinel .tab-label { -fx-padding: 0; }
 
 /* ANSI SGR foreground colors (standard 30-37, bright 90-97) */
 .terminal-output .ansi-fg-30 { -fx-fill: #5B6272; }

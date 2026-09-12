@@ -43,7 +43,7 @@ public class LuminaApp extends Application {
     private WelcomeView welcomeView;
     private FileExplorer fileExplorer;
     private ConsolePane console;
-    private TerminalPane terminal;
+    private TerminalToolWindow terminal;
     private TabPane bottomTabs;
     private TabPane rightTabs;
     private BorderPane rightDock;
@@ -126,7 +126,7 @@ public class LuminaApp extends Application {
 
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
-        terminal = new TerminalPane();
+        terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings);
         testsPanel = new TestResultsPanel();
         testsPanel.setNavigator(this::openTestSource);
         testsPanel.setHandlers(
@@ -3311,6 +3311,12 @@ public class LuminaApp extends Application {
         content.putString(p.toAbsolutePath().toString());
         javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
         console.println("\u2713 Copied path: " + p.toAbsolutePath());
+    }
+
+    /** Opens Settings straight to Tools \u2192 Terminal, from the terminal
+     *  tab strip's "+" dropdown. */
+    private void openTerminalSettings() {
+        new SettingsDialog(stage, "Terminal").show();
     }
 
     /** Scaffolded menu items land here until they get real behavior. */

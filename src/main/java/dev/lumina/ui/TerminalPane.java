@@ -1,6 +1,9 @@
 package dev.lumina.ui;
 
 import com.pty4j.PtyProcess;
+import dev.lumina.util.Settings;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,6 +15,8 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.StyleClassedTextArea;
 
@@ -54,6 +59,9 @@ public class TerminalPane extends BorderPane {
 
     private final StyleClassedTextArea output = new StyleClassedTextArea();
     private final Label ghost = new Label();
+    private final Rectangle cursor = new Rectangle();
+    private final Timeline cursorBlink = new Timeline(
+            new KeyFrame(Duration.millis(600), e -> cursor.setVisible(!cursor.isVisible())));
     private final List<String> history = new ArrayList<>();
     private final StringBuilder typedThisLine = new StringBuilder();
     // Mirrors the shell's own cursor position within typedThisLine, best
@@ -63,7 +71,8 @@ public class TerminalPane extends BorderPane {
     private int typedCursorPos = 0;
     private String acceptedSuggestion = null;
 
-    private Process shell;
+    private volatile Process shell;
+    private String sessionShellOverride;   // set via startWithShell(); wins over Settings
     private boolean usingPty;
     private OutputStream stdin;
     private Path workingDir = Path.of(System.getProperty("user.home"));
@@ -111,18 +120,33 @@ public class TerminalPane extends BorderPane {
                                       // typing behavior stays switched off
         output.setWrapText(true);
         output.getStyleClass().add("terminal-output");
+        output.setStyle(fontSizeStyle());
         output.setOnKeyTyped(this::onKeyTyped);
         output.addEventFilter(KeyEvent.KEY_PRESSED, this::onKeyPressed);
 
         ghost.getStyleClass().add("terminal-ghost-suggestion");
         ghost.setMouseTransparent(true);
         ghost.setVisible(false);
-        StackPane overlay = new StackPane(new VirtualizedScrollPane<>(output), ghost);
+
+        cursor.getStyleClass().add("terminal-cursor");
+        cursor.setMouseTransparent(true);
+        applyCursorShape();
+        cursorBlink.setCycleCount(Timeline.INDEFINITE);
+        cursorBlink.play();
+
+        StackPane overlay = new StackPane(new VirtualizedScrollPane<>(output), ghost, cursor);
         StackPane.setAlignment(ghost, Pos.TOP_LEFT);
+        StackPane.setAlignment(cursor, Pos.TOP_LEFT);
         output.caretBoundsProperty().addListener((obs, old, bounds) ->
                 bounds.ifPresent(b -> {
                     ghost.setLayoutX(b.getMaxX() + 1);
                     ghost.setLayoutY(b.getMinY());
+                    positionCursor(b);
+                    // Any caret movement (typing, a fresh prompt) resets the
+                    // blink to visible, matching a real terminal instead of
+                    // possibly landing mid-blink right when you start typing.
+                    cursor.setVisible(true);
+                    cursorBlink.playFromStart();
                 }));
 
         setLeft(rail);
@@ -130,10 +154,59 @@ public class TerminalPane extends BorderPane {
         setMinHeight(120);
     }
 
-    /** (Re)start the shell in the given directory. */
+    private void positionCursor(javafx.geometry.Bounds b) {
+        double charWidth = b.getWidth() > 0 ? b.getWidth() : 8;
+        cursor.setLayoutX(b.getMinX());
+        switch (Settings.get(Settings.TERMINAL_CURSOR_SHAPE) == null
+                ? "Block" : Settings.get(Settings.TERMINAL_CURSOR_SHAPE)) {
+            case "Underline" -> {
+                cursor.setLayoutY(b.getMaxY() - 2);
+                cursor.setWidth(charWidth);
+                cursor.setHeight(2);
+            }
+            case "Vertical Line" -> {
+                cursor.setLayoutY(b.getMinY());
+                cursor.setWidth(2);
+                cursor.setHeight(b.getHeight());
+            }
+            default -> {   // Block
+                cursor.setLayoutY(b.getMinY());
+                cursor.setWidth(charWidth);
+                cursor.setHeight(b.getHeight());
+            }
+        }
+    }
+
+    private void applyCursorShape() {
+        // Bounds aren't known yet on construction; the real sizing happens
+        // in positionCursor() once the caret first reports its bounds. This
+        // just gives the cursor a sane default so it isn't a zero-size rect
+        // before that first callback fires.
+        cursor.setWidth(8);
+        cursor.setHeight(15);
+    }
+
+    private static String fontSizeStyle() {
+        String size = Settings.get(Settings.TERMINAL_FONT_SIZE);
+        double px = 12;
+        if (size != null) {
+            try {
+                px = Double.parseDouble(size);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return "-fx-font-size: " + px + "px;";
+    }
+
+    /** (Re)start the shell in the given directory (overridden by the
+     *  Settings &gt; Tools &gt; Terminal "Start directory" field, if set). */
     public void start(Path dir) {
         stop();
-        this.workingDir = dir != null ? dir : Path.of(System.getProperty("user.home"));
+        String startDirOverride = Settings.get(Settings.TERMINAL_START_DIR);
+        Path effectiveDir = startDirOverride != null && !startDirOverride.isBlank()
+                ? Path.of(startDirOverride) : dir;
+        this.workingDir = effectiveDir != null
+                ? effectiveDir : Path.of(System.getProperty("user.home"));
         output.clear();
         writePos = 0;
         lineStart = 0;
@@ -142,6 +215,7 @@ public class TerminalPane extends BorderPane {
         typedThisLine.setLength(0);
         typedCursorPos = 0;
         hideGhost();
+        output.setStyle(fontSizeStyle());
 
         String[] cmd = shellCommand();
         Map<String, String> env = new java.util.HashMap<>(System.getenv());
@@ -178,11 +252,17 @@ public class TerminalPane extends BorderPane {
                     p.getInputStream(), StandardCharsets.UTF_8)) {
                 int n;
                 while ((n = in.read(buf)) != -1) {
-                    append(new String(buf, 0, n));
+                    // A newer start() may have replaced `shell` while this
+                    // old session's stream was still delivering its last
+                    // buffered output; once that happens, this reader's
+                    // data belongs to a dead session and must not leak
+                    // into the new one's (freshly cleared) document.
+                    if (p != shell) break;
+                    append(p, new String(buf, 0, n));
                 }
             } catch (IOException ignored) {
             }
-            if (p == shell) Platform.runLater(() -> append("\n[shell exited]\n"));
+            append(p, "\n[shell exited]\n");
         }, "lumina-terminal-reader");
         reader.setDaemon(true);
         reader.start();
@@ -384,7 +464,20 @@ public class TerminalPane extends BorderPane {
 
     // -------------------------------------------------------------- helpers
 
-    private static String[] shellCommand() {
+    /** Start with a specific shell for this one session (from the "+"
+     *  dropdown's shell picker), overriding the Settings default. */
+    public void startWithShell(Path dir, String shellPath) {
+        this.sessionShellOverride = shellPath;
+        start(dir);
+    }
+
+    private String[] shellCommand() {
+        String override = sessionShellOverride != null && !sessionShellOverride.isBlank()
+                ? sessionShellOverride : Settings.get(Settings.TERMINAL_SHELL_PATH);
+        if (override != null && !override.isBlank()) {
+            return override.toLowerCase().contains("cmd.exe")
+                    ? new String[]{override} : new String[]{override, "-i"};
+        }
         String os = System.getProperty("os.name", "").toLowerCase();
         if (os.contains("win")) return new String[]{"cmd.exe"};
         String sh = System.getenv("SHELL");
@@ -402,7 +495,12 @@ public class TerminalPane extends BorderPane {
      * rather than printing a second copy of the line.
      */
     private void append(String text) {
+        append(shell, text);
+    }
+
+    private void append(Process owner, String text) {
         Platform.runLater(() -> {
+            if (owner != shell) return;   // stale session, see start()'s reader thread
             String combined = pendingAnsi + text;
             pendingAnsi = "";
             StringBuilder plain = new StringBuilder();

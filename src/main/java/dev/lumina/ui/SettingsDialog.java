@@ -31,8 +31,13 @@ public class SettingsDialog {
 
     private final Stage stage;
     private final SettingsPage currentPage = new SettingsPage();
+    private final TreeView<String> tree;
 
     public SettingsDialog(Stage owner) {
+        this(owner, "Appearance");
+    }
+
+    public SettingsDialog(Stage owner, String initialCategory) {
         stage = new Stage();
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
@@ -43,7 +48,7 @@ public class SettingsDialog {
         root.getStyleClass().addAll("app-root", "settings-dialog");
 
         // ---- Left: category tree ----
-        TreeView<String> tree = buildCategoryTree();
+        tree = buildCategoryTree();
         tree.setPrefWidth(260);
         tree.setMinWidth(240);
         tree.getStyleClass().add("settings-tree");
@@ -58,10 +63,12 @@ public class SettingsDialog {
         root.setCenter(currentPage);
         root.setBottom(buttons);
 
-        // Initial selection: Appearance & Behavior → Appearance
-        TreeItem<String> appearanceItem = findItem(tree.getRoot(), "Appearance");
-        if (appearanceItem != null) {
-            tree.getSelectionModel().select(appearanceItem);
+        // Initial selection
+        TreeItem<String> initialItem = findItem(tree.getRoot(), initialCategory);
+        if (initialItem == null) initialItem = findItem(tree.getRoot(), "Appearance");
+        if (initialItem != null) {
+            expandAncestors(initialItem);
+            tree.getSelectionModel().select(initialItem);
         }
 
         // When tree selection changes, update the page
@@ -300,6 +307,37 @@ public class SettingsDialog {
 
         // Tools
         TreeItem<String> tools = new TreeItem<>("Tools");
+        tools.getChildren().addAll(
+                new TreeItem<>("Actions on Save"),
+                new TreeItem<>("AI Assistant"),
+                new TreeItem<>("Code Provenance"),
+                new TreeItem<>("Code With Me"),
+                new TreeItem<>("CSV Formats"),
+                new TreeItem<>("Database"),
+                new TreeItem<>("Database Versioning"),
+                new TreeItem<>("Diagrams"),
+                new TreeItem<>("Diff & Merge"),
+                new TreeItem<>("External Tools"),
+                new TreeItem<>("Features Suggester"),
+                new TreeItem<>("Features Trainer"),
+                new TreeItem<>("HTTP Client"),
+                new TreeItem<>("JPA Entity Declaration"),
+                new TreeItem<>("JPA Reverse Engineering"),
+                new TreeItem<>("Junie"),
+                new TreeItem<>("Jupyter"),
+                new TreeItem<>("Kotlin Notebook"),
+                new TreeItem<>("MCP Server"),
+                new TreeItem<>("Qodana"),
+                new TreeItem<>("Remote SSH External Tools"),
+                new TreeItem<>("Rsync"),
+                new TreeItem<>("Shared Indexes"),
+                new TreeItem<>("SSH Configurations"),
+                new TreeItem<>("SSH Terminal"),
+                new TreeItem<>("Startup Tasks"),
+                new TreeItem<>("Tasks"),
+                new TreeItem<>("Terminal"),
+                new TreeItem<>("Web Browsers and Preview"),
+                new TreeItem<>("XPath Viewer"));
 
         // Backup and Sync
         TreeItem<String> backup = new TreeItem<>("Backup and Sync");
@@ -326,6 +364,14 @@ public class SettingsDialog {
             if (found != null) return found;
         }
         return null;
+    }
+
+    private void expandAncestors(TreeItem<String> item) {
+        TreeItem<String> p = item.getParent();
+        while (p != null) {
+            p.setExpanded(true);
+            p = p.getParent();
+        }
     }
 
     // --------------------------------------------------- button bar
@@ -962,6 +1008,8 @@ public class SettingsDialog {
                     pageName.equals("Plugins") ||
                     pageName.equals("Other")) {
                 buildKeymapPage();
+            } else if ("Terminal".equals(pageName)) {
+                buildTerminalSettingsPage();
             } else {
                 // Placeholder for other pages
                 Label title = new Label(pageName);
@@ -1014,6 +1062,11 @@ public class SettingsDialog {
         }
         private void buildFileColorsPage() {
             SettingsFileColorsPage page = new SettingsFileColorsPage();
+            wrapInScroll(page);
+        }
+
+        private void buildTerminalSettingsPage() {
+            SettingsTerminalPage page = new SettingsTerminalPage();
             wrapInScroll(page);
         }
 
