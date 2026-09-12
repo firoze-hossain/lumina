@@ -19,6 +19,7 @@ public class EditorTab extends Tab {
     private Path path;
     private String baseName;
     private boolean dirty;
+    private boolean pinned;
 
     @FunctionalInterface
     public interface CaretListener {
@@ -539,6 +540,33 @@ public class EditorTab extends Tab {
 
     public String getDisplayPath() {
         return path != null ? path.toAbsolutePath().toString() : baseName;
+    }
+
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    /** Pinned tabs lose their close "x" (matching IntelliJ) and get a
+     *  small pin graphic instead \u2014 toggled from the tab's right-click menu. */
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+        setClosable(!pinned);
+        setGraphic(pinned ? pinIcon() : null);
+    }
+
+    private static javafx.scene.Node pinIcon() {
+        javafx.scene.shape.Circle head = new javafx.scene.shape.Circle(2.4);
+        head.setFill(javafx.scene.paint.Color.web("#D8A657"));
+        javafx.scene.shape.Line pin = new javafx.scene.shape.Line(0, 1.5, 0, 7);
+        pin.setStroke(javafx.scene.paint.Color.web("#D8A657"));
+        pin.setStrokeWidth(1.3);
+        javafx.scene.layout.StackPane pane = new javafx.scene.layout.StackPane(pin, head);
+        pane.setPrefSize(11, 11);
+        return pane;
     }
 
     private void markDirty() {

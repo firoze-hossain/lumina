@@ -107,6 +107,13 @@ public final class TerminalToolWindow extends BorderPane {
         return activePane() != null;
     }
 
+    /** Always opens a brand-new session in the given directory (used by
+     *  "Open In &gt; Terminal" from a file/tab's right-click menu), rather
+     *  than restarting whatever's already active. */
+    public void openNewSessionIn(Path dir) {
+        addSessionTabIn(dir, null);
+    }
+
     public void sendCommand(String command) {
         TerminalPane active = activePane();
         if (active != null) active.sendCommand(command);
