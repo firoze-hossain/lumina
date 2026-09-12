@@ -17,6 +17,11 @@ public final class Settings {
     public static final String GITHUB_USER = "github.user";
     /** Remembered choice from the "Open Project" prompt: NEW_WINDOW or THIS_WINDOW. */
     public static final String OPEN_PROJECT_MODE = "openProject.mode";
+    public static final String TERMINAL_SHELL_PATH = "terminal.shellPath";
+    public static final String TERMINAL_FONT_SIZE = "terminal.fontSize";
+    public static final String TERMINAL_CURSOR_SHAPE = "terminal.cursorShape";
+    public static final String TERMINAL_TAB_NAME = "terminal.tabName";
+    public static final String TERMINAL_START_DIR = "terminal.startDirectory";
 
     private static final Path FILE = Path.of(
             System.getProperty("user.home"), ".lumina", "lumina.properties");
