@@ -131,12 +131,8 @@ public class LuminaApp extends Application {
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
         terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings,
-                () -> {
-                    // Closing the last terminal session tab closes the
-                    // whole tool window, same as re-clicking its rail icon.
-                    toggleBottomPanel(false);
-                    iconRail.clearBottomSelection();
-                });
+                this::hideTerminalPanel, this::hideTerminalPanel,
+                this::moveTerminalTabToEditor);
         testsPanel = new TestResultsPanel();
         testsPanel.setNavigator(this::openTestSource);
         testsPanel.setHandlers(
@@ -3394,6 +3390,28 @@ public class LuminaApp extends Application {
      *  tab strip's "+" dropdown. */
     private void openTerminalSettings() {
         new SettingsDialog(stage, "Terminal").show();
+    }
+
+    /** Hides the whole bottom Terminal dock \u2014 shared by "closing the last
+     *  session tab" and the tab menu's own "Hide" item, which are two
+     *  different triggers for the exact same underlying action. */
+    private void hideTerminalPanel() {
+        toggleBottomPanel(false);
+        iconRail.clearBottomSelection();
+    }
+
+    /** "Move to Editor" from a terminal tab's right-click menu: the same
+     *  live {@code Tab} (and the {@link TerminalPane} session inside it,
+     *  process and all) is just reparented into the active editor group,
+     *  not recreated \u2014 closing it there stops the shell exactly like
+     *  closing it in the terminal tool window would have. */
+    private void moveTerminalTabToEditor(Tab tab) {
+        if (tab.getContent() instanceof TerminalPane tp) {
+            tab.setOnCloseRequest(e -> tp.stop());
+        }
+        tab.setClosable(true);
+        activeEditorGroup.getTabs().add(tab);
+        activeEditorGroup.getSelectionModel().select(tab);
     }
 
     /** Scaffolded menu items land here until they get real behavior. */

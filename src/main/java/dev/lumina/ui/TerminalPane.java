@@ -101,6 +101,8 @@ public class TerminalPane extends BorderPane {
             Path.of(System.getProperty("user.home"), ".lumina", "terminal_history");
     private static final int MAX_HISTORY = 500;
 
+    private final VBox rail;
+
     public TerminalPane() {
         getStyleClass().add("terminal-pane");
         loadHistory();
@@ -119,7 +121,7 @@ public class TerminalPane extends BorderPane {
             lineStart = 0;
         });
 
-        VBox rail = new VBox(6, restart, clear);
+        rail = new VBox(6, restart, clear);
         rail.getStyleClass().add("terminal-rail");
         rail.setAlignment(Pos.TOP_CENTER);
         rail.setPadding(new Insets(6, 4, 6, 4));
@@ -316,6 +318,13 @@ public class TerminalPane extends BorderPane {
 
     public void focusInput() {
         Platform.runLater(output::requestFocus);
+    }
+
+    /** Toggled from the session tab's right-click "Show Toolbar" \u2014 hides
+     *  the Restart/Clear icon strip without affecting the running shell. */
+    public void setToolbarVisible(boolean visible) {
+        rail.setVisible(visible);
+        rail.setManaged(visible);
     }
 
     /** Programmatically run a command in this terminal (e.g. jdb attach). */
