@@ -40,6 +40,10 @@ public class LuminaApp extends Application {
 
     private Stage stage;
     private TabPane editorTabs;
+    private StackPane editorArea;
+    private javafx.scene.Node editorRoot;
+    private final List<TabPane> editorGroups = new java.util.ArrayList<>();
+    private TabPane activeEditorGroup;
     private WelcomeView welcomeView;
     private FileExplorer fileExplorer;
     private ConsolePane console;
@@ -114,15 +118,15 @@ public class LuminaApp extends Application {
                 this::showComingSoon);
 
         editorTabs = new TabPane();
-        editorTabs.getStyleClass().add("editor-tabs");
-        editorTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
+        editorGroups.add(editorTabs);
+        activeEditorGroup = editorTabs;
+        editorRoot = editorTabs;
+        wireEditorGroupTracking(editorTabs);
 
         welcomeView = new WelcomeView(
                 this::showNewProjectDialog, this::newFile,
                 this::openFileDialog, this::openFolderDialog);
-        StackPane editorArea = new StackPane(welcomeView, editorTabs);
-        editorTabs.getTabs().addListener(
-                (javafx.collections.ListChangeListener<Tab>) c -> updateEditorVisibility());
+        editorArea = new StackPane(welcomeView, editorRoot);
 
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
@@ -315,25 +319,74 @@ public class LuminaApp extends Application {
             }
         }
 
-        editorTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
-            if (tab instanceof EditorTab et) {
-                updateBreadcrumbs(et.getPath(), et.getText());
-                et.setCaretListener((line, col) -> {
-                    updateCaretStatus(line, col);
-                    trackParamInfoCaret(et);
-                });
-                et.focusEditor();
-                problemsPanel.show(et.getDiagnostics());
-                updateProblemsStatus(et.getDiagnostics());
-                if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
-            } else {
-                updateBreadcrumbs(null, null);
-                statusCaret.setText("");
-                problemsPanel.show(List.of());
-                updateProblemsStatus(List.of());
-                if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
+        wireEditorGroupSelection(editorTabs);
+    }
+
+    /** Style, closing policy, and the two structural behaviors every editor
+     *  group needs: hide/show the welcome screen when the LAST group empties
+     *  out, and collapse a split away once its own tabs are all closed. */
+    private void wireEditorGroupTracking(TabPane group) {
+        group.getStyleClass().add("editor-tabs");
+        group.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
+        group.getTabs().addListener((javafx.collections.ListChangeListener<Tab>) c -> {
+            updateEditorVisibility();
+            // editorTabs is never auto-collapsed away, even if it empties
+            // out while a split exists \u2014 several other methods (groupOf's
+            // fallback, collapseAllSplits) assume it always exists in the
+            // tree; better to leave it sitting empty in that rare case than
+            // to break that assumption.
+            if (group.getTabs().isEmpty() && group != editorTabs && editorGroups.size() > 1) {
+                closeEditorGroup(group);
             }
         });
+    }
+
+    private List<Tab> allEditorTabs() {
+        List<Tab> all = new java.util.ArrayList<>();
+        for (TabPane group : editorGroups) all.addAll(group.getTabs());
+        return all;
+    }
+
+    /** Which group currently holds this tab \u2014 falls back to the main
+     *  group only if the tab isn't found anywhere (shouldn't normally
+     *  happen, but a hard NPE here would be worse than a wrong-but-safe
+     *  default). */
+    private TabPane groupOf(Tab tab) {
+        for (TabPane group : editorGroups) {
+            if (group.getTabs().contains(tab)) return group;
+        }
+        return editorTabs;
+    }
+
+    /** Attaches the "this group is now active, and here's what to do when
+     *  its selection changes" behavior to an editor group \u2014 called once
+     *  for the main {@link #editorTabs} here, and again for every new split
+     *  group created later (see {@link #splitEditorGroup}). */
+    private void wireEditorGroupSelection(TabPane group) {
+        group.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> {
+            activeEditorGroup = group;
+            onEditorSelectionChanged(tab);
+        });
+    }
+
+    private void onEditorSelectionChanged(Tab tab) {
+        if (tab instanceof EditorTab et) {
+            updateBreadcrumbs(et.getPath(), et.getText());
+            et.setCaretListener((line, col) -> {
+                updateCaretStatus(line, col);
+                trackParamInfoCaret(et);
+            });
+            et.focusEditor();
+            problemsPanel.show(et.getDiagnostics());
+            updateProblemsStatus(et.getDiagnostics());
+            if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
+        } else {
+            updateBreadcrumbs(null, null);
+            statusCaret.setText("");
+            problemsPanel.show(List.of());
+            updateProblemsStatus(List.of());
+            if (leftTabs.getSelectionModel().getSelectedIndex() == 3) refreshStructurePanel();
+        }
     }
 
     private Tab toolTab(String name, javafx.scene.Node content) {
@@ -912,8 +965,8 @@ public class LuminaApp extends Application {
                 legs.getChildren().add(leg);
             }
         }
-        javafx.scene.layout.StackPane pane =
-                new javafx.scene.layout.StackPane(legs, body, head);
+        StackPane pane =
+                new StackPane(legs, body, head);
         pane.setPrefSize(15, 15);
         pane.setMinSize(15, 15);
         pane.setMaxSize(15, 15);
@@ -1593,7 +1646,7 @@ public class LuminaApp extends Application {
 
     /** Every open, file-backed tab is written to disk (rename needs truth). */
     private void saveAllEditors() {
-        for (Tab t : editorTabs.getTabs()) {
+        for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && et.getPath() != null
                     && et.getText().startsWith("\u25CF")) {
                 try {
@@ -1606,7 +1659,7 @@ public class LuminaApp extends Application {
     }
 
     private EditorTab openTabFor(Path path) {
-        for (Tab t : editorTabs.getTabs()) {
+        for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && path.equals(et.getPath())) {
                 return et;
             }
@@ -1743,7 +1796,7 @@ public class LuminaApp extends Application {
                 EditorTab open = openTabFor(fileToRename);
                 if (open != null) {
                     Files.writeString(fileToRename, open.getEditorText());
-                    editorTabs.getTabs().remove(open);
+                    groupOf(open).getTabs().remove(open);
                 }
                 Files.move(fileToRename, target,
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING);
@@ -2591,7 +2644,7 @@ public class LuminaApp extends Application {
                     } else {
                         Files.deleteIfExists(path);
                     }
-                    editorTabs.getTabs().removeIf(t ->
+                    closeEditorTabsWhere(t ->
                             t instanceof EditorTab et && path.equals(et.getPath()));
                     fileExplorer.refresh();
                 } catch (IOException ex) {
@@ -2697,7 +2750,7 @@ public class LuminaApp extends Application {
     /** Red gutter dots across open editors as jdb "stop at" commands. */
     private List<String> breakpointStops() {
         List<String> stops = new java.util.ArrayList<>();
-        for (Tab t : editorTabs.getTabs()) {
+        for (Tab t : allEditorTabs()) {
             if (!(t instanceof EditorTab et) || et.getPath() == null) continue;
             String fqcn = fqcnOf(et.getPath());
             if (fqcn == null) fqcn = testFqcnOf(et.getPath());
@@ -3165,10 +3218,10 @@ public class LuminaApp extends Application {
             if (toFocus != null) {
                 Path focusTarget = toFocus;
                 Platform.runLater(() -> {
-                    for (Tab t : editorTabs.getTabs()) {
+                    for (Tab t : allEditorTabs()) {
                         if (t instanceof EditorTab et
                                 && focusTarget.equals(et.getPath())) {
-                            editorTabs.getSelectionModel().select(t);
+                            groupOf(t).getSelectionModel().select(t);
                             break;
                         }
                     }
@@ -3193,10 +3246,10 @@ public class LuminaApp extends Application {
     private void saveSession() {
         if (projectRoot == null) return;
         java.util.Set<Path> expanded = fileExplorer.getExpandedPaths();
-        java.util.List<Path> open = new java.util.ArrayList<>();
+        List<Path> open = new java.util.ArrayList<>();
         Path active = null;
-        Tab selectedTab = editorTabs.getSelectionModel().getSelectedItem();
-        for (Tab t : editorTabs.getTabs()) {
+        Tab selectedTab = activeEditorGroup.getSelectionModel().getSelectedItem();
+        for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && et.getPath() != null) {
                 open.add(et.getPath());
                 if (t == selectedTab) active = et.getPath();
@@ -3208,7 +3261,8 @@ public class LuminaApp extends Application {
     private void closeProject() {
         saveSession();
         projectRoot = null;
-        editorTabs.getTabs().clear();
+        closeEditorTabsWhere(t -> true);
+        collapseAllSplits();
         fileExplorer.setRoot(null);
         projectChip.setText("No project");
         stage.setTitle("Lumina");
@@ -3510,7 +3564,7 @@ public class LuminaApp extends Application {
             try {
                 Path target = selected.resolveSibling(name);
                 Files.move(selected, target);
-                editorTabs.getTabs().removeIf(t ->
+                closeEditorTabsWhere(t ->
                         t instanceof EditorTab et && selected.equals(et.getPath()));
                 fileExplorer.refresh();
                 openFile(target);
@@ -3578,8 +3632,8 @@ public class LuminaApp extends Application {
     // --------------------------------------------------------------- actions
 
     private void updateEditorVisibility() {
-        boolean hasTabs = !editorTabs.getTabs().isEmpty();
-        editorTabs.setVisible(hasTabs);
+        boolean hasTabs = editorGroups.stream().anyMatch(g -> !g.getTabs().isEmpty());
+        editorRoot.setVisible(hasTabs);
         welcomeView.setVisible(!hasTabs);
     }
 
@@ -3601,9 +3655,9 @@ public class LuminaApp extends Application {
     }
 
     private void openFile(Path path) {
-        for (Tab t : editorTabs.getTabs()) {
+        for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && path.equals(et.getPath())) {
-                editorTabs.getSelectionModel().select(t);
+                groupOf(t).getSelectionModel().select(t);
                 return;
             }
         }
@@ -3644,6 +3698,13 @@ public class LuminaApp extends Application {
     }
 
     private void addTab(EditorTab tab) {
+        addTabTo(activeEditorGroup, tab);
+    }
+
+    /** Same as {@link #addTab}, but targets a specific editor group instead
+     *  of whichever one is currently active \u2014 used when creating a new
+     *  split, where the destination group isn't "active" yet. */
+    private void addTabTo(TabPane group, EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
         tab.setContextMenu(buildEditorTabContextMenu(tab));
         wireAddStarters(tab);
@@ -3710,8 +3771,8 @@ public class LuminaApp extends Application {
                 goToDeclaration(word);
             }
         });
-        editorTabs.getTabs().add(tab);
-        editorTabs.getSelectionModel().select(tab);
+        group.getTabs().add(tab);
+        group.getSelectionModel().select(tab);
         tab.focusEditor();
     }
 
@@ -3729,7 +3790,7 @@ public class LuminaApp extends Application {
         ContextMenu menu = new ContextMenu();
 
         MenuItem close = new MenuItem("Close");
-        close.setOnAction(e -> editorTabs.getTabs().remove(tab));
+        close.setOnAction(e -> groupOf(tab).getTabs().remove(tab));
 
         MenuItem closeOthers = new MenuItem("Close Other Tabs");
         closeOthers.setOnAction(e -> closeEditorTabsWhere(t -> t != tab && !isPinned(t)));
@@ -3750,10 +3811,22 @@ public class LuminaApp extends Application {
         MenuItem copyPath = new MenuItem("Copy Path/Reference\u2026");
         copyPath.setOnAction(e -> copyPathToClipboard(tab.getPath()));
 
-        MenuItem splitRight = disabled("Split Right");
-        MenuItem splitMoveRight = disabled("Split and Move Right");
-        MenuItem splitDown = disabled("Split Down");
-        MenuItem splitMoveDown = disabled("Split and Move Down");
+        MenuItem splitRight = new MenuItem("Split Right");
+        splitRight.setDisable(tab.getPath() == null);
+        splitRight.setOnAction(e -> splitEditorGroup(groupOf(tab), tab,
+                Orientation.HORIZONTAL, false));
+        MenuItem splitMoveRight = new MenuItem("Split and Move Right");
+        splitMoveRight.setDisable(tab.getPath() == null);
+        splitMoveRight.setOnAction(e -> splitEditorGroup(groupOf(tab), tab,
+                Orientation.HORIZONTAL, true));
+        MenuItem splitDown = new MenuItem("Split Down");
+        splitDown.setDisable(tab.getPath() == null);
+        splitDown.setOnAction(e -> splitEditorGroup(groupOf(tab), tab,
+                Orientation.VERTICAL, false));
+        MenuItem splitMoveDown = new MenuItem("Split and Move Down");
+        splitMoveDown.setDisable(tab.getPath() == null);
+        splitMoveDown.setOnAction(e -> splitEditorGroup(groupOf(tab), tab,
+                Orientation.VERTICAL, true));
 
         MenuItem pin = new MenuItem(tab.isPinned() ? "Unpin Tab" : "Pin Tab");
         pin.setOnAction(e -> tab.setPinned(!tab.isPinned()));
@@ -3783,7 +3856,7 @@ public class LuminaApp extends Application {
         MenuItem annotate = new MenuItem("Annotate with Git Blame");
         annotate.setDisable(tab.getPath() == null);
         annotate.setOnAction(e -> {
-            editorTabs.getSelectionModel().select(tab);
+            groupOf(tab).getSelectionModel().select(tab);
             toggleBlame();
         });
         git.getItems().add(annotate);
@@ -3830,19 +3903,130 @@ public class LuminaApp extends Application {
         return t instanceof EditorTab et && et.isPinned();
     }
 
-    private void closeEditorTabsWhere(java.util.function.Predicate<Tab> predicate) {
-        List<Tab> toClose = new java.util.ArrayList<>();
-        for (Tab t : editorTabs.getTabs()) {
-            if (predicate.test(t)) toClose.add(t);
+    // -------------------------------------------------------- split editing
+
+    /**
+     * Splits {@code source} in the given direction, either duplicating the
+     * given tab into a fresh editor (re-read from disk \u2014 a genuinely
+     * separate buffer, not a live-synced view of the same one; saving one
+     * side doesn't update the other until it's reloaded) or, for "Split and
+     * Move", relocating the actual tab instance with nothing re-read.
+     *
+     * <p>Splits are always binary: each one wraps the source group in a new
+     * two-item {@link SplitPane}. Nesting further splits inside either side
+     * works the same way, so arbitrarily deep split layouts are possible \u2014
+     * same as IntelliJ \u2014 they just aren't persisted across restarts.
+     */
+    private void splitEditorGroup(TabPane source, Tab sourceTab,
+                                  Orientation orientation, boolean move) {
+        if (!(sourceTab instanceof EditorTab sourceEditor) || sourceEditor.getPath() == null) {
+            return;
         }
-        editorTabs.getTabs().removeAll(toClose);
+        TabPane newGroup = new TabPane();
+        wireEditorGroupTracking(newGroup);
+        wireEditorGroupSelection(newGroup);
+        editorGroups.add(newGroup);
+
+        SplitPane split = new SplitPane();
+        split.setOrientation(orientation);
+        replaceInEditorTree(source, split);
+        split.getItems().addAll(source, newGroup);
+        split.setDividerPositions(0.5);
+
+        if (move) {
+            source.getTabs().remove(sourceEditor);
+            newGroup.getTabs().add(sourceEditor);
+            newGroup.getSelectionModel().select(sourceEditor);
+            sourceEditor.focusEditor();
+        } else {
+            EditorTab duplicate = duplicateEditorTabFor(sourceEditor.getPath());
+            if (duplicate != null) addTabTo(newGroup, duplicate);
+        }
+        activeEditorGroup = newGroup;
+    }
+
+    /** A fresh {@link EditorTab} reading the same file from disk again \u2014
+     *  used for "Split Right"/"Split Down", which duplicate rather than
+     *  move. Doesn't go through {@link #openFile}'s already-open dedup
+     *  check, since duplicating is the entire point here. */
+    private EditorTab duplicateEditorTabFor(Path path) {
+        try {
+            String content = Files.readString(path);
+            EditorTab tab = new EditorTab(path.getFileName().toString(), path);
+            tab.setEditorText(content);
+            return tab;
+        } catch (IOException ex) {
+            error("Could not open file", ex.getMessage());
+            return null;
+        }
+    }
+
+    /** Swaps {@code oldNode} for {@code newNode} wherever it currently sits
+     *  in the editor area \u2014 either as the whole {@link #editorRoot}, or as
+     *  one item of whatever {@link SplitPane} contains it. */
+    private void replaceInEditorTree(javafx.scene.Node oldNode, javafx.scene.Node newNode) {
+        if (oldNode == editorRoot) {
+            editorArea.getChildren().set(editorArea.getChildren().indexOf(editorRoot), newNode);
+            editorRoot = newNode;
+            return;
+        }
+        javafx.scene.Parent parent = oldNode.getParent();
+        if (parent instanceof SplitPane sp) {
+            int idx = sp.getItems().indexOf(oldNode);
+            if (idx >= 0) sp.getItems().set(idx, newNode);
+        }
+    }
+
+    /** Called whenever a (non-main) editor group's last tab closes: removes
+     *  it from the split tree and, since splits are always binary, collapses
+     *  the now one-item SplitPane it was in back down to just its sibling. */
+    private void closeEditorGroup(TabPane group) {
+        editorGroups.remove(group);
+        javafx.scene.Parent parent = group.getParent();
+        if (parent instanceof SplitPane sp) {
+            sp.getItems().remove(group);
+            if (sp.getItems().size() == 1) {
+                replaceInEditorTree(sp, sp.getItems().get(0));
+            }
+        }
+        if (activeEditorGroup == group) {
+            activeEditorGroup = editorGroups.isEmpty() ? editorTabs : editorGroups.get(0);
+        }
+    }
+
+    /** Hard reset back to a single unsplit editor group \u2014 used when
+     *  closing a project, so the next one doesn't inherit stale splits.
+     *  Safe to call even if every split already collapsed away on its own
+     *  as its tabs closed (the usual path); this just makes sure. */
+    private void collapseAllSplits() {
+        for (TabPane group : new java.util.ArrayList<>(editorGroups)) {
+            if (group != editorTabs) group.getTabs().clear();
+        }
+        if (editorRoot != editorTabs) {
+            editorArea.getChildren().set(editorArea.getChildren().indexOf(editorRoot), editorTabs);
+            editorRoot = editorTabs;
+        }
+        editorGroups.clear();
+        editorGroups.add(editorTabs);
+        activeEditorGroup = editorTabs;
+    }
+
+    private void closeEditorTabsWhere(java.util.function.Predicate<Tab> predicate) {
+        for (TabPane group : new java.util.ArrayList<>(editorGroups)) {
+            List<Tab> toClose = new java.util.ArrayList<>();
+            for (Tab t : group.getTabs()) {
+                if (predicate.test(t)) toClose.add(t);
+            }
+            group.getTabs().removeAll(toClose);
+        }
     }
 
     private void closeEditorTabsRelativeTo(Tab reference, boolean toTheLeft) {
-        int idx = editorTabs.getTabs().indexOf(reference);
+        TabPane group = groupOf(reference);
+        int idx = group.getTabs().indexOf(reference);
         if (idx < 0) return;
         List<Tab> toClose = new java.util.ArrayList<>();
-        List<Tab> tabs = editorTabs.getTabs();
+        List<Tab> tabs = group.getTabs();
         for (int i = 0; i < tabs.size(); i++) {
             boolean onTargetSide = toTheLeft ? i < idx : i > idx;
             if (onTargetSide && !isPinned(tabs.get(i))) toClose.add(tabs.get(i));
@@ -3928,12 +4112,12 @@ public class LuminaApp extends Application {
     }
 
     private void closeCurrentTab() {
-        Tab t = editorTabs.getSelectionModel().getSelectedItem();
-        if (t != null) editorTabs.getTabs().remove(t);
+        Tab t = activeEditorGroup.getSelectionModel().getSelectedItem();
+        if (t != null) activeEditorGroup.getTabs().remove(t);
     }
 
     private EditorTab currentEditor() {
-        Tab t = editorTabs.getSelectionModel().getSelectedItem();
+        Tab t = activeEditorGroup.getSelectionModel().getSelectedItem();
         return (t instanceof EditorTab et) ? et : null;
     }
 
