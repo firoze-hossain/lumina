@@ -261,10 +261,13 @@ public class LuminaApp extends Application {
         // visible even while the docked tool window (rightDock) is closed,
         // matching IntelliJ instead of disappearing along with the panel.
         rightRail = new RightToolRail(this::onRightRailSelect);
-        rightRail.select(rightTabs.getSelectionModel().getSelectedIndex());
         root.setRight(rightRail);
 
-        outerSplit = new SplitPane(horizontalSplit, rightDock);
+        // Starts closed \u2014 a fresh IntelliJ session doesn't force a tool
+        // window open on launch, so rightDock only gets added to the split
+        // once the user actually opens it via the rail (see
+        // onRightRailSelect/showRightPanel).
+        outerSplit = new SplitPane(horizontalSplit);
         outerSplit.setDividerPositions(0.74);
 
         root.setCenter(outerSplit);
@@ -917,15 +920,12 @@ public class LuminaApp extends Application {
         githubButton.setOnAction(e -> onGitHubButton());
         refreshGitHubButton();
 
-        Button sideBtn = toolButton("\u25A5", "Maven / Database panel");
-        sideBtn.setOnAction(e -> {
-            if (outerSplit.getItems().contains(rightDock)) toggleRightPanel(false);
-            else showRightPanel(rightTabs.getSelectionModel().getSelectedIndex());
-        });
+        Button settingsBtn = toolButton("\u2699", "Settings and more");
+        settingsBtn.setOnAction(e -> showMainSettingsMenu(settingsBtn));
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
                 runConfigBox, runButton, debugBtn, stopButton,
-                searchBtn, githubButton, sideBtn);
+                searchBtn, githubButton, settingsBtn);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -3384,6 +3384,37 @@ public class LuminaApp extends Application {
         content.putString(p.toAbsolutePath().toString());
         javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
         console.println("\u2713 Copied path: " + p.toAbsolutePath());
+    }
+
+    /** The gear icon at the far right of the toolbar \u2014 replaces what used
+     *  to be a "Maven / Database panel" toggle that duplicated what the
+     *  right-hand rail's own icons already do. Matches IntelliJ's own
+     *  menu under its equivalent gear icon. */
+    private void showMainSettingsMenu(javafx.scene.Node anchor) {
+        Menu viewMode = new Menu("View Mode");
+        viewMode.getItems().addAll(
+                disabled("Distraction Free Mode"),
+                disabled("Zen Mode"),
+                disabled("Presentation Mode"));
+
+        ContextMenu menu = new ContextMenu(
+                item("Check for Updates\u2026", null,
+                        e -> showComingSoon("Check for Updates")),
+                new SeparatorMenuItem(),
+                item("Run Anything\u2026", null, e -> showComingSoon("Run Anything")),
+                new SeparatorMenuItem(),
+                item("Project Structure\u2026", "Shortcut+Alt+Shift+S",
+                        e -> showComingSoon("Project Structure")),
+                item("Settings\u2026", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
+                item("Plugins\u2026", null, e -> new PluginManagerDialog(stage).show()),
+                disabled("Backup and Sync\u2026 Off"),
+                new SeparatorMenuItem(),
+                item("Theme\u2026", null, e -> new SettingsDialog(stage, "Appearance").show()),
+                item("Keymap\u2026", null, e -> new SettingsDialog(stage, "Keymap").show()),
+                viewMode,
+                item("Customize Main Toolbar\u2026", null,
+                        e -> showComingSoon("Customize Main Toolbar")));
+        menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 4);
     }
 
     /** Opens Settings straight to Tools \u2192 Terminal, from the terminal
