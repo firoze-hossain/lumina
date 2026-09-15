@@ -2644,6 +2644,46 @@
 }
 
 /* ============================================================
+   "Load Maven Changes" hint + background-task progress row
+   ============================================================ */
+
+.maven-sync-banner {
+    -fx-background-color: #1A1D28;
+    -fx-background-radius: 6;
+    -fx-border-color: #2C3042;
+    -fx-border-radius: 6;
+}
+.maven-sync-reload {
+    -fx-text-fill: -lumen;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.maven-sync-reload:hover { -fx-text-fill: #82C4FF; }
+.maven-sync-dismiss {
+    -fx-text-fill: #7A8199;
+    -fx-font-size: 10.5px;
+}
+.maven-sync-dismiss:hover { -fx-text-fill: #E0637A; }
+
+.maven-progress-row {
+    -fx-background-color: #181B26;
+    -fx-border-color: #262A3A transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.maven-progress-row .label { -fx-text-fill: #B9BECF; -fx-font-size: 11px; }
+.maven-progress-bar .bar { -fx-background-color: -lumen; -fx-background-insets: 0; }
+.maven-progress-bar .track { -fx-background-color: #262A3A; }
+.maven-progress-cancel {
+    -fx-background-color: transparent;
+    -fx-text-fill: #7A8199;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 0 4 0 4;
+    -fx-font-size: 11px;
+}
+.maven-progress-cancel:hover { -fx-text-fill: #E0637A; }
+
+/* ============================================================
    New Java Class popup
    ============================================================ */
 

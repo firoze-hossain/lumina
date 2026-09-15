@@ -180,6 +180,11 @@ public class EditorTab extends Tab {
         hintOverlay.setPickOnBounds(false);   // only the hint labels catch clicks
         javafx.scene.layout.StackPane stack =
                 new javafx.scene.layout.StackPane(scroll, hintOverlay);
+        mavenSyncBanner = buildMavenSyncBanner();
+        stack.getChildren().add(mavenSyncBanner);
+        javafx.scene.layout.StackPane.setAlignment(mavenSyncBanner, javafx.geometry.Pos.TOP_RIGHT);
+        javafx.scene.layout.StackPane.setMargin(mavenSyncBanner,
+                new javafx.geometry.Insets(10, 18, 0, 0));
         // Recompute inline author positions on scroll / resize / edits.
         codeArea.estimatedScrollYProperty().addListener((o, a, b) -> refreshInlineHints());
         codeArea.estimatedScrollXProperty().addListener((o, a, b) -> refreshInlineHints());
@@ -187,7 +192,10 @@ public class EditorTab extends Tab {
         codeArea.heightProperty().addListener((o, a, b) -> refreshInlineHints());
         codeArea.multiPlainChanges()
                 .successionEnds(Duration.ofMillis(150))
-                .subscribe(ignore -> refreshInlineHints());
+                .subscribe(ignore -> {
+                    refreshInlineHints();
+                    if (onContentSettled != null) onContentSettled.run();
+                });
         setContent(stack);
     }
 
@@ -321,6 +329,89 @@ public class EditorTab extends Tab {
     public void setOnAddStartersClicked(Runnable handler) {
         this.onAddStartersClicked = handler;
     }
+
+    // ------------------------------------------------------- Maven sync hint
+
+    private javafx.scene.layout.HBox mavenSyncBanner;
+    private boolean mavenChangesPending;
+    private Runnable onMavenReloadClicked;
+    private Runnable onContentSettled;
+    /** Text at the moment the user dismissed the hint; re-shown once the
+     *  buffer changes again, so dismissing doesn't silence it forever. */
+    private String mavenDismissedSnapshot;
+
+    private javafx.scene.layout.HBox buildMavenSyncBanner() {
+        javafx.scene.control.Label reload = new javafx.scene.control.Label("\u21BB");
+        reload.getStyleClass().add("maven-sync-reload");
+        reload.setCursor(javafx.scene.Cursor.HAND);
+        javafx.scene.control.Tooltip.install(reload,
+                new javafx.scene.control.Tooltip("Load Maven Changes"));
+        reload.setOnMouseClicked(e -> {
+            if (onMavenReloadClicked != null) onMavenReloadClicked.run();
+        });
+
+        javafx.scene.control.Label dismiss = new javafx.scene.control.Label("\u2715");
+        dismiss.getStyleClass().add("maven-sync-dismiss");
+        dismiss.setCursor(javafx.scene.Cursor.HAND);
+        javafx.scene.control.Tooltip.install(dismiss, new javafx.scene.control.Tooltip("Dismiss"));
+        dismiss.setOnMouseClicked(e -> {
+            mavenDismissedSnapshot = getEditorText();
+            setMavenChangesPending(false);
+        });
+
+        javafx.scene.layout.HBox banner = new javafx.scene.layout.HBox(6, reload, dismiss);
+        banner.getStyleClass().add("maven-sync-banner");
+        banner.setPadding(new javafx.geometry.Insets(3, 8, 3, 8));
+        banner.setAlignment(javafx.geometry.Pos.CENTER);
+        // A StackPane stretches every resizable child to fill its content
+        // area by default — without this, the banner (a Region) grows to
+        // cover the whole editor instead of hugging its own small content,
+        // painting the pane solid with its background color.
+        banner.setMaxSize(javafx.scene.layout.Region.USE_PREF_SIZE,
+                javafx.scene.layout.Region.USE_PREF_SIZE);
+        banner.setPickOnBounds(false);
+        banner.setVisible(false);
+        banner.setManaged(false);
+        return banner;
+    }
+
+    /** Whether the "Load Maven Changes" hint is currently showing on this tab. */
+    public boolean isMavenChangesPending() {
+        return mavenChangesPending;
+    }
+
+    /** Show/hide the IntelliJ-style "Load Maven Changes" hint in the top-right
+     *  corner of the editor — shown when the build file (pom.xml /
+     *  build.gradle) has been edited since dependencies were last resolved. */
+    public void setMavenChangesPending(boolean pending) {
+        this.mavenChangesPending = pending;
+        if (mavenSyncBanner != null) {
+            mavenSyncBanner.setVisible(pending);
+            mavenSyncBanner.setManaged(pending);
+        }
+    }
+
+    public void setOnMavenReloadClicked(Runnable handler) {
+        this.onMavenReloadClicked = handler;
+    }
+
+    /** True once the hint has been dismissed for the buffer's CURRENT text;
+     *  any further edit makes this false again, letting the hint reappear. */
+    public boolean isMavenDismissed() {
+        return mavenDismissedSnapshot != null && mavenDismissedSnapshot.equals(getEditorText());
+    }
+
+    /** Clears the dismissal (called after a successful reload). */
+    public void clearMavenDismissed() {
+        mavenDismissedSnapshot = null;
+    }
+
+    /** Fired ~150ms after typing/pasting settles, so the caller can re-check
+     *  live state (e.g. the Maven sync hint) without doing it per keystroke. */
+    public void setOnContentSettled(Runnable handler) {
+        this.onContentSettled = handler;
+    }
+
 
     /**
      * Draw "author" hints pinned to the RIGHT edge of the editor, aligned with
