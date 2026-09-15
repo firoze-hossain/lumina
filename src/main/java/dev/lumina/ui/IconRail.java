@@ -8,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -25,9 +26,10 @@ import java.util.function.IntConsumer;
 /**
  * The far-left vertical tool-window bar, matching IntelliJ's own: a top
  * group (Project / Commit / Pull Requests / Structure / More) and a bottom
- * group (Terminal / Problems / Git), each a single-select toggle strip.
- * Which panel actually opens/closes/switches on a click is decided by the
- * caller (LuminaApp) \u2014 this class only reports the click and exposes
+ * group (Run / Build / GitHub Copilot MCP Log / Services / Terminal /
+ * Problems / Git), each a single-select toggle strip. Which panel actually
+ * opens/closes/switches on a click is decided by the caller (LuminaApp) \u2014
+ * this class only reports the click and exposes
  * {@link #selectTop}/{@link #selectBottom} so the caller can keep the
  * highlighted icon in sync with whatever panel is really showing.
  */
@@ -58,13 +60,19 @@ public final class IconRail extends VBox {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        addBottom(terminalIcon(), "Terminal", 0, onBottomSelect);
-        addBottom(problemsIcon(), "Problems", 1, onBottomSelect);
-        addBottom(gitIcon(), "Git", 2, onBottomSelect);
+        addBottom(runRailIcon(), "Run", 0, onBottomSelect);
+        addBottom(buildIcon(), "Build", 1, onBottomSelect);
+        addBottom(mcpIcon(), "GitHub Copilot MCP Log", 2, onBottomSelect);
+        addBottom(servicesRailIcon(), "Services", 3, onBottomSelect);
+        addBottom(terminalIcon(), "Terminal", 4, onBottomSelect);
+        addBottom(problemsIcon(), "Problems", 5, onBottomSelect);
+        addBottom(gitIcon(), "Git", 6, onBottomSelect);
 
         getChildren().addAll(topButtons.get(0), topButtons.get(1), topButtons.get(2),
                 topButtons.get(3), more, spacer,
-                bottomButtons.get(0), bottomButtons.get(1), bottomButtons.get(2));
+                bottomButtons.get(0), bottomButtons.get(1), bottomButtons.get(2),
+                bottomButtons.get(3), bottomButtons.get(4), bottomButtons.get(5),
+                bottomButtons.get(6));
     }
 
     private void addTop(Node icon, String tip, int index, IntConsumer onSelect) {
@@ -97,7 +105,8 @@ public final class IconRail extends VBox {
         topGroup.selectToggle(null);
     }
 
-    /** Highlights bottom icon {@code index} (0=Terminal,1=Problems,2=Git) without firing onBottomSelect. */
+    /** Highlights bottom icon {@code index} (0=Run,1=Build,2=MCP Log,
+     *  3=Services,4=Terminal,5=Problems,6=Git) without firing onBottomSelect. */
     public void selectBottom(int index) {
         if (index >= 0 && index < bottomButtons.size()) bottomButtons.get(index).setSelected(true);
     }
@@ -179,7 +188,7 @@ public final class IconRail extends VBox {
     }
 
     private static Node dotsIcon() {
-        javafx.scene.layout.HBox dots = new javafx.scene.layout.HBox(2.5);
+        HBox dots = new HBox(2.5);
         dots.setAlignment(Pos.CENTER);
         for (int i = 0; i < 3; i++) {
             Circle c = new Circle(1.4);
@@ -187,6 +196,54 @@ public final class IconRail extends VBox {
             dots.getChildren().add(c);
         }
         return sized(dots);
+    }
+
+    private static Node runRailIcon() {
+        Polygon triangle = new Polygon(-3.5, -6, -3.5, 6, 5.5, 0);
+        triangle.setFill(Color.web("#6FCF7A"));
+        return sized(triangle);
+    }
+
+    private static Node buildIcon() {
+        Rectangle handle = new Rectangle(2, 11);
+        handle.setFill(Color.web(INK));
+        handle.setArcWidth(1);
+        handle.setArcHeight(1);
+        handle.setRotate(45);
+        Rectangle head = new Rectangle(3, 6);
+        head.setFill(Color.web(INK));
+        head.setRotate(45);
+        head.setTranslateX(-4.2);
+        head.setTranslateY(-4.2);
+        return sized(new StackPane(handle, head));
+    }
+
+    private static Node mcpIcon() {
+        HBox sliders = new HBox(3.5);
+        sliders.setAlignment(Pos.CENTER);
+        double[] knobOffsets = {-2, 2, 0};
+        for (double offset : knobOffsets) {
+            Line line = new Line(0, -6, 0, 6);
+            line.setStroke(Color.web(INK));
+            line.setStrokeWidth(1.2);
+            Circle knob = new Circle(1.5);
+            knob.setFill(Color.web(INK));
+            knob.setTranslateY(offset);
+            StackPane column = new StackPane(line, knob);
+            column.setPrefWidth(3);
+            sliders.getChildren().add(column);
+        }
+        return sized(sliders);
+    }
+
+    private static Node servicesRailIcon() {
+        Circle outer = new Circle(6.5);
+        outer.setFill(Color.TRANSPARENT);
+        outer.setStroke(Color.web(INK));
+        outer.setStrokeWidth(1.3);
+        Polygon play = new Polygon(-2, -3, -2, 3, 3, 0);
+        play.setFill(Color.web(INK));
+        return sized(new StackPane(outer, play));
     }
 
     private static Node terminalIcon() {

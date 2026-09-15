@@ -378,6 +378,32 @@
     -fx-background-color: transparent;
     -fx-control-inner-background: #14161E;
 }
+
+/* ---------------------------------------------- bottom tool windows: Build/Services/MCP Log */
+
+.services-panel { -fx-background-color: #14161E; }
+.services-list-pane {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent #1E2230 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.services-list-toolbar { -fx-background-color: #14161E; }
+.services-list {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: #14161E;
+}
+.services-detail-pane { -fx-background-color: #14161E; }
+
+.mcp-log-panel { -fx-background-color: #14161E; }
+.mcp-log-toolbar {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent transparent #1E2230 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.mcp-log-list {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: #14161E;
+}
 .db-add-source {
     -fx-background-color: transparent;
     -fx-text-fill: #C9CDDC;

@@ -47,6 +47,9 @@ public class LuminaApp extends Application {
     private WelcomeView welcomeView;
     private FileExplorer fileExplorer;
     private ConsolePane console;
+    private ConsolePane buildConsole;
+    private ServicesPanel servicesPanel;
+    private McpLogPanel mcpLogPanel;
     private TerminalToolWindow terminal;
     private TabPane bottomTabs;
     private TabPane rightTabs;
@@ -130,6 +133,9 @@ public class LuminaApp extends Application {
 
         // bottom tool windows: Run + Terminal
         console = new ConsolePane();
+        buildConsole = new ConsolePane();
+        servicesPanel = new ServicesPanel();
+        mcpLogPanel = new McpLogPanel(() -> showComingSoon("Edit Config"));
         terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings,
                 this::hideTerminalPanel, this::hideTerminalPanel,
                 this::moveTerminalTabToEditor);
@@ -143,7 +149,10 @@ public class LuminaApp extends Application {
                 toolTab("Tests", testsPanel),
                 toolTab("Problems", problemsPanel),
                 toolTab("Terminal", terminal),
-                toolTab("Git", gitLogPanel = new GitLogPanel(() -> projectRoot)));
+                toolTab("Git", gitLogPanel = new GitLogPanel(() -> projectRoot)),
+                toolTab("Build", buildConsole),
+                toolTab("Services", servicesPanel),
+                toolTab("GitHub Copilot MCP Log", mcpLogPanel));
         problemsPanel.setOnJump(line -> {
             EditorTab editor = currentEditor();
             if (editor != null) editor.goToLine(line);
@@ -1154,8 +1163,8 @@ public class LuminaApp extends Application {
             error("Not a build project", "No pom.xml or build.gradle found.");
             return;
         }
-        showRunPanel();
-        console.runSequence("Build " + projectRoot.getFileName(), commands, projectRoot);
+        showBuildPanel();
+        buildConsole.runSequence("Build " + projectRoot.getFileName(), commands, projectRoot);
     }
 
     private void cleanProject() {
@@ -1165,8 +1174,18 @@ public class LuminaApp extends Application {
             error("Not a build project", "No pom.xml or build.gradle found.");
             return;
         }
-        showRunPanel();
-        console.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
+        showBuildPanel();
+        buildConsole.runSequence("Clean " + projectRoot.getFileName(), commands, projectRoot);
+    }
+
+    /** Build/Rebuild/Clean all land in their own dedicated Build panel \u2014
+     *  matching IntelliJ, where Build Output is separate from Run \u2014
+     *  instead of mixing compiler output into the same console as
+     *  whatever you last ran. */
+    private void showBuildPanel() {
+        toggleBottomPanel(true);
+        bottomTabs.getSelectionModel().select(5);
+        iconRail.selectBottom(1);
     }
 
     // ------------------------------------------------- blame, usages, tests
@@ -2835,18 +2854,20 @@ public class LuminaApp extends Application {
 
     // ---------------------------------------------------------- tool windows
 
-    /** Run/Tests open the bottom panel without a dedicated rail icon (same
-     *  as IntelliJ: those are triggered by running, not clicked open). */
+    /** Tests opens the bottom panel without a dedicated rail icon (same as
+     *  IntelliJ: it's triggered by running tests, not clicked open) \u2014 but
+     *  Run does have one now, so a run highlights it like any other rail
+     *  selection would. */
     private void showRunPanel() {
         toggleBottomPanel(true);
-        iconRail.clearBottomSelection();
         bottomTabs.getSelectionModel().select(0);
+        iconRail.selectBottom(0);
     }
 
     private void showTerminal() {
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(3);
-        iconRail.selectBottom(0);
+        iconRail.selectBottom(4);
         ensureTerminalSession();
         terminal.focusInput();
     }
@@ -2861,12 +2882,17 @@ public class LuminaApp extends Application {
         }
     }
 
-    /** Bottom rail: 0=Terminal, 1=Problems, 2=Git \u2014 mapped onto the bottom
-     *  dock's actual tab indices (2=Problems, 3=Terminal, 4=Git). */
+    /** Bottom rail: 0=Run, 1=Build, 2=GitHub Copilot MCP Log, 3=Services,
+     *  4=Terminal, 5=Problems, 6=Git \u2014 mapped onto the bottom dock's
+     *  actual tab indices. */
     private void onBottomRailSelect(int railIndex) {
         int tabIndex = switch (railIndex) {
-            case 0 -> 3;   // Terminal
-            case 1 -> 2;   // Problems
+            case 0 -> 0;   // Run
+            case 1 -> 5;   // Build
+            case 2 -> 7;   // GitHub Copilot MCP Log
+            case 3 -> 6;   // Services
+            case 4 -> 3;   // Terminal
+            case 5 -> 2;   // Problems
             default -> 4;  // Git
         };
         boolean alreadyShowingThis = verticalSplit.getItems().contains(bottomTabs)
@@ -2878,11 +2904,11 @@ public class LuminaApp extends Application {
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(tabIndex);
         iconRail.selectBottom(railIndex);
-        if (railIndex == 0) {
+        if (railIndex == 4) {
             ensureTerminalSession();
             terminal.focusInput();
         }
-        if (railIndex == 2) gitLogPanel.refresh();
+        if (railIndex == 6) gitLogPanel.refresh();
     }
 
     /** Reopening the Terminal tool window after every session tab was
@@ -4088,7 +4114,7 @@ public class LuminaApp extends Application {
         Path dir = tab.getPath().getParent();
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(3);
-        iconRail.selectBottom(0);
+        iconRail.selectBottom(4);
         terminal.openNewSessionIn(dir);
     }
 
