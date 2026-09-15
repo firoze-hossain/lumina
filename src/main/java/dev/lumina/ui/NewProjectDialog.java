@@ -425,7 +425,7 @@ public class NewProjectDialog {
     private final HBox languageRow = new HBox(8);
     private final HBox buildSystemRow = new HBox(8);
 
-    private final TextField dependenciesField = new TextField("web");
+    private final TextField dependenciesField = new TextField();
     private final Label errorLabel = new Label();
     private final VBox advancedBox = new VBox(10);
 
