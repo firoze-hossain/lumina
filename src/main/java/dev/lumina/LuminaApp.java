@@ -470,13 +470,13 @@ public class LuminaApp extends Application {
                             + "Window / This Window) will ask again next time.");
                 }),
                 new SeparatorMenuItem(),
-               // item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
+                // item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
                 // In buildMenuBar(), find the Remote Development item and change it:
                 item("Remote Development…", null, e -> new RemoteDevelopmentDialog(stage).show()),
                 new SeparatorMenuItem(),
 //                item("Settings…", "Shortcut+Alt+S", e -> showInfo("Settings", "IDE settings are not available yet.")),
                 item("Settings…", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
-           //     item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
+                //     item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
                 // In buildMenuBar(), find the Project Structure item:
                 item("Project Structure…", "Shortcut+Alt+Shift+S", e -> {
                     if (projectRoot == null) {
@@ -491,7 +491,7 @@ public class LuminaApp extends Application {
                 item("Save All", "Shortcut+S", e -> saveAllEditors()),
                 item("Reload All from Disk", "Shortcut+Alt+Y", e -> reloadAllFromDisk()),
                 item("Repair IDE", null, e -> showInfo("Repair IDE", "The project indexes and tool windows are healthy.")),
-              //  item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
+                //  item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
                 // In buildMenuBar(), find the Invalidate Caches item:
                 item("Invalidate Caches…", null, e -> {
                     new InvalidateCachesDialog(stage, () -> {
@@ -1683,8 +1683,8 @@ public class LuminaApp extends Application {
     }
 
     private Optional<String> promptIdentifier(String title,
-                                                        String header,
-                                                        String initial) {
+                                              String header,
+                                              String initial) {
         TextInputDialog dialog = new TextInputDialog(initial);
         dialog.setTitle(title);
         dialog.setHeaderText(header);
@@ -1749,7 +1749,7 @@ public class LuminaApp extends Application {
     }
 
     private void applyRename(String oldName, String newName,
-            List<dev.lumina.semantics.SemanticEngine.Usage> usages) {
+                             List<dev.lumina.semantics.SemanticEngine.Usage> usages) {
         Map<Path, List<
                 dev.lumina.semantics.SemanticEngine.Usage>> byFile =
                 new java.util.LinkedHashMap<>();
@@ -1976,10 +1976,10 @@ public class LuminaApp extends Application {
         java.util.regex.Matcher m = gradle
                 ? java.util.regex.Pattern.compile(
                         "org\\.springframework\\.boot['\"]\\s+version\\s+['\"]([\\d.]+)['\"]")
-                        .matcher(text)
+                .matcher(text)
                 : java.util.regex.Pattern.compile(
-                        "spring-boot-starter-parent</artifactId>\\s*<version>([\\d.]+)</version>",
-                        java.util.regex.Pattern.DOTALL).matcher(text);
+                "spring-boot-starter-parent</artifactId>\\s*<version>([\\d.]+)</version>",
+                java.util.regex.Pattern.DOTALL).matcher(text);
         return m.find() ? m.group(1) : "";
     }
 
@@ -3059,7 +3059,7 @@ public class LuminaApp extends Application {
             bottomTabs.getSelectionModel().select(2);   // Problems
         });
         statusCaret = new Label("");
-        Label brand = new Label("Lumina 1.21");
+        Label brand = new Label("Lumina 1.24");
         brand.getStyleClass().add("status-brand");
 
         Region spacer = new Region();
@@ -3798,9 +3798,9 @@ public class LuminaApp extends Application {
                 try {
                     items.addAll(ctx.member()
                             ? engine.memberCompletions(file, text, caretLine,
-                                    ctx.receiver(), ctx.prefix())
+                            ctx.receiver(), ctx.prefix())
                             : engine.scopeCompletions(file, text, caretLine,
-                                    ctx.prefix()));
+                            ctx.prefix()));
                 } catch (Throwable ignored) {
                 }
             }
@@ -4004,9 +4004,21 @@ public class LuminaApp extends Application {
 
         SplitPane split = new SplitPane();
         split.setOrientation(orientation);
-        replaceInEditorTree(source, split);
         split.getItems().addAll(source, newGroup);
         split.setDividerPositions(0.5);
+
+        // Rebuilds the tree from scratch with `source` replaced by `split`,
+        // rather than mutating whatever live SplitPane currently contains
+        // `source` in place \u2014 the same principle closeEditorGroup uses
+        // below, and for the same reason: this is what makes splitting an
+        // *already-split* pane (building a 2x2 grid, etc.) just as safe as
+        // the very first split, instead of accumulating fragile live-tree
+        // surgery the deeper the layout gets.
+        javafx.scene.Node rebuilt = cloneTreeReplacing(editorRoot, source, split);
+        if (rebuilt != editorRoot) {
+            editorArea.getChildren().set(editorArea.getChildren().indexOf(editorRoot), rebuilt);
+            editorRoot = rebuilt;
+        }
 
         if (move) {
             source.getTabs().remove(sourceEditor);
@@ -4036,37 +4048,95 @@ public class LuminaApp extends Application {
         }
     }
 
-    /** Swaps {@code oldNode} for {@code newNode} wherever it currently sits
-     *  in the editor area \u2014 either as the whole {@link #editorRoot}, or as
-     *  one item of whatever {@link SplitPane} contains it. */
-    private void replaceInEditorTree(javafx.scene.Node oldNode, javafx.scene.Node newNode) {
-        if (oldNode == editorRoot) {
-            editorArea.getChildren().set(editorArea.getChildren().indexOf(editorRoot), newNode);
-            editorRoot = newNode;
-            return;
+    /**
+     * Rebuilds a fresh copy of the editor tree rooted at {@code node},
+     * substituting {@code replacement} wherever {@code target} appears.
+     * Every {@link SplitPane} along the path down to {@code target} is
+     * reconstructed from scratch, exactly like {@link #cloneTreeExcluding}
+     * below \u2014 the pair together mean nothing in the editor area is ever
+     * mutated in place, whether a pane is being added or removed, at any
+     * nesting depth. {@code target} itself is not recursed into; it's
+     * simply swapped for {@code replacement} (which is expected to
+     * already contain {@code target} as one of its own children, as
+     * {@link #splitEditorGroup} sets up before calling this).
+     */
+    private javafx.scene.Node cloneTreeReplacing(javafx.scene.Node node,
+                                                 javafx.scene.Node target,
+                                                 javafx.scene.Node replacement) {
+        if (node == target) return replacement;
+        if (node instanceof SplitPane sp) {
+            List<javafx.scene.Node> children = new java.util.ArrayList<>();
+            for (javafx.scene.Node child : new java.util.ArrayList<>(sp.getItems())) {
+                children.add(cloneTreeReplacing(child, target, replacement));
+            }
+            SplitPane fresh = new SplitPane();
+            fresh.setOrientation(sp.getOrientation());
+            fresh.getItems().addAll(children);
+            return fresh;
         }
-        javafx.scene.Parent parent = oldNode.getParent();
-        if (parent instanceof SplitPane sp) {
-            int idx = sp.getItems().indexOf(oldNode);
-            if (idx >= 0) sp.getItems().set(idx, newNode);
-        }
+        return node;
     }
 
-    /** Called whenever a (non-main) editor group's last tab closes: removes
-     *  it from the split tree and, since splits are always binary, collapses
-     *  the now one-item SplitPane it was in back down to just its sibling. */
+    /**
+     * Rebuilds a fresh copy of the editor tree rooted at {@code node},
+     * dropping {@code excluded} wherever it appears. Every {@link SplitPane}
+     * along the way is reconstructed from scratch (same orientation, same
+     * remaining children) rather than reused \u2014 {@link TabPane} leaves are
+     * the only nodes carried over as-is, since they hold the actual open
+     * tabs. A branch that collapses to a single child returns that child
+     * directly instead of a redundant one-item SplitPane, so closing one
+     * pane out of a deep grid only ever un-splits the row/column it was
+     * actually in \u2014 the rest of the layout is untouched.
+     *
+     * <p>This (and {@link #cloneTreeReplacing} above) replaces the earlier
+     * approach of surgically mutating a live SplitPane's items in place.
+     * That incremental surgery left the SplitPane's own skin in a bad
+     * state often enough to matter \u2014 sometimes a stale ghost render,
+     * sometimes the editor area going fully black. Building an entirely
+     * new SplitPane at each level sidesteps that class of bug outright:
+     * there is never a SplitPane whose skin has to reconcile a mutation,
+     * because none of the SplitPanes it renders were ever mutated.
+     */
+    private javafx.scene.Node cloneTreeExcluding(javafx.scene.Node node, TabPane excluded) {
+        if (node == excluded) return null;
+        if (node instanceof TabPane) return node;
+        if (node instanceof SplitPane sp) {
+            List<javafx.scene.Node> kept = new java.util.ArrayList<>();
+            for (javafx.scene.Node child : new java.util.ArrayList<>(sp.getItems())) {
+                javafx.scene.Node rebuilt = cloneTreeExcluding(child, excluded);
+                if (rebuilt != null) kept.add(rebuilt);
+            }
+            if (kept.isEmpty()) return null;
+            if (kept.size() == 1) return kept.get(0);
+            SplitPane fresh = new SplitPane();
+            fresh.setOrientation(sp.getOrientation());
+            fresh.getItems().addAll(kept);
+            return fresh;
+        }
+        return node;
+    }
+
+    /** Called whenever a (non-main) editor group's last tab closes: rebuilds
+     *  the editor tree without it, exactly like IntelliJ collapsing a split
+     *  back down \u2014 in a multi-pane grid, only the row/column that pane was
+     *  actually in un-splits; every other pane is untouched, and remaining
+     *  tabs never land in a stray blank pane. */
     private void closeEditorGroup(TabPane group) {
         editorGroups.remove(group);
-        javafx.scene.Parent parent = group.getParent();
-        if (parent instanceof SplitPane sp) {
-            sp.getItems().remove(group);
-            if (sp.getItems().size() == 1) {
-                replaceInEditorTree(sp, sp.getItems().get(0));
-            }
+        javafx.scene.Node rebuilt = cloneTreeExcluding(editorRoot, group);
+        if (rebuilt == null) rebuilt = editorTabs;   // shouldn't happen; safety net
+        if (rebuilt != editorRoot) {
+            editorArea.getChildren().set(editorArea.getChildren().indexOf(editorRoot), rebuilt);
+            editorRoot = rebuilt;
         }
         if (activeEditorGroup == group) {
             activeEditorGroup = editorGroups.isEmpty() ? editorTabs : editorGroups.get(0);
         }
+        updateEditorVisibility();
+        Platform.runLater(() -> {
+            Tab sel = activeEditorGroup.getSelectionModel().getSelectedItem();
+            if (sel instanceof EditorTab et) et.focusEditor();
+        });
     }
 
     /** Hard reset back to a single unsplit editor group \u2014 used when
@@ -4204,15 +4274,16 @@ public class LuminaApp extends Application {
     private void showAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About Lumina");
-        alert.setHeaderText("Lumina IDE 1.21");
+        alert.setHeaderText("Lumina IDE 1.24");
         alert.setContentText("""
                 A luminous, lightweight Java IDE.
                 Built with Java 25, JavaFX and Maven.
 
-                Feature: library-type completion (JpaRepository
-                etc.), nested yaml completion, Go to
-                Implementation(s), per-kind file icons, and a
-                real .lumina/ project folder (Lumina's own name).""");
+                Fix: both creating and closing editor splits now
+                rebuild the tree from scratch instead of mutating
+                a live SplitPane \u2014 multi-pane grid layouts (split
+                an already-split pane) are as robust as the first
+                split, matching IntelliJ.""");
         alert.initOwner(stage);
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
