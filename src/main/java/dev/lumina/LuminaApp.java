@@ -84,6 +84,12 @@ public class LuminaApp extends Application {
     private Label statusProblems;
     private HBox breadcrumbBar;
     private Label statusCaret;
+    private HBox mavenProgressRow;
+    private Label mavenProgressLabel;
+    private ProgressBar mavenProgressBarNode;
+    /** pom.xml/build.gradle text as of the last successful dependency
+     *  resolve; every open build-file tab is compared against this live. */
+    private volatile String mavenSyncBaselineText;
 
     private Path projectRoot;
     private Path pendingProjectToOpen;
@@ -280,7 +286,7 @@ public class LuminaApp extends Application {
         outerSplit.setDividerPositions(0.74);
 
         root.setCenter(outerSplit);
-        root.setBottom(buildStatusBar());
+        root.setBottom(buildBottomArea());
         updateEditorVisibility();
 
         Scene scene = new Scene(root, 1400, 860);
@@ -1667,6 +1673,7 @@ public class LuminaApp extends Application {
                 try {
                     Files.writeString(et.getPath(), et.getEditorText());
                     et.markSaved(et.getPath());
+                    recheckMavenSync(et);
                 } catch (IOException ignored) {
                 }
             }
@@ -1945,6 +1952,130 @@ public class LuminaApp extends Application {
         tab.setOnAddStartersClicked(() -> showAddStartersDialog(tab, gradle));
     }
 
+    // -------------------------------------------------- "Load Maven Changes"
+
+    /**
+     * One-time wiring for a newly opened editor tab: the reload click
+     * handler, a live re-check on every settled edit (so the hint reacts
+     * the moment you type — add, remove, or change a dependency — not
+     * only after a save), and an initial check.
+     */
+    private void wireMavenSync(EditorTab tab) {
+        tab.setOnMavenReloadClicked(() -> reloadMavenDependencies(tab));
+        tab.setOnContentSettled(() -> recheckMavenSync(tab));
+        recheckMavenSync(tab);
+    }
+
+    /**
+     * Shows IntelliJ's "Load Maven Changes" hint (top-right of the editor)
+     * whenever the tab's LIVE text (not just what's saved to disk) differs
+     * from {@link #mavenSyncBaselineText} — the build file's content as of
+     * the last successful dependency resolve. Content-based rather than
+     * timestamp-based, so it reacts immediately while typing/pasting and
+     * doesn't care whether the change was an addition, removal, or edit.
+     */
+    private void recheckMavenSync(EditorTab tab) {
+        Path path = tab.getPath();
+        if (path == null || projectRoot == null) {
+            tab.setMavenChangesPending(false);
+            return;
+        }
+        String fileName = path.getFileName().toString();
+        boolean buildFile = fileName.equals("pom.xml")
+                || fileName.equals("build.gradle") || fileName.equals("build.gradle.kts");
+        if (!buildFile || !path.equals(projectRoot.resolve(fileName))) {
+            tab.setMavenChangesPending(false);
+            return;
+        }
+        boolean changed = mavenSyncBaselineText == null
+                || !mavenSyncBaselineText.equals(tab.getEditorText());
+        tab.setMavenChangesPending(changed && !tab.isMavenDismissed());
+    }
+
+    /** Re-checks the "Load Maven Changes" hint on every currently open tab. */
+    private void refreshMavenSyncForOpenTabs() {
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof EditorTab et) recheckMavenSync(et);
+        }
+    }
+
+    /**
+     * Runs when the user clicks the "Load Maven Changes" icon: saves the
+     * build file first (Maven/Gradle only ever read it from disk, so an
+     * unsaved edit must be persisted — IntelliJ does the same before
+     * running an external tool), re-downloads dependencies, rebuilds the
+     * cached classpath, and refreshes code completion. Shown with a
+     * background-task progress row instead of blocking the UI.
+     */
+    private void reloadMavenDependencies(EditorTab tab) {
+        if (projectRoot == null) return;
+        Path root = projectRoot;
+        Path path = tab.getPath();
+        if (path != null) {
+            try {
+                Files.writeString(path, tab.getEditorText());
+                tab.markSaved(path);
+                fileExplorer.refresh();
+            } catch (IOException ex) {
+                console.println("\u2717 Could not save " + path.getFileName()
+                        + " before reloading: " + ex.getMessage());
+                return;
+            }
+        }
+        String label = "Resolving dependencies of " + root.getFileName() + "\u2026";
+
+        if (RunConfiguration.isMavenProject(root)) {
+            try {
+                Files.deleteIfExists(root.resolve("target/lumina.cp"));
+            } catch (IOException ignored) {
+            }
+            showMavenSyncProgress(true, label);
+            console.runSequence("Reload dependencies", List.of(
+                            RunConfiguration.maven(root, "-q", "dependency:resolve"),
+                            RunConfiguration.maven(root, "-q", "dependency:build-classpath",
+                                    "-Dmdep.outputFile=target/lumina.cp")),
+                    root, null,
+                    () -> onMavenReloadSucceeded(tab, root),
+                    () -> showMavenSyncProgress(false, null));
+        } else if (RunConfiguration.isGradleProject(root)) {
+            showMavenSyncProgress(true, label);
+            Thread worker = new Thread(() -> {
+                Path cp = root.resolve("build/lumina.cp");
+                try {
+                    Files.deleteIfExists(cp);
+                } catch (IOException ignored) {
+                }
+                resolveGradleClasspath(cp);
+                boolean ok = Files.isRegularFile(cp);
+                Platform.runLater(() -> {
+                    showMavenSyncProgress(false, null);
+                    if (ok) {
+                        onMavenReloadSucceeded(tab, root);
+                    } else {
+                        console.println("\u2717 Dependency resolution failed \u2014 see Run console");
+                    }
+                });
+            }, "lumina-gradle-reload");
+            worker.setDaemon(true);
+            worker.start();
+        }
+    }
+
+    private void onMavenReloadSucceeded(EditorTab tab, Path root) {
+        mavenSyncBaselineText = tab.getEditorText();
+        tab.clearMavenDismissed();
+        tab.setMavenChangesPending(false);
+        console.println("\u2713 Dependencies resolved for " + root.getFileName());
+        try {
+            Path cpFile = RunConfiguration.isMavenProject(root)
+                    ? root.resolve("target/lumina.cp") : root.resolve("build/lumina.cp");
+            Files.writeString(sidecarFor(cpFile), mavenSyncBaselineText);
+        } catch (IOException ignored) {
+        }
+        initSemanticEngine(root);
+        if (mavenPanel != null) mavenPanel.setProject(root);
+    }
+
     private static int lineIndexOf(String text, String needle) {
         String[] lines = text.split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
@@ -1964,6 +2095,7 @@ public class LuminaApp extends Application {
                 tab.setEditorText(Files.readString(path));
                 tab.markSaved(path);
                 wireAddStarters(tab);
+                recheckMavenSync(tab);
                 console.println("\u2713 Starters added to " + path.getFileName());
             } catch (IOException ex) {
                 console.println("Add Starters: could not refresh the editor \u2014 "
@@ -2161,6 +2293,14 @@ public class LuminaApp extends Application {
                             + props.size() + " properties from "
                             + "application.properties/.yml starters on the classpath.");
                 }
+            }
+            // The classpath cache (target/lumina.cp) may have just been built
+            // for the first time \u2014 (re)load what it was resolved from and
+            // re-check any open pom.xml/build.gradle tab so a stale "Load
+            // Maven Changes" hint isn't left showing (or missing).
+            if (projectRoot != null && projectRoot.equals(dir)) {
+                loadMavenSyncBaseline(dir);
+                Platform.runLater(this::refreshMavenSyncForOpenTabs);
             }
         }, "lumina-semantics-init");
         t.setDaemon(true);
@@ -2552,6 +2692,7 @@ public class LuminaApp extends Application {
                 runBuildToolQuiet(RunConfiguration.maven(projectRoot, "-q",
                         "dependency:build-classpath",
                         "-Dmdep.outputFile=target/lumina.cp"));
+                saveMavenSyncBaseline(projectRoot.resolve("pom.xml"), cpFile);
             }
             try {
                 if (Files.isRegularFile(cpFile)) {
@@ -2564,6 +2705,7 @@ public class LuminaApp extends Application {
             Path cpFile = projectRoot.resolve("build/lumina.cp");
             if (!Files.isRegularFile(cpFile)) {
                 resolveGradleClasspath(cpFile);
+                saveMavenSyncBaseline(firstExistingBuildGradle(projectRoot), cpFile);
             }
             try {
                 if (Files.isRegularFile(cpFile)) {
@@ -2574,6 +2716,59 @@ public class LuminaApp extends Application {
             }
         }
         return parts.isEmpty() ? null : String.join(File.pathSeparator, parts);
+    }
+
+    // --------------------------------------------- "Load Maven Changes" state
+
+    /**
+     * Records the exact build-file text that a just-built classpath cache
+     * corresponds to, in a sidecar next to it (e.g. {@code
+     * target/lumina.cp.src}), so the "Load Maven Changes" hint survives
+     * an app restart instead of only living in memory.
+     */
+    private void saveMavenSyncBaseline(Path buildFile, Path cpFile) {
+        try {
+            if (buildFile != null && Files.isRegularFile(buildFile)) {
+                Files.writeString(sidecarFor(cpFile), Files.readString(buildFile));
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private Path sidecarFor(Path cpFile) {
+        return cpFile.resolveSibling(cpFile.getFileName() + ".src");
+    }
+
+    private static Path firstExistingBuildGradle(Path dir) {
+        Path kts = dir.resolve("build.gradle.kts");
+        return Files.isRegularFile(kts) ? kts : dir.resolve("build.gradle");
+    }
+
+    /**
+     * Loads the last-resolved build-file text into {@link #mavenSyncBaselineText}
+     * so every open tab can be compared against it live, with no disk I/O
+     * per keystroke. Falls back to the file's current content (i.e.
+     * "assume already resolved") when no sidecar exists yet, so upgrading
+     * Lumina doesn't spuriously flag every already-working project.
+     */
+    private void loadMavenSyncBaseline(Path dir) {
+        mavenSyncBaselineText = null;
+        try {
+            Path cpFile = null, buildFile = null;
+            if (RunConfiguration.isMavenProject(dir)) {
+                cpFile = dir.resolve("target/lumina.cp");
+                buildFile = dir.resolve("pom.xml");
+            } else if (RunConfiguration.isGradleProject(dir)) {
+                cpFile = dir.resolve("build/lumina.cp");
+                buildFile = firstExistingBuildGradle(dir);
+            }
+            if (buildFile == null || !Files.isRegularFile(buildFile)) return;
+            Path sidecar = sidecarFor(cpFile);
+            mavenSyncBaselineText = Files.isRegularFile(sidecar)
+                    ? Files.readString(sidecar)
+                    : Files.readString(buildFile);
+        } catch (IOException ignored) {
+        }
     }
 
     /**
@@ -3043,6 +3238,50 @@ public class LuminaApp extends Application {
     }
 
     // ------------------------------------------------------------ status bar
+
+    /**
+     * Bottom of the window: an IntelliJ-style "background task" row (shown
+     * only while Maven/Gradle dependencies are being resolved) stacked
+     * above the permanent status bar.
+     */
+    private VBox buildBottomArea() {
+        mavenProgressLabel = new Label("");
+        mavenProgressBarNode = new ProgressBar();
+        mavenProgressBarNode.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        mavenProgressBarNode.setPrefWidth(160);
+        mavenProgressBarNode.getStyleClass().add("maven-progress-bar");
+
+        Button cancel = new Button("\u2715");
+        cancel.getStyleClass().add("maven-progress-cancel");
+        cancel.setTooltip(new Tooltip("Cancel"));
+        cancel.setOnAction(e -> cancelMavenReload());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        mavenProgressRow = new HBox(10, mavenProgressLabel, mavenProgressBarNode, spacer, cancel);
+        mavenProgressRow.getStyleClass().add("maven-progress-row");
+        mavenProgressRow.setAlignment(Pos.CENTER_LEFT);
+        mavenProgressRow.setPadding(new Insets(4, 12, 4, 12));
+        mavenProgressRow.setVisible(false);
+        mavenProgressRow.setManaged(false);
+
+        return new VBox(mavenProgressRow, buildStatusBar());
+    }
+
+    /** Show/hide the background-task row at the bottom of the window. */
+    private void showMavenSyncProgress(boolean show, String message) {
+        if (mavenProgressRow == null) return;
+        mavenProgressRow.setVisible(show);
+        mavenProgressRow.setManaged(show);
+        if (show) mavenProgressLabel.setText(message);
+    }
+
+    private void cancelMavenReload() {
+        console.stopProcess();
+        showMavenSyncProgress(false, null);
+        console.println("\u25A0 Dependency resolution cancelled");
+    }
 
     private HBox buildStatusBar() {
         breadcrumbBar = new HBox(4);
@@ -3783,6 +4022,7 @@ public class LuminaApp extends Application {
         tab.setEditorContextMenu(buildEditorContextMenu());
         tab.setContextMenu(buildEditorTabContextMenu(tab));
         wireAddStarters(tab);
+        wireMavenSync(tab);
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
             if (file != null && isSpringConfigFile(file)) {
@@ -4251,6 +4491,7 @@ public class LuminaApp extends Application {
             tab.markSaved(target);
             updateBreadcrumbs(target, null);
             fileExplorer.refresh();
+            recheckMavenSync(tab);
         } catch (IOException ex) {
             error("Could not save file", ex.getMessage());
         }
