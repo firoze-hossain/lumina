@@ -26,7 +26,12 @@ public record ProjectSpec(
         String rustToolchainPath,
         String rustTemplate,
         String rustEnvironment,
-        String javafxDependencies  // comma-separated, JavaFX only
+        String javafxDependencies,  // comma-separated, JavaFX only
+        String quarkusServerUrl,
+        String quarkusStream,
+        String quarkusExtensions,    // comma-separated, Quarkus only
+        String quarkusBuildTool,     // MAVEN, GRADLE, GRADLE_KOTLIN_DSL
+        boolean addSampleCode
 ) {
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
@@ -41,7 +46,26 @@ public record ProjectSpec(
                 configFormat, group, artifact, packageName, javaVersion,
                 springDependencies, springBootVersion, archetypeCatalog, archetypeId,
                 archetypeVersion, projectVersion, additionalProperties,
-                rustToolchainPath, rustTemplate, rustEnvironment, "");
+                rustToolchainPath, rustTemplate, rustEnvironment, "",
+                QuarkusMetadata.DEFAULT_SERVER_URL, "", "", "MAVEN", true);
+    }
+
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                QuarkusMetadata.DEFAULT_SERVER_URL, "", "", "MAVEN", true);
     }
 
     public enum Generator {

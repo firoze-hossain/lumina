@@ -2859,3 +2859,43 @@
     -fx-text-fill: #73B1F8;
 }
 
+/* --------------------------------------------------------------------------
+   Quarkus Extensions Wizard
+   -------------------------------------------------------------------------- */
+.quarkus-deps-page .dep-tree .tree-cell:selected,
+.quarkus-deps-page .dep-tree .tree-cell:filled:selected {
+    -fx-background-color: #2E5FA6;
+    -fx-background-radius: 4;
+}
+
+.quarkus-deps-page .dep-tree .tree-cell:selected .text,
+.quarkus-deps-page .dep-tree .tree-cell:filled:selected .text,
+.quarkus-deps-page .dep-tree .tree-cell:selected .label,
+.quarkus-deps-page .dep-tree .tree-cell:filled:selected .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.quarkus-guide-link {
+    -fx-text-fill: #589DF6;
+    -fx-underline: false;
+    -fx-cursor: hand;
+}
+
+.quarkus-guide-link:hover {
+    -fx-underline: true;
+    -fx-text-fill: #70B0FF;
+}
+
+.quarkus-deps-page .combo-box {
+    -fx-background-color: #262A36;
+    -fx-border-color: #3B4254;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.quarkus-deps-page .combo-box .list-cell {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+}
+
