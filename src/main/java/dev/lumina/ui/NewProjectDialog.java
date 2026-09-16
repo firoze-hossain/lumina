@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import dev.lumina.project.ProjectSpec;
@@ -13,6 +15,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -23,6 +26,10 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
@@ -535,79 +542,220 @@ public class NewProjectDialog {
         stage.showAndWait();
     }
 
+    private final List<GeneratorEntry> allSidebarEntries = new ArrayList<>();
+    private final Map<GeneratorEntry, HBox> entryRowMap = new LinkedHashMap<>();
+    private ScrollPane generatorScrollPane;
+    private VBox generatorItemsBox;
+    private Label newProjectHeaderLabel;
+    private Label generatorsHeaderLabel;
+
     // -------------------------------------------------------- generator list
 
     private VBox buildGeneratorList() {
-        Label newProjectHeader = new Label("New Project");
-        newProjectHeader.getStyleClass().add("panel-header");
-        newProjectHeader.setPadding(new Insets(14, 16, 8, 16));
+        allSidebarEntries.clear();
+        allSidebarEntries.addAll(NEW_PROJECT_ENTRIES);
+        allSidebarEntries.addAll(GENERATOR_ENTRIES);
+        entryRowMap.clear();
 
-        ListView<GeneratorEntry> newProjectList = new ListView<>(
-                FXCollections.observableArrayList(NEW_PROJECT_ENTRIES));
-        newProjectList.getStyleClass().addAll("generator-list", "project-list");
-        newProjectList.setCellFactory(this::createGeneratorCell);
+        // Top bar with search icon matching IntelliJ New Project wizard
+        HBox topBar = new HBox(8);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setPadding(new Insets(10, 14, 4, 14));
 
-        Label generatorsHeader = new Label("Generators");
-        generatorsHeader.getStyleClass().add("panel-header");
-        generatorsHeader.setPadding(new Insets(14, 16, 8, 16));
+        SVGPath searchIcon = new SVGPath();
+        searchIcon.setContent("M 6,1 C 8.8,1 11,3.2 11,6 C 11,7.2 10.6,8.3 9.9,9.1 L 13.5,12.7 L 12.7,13.5 L 9.1,9.9 C 8.3,10.6 7.2,11 6,11 C 3.2,11 1,8.8 1,6 C 1,3.2 3.2,1 6,1 Z M 6,2.2 C 3.9,2.2 2.2,3.9 2.2,6 C 2.2,8.1 3.9,9.8 6,9.8 C 8.1,9.8 9.8,8.1 9.8,6 C 9.8,3.9 8.1,2.2 6,2.2 Z");
+        searchIcon.setFill(Color.web("#8B92A6"));
 
-        ListView<GeneratorEntry> generatorList = new ListView<>(
-                FXCollections.observableArrayList(GENERATOR_ENTRIES));
-        generatorList.getStyleClass().addAll("generator-list", "project-list");
-        generatorList.setCellFactory(this::createGeneratorCell);
+        Button searchBtn = new Button();
+        searchBtn.setGraphic(searchIcon);
+        searchBtn.getStyleClass().add("sidebar-search-btn");
+        searchBtn.setTooltip(new Tooltip("Search generators"));
 
-        newProjectList.getSelectionModel().selectedItemProperty().addListener((obs, old, entry) -> {
-            if (entry != null) {
-                selected = entry;
-                generatorList.getSelectionModel().clearSelection();
-                updateForGenerator();
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search...");
+        searchField.getStyleClass().add("search-field");
+        searchField.setPrefWidth(160);
+        searchField.setVisible(false);
+        searchField.setManaged(false);
+
+        searchBtn.setOnAction(e -> {
+            boolean show = !searchField.isVisible();
+            searchField.setVisible(show);
+            searchField.setManaged(show);
+            if (show) {
+                searchField.requestFocus();
+            } else {
+                searchField.clear();
+                filterGeneratorEntries("");
             }
         });
-        generatorList.getSelectionModel().selectedItemProperty().addListener((obs, old, entry) -> {
-            if (entry != null) {
-                selected = entry;
-                newProjectList.getSelectionModel().clearSelection();
-                updateForGenerator();
-            }
-        });
 
-        Platform.runLater(() -> newProjectList.getSelectionModel().select(0));
-        VBox.setVgrow(newProjectList, Priority.ALWAYS);
-        VBox.setVgrow(generatorList, Priority.ALWAYS);
+        searchField.textProperty().addListener((obs, old, text) -> filterGeneratorEntries(text));
+
+        topBar.getChildren().addAll(searchBtn, searchField);
+
+        generatorItemsBox = new VBox(2);
+        generatorItemsBox.getStyleClass().add("generator-items-box");
+        generatorItemsBox.setPadding(new Insets(2, 8, 12, 8));
+
+        newProjectHeaderLabel = new Label("New Project");
+        newProjectHeaderLabel.getStyleClass().add("panel-header");
+        newProjectHeaderLabel.setPadding(new Insets(6, 10, 4, 10));
+        generatorItemsBox.getChildren().add(newProjectHeaderLabel);
+
+        for (GeneratorEntry entry : NEW_PROJECT_ENTRIES) {
+            HBox row = createGeneratorRow(entry);
+            generatorItemsBox.getChildren().add(row);
+        }
+
+        generatorsHeaderLabel = new Label("Generators");
+        generatorsHeaderLabel.getStyleClass().add("panel-header");
+        // Follows immediately after Empty Project with compact 14px top padding
+        generatorsHeaderLabel.setPadding(new Insets(14, 10, 4, 10));
+        generatorItemsBox.getChildren().add(generatorsHeaderLabel);
+
+        for (GeneratorEntry entry : GENERATOR_ENTRIES) {
+            HBox row = createGeneratorRow(entry);
+            generatorItemsBox.getChildren().add(row);
+        }
 
         Button plugins = new Button("More via plugins...");
         plugins.getStyleClass().add("plugin-link");
         plugins.setMaxWidth(Double.MAX_VALUE);
         plugins.setOnAction(e -> showPluginManager());
+        VBox.setMargin(plugins, new Insets(14, 2, 8, 2));
+        generatorItemsBox.getChildren().add(plugins);
 
-        VBox box = new VBox(newProjectHeader, newProjectList,
-                generatorsHeader, generatorList, plugins);
-        box.getStyleClass().add("generator-panel");
-        box.setPrefWidth(240);
-        box.setSpacing(8);
-        box.setPadding(new Insets(0, 12, 12, 12));
-        return box;
+        generatorScrollPane = new ScrollPane(generatorItemsBox);
+        generatorScrollPane.setFitToWidth(true);
+        generatorScrollPane.getStyleClass().add("generator-scroll");
+        generatorScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        generatorScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        VBox.setVgrow(generatorScrollPane, Priority.ALWAYS);
+
+        VBox sidebar = new VBox(topBar, generatorScrollPane);
+        sidebar.getStyleClass().add("generator-panel");
+        sidebar.setPrefWidth(240);
+        sidebar.setMinWidth(220);
+
+        sidebar.setFocusTraversable(true);
+        sidebar.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.UP) {
+                int idx = allSidebarEntries.indexOf(selected);
+                if (idx > 0) {
+                    selectSidebarEntry(allSidebarEntries.get(idx - 1));
+                    ensureVisible(entryRowMap.get(selected));
+                }
+                e.consume();
+            } else if (e.getCode() == KeyCode.DOWN) {
+                int idx = allSidebarEntries.indexOf(selected);
+                if (idx >= 0 && idx < allSidebarEntries.size() - 1) {
+                    selectSidebarEntry(allSidebarEntries.get(idx + 1));
+                    ensureVisible(entryRowMap.get(selected));
+                }
+                e.consume();
+            }
+        });
+
+        Platform.runLater(() -> selectSidebarEntry(NEW_PROJECT_ENTRIES.get(0)));
+
+        return sidebar;
     }
 
-    private ListCell<GeneratorEntry> createGeneratorCell(ListView<GeneratorEntry> view) {
-        return new ListCell<>() {
-            @Override
-            protected void updateItem(GeneratorEntry item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    getStyleClass().remove("generator-disabled");
-                    return;
+    private HBox createGeneratorRow(GeneratorEntry entry) {
+        Node icon = GeneratorIcons.getIcon(entry.label());
+
+        Label label = new Label(entry.label());
+        label.getStyleClass().add("generator-row-label");
+        HBox.setHgrow(label, Priority.ALWAYS);
+
+        HBox row = new HBox(10, icon, label);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(5, 10, 5, 10));
+        row.getStyleClass().add("generator-item");
+
+        if (!entry.enabled()) {
+            row.getStyleClass().add("generator-disabled");
+            Label soon = new Label("(soon)");
+            soon.getStyleClass().add("generator-soon-label");
+            row.getChildren().add(soon);
+        }
+
+        row.setOnMouseClicked(e -> selectSidebarEntry(entry));
+        entryRowMap.put(entry, row);
+        return row;
+    }
+
+    private void selectSidebarEntry(GeneratorEntry entry) {
+        if (entry == null) return;
+        selected = entry;
+        for (Map.Entry<GeneratorEntry, HBox> item : entryRowMap.entrySet()) {
+            boolean isSel = item.getKey().equals(entry);
+            if (isSel) {
+                if (!item.getValue().getStyleClass().contains("generator-item-selected")) {
+                    item.getValue().getStyleClass().add("generator-item-selected");
                 }
-                setText(generatorGlyph(item.label()) + "  " + item.label()
-                        + (item.enabled() ? "" : "  (soon)"));
-                if (!item.enabled() && !getStyleClass().contains("generator-disabled")) {
-                    getStyleClass().add("generator-disabled");
-                } else if (item.enabled()) {
-                    getStyleClass().remove("generator-disabled");
-                }
+            } else {
+                item.getValue().getStyleClass().remove("generator-item-selected");
             }
-        };
+        }
+        updateForGenerator();
+    }
+
+    private void ensureVisible(Node node) {
+        if (node == null || generatorScrollPane == null) return;
+        Platform.runLater(() -> {
+            Bounds nodeBounds = node.getBoundsInParent();
+            Bounds viewportBounds = generatorScrollPane.getViewportBounds();
+            if (viewportBounds == null || nodeBounds == null) return;
+            double contentHeight = generatorScrollPane.getContent().getBoundsInLocal().getHeight();
+            double viewHeight = viewportBounds.getHeight();
+            if (contentHeight <= viewHeight) return;
+
+            double nodeMinY = nodeBounds.getMinY();
+            double nodeMaxY = nodeBounds.getMaxY();
+            double currentScrollY = generatorScrollPane.getVvalue() * (contentHeight - viewHeight);
+
+            if (nodeMinY < currentScrollY) {
+                generatorScrollPane.setVvalue(nodeMinY / (contentHeight - viewHeight));
+            } else if (nodeMaxY > currentScrollY + viewHeight) {
+                generatorScrollPane.setVvalue((nodeMaxY - viewHeight) / (contentHeight - viewHeight));
+            }
+        });
+    }
+
+    private void filterGeneratorEntries(String query) {
+        String q = query == null ? "" : query.trim().toLowerCase();
+        boolean hasNewProjectMatches = false;
+        boolean hasGeneratorMatches = false;
+
+        for (GeneratorEntry entry : NEW_PROJECT_ENTRIES) {
+            HBox row = entryRowMap.get(entry);
+            if (row != null) {
+                boolean match = q.isEmpty() || entry.label().toLowerCase().contains(q);
+                row.setVisible(match);
+                row.setManaged(match);
+                if (match) hasNewProjectMatches = true;
+            }
+        }
+        for (GeneratorEntry entry : GENERATOR_ENTRIES) {
+            HBox row = entryRowMap.get(entry);
+            if (row != null) {
+                boolean match = q.isEmpty() || entry.label().toLowerCase().contains(q);
+                row.setVisible(match);
+                row.setManaged(match);
+                if (match) hasGeneratorMatches = true;
+            }
+        }
+
+        if (newProjectHeaderLabel != null) {
+            newProjectHeaderLabel.setVisible(hasNewProjectMatches);
+            newProjectHeaderLabel.setManaged(hasNewProjectMatches);
+        }
+        if (generatorsHeaderLabel != null) {
+            generatorsHeaderLabel.setVisible(hasGeneratorMatches);
+            generatorsHeaderLabel.setManaged(hasGeneratorMatches);
+        }
     }
 
     // ------------------------------------------------------------------ form
@@ -2326,21 +2474,5 @@ public class NewProjectDialog {
 
     private static String sanitize(String s) {
         return s == null ? "" : s.toLowerCase().replaceAll("[^a-z0-9.\\-]", "");
-    }
-
-    private static String generatorGlyph(String label) {
-        return switch (label) {
-            case "Java" -> "\u2615";
-            case "Kotlin", "Ktor" -> "\u25C7";
-            case "Groovy" -> "\u24BE";
-            case "Rust" -> "\u25C9";
-            case "Empty Project" -> "\u25B1";
-            case "Angular CLI" -> "\u25B2";
-            case "Vite" -> "\u25C6";
-            case "Vue.js" -> "\u25BC";
-            case "React" -> "\u269B";
-            case "JavaFX" -> "\u25A3";
-            default -> "\u00B7";
-        };
     }
 }

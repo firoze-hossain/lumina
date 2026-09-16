@@ -462,6 +462,65 @@
     -fx-border-color: transparent #262A3A transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
+.generator-scroll {
+    -fx-background-color: #14161E;
+    -fx-background: #14161E;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+.generator-scroll > .viewport {
+    -fx-background-color: #14161E;
+}
+.generator-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8px;
+}
+.generator-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #2C3042;
+    -fx-background-radius: 4px;
+}
+.generator-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #3D435C;
+}
+.generator-items-box {
+    -fx-background-color: #14161E;
+}
+.generator-item {
+    -fx-background-color: transparent;
+    -fx-padding: 5 10 5 10;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.generator-item:hover {
+    -fx-background-color: #1F2230;
+}
+.generator-item-selected,
+.generator-item-selected:hover {
+    -fx-background-color: #2E5FA6;
+}
+.generator-row-label {
+    -fx-text-fill: #C9CDDC;
+    -fx-font-size: 13px;
+}
+.generator-item-selected .generator-row-label {
+    -fx-text-fill: #FFFFFF;
+}
+.generator-disabled .generator-row-label {
+    -fx-text-fill: #697089;
+}
+.generator-soon-label {
+    -fx-text-fill: #565D75;
+    -fx-font-size: 11px;
+}
+.sidebar-search-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 4 6 4 6;
+    -fx-cursor: hand;
+}
+.sidebar-search-btn:hover {
+    -fx-background-color: #1F2230;
+    -fx-background-radius: 4px;
+}
 .generator-list {
     -fx-background-color: #14161E;
     -fx-padding: 4 8 8 8;
@@ -474,8 +533,8 @@
 }
 .generator-list .list-cell:hover { -fx-background-color: #1F2230; }
 .generator-list .list-cell:selected {
-    -fx-background-color: #3A3122;
-    -fx-text-fill: #F2D9A6;
+    -fx-background-color: #2E5FA6;
+    -fx-text-fill: #FFFFFF;
 }
 .generator-list .generator-disabled { -fx-text-fill: #565D75; }
 
