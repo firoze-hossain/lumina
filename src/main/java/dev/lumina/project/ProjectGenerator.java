@@ -13,7 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -55,7 +57,8 @@ public final class ProjectGenerator {
             case EMPTY_PROJECT -> Files.createDirectories(dir);
             case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
-            case MICRONAUT, JAKARTA_EE, KTOR -> generateJava(spec, dir, log);
+            case MICRONAUT, KTOR -> generateJava(spec, dir, log);
+            case JAKARTA_EE -> generateJakarta(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
             case RUST -> generateRust(spec, dir, log);
@@ -1134,6 +1137,543 @@ public final class ProjectGenerator {
                     Files.copy(zis, out);
                 }
                 zis.closeEntry();
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ jakarta ee
+
+    private static void generateJakarta(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String template = spec.jakartaTemplate() != null && !spec.jakartaTemplate().isBlank()
+                ? spec.jakartaTemplate() : JakartaMetadata.TEMPLATE_REST;
+        String jakartaVersion = spec.jakartaVersion() != null && !spec.jakartaVersion().isBlank()
+                ? spec.jakartaVersion() : JakartaMetadata.EE_11;
+        boolean isEe8 = JakartaMetadata.EE_8.equals(jakartaVersion);
+        String jaxPrefix = isEe8 ? "javax" : "jakarta";
+
+        log.accept("Generating Jakarta EE project (" + jakartaVersion + ", " + spec.buildSystem() + ", " + spec.language() + ") \u2026");
+
+        String pkg = spec.packageName();
+        if (pkg == null || pkg.isBlank()) {
+            String g = spec.group() == null || spec.group().isBlank() ? "com.example" : spec.group();
+            String a = spec.artifact() == null || spec.artifact().isBlank() ? "demo"
+                    : spec.artifact().toLowerCase().replaceAll("[^a-z0-9_]", "");
+            pkg = (g + "." + a).replaceAll("^\\.+|\\.+$", "");
+        }
+        String pkgPath = pkg.replace('.', '/');
+
+        boolean isKotlin = spec.language() == ProjectSpec.Language.KOTLIN;
+        boolean isGroovy = spec.language() == ProjectSpec.Language.GROOVY;
+        String langFolder = isKotlin ? "kotlin" : (isGroovy ? "groovy" : "java");
+
+        Path srcMain = dir.resolve("src/main");
+        Path srcMainCode = srcMain.resolve(langFolder);
+        Path srcMainResources = srcMain.resolve("resources");
+        Path pkgCodeDir = srcMainCode.resolve(pkgPath);
+        Files.createDirectories(pkgCodeDir);
+        Files.createDirectories(srcMainResources);
+        Path srcTest = dir.resolve("src/test/" + langFolder + "/" + pkgPath);
+        Files.createDirectories(srcTest);
+
+        // Resolve selected dependencies dynamically
+        Set<String> selectedDepIds = new LinkedHashSet<>();
+        if (spec.jakartaDependencies() != null && !spec.jakartaDependencies().isBlank()) {
+            for (String dep : spec.jakartaDependencies().split(",")) {
+                String trimmed = dep.trim();
+                if (!trimmed.isEmpty()) selectedDepIds.add(trimmed);
+            }
+        }
+        if (selectedDepIds.isEmpty()) {
+            selectedDepIds.addAll(JakartaMetadata.getDefaultDependenciesForTemplate(template));
+        }
+
+        // Check if packaging should be WAR (REST or Web application) or JAR (Library)
+        boolean isWar = !template.equalsIgnoreCase(JakartaMetadata.TEMPLATE_LIBRARY);
+        String packaging = isWar ? "war" : "jar";
+
+        String javaVersion = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "21";
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            generateJakartaPom(spec, dir, jakartaVersion, packaging, javaVersion, selectedDepIds);
+        } else {
+            generateJakartaGradle(spec, dir, jakartaVersion, isWar, javaVersion, selectedDepIds, isKotlin, isGroovy);
+        }
+
+        // Generate webapp directory & descriptors if WAR
+        if (isWar) {
+            Path webapp = srcMain.resolve("webapp");
+            Path webInf = webapp.resolve("WEB-INF");
+            Files.createDirectories(webInf);
+
+            if (template.equalsIgnoreCase(JakartaMetadata.TEMPLATE_WEB)) {
+                Files.writeString(webapp.resolve("index.jsp"), """
+                        <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>JSP - Hello World</title>
+                        </head>
+                        <body>
+                        <h1><%= "Hello World!" %></h1>
+                        <br/>
+                        <a href="hello-servlet">Hello Servlet</a>
+                        </body>
+                        </html>
+                        """);
+
+                Files.writeString(webInf.resolve("web.xml"), """
+                        <?xml version="1.0" encoding="UTF-8"?>
+                        <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                 xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+                                 version="6.0">
+                        </web-app>
+                        """);
+            }
+        }
+
+        // Generate META-INF/beans.xml if CDI is selected
+        if (selectedDepIds.contains("cdi") || selectedDepIds.contains("weld-se")) {
+            Path metaInf = srcMainResources.resolve("META-INF");
+            Files.createDirectories(metaInf);
+            Files.writeString(metaInf.resolve("beans.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
+                           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+                           bean-discovery-mode="annotated">
+                    </beans>
+                    """);
+        }
+
+        // Generate META-INF/persistence.xml if JPA is selected
+        if (selectedDepIds.contains("jpa") || selectedDepIds.contains("hibernate") || selectedDepIds.contains("eclipselink")) {
+            Path metaInf = srcMainResources.resolve("META-INF");
+            Files.createDirectories(metaInf);
+            String provider = selectedDepIds.contains("hibernate")
+                    ? "\n        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>"
+                    : (selectedDepIds.contains("eclipselink")
+                    ? "\n        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>" : "");
+            Files.writeString(metaInf.resolve("persistence.xml"), """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                 xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+                                 version="3.0">
+                        <persistence-unit name="default">%s
+                        </persistence-unit>
+                    </persistence>
+                    """.formatted(provider));
+        }
+
+        // Generate starter source code
+        generateJakartaSourceFiles(spec, pkgCodeDir, srcTest, pkg, template, isKotlin, isGroovy, jaxPrefix);
+
+        // .gitignore
+        Files.writeString(dir.resolve(".gitignore"), """
+                target/
+                build/
+                .gradle/
+                *.class
+                .idea/
+                *.iml
+                .DS_Store
+                """);
+    }
+
+    private static void generateJakartaPom(
+            ProjectSpec spec, Path dir, String jakartaVersion, String packaging,
+            String javaVersion, Set<String> selectedDepIds) throws IOException {
+        StringBuilder depsXml = new StringBuilder();
+        for (String id : selectedDepIds) {
+            JakartaMetadata.JakartaDep dep = JakartaMetadata.getDependency(id);
+            if (dep == null) continue;
+            String ver = JakartaMetadata.getVersion(id, jakartaVersion);
+            String scopeTag = dep.scope().equals("provided")
+                    ? "\n            <scope>provided</scope>"
+                    : (dep.scope().equals("compile") ? "" : "\n            <scope>" + dep.scope() + "</scope>");
+            String verTag = (ver == null || ver.isBlank()) ? "" : "\n            <version>" + ver + "</version>";
+            depsXml.append("""
+                    <dependency>
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>%s%s
+                    </dependency>
+            """.formatted(dep.groupId(), dep.artifactId(), verTag, scopeTag));
+        }
+
+        // Add JUnit 5 for testing
+        depsXml.append("""
+                    <dependency>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter-api</artifactId>
+                        <version>5.10.2</version>
+                        <scope>test</scope>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter-engine</artifactId>
+                        <version>5.10.2</version>
+                        <scope>test</scope>
+                    </dependency>
+        """);
+
+        String warPlugin = packaging.equals("war") ? """
+                            <plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-war-plugin</artifactId>
+                                <version>3.4.0</version>
+                                <configuration>
+                                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                                </configuration>
+                            </plugin>""" : "";
+
+        String pom = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+                    <modelVersion>4.0.0</modelVersion>
+
+                    <groupId>%s</groupId>
+                    <artifactId>%s</artifactId>
+                    <version>1.0-SNAPSHOT</version>
+                    <name>%s</name>
+                    <packaging>%s</packaging>
+
+                    <properties>
+                        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                        <maven.compiler.release>%s</maven.compiler.release>
+                    </properties>
+
+                    <dependencies>
+                %s
+                    </dependencies>
+
+                    <build>
+                        <plugins>
+                            <plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-compiler-plugin</artifactId>
+                                <version>3.13.0</version>
+                            </plugin>%s
+                        </plugins>
+                    </build>
+                </project>
+                """.formatted(
+                spec.group().isBlank() ? "com.example" : spec.group(),
+                spec.artifact().isBlank() ? "demo" : spec.artifact(),
+                spec.name().isBlank() ? "demo" : spec.name(),
+                packaging,
+                javaVersion,
+                depsXml.toString().indent(8).stripTrailing(),
+                warPlugin.isEmpty() ? "" : "\n" + warPlugin
+        );
+
+        Files.writeString(dir.resolve("pom.xml"), pom);
+    }
+
+    private static void generateJakartaGradle(
+            ProjectSpec spec, Path dir, String jakartaVersion, boolean isWar,
+            String javaVersion, Set<String> selectedDepIds, boolean isKotlin, boolean isGroovy) throws IOException {
+        StringBuilder depsGradle = new StringBuilder();
+        for (String id : selectedDepIds) {
+            JakartaMetadata.JakartaDep dep = JakartaMetadata.getDependency(id);
+            if (dep == null) continue;
+            String ver = JakartaMetadata.getVersion(id, jakartaVersion);
+            String config = dep.scope().equals("provided")
+                    ? (isWar ? "providedCompile" : "compileOnly")
+                    : "implementation";
+            String coord = dep.groupId() + ":" + dep.artifactId() + (ver != null && !ver.isBlank() ? ":" + ver : "");
+            depsGradle.append("    ").append(config).append("('").append(coord).append("')\n");
+        }
+        depsGradle.append("    testImplementation('org.junit.jupiter:junit-jupiter-api:5.10.2')\n");
+        depsGradle.append("    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine:5.10.2')\n");
+
+        String plugins = "    id 'java'\n" + (isWar ? "    id 'war'\n" : "")
+                + (isKotlin ? "    id 'org.jetbrains.kotlin.jvm' version '2.0.0'\n" : "")
+                + (isGroovy ? "    id 'groovy'\n" : "");
+
+        String buildGradle = """
+                plugins {
+                %s}
+
+                group = '%s'
+                version = '1.0-SNAPSHOT'
+
+                repositories {
+                    mavenCentral()
+                }
+
+                java {
+                    toolchain {
+                        languageVersion = JavaLanguageVersion.of(%s)
+                    }
+                }
+
+                dependencies {
+                %s}
+
+                test {
+                    useJUnitPlatform()
+                }
+                """.formatted(
+                plugins,
+                spec.group().isBlank() ? "com.example" : spec.group(),
+                javaVersion,
+                depsGradle.toString()
+        );
+
+        Files.writeString(dir.resolve(isKotlin ? "build.gradle.kts" : "build.gradle"), buildGradle);
+        Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = '" + (spec.artifact().isBlank() ? "demo" : spec.artifact()) + "'\n");
+    }
+
+    private static void generateJakartaSourceFiles(
+            ProjectSpec spec, Path pkgCodeDir, Path srcTest, String pkg, String template,
+            boolean isKotlin, boolean isGroovy, String jaxPrefix) throws IOException {
+
+        if (template.equalsIgnoreCase(JakartaMetadata.TEMPLATE_WEB)) {
+            // Web application
+            if (isKotlin) {
+                Files.writeString(pkgCodeDir.resolve("HelloServlet.kt"), """
+                        package %s
+
+                        import java.io.IOException
+                        import java.io.PrintWriter
+                        import %s.servlet.ServletException
+                        import %s.servlet.annotation.WebServlet
+                        import %s.servlet.http.HttpServlet
+                        import %s.servlet.http.HttpServletRequest
+                        import %s.servlet.http.HttpServletResponse
+
+                        @WebServlet(name = "helloServlet", value = ["/hello-servlet"])
+                        class HelloServlet : HttpServlet() {
+                            private var message: String = "Hello World!"
+
+                            override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+                                response.contentType = "text/html"
+                                val out = response.writer
+                                out.println("<html><body>")
+                                out.println("<h1>$message</h1>")
+                                out.println("</body></html>")
+                            }
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+            } else if (isGroovy) {
+                Files.writeString(pkgCodeDir.resolve("HelloServlet.groovy"), """
+                        package %s
+
+                        import java.io.IOException
+                        import java.io.PrintWriter
+                        import %s.servlet.ServletException
+                        import %s.servlet.annotation.WebServlet
+                        import %s.servlet.http.HttpServlet
+                        import %s.servlet.http.HttpServletRequest
+                        import %s.servlet.http.HttpServletResponse
+
+                        @WebServlet(name = "helloServlet", value = ["/hello-servlet"])
+                        class HelloServlet extends HttpServlet {
+                            String message = "Hello World!"
+
+                            @Override
+                            void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+                                response.contentType = "text/html"
+                                PrintWriter out = response.writer
+                                out.println("<html><body>")
+                                out.println("<h1>$message</h1>")
+                                out.println("</body></html>")
+                            }
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+            } else {
+                Files.writeString(pkgCodeDir.resolve("HelloServlet.java"), """
+                        package %s;
+
+                        import java.io.IOException;
+                        import java.io.PrintWriter;
+                        import %s.servlet.ServletException;
+                        import %s.servlet.annotation.WebServlet;
+                        import %s.servlet.http.HttpServlet;
+                        import %s.servlet.http.HttpServletRequest;
+                        import %s.servlet.http.HttpServletResponse;
+
+                        @WebServlet(name = "helloServlet", value = "/hello-servlet")
+                        public class HelloServlet extends HttpServlet {
+                            private String message;
+
+                            @Override
+                            public void init() {
+                                message = "Hello World!";
+                            }
+
+                            @Override
+                            public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+                                response.setContentType("text/html");
+
+                                PrintWriter out = response.getWriter();
+                                out.println("<html><body>");
+                                out.println("<h1>" + message + "</h1>");
+                                out.println("</body></html>");
+                            }
+
+                            @Override
+                            public void destroy() {
+                            }
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+            }
+        } else if (template.equalsIgnoreCase(JakartaMetadata.TEMPLATE_LIBRARY)) {
+            // Library
+            if (isKotlin) {
+                Files.writeString(pkgCodeDir.resolve("HelloService.kt"), """
+                        package %s
+
+                        class HelloService {
+                            fun sayHello(name: String? = "World"): String {
+                                return "Hello, ${name ?: "World"}!"
+                            }
+                        }
+                        """.formatted(pkg));
+            } else if (isGroovy) {
+                Files.writeString(pkgCodeDir.resolve("HelloService.groovy"), """
+                        package %s
+
+                        class HelloService {
+                            String sayHello(String name = "World") {
+                                return "Hello, ${name ?: 'World'}!"
+                            }
+                        }
+                        """.formatted(pkg));
+            } else {
+                Files.writeString(pkgCodeDir.resolve("HelloService.java"), """
+                        package %s;
+
+                        public class HelloService {
+                            public String sayHello(String name) {
+                                return "Hello, " + (name == null || name.isBlank() ? "World" : name) + "!";
+                            }
+                        }
+                        """.formatted(pkg));
+                Files.writeString(srcTest.resolve("HelloServiceTest.java"), """
+                        package %s;
+
+                        import org.junit.jupiter.api.Test;
+                        import static org.junit.jupiter.api.Assertions.*;
+
+                        public class HelloServiceTest {
+                            @Test
+                            void testSayHello() {
+                                HelloService service = new HelloService();
+                                assertEquals("Hello, World!", service.sayHello("World"));
+                            }
+                        }
+                        """.formatted(pkg));
+            }
+        } else {
+            // REST service (default)
+            if (isKotlin) {
+                Files.writeString(pkgCodeDir.resolve("HelloApplication.kt"), """
+                        package %s
+
+                        import %s.ws.rs.ApplicationPath
+                        import %s.ws.rs.core.Application
+
+                        @ApplicationPath("/api")
+                        class HelloApplication : Application()
+                        """.formatted(pkg, jaxPrefix, jaxPrefix));
+
+                Files.writeString(pkgCodeDir.resolve("HelloResource.kt"), """
+                        package %s
+
+                        import %s.ws.rs.GET
+                        import %s.ws.rs.Path
+                        import %s.ws.rs.Produces
+                        import %s.ws.rs.core.MediaType
+
+                        @Path("/hello-world")
+                        class HelloResource {
+
+                            @GET
+                            @Produces(MediaType.TEXT_PLAIN)
+                            fun hello(): String = "Hello, World!"
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+            } else if (isGroovy) {
+                Files.writeString(pkgCodeDir.resolve("HelloApplication.groovy"), """
+                        package %s
+
+                        import %s.ws.rs.ApplicationPath
+                        import %s.ws.rs.core.Application
+
+                        @ApplicationPath("/api")
+                        class HelloApplication extends Application {
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix));
+
+                Files.writeString(pkgCodeDir.resolve("HelloResource.groovy"), """
+                        package %s
+
+                        import %s.ws.rs.GET
+                        import %s.ws.rs.Path
+                        import %s.ws.rs.Produces
+                        import %s.ws.rs.core.MediaType
+
+                        @Path("/hello-world")
+                        class HelloResource {
+
+                            @GET
+                            @Produces(MediaType.TEXT_PLAIN)
+                            String hello() {
+                                return "Hello, World!"
+                            }
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+            } else {
+                Files.writeString(pkgCodeDir.resolve("HelloApplication.java"), """
+                        package %s;
+
+                        import %s.ws.rs.ApplicationPath;
+                        import %s.ws.rs.core.Application;
+
+                        @ApplicationPath("/api")
+                        public class HelloApplication extends Application {
+
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix));
+
+                Files.writeString(pkgCodeDir.resolve("HelloResource.java"), """
+                        package %s;
+
+                        import %s.ws.rs.GET;
+                        import %s.ws.rs.Path;
+                        import %s.ws.rs.Produces;
+                        import %s.ws.rs.core.MediaType;
+
+                        @Path("/hello-world")
+                        public class HelloResource {
+                            @GET
+                            @Produces(MediaType.TEXT_PLAIN)
+                            public String hello() {
+                                return "Hello, World!";
+                            }
+                        }
+                        """.formatted(pkg, jaxPrefix, jaxPrefix, jaxPrefix, jaxPrefix));
+
+                Files.writeString(srcTest.resolve("HelloResourceTest.java"), """
+                        package %s;
+
+                        import org.junit.jupiter.api.Test;
+                        import static org.junit.jupiter.api.Assertions.*;
+
+                        public class HelloResourceTest {
+                            @Test
+                            void testHello() {
+                                HelloResource resource = new HelloResource();
+                                assertEquals("Hello, World!", resource.hello());
+                            }
+                        }
+                        """.formatted(pkg));
             }
         }
     }
