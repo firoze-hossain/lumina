@@ -2076,6 +2076,117 @@ public class LuminaApp extends Application {
         if (mavenPanel != null) mavenPanel.setProject(root);
     }
 
+    // ------------------------------------------- Spring config quick-fixes
+
+    /** The open tab for path, if any — used so a quick-fix that edits the
+     *  build file also refreshes it live if it happens to be open. */
+    private EditorTab editorTabFor(Path path) {
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof EditorTab et && path.equals(et.getPath())) return et;
+        }
+        return null;
+    }
+
+    /**
+     * Runs a diagnostic's {@code quickFix} id from an application.properties
+     * / application.yml tab — currently just "add-dependency:&lt;id&gt;"
+     * from the missing-JDBC-driver inspection. Appends the starter to the
+     * build file (headless, no dialog — IntelliJ's one-click fix) and
+     * immediately re-resolves dependencies, exactly like clicking "Load
+     * Maven Changes" after using Add Starters.
+     */
+    private void applySpringConfigQuickFix(String fixId) {
+        if (projectRoot == null || fixId == null || !fixId.startsWith("add-dependency:")) {
+            return;
+        }
+        Path root = projectRoot;
+        boolean gradle = RunConfiguration.isGradleProject(root);
+        Path buildFile = gradle ? firstExistingBuildGradle(root) : root.resolve("pom.xml");
+        if (buildFile == null || !Files.isRegularFile(buildFile)) return;
+        String id = fixId.substring("add-dependency:".length());
+        boolean added = AddStartersDialog.addDependencyHeadless(buildFile, gradle, id);
+        if (!added) {
+            console.println("Could not add a dependency for '" + id + "' to "
+                    + buildFile.getFileName());
+            return;
+        }
+        fileExplorer.refresh();
+        console.println("\u2713 Added dependency: " + id);
+        EditorTab openBuildTab = editorTabFor(buildFile);
+        if (openBuildTab != null) {
+            try {
+                openBuildTab.setEditorText(Files.readString(buildFile));
+                openBuildTab.markSaved(buildFile);
+                wireAddStarters(openBuildTab);
+            } catch (IOException ignored) {
+            }
+        }
+        reloadDependenciesFromQuickFix(buildFile, root, gradle);
+    }
+
+    /** Same resolve pipeline as {@link #reloadMavenDependencies}, but for a
+     *  build file that was just edited directly on disk (by a quick-fix)
+     *  rather than through an open, unsaved editor tab. */
+    private void reloadDependenciesFromQuickFix(Path buildFile, Path root, boolean gradle) {
+        String label = "Resolving dependencies of " + root.getFileName() + "\u2026";
+        if (RunConfiguration.isMavenProject(root)) {
+            try {
+                Files.deleteIfExists(root.resolve("target/lumina.cp"));
+            } catch (IOException ignored) {
+            }
+            showMavenSyncProgress(true, label);
+            console.runSequence("Reload dependencies", List.of(
+                            RunConfiguration.maven(root, "-q", "dependency:resolve"),
+                            RunConfiguration.maven(root, "-q", "dependency:build-classpath",
+                                    "-Dmdep.outputFile=target/lumina.cp")),
+                    root, null,
+                    () -> onMavenReloadSucceededFromDisk(buildFile, root),
+                    () -> showMavenSyncProgress(false, null));
+        } else if (gradle) {
+            showMavenSyncProgress(true, label);
+            Thread worker = new Thread(() -> {
+                Path cp = root.resolve("build/lumina.cp");
+                try {
+                    Files.deleteIfExists(cp);
+                } catch (IOException ignored) {
+                }
+                resolveGradleClasspath(cp);
+                boolean ok = Files.isRegularFile(cp);
+                Platform.runLater(() -> {
+                    showMavenSyncProgress(false, null);
+                    if (ok) {
+                        onMavenReloadSucceededFromDisk(buildFile, root);
+                    } else {
+                        console.println("\u2717 Dependency resolution failed \u2014 see Run console");
+                    }
+                });
+            }, "lumina-gradle-reload");
+            worker.setDaemon(true);
+            worker.start();
+        }
+    }
+
+    private void onMavenReloadSucceededFromDisk(Path buildFile, Path root) {
+        String baseline = null;
+        try {
+            baseline = Files.readString(buildFile);
+        } catch (IOException ignored) {
+        }
+        if (baseline != null) mavenSyncBaselineText = baseline;
+        refreshMavenSyncForOpenTabs();
+        console.println("\u2713 Dependencies resolved for " + root.getFileName());
+        if (baseline != null) {
+            try {
+                Path cpFile = RunConfiguration.isMavenProject(root)
+                        ? root.resolve("target/lumina.cp") : root.resolve("build/lumina.cp");
+                Files.writeString(sidecarFor(cpFile), baseline);
+            } catch (IOException ignored) {
+            }
+        }
+        initSemanticEngine(root);
+        if (mavenPanel != null) mavenPanel.setProject(root);
+    }
+
     private static int lineIndexOf(String text, String needle) {
         String[] lines = text.split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
@@ -4052,9 +4163,18 @@ public class LuminaApp extends Application {
             }
             return items;
         });
-        // M3: compile-on-idle diagnostics for project .java files.
+        // M3: compile-on-idle diagnostics for project .java files, plus
+        // IntelliJ-style Spring Boot config inspections for application
+        // .properties / .yml (unknown properties, missing JDBC driver).
         tab.setDiagnosticsProvider((file, text) -> {
-            if (projectRoot == null) return List.of();
+            if (file == null || projectRoot == null) return List.of();
+            String fname = file.getFileName().toString();
+            if (fname.endsWith(".properties") || fname.endsWith(".yml") || fname.endsWith(".yaml")) {
+                if (!isSpringConfigFile(file)) return List.of();
+                boolean yaml = fname.endsWith(".yml") || fname.endsWith(".yaml");
+                return dev.lumina.diagnostics.SpringConfigDiagnostics.analyze(
+                        text, yaml, springProperties, ensureClasspath());
+            }
             String cp = ensureClasspath();
             String classes = projectRoot.resolve("target/classes").toString();
             String full = cp == null || cp.isBlank() ? classes
@@ -4073,6 +4193,7 @@ public class LuminaApp extends Application {
                 updateProblemsStatus(diags);
             }
         });
+        tab.setOnQuickFix(this::applySpringConfigQuickFix);
         // M4: '(' opens parameter info.
         tab.setParamInfoTrigger(this::showParameterInfo);
         loadAuthorHints(tab);

@@ -70,6 +70,7 @@ public final class AddStartersDialog {
         put("postgresql", "org.postgresql", "postgresql", Scope.RUNTIME);
         put("mysql", "com.mysql", "mysql-connector-j", Scope.RUNTIME);
         put("h2", "com.h2database", "h2", Scope.RUNTIME);
+        put("mariadb", "org.mariadb.jdbc", "mariadb-java-client", Scope.RUNTIME);
         put("liquibase", "org.liquibase", "liquibase-core", Scope.RUNTIME);
         put("flyway", "org.flywaydb", "flyway-core", Scope.RUNTIME);
         put("kafka", "org.springframework.kafka", "spring-kafka", Scope.COMPILE);
@@ -133,6 +134,7 @@ public final class AddStartersDialog {
                     new Dep("postgresql", "PostgreSQL Driver",
                             "A JDBC and R2DBC driver for PostgreSQL."),
                     new Dep("mysql", "MySQL Driver", "MySQL JDBC driver."),
+                    new Dep("mariadb", "MariaDB Driver", "MariaDB JDBC driver."),
                     new Dep("h2", "H2 Database",
                             "A fast in-memory database supporting JDBC and embedded mode."),
                     new Dep("liquibase", "Liquibase Migration",
@@ -420,7 +422,7 @@ public final class AddStartersDialog {
      * never rewrites or removes existing content, so anything not in our
      * catalog (hand-added or unrecognized) is left completely untouched.
      */
-    private void applyToFile(Path buildFile, boolean gradle, Set<String> added) {
+    private static void applyToFile(Path buildFile, boolean gradle, Set<String> added) {
         try {
             String text = Files.readString(buildFile);
             String updated = gradle ? insertGradle(text, added) : insertMaven(text, added);
@@ -432,14 +434,32 @@ public final class AddStartersDialog {
         }
     }
 
-    private Coordinate coordinateFor(String id) {
+    /**
+     * Headless one-click "Add dependency" — no dialog, just appends the
+     * single starter's coordinate to the build file. Used by the editor's
+     * quick-fixes (e.g. "Add dependency on MySQL" from the missing-JDBC-
+     * driver inspection), matching IntelliJ's one-click fix exactly.
+     */
+    public static boolean addDependencyHeadless(Path buildFile, boolean gradle, String id) {
+        try {
+            String text = Files.readString(buildFile);
+            String updated = gradle ? insertGradle(text, Set.of(id)) : insertMaven(text, Set.of(id));
+            if (updated == null) return false;
+            Files.writeString(buildFile, updated);
+            return true;
+        } catch (IOException ex) {
+            return false;
+        }
+    }
+
+    private static Coordinate coordinateFor(String id) {
         Coordinate explicit = COORDINATES.get(id);
         if (explicit != null) return explicit;
         return new Coordinate("org.springframework.boot",
                 "spring-boot-starter-" + id, Scope.COMPILE);
     }
 
-    private String insertMaven(String text, Set<String> added) {
+    private static String insertMaven(String text, Set<String> added) {
         int close = text.lastIndexOf("</dependencies>");
         if (close < 0) return null;
         StringBuilder block = new StringBuilder();
@@ -460,7 +480,7 @@ public final class AddStartersDialog {
         return text.substring(0, close) + block + text.substring(close);
     }
 
-    private String insertGradle(String text, Set<String> added) {
+    private static String insertGradle(String text, Set<String> added) {
         int close = findGradleDependenciesClose(text);
         if (close < 0) return null;
         StringBuilder block = new StringBuilder();
