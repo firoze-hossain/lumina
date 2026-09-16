@@ -40,6 +40,12 @@ public class EditorTab extends Tab {
                 || n.endsWith(".fxml")) {
             return dev.lumina.syntax.XmlSyntaxHighlighter::computeHighlighting;
         }
+        if (n.endsWith(".properties")) {
+            return dev.lumina.syntax.PropertiesSyntaxHighlighter::computeHighlighting;
+        }
+        if (n.endsWith(".yml") || n.endsWith(".yaml")) {
+            return dev.lumina.syntax.YamlSyntaxHighlighter::computeHighlighting;
+        }
         return null;
     }
 
@@ -117,6 +123,15 @@ public class EditorTab extends Tab {
             if (e.getCode() == javafx.scene.input.KeyCode.SPACE && e.isControlDown()) {
                 e.consume();
                 triggerCompletion();
+                return;
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && e.isAltDown()) {
+                e.consume();
+                dev.lumina.diagnostics.JavaDiagnostics.Diag diag =
+                        diagAt(codeArea.getCaretPosition());
+                if (diag != null && diag.quickFix() != null) {
+                    runQuickFix(diag.quickFix());
+                }
                 return;
             }
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
@@ -742,6 +757,34 @@ public class EditorTab extends Tab {
     private javafx.scene.control.Tooltip diagTooltip;
     private String diagTooltipKey;
     private Runnable paramInfoTrigger;
+    private java.util.function.Consumer<String> onQuickFix;
+
+    /** Called with a diagnostic's {@code quickFix} id (e.g.
+     *  "add-dependency:mysql") when the user clicks the tooltip's fix link
+     *  or presses Alt+Enter on a squiggle that has one. */
+    public void setOnQuickFix(java.util.function.Consumer<String> handler) {
+        this.onQuickFix = handler;
+    }
+
+    private void runQuickFix(String id) {
+        if (onQuickFix != null) onQuickFix.accept(id);
+        updateDiagTooltip(null);
+    }
+
+    private static String quickFixLabel(String id) {
+        if (id.startsWith("add-dependency:")) {
+            String dep = id.substring("add-dependency:".length());
+            String pretty = switch (dep) {
+                case "mysql" -> "MySQL";
+                case "postgresql" -> "PostgreSQL";
+                case "mariadb" -> "MariaDB";
+                case "h2" -> "H2";
+                default -> dep;
+            };
+            return "Add dependency on " + pretty + "  \u2014 Alt+Enter";
+        }
+        return "Fix\u2026  Alt+Enter";
+    }
 
     /**
      * M3: install the compile-on-idle pipeline. The provider runs on a
@@ -768,9 +811,13 @@ public class EditorTab extends Tab {
     }
 
     private void scheduleDiagnostics() {
-        if (diagnosticsProvider == null || path == null
-                || !codeArea.isEditable()
-                || !path.toString().endsWith(".java")) {
+        if (diagnosticsProvider == null || path == null || !codeArea.isEditable()) {
+            return;
+        }
+        String fname = path.getFileName().toString().toLowerCase();
+        boolean diagnosable = fname.endsWith(".java") || fname.endsWith(".properties")
+                || fname.endsWith(".yml") || fname.endsWith(".yaml");
+        if (!diagnosable) {
             return;
         }
         final int generation = editGeneration;
@@ -876,9 +923,17 @@ public class EditorTab extends Tab {
         row.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         javafx.scene.layout.HBox.setMargin(dot, new javafx.geometry.Insets(3, 0, 0, 0));
 
-        javafx.scene.control.Label hint =
-                new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
-        hint.getStyleClass().add("diag-tooltip-hint");
+        javafx.scene.control.Label hint;
+        if (diag.quickFix() != null) {
+            String fixId = diag.quickFix();
+            hint = new javafx.scene.control.Label(quickFixLabel(fixId));
+            hint.getStyleClass().add("diag-quickfix");
+            hint.setCursor(javafx.scene.Cursor.HAND);
+            hint.setOnMouseClicked(e -> runQuickFix(fixId));
+        } else {
+            hint = new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
+            hint.getStyleClass().add("diag-tooltip-hint");
+        }
 
         javafx.scene.layout.VBox box = new javafx.scene.layout.VBox(5, row, hint);
 

@@ -160,6 +160,25 @@
 .code-area .xml-value     { -fx-fill: #6AAB73; }
 .code-area .xml-comment   { -fx-fill: #7A7E85; -fx-font-style: italic; }
 
+/* application.properties colors */
+.code-area .prop-key         { -fx-fill: #CF8E6D; }
+.code-area .prop-value       { -fx-fill: #6AAB73; }
+.code-area .prop-placeholder { -fx-fill: #C77DBB; -fx-font-style: italic; }
+.code-area .prop-escape      { -fx-fill: #2AACB8; }
+.code-area .prop-comment     { -fx-fill: #7A7E85; -fx-font-style: italic; }
+
+/* application.yml / .yaml colors */
+.code-area .yaml-key         { -fx-fill: #56A8F5; }
+.code-area .yaml-value       { -fx-fill: #BCBEC4; }
+.code-area .yaml-string      { -fx-fill: #6AAB73; }
+.code-area .yaml-number      { -fx-fill: #2AACB8; }
+.code-area .yaml-boolean     { -fx-fill: #CF8E6D; }
+.code-area .yaml-placeholder { -fx-fill: #C77DBB; -fx-font-style: italic; }
+.code-area .yaml-anchor      { -fx-fill: #B3AE60; }
+.code-area .yaml-dash        { -fx-fill: #A8AEC4; -fx-font-weight: bold; }
+.code-area .yaml-comment     { -fx-fill: #7A7E85; -fx-font-style: italic; }
+.code-area .yaml-doc-marker  { -fx-fill: #A8AEC4; -fx-font-weight: bold; }
+
 /* --------------------------------------------------------- welcome view */
 
 .welcome-view { -fx-background-color: #191C26; }
@@ -1069,6 +1088,14 @@
     -fx-font-size: 10.5px;
     -fx-padding: 3 0 0 10;
 }
+.diag-quickfix {
+    -fx-text-fill: -lumen;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+    -fx-underline: true;
+    -fx-padding: 3 0 0 10;
+}
+.diag-quickfix:hover { -fx-text-fill: #82C4FF; }
 
 .problems-panel { -fx-background-color: #14161F; }
 .problems-bar {

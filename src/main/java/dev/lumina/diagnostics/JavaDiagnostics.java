@@ -27,10 +27,16 @@ public final class JavaDiagnostics {
 
     /**
      * One squiggle: 1-based line, absolute [start,end) offsets into the
-     * exact text that was compiled, and the compiler's message.
+     * exact text that was compiled, and the compiler's message. quickFix is
+     * null for ordinary diagnostics; when set (e.g. "add-dependency:mysql")
+     * the editor shows a real, clickable one-click fix in the hover popup
+     * and on Alt+Enter, exactly like IntelliJ's inspection quick-fixes.
      */
     public record Diag(Severity severity, int line, int start, int end,
-                       String message) {
+                       String message, String quickFix) {
+        public Diag(Severity severity, int line, int start, int end, String message) {
+            this(severity, line, start, end, message, null);
+        }
     }
 
     private static volatile Path outputDir;
