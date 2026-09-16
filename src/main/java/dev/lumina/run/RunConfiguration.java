@@ -38,6 +38,10 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
                 configs.add(new RunConfiguration(
                         "Spring Boot \u2014 " + root.getFileName(),
                         List.of(maven(root, "spring-boot:run")), root));
+            } else if (content.contains("javafx-maven-plugin") || content.contains("javafx-controls")) {
+                configs.add(new RunConfiguration(
+                        "JavaFX \u2014 " + root.getFileName(),
+                        List.of(maven(root, "javafx:run")), root));
             }
         }
 
@@ -48,6 +52,10 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
                 configs.add(new RunConfiguration(
                         "Spring Boot \u2014 " + root.getFileName(),
                         List.of(gradleCmd(root, "bootRun")), root));
+            } else if (content.contains("org.openjfx.javafxplugin") || content.contains("javafx {")) {
+                configs.add(new RunConfiguration(
+                        "JavaFX \u2014 " + root.getFileName(),
+                        List.of(gradleCmd(root, "run")), root));
             } else if (content.contains("application")) {
                 configs.add(new RunConfiguration(
                         "Gradle run \u2014 " + root.getFileName(),
@@ -105,6 +113,8 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
             List<String> c = new ArrayList<>(command);
             if (c.contains("spring-boot:run")) {
                 c.add("-Dspring-boot.run.jvmArguments=" + JDWP);
+            } else if (c.contains("javafx:run")) {
+                c.add("-Doptions=" + JDWP);
             } else if (c.contains("bootRun")) {
                 c.add("--debug-jvm");
             } else if (!c.isEmpty() && (c.get(0).endsWith("java")

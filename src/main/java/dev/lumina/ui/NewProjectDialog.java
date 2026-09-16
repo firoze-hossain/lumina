@@ -21,6 +21,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -86,6 +87,37 @@ public class NewProjectDialog {
     /** A collapsible category in the dependency tree, e.g. "Web", "SQL". */
     private record SpringDepCategory(String name, List<SpringDep> deps) {
     }
+
+    /** One selectable JavaFX additional library matching IntelliJ IDEA's wizard. */
+    private record JavaFXLib(String id, String name, String version, String description, String website) {
+        public String label() {
+            return name + " (" + version + ")";
+        }
+    }
+
+    private static final List<JavaFXLib> JAVAFX_LIBRARIES = List.of(
+            new JavaFXLib("bootstrapfx", "BootstrapFX", "0.4.0",
+                    "Provides a CSS stylesheet that closely resembles the Twitter Bootstrap while being custom tailored for JavaFX's unique CSS flavor.",
+                    "https://github.com/kordamp/bootstrapfx"),
+            new JavaFXLib("controlsfx", "ControlsFX", "11.2.1",
+                    "High quality UI controls and other tools to complement the core JavaFX distribution.",
+                    "https://controlsfx.github.io/"),
+            new JavaFXLib("formsfx", "FormsFX", "11.6.0",
+                    "A framework for creating forms easily and effectively.",
+                    "https://github.com/dlsc-software-consulting-gmbh/FormsFX"),
+            new JavaFXLib("fxgl", "FXGL", "21.1",
+                    "Java / JavaFX / Kotlin Game Development Framework.",
+                    "https://github.com/AlmasB/FXGL"),
+            new JavaFXLib("ikonli", "Ikonli", "12.3.1",
+                    "Icon packs for Java applications.",
+                    "https://kordamp.org/ikonli/"),
+            new JavaFXLib("tilesfx", "TilesFX", "21.0.9",
+                    "A JavaFX library containing tiles that can be used for dashboards.",
+                    "https://github.com/HanSolo/tilesfx"),
+            new JavaFXLib("validatorfx", "ValidatorFX", "0.6.1",
+                    "A form validation library for JavaFX.",
+                    "https://github.com/effad/ValidatorFX")
+    );
 
     private static final List<String> FALLBACK_BOOT_VERSIONS =
             List.of("4.1.1", "4.1.0", "4.0.6", "3.5.8", "3.4.12");
@@ -391,6 +423,7 @@ public class NewProjectDialog {
     private final List<Node> emptyOnlyNodes = new ArrayList<>();
     private final List<Node> javafxOnlyNodes = new ArrayList<>();
     private final List<Node> javafxHiddenNodes = new ArrayList<>();
+    private final List<Node> languageNodes = new ArrayList<>();
     private final Label emptyDescription = new Label("A basic project with free structure.");
     private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here \u2197");
     private final VBox generatorSpecificBox = new VBox();
@@ -449,9 +482,18 @@ public class NewProjectDialog {
     private final Label addedDepsPlaceholder = new Label("No dependencies added");
     private final Button helpButton = new Button("?");
     private boolean onSpringDepsPage;
+    private boolean onJavaFXDepsPage;
     private StackPane centerStack;
     private ScrollPane formScroll;
     private BorderPane springDepsPage;
+    private BorderPane javafxDepsPage;
+    private final Set<String> selectedJavaFXDepIds = new LinkedHashSet<>();
+    private final ListView<JavaFXLib> javafxLibList = new ListView<>();
+    private final Label javafxLibTitle = new Label();
+    private final Label javafxLibDescription = new Label();
+    private final Hyperlink javafxWebLink = new Hyperlink("Web site ↗");
+    private final VBox javafxAddedDepsBox = new VBox(6);
+    private final Label javafxAddedDepsPlaceholder = new Label("No dependencies added");
 
     private HBox dependenciesRow;
     private Button createButton;
@@ -475,7 +517,10 @@ public class NewProjectDialog {
         springDepsPage = buildSpringDependencyPage();
         springDepsPage.setVisible(false);
         springDepsPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage);
+        javafxDepsPage = buildJavaFXDependencyPage();
+        javafxDepsPage.setVisible(false);
+        javafxDepsPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -668,7 +713,7 @@ public class NewProjectDialog {
         Label languageLabel = formLabel("Language:");
         grid.add(languageLabel, 0, row);
         grid.add(languageRow, 1, row++);
-        springOnlyNodes.addAll(List.of(languageLabel, languageRow));
+        languageNodes.addAll(List.of(languageLabel, languageRow));
 
         typeGroup.getToggles().addAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeGradleGroovy.setToggleGroup(typeGroup);
@@ -725,12 +770,12 @@ public class NewProjectDialog {
         grid.add(buildSystemRow, 1, row++);
         standardOnlyNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
 
-        Label groupLabel = formLabel("Group:");
+        Node groupLabel = formLabelWithHelp("Group:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
         grid.add(groupLabel, 0, row);
         grid.add(groupField, 1, row++);
         standardOnlyNodes.addAll(List.of(groupLabel, groupField));
 
-        Label artifactLabel = formLabel("Artifact:");
+        Node artifactLabel = formLabelWithHelp("Artifact:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
         grid.add(artifactLabel, 0, row);
         grid.add(artifactField, 1, row++);
         standardOnlyNodes.addAll(List.of(artifactLabel, artifactField));
@@ -1110,6 +1155,7 @@ public class NewProjectDialog {
         cancelButton.setManaged(false);
         previousButton.setVisible(true);
         previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToSpringForm());
     }
 
     /** Page 2 \u2192 page 1, keeping every already-picked dependency. */
@@ -1126,6 +1172,219 @@ public class NewProjectDialog {
         previousButton.setVisible(false);
         previousButton.setManaged(false);
     }
+
+    // ----------------------------------------------------------- javafx deps
+
+    private BorderPane buildJavaFXDependencyPage() {
+        Label header = new Label("Additional libraries:");
+        header.getStyleClass().add("panel-header");
+        header.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+
+        javafxLibList.setItems(FXCollections.observableArrayList(JAVAFX_LIBRARIES));
+        javafxLibList.getStyleClass().addAll("dep-tree", "javafx-dep-list");
+        javafxLibList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(JavaFXLib lib, boolean empty) {
+                super.updateItem(lib, empty);
+                if (empty || lib == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                CheckBox cb = new CheckBox();
+                cb.getStyleClass().add("dep-checkbox");
+                cb.setSelected(selectedJavaFXDepIds.contains(lib.id()));
+                cb.setOnAction(e -> {
+                    javafxLibList.getSelectionModel().select(lib);
+                    if (cb.isSelected()) selectedJavaFXDepIds.add(lib.id());
+                    else selectedJavaFXDepIds.remove(lib.id());
+                    refreshAddedJavaFXDeps();
+                });
+
+                Label icon = new Label("\uD83D\uDCDA");
+                icon.setStyle("-fx-font-size: 13px; -fx-opacity: 0.9;");
+
+                Label nameLabel = new Label(lib.name());
+                nameLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #E6E9F2; -fx-font-size: 12.5px;");
+
+                Label verLabel = new Label("(" + lib.version() + ")");
+                verLabel.setStyle("-fx-text-fill: #8A91A8; -fx-font-size: 12px;");
+
+                HBox textHBox = new HBox(4, nameLabel, verLabel);
+                textHBox.setAlignment(Pos.CENTER_LEFT);
+
+                HBox row = new HBox(10, cb, icon, textHBox);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setPadding(new Insets(3, 6, 3, 6));
+
+                setGraphic(row);
+                setText(null);
+            }
+        });
+
+        javafxLibList.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            if (sel != null) showJavaFXLibDetails(sel);
+        });
+
+        VBox.setVgrow(javafxLibList, Priority.ALWAYS);
+        VBox left = new VBox(10, header, javafxLibList);
+        left.getStyleClass().add("dep-left");
+        left.setPrefWidth(460);
+
+        // Right details
+        javafxLibTitle.getStyleClass().add("dep-description-title");
+        javafxLibTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #E6E9F2;");
+
+        javafxLibDescription.getStyleClass().add("dep-description-body");
+        javafxLibDescription.setWrapText(true);
+        javafxLibDescription.setStyle("-fx-text-fill: #A9AFC3; -fx-font-size: 12.5px; -fx-line-spacing: 2;");
+
+        javafxWebLink.getStyleClass().add("javafx-web-link");
+        javafxWebLink.setStyle("-fx-text-fill: #589DF6; -fx-underline: false; -fx-font-size: 12.5px; -fx-padding: 0;");
+        javafxWebLink.setOnAction(e -> {
+            JavaFXLib current = javafxLibList.getSelectionModel().getSelectedItem();
+            if (current != null && current.website() != null) {
+                openBrowser(current.website());
+            }
+        });
+
+        VBox descBox = new VBox(8, javafxLibTitle, javafxLibDescription, javafxWebLink);
+        descBox.getStyleClass().add("dep-description-box");
+        descBox.setMinHeight(160);
+
+        Label addedHeader = new Label("Added dependencies:");
+        addedHeader.getStyleClass().add("panel-header");
+        addedHeader.setStyle("-fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+
+        javafxAddedDepsPlaceholder.getStyleClass().add("dep-added-placeholder");
+        javafxAddedDepsPlaceholder.setStyle("-fx-text-fill: #6B7290; -fx-font-size: 12.5px;");
+        StackPane placeholderWrap = new StackPane(javafxAddedDepsPlaceholder);
+        placeholderWrap.setAlignment(Pos.CENTER);
+
+        javafxAddedDepsBox.getStyleClass().add("dep-added-box");
+        javafxAddedDepsBox.setPadding(new Insets(8));
+
+        ScrollPane addedScroll = new ScrollPane(javafxAddedDepsBox);
+        addedScroll.setFitToWidth(true);
+        addedScroll.getStyleClass().add("dep-added-scroll");
+        VBox.setVgrow(addedScroll, Priority.ALWAYS);
+
+        StackPane addedContainer = new StackPane(placeholderWrap, addedScroll);
+        addedContainer.setStyle("-fx-background-color: #1A1D28; -fx-border-color: #333849; -fx-border-radius: 6; -fx-background-radius: 6;");
+        VBox.setVgrow(addedContainer, Priority.ALWAYS);
+
+        VBox right = new VBox(14, descBox, addedHeader, addedContainer);
+        right.getStyleClass().add("dep-right");
+        right.setPrefWidth(360);
+
+        HBox layout = new HBox(24, left, right);
+        HBox.setHgrow(left, Priority.ALWAYS);
+        layout.setPadding(new Insets(20, 24, 16, 24));
+
+        BorderPane page = new BorderPane();
+        page.setCenter(layout);
+
+        javafxLibList.getSelectionModel().select(0);
+        showJavaFXLibDetails(JAVAFX_LIBRARIES.get(0));
+        refreshAddedJavaFXDeps();
+
+        return page;
+    }
+
+    private void showJavaFXLibDetails(JavaFXLib lib) {
+        javafxLibTitle.setText(lib.name());
+        javafxLibDescription.setText(lib.description());
+        javafxWebLink.setVisible(lib.website() != null && !lib.website().isBlank());
+    }
+
+    private void refreshAddedJavaFXDeps() {
+        javafxAddedDepsBox.getChildren().clear();
+        boolean empty = selectedJavaFXDepIds.isEmpty();
+        javafxAddedDepsPlaceholder.setVisible(empty);
+        javafxAddedDepsPlaceholder.setManaged(empty);
+
+        if (!empty) {
+            for (JavaFXLib lib : JAVAFX_LIBRARIES) {
+                if (!selectedJavaFXDepIds.contains(lib.id())) continue;
+                Label name = new Label(lib.label());
+                name.getStyleClass().add("dep-added-label");
+                name.setStyle("-fx-text-fill: #D8DBE6; -fx-font-size: 12.5px;");
+
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                Button remove = new Button("\u00D7");
+                remove.getStyleClass().add("dep-added-remove");
+                remove.setOnAction(e -> {
+                    selectedJavaFXDepIds.remove(lib.id());
+                    refreshAddedJavaFXDeps();
+                    javafxLibList.refresh();
+                });
+
+                HBox row = new HBox(6, name, spacer, remove);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.getStyleClass().add("dep-added-row");
+                row.setPadding(new Insets(5, 8, 5, 8));
+                javafxAddedDepsBox.getChildren().add(row);
+            }
+        }
+    }
+
+    private void goToJavaFXDepsPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onJavaFXDepsPage = true;
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        javafxDepsPage.setVisible(true);
+        javafxDepsPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(false);
+        cancelButton.setManaged(false);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToJavaFXForm());
+    }
+
+    private void backToJavaFXForm() {
+        onJavaFXDepsPage = false;
+        javafxDepsPage.setVisible(false);
+        javafxDepsPage.setManaged(false);
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToJavaFXDepsPage());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
+    private static void openBrowser(String url) {
+        try {
+            if (java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
 
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
@@ -1508,6 +1767,21 @@ public class NewProjectDialog {
                 cancelButton.setManaged(true);
             }
         }
+        if (formScroll != null && javafxDepsPage != null) {
+            onJavaFXDepsPage = false;
+            javafxDepsPage.setVisible(false);
+            javafxDepsPage.setManaged(false);
+            formScroll.setVisible(true);
+            formScroll.setManaged(true);
+            if (previousButton != null) {
+                previousButton.setVisible(false);
+                previousButton.setManaged(false);
+            }
+            if (cancelButton != null) {
+                cancelButton.setVisible(true);
+                cancelButton.setManaged(true);
+            }
+        }
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
@@ -1530,6 +1804,7 @@ public class NewProjectDialog {
             dependenciesRow.setManaged(false);
         }
         setNodesVisible(springOnlyNodes, spring);
+        setNodesVisible(languageNodes, spring || javafx);
         setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific);
         setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
         setNodesVisible(webOnlyNodes, web);
@@ -1556,10 +1831,13 @@ public class NewProjectDialog {
             if (spring) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToSpringDepsPage());
+            } else if (javafx) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToJavaFXDepsPage());
             } else {
-                createButton.setText(javafx || (specific && generator != ProjectSpec.Generator.HTML
+                createButton.setText(specific && generator != ProjectSpec.Generator.HTML
                         && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
-                        && generator != ProjectSpec.Generator.VUE && generator != ProjectSpec.Generator.NUXT)
+                        && generator != ProjectSpec.Generator.VUE && generator != ProjectSpec.Generator.NUXT
                         ? "Next" : "Create");
                 createButton.setOnAction(e -> tryCreate());
             }
@@ -1940,8 +2218,8 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                mavenArchetype
-                        ? (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact))
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX)
+                        ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
                 javaVersionBox.getValue(),
@@ -1959,7 +2237,10 @@ public class NewProjectDialog {
                         .collect(java.util.stream.Collectors.joining(",")),
                 rustToolchainBox.getEditor().getText().trim(),
                 rust ? selectedRustTemplate().value() : "",
-                rustEnvironmentField.getText().trim());
+                rustEnvironmentField.getText().trim(),
+                selected.generator() == ProjectSpec.Generator.JAVAFX
+                        ? String.join(",", selectedJavaFXDepIds)
+                        : "");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
@@ -1999,6 +2280,17 @@ public class NewProjectDialog {
         Label l = new Label(text);
         l.getStyleClass().add("form-label");
         return l;
+    }
+
+    private Node formLabelWithHelp(String text, String helpText) {
+        Label label = formLabel(text);
+        Label help = new Label("(?)");
+        help.setStyle("-fx-text-fill: #707890; -fx-font-size: 11px; -fx-cursor: hand;");
+        javafx.scene.control.Tooltip tip = new javafx.scene.control.Tooltip(helpText);
+        javafx.scene.control.Tooltip.install(help, tip);
+        HBox box = new HBox(4, label, help);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
     }
 
     private HBox segmented(ToggleGroup group, boolean selectFirst, String... options) {
