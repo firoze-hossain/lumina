@@ -50,7 +50,8 @@ public final class ProjectGenerator {
         }
 
         switch (spec.generator()) {
-            case JAVA, KOTLIN, GROOVY, JAVAFX -> generateJava(spec, dir, log);
+            case JAVA, KOTLIN, GROOVY -> generateJava(spec, dir, log);
+            case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
             case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case QUARKUS, MICRONAUT, JAKARTA_EE, KTOR -> generateJava(spec, dir, log);
@@ -186,6 +187,483 @@ public final class ProjectGenerator {
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
     }
+
+    // ---------------------------------------------------------------- javafx
+
+    private static void generateJavaFX(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating JavaFX project (" + spec.buildSystem() + ", " + spec.language() + ") \u2026");
+
+        String pkg = spec.packageName();
+        if (pkg == null || pkg.isBlank()) {
+            String g = spec.group() == null || spec.group().isBlank() ? "com.example" : spec.group();
+            String a = spec.artifact() == null || spec.artifact().isBlank() ? "demo"
+                    : spec.artifact().toLowerCase().replaceAll("[^a-z0-9_]", "");
+            pkg = (g + "." + a).replaceAll("^\\.+|\\.+$", "");
+        }
+        String pkgPath = pkg.replace('.', '/');
+
+        Path srcMain = dir.resolve("src/main");
+        Path srcMainJava = srcMain.resolve("java");
+        Path srcMainResources = srcMain.resolve("resources");
+        Path pkgJavaDir = srcMainJava.resolve(pkgPath);
+        Path pkgResDir = srcMainResources.resolve(pkgPath);
+        Files.createDirectories(pkgJavaDir);
+        Files.createDirectories(pkgResDir);
+        Files.createDirectories(dir.resolve("src/test/java"));
+
+        java.util.Set<String> selectedLibs = new java.util.LinkedHashSet<>();
+        if (spec.javafxDependencies() != null && !spec.javafxDependencies().isBlank()) {
+            for (String dep : spec.javafxDependencies().split(",")) {
+                String trimmed = dep.trim().toLowerCase();
+                if (!trimmed.isEmpty()) selectedLibs.add(trimmed);
+            }
+        }
+
+        String javaVersion = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "21";
+        String javafxVersion = "23.0.2";
+
+        // Build file generation (Maven or Gradle)
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            StringBuilder mavenDeps = new StringBuilder();
+            if (selectedLibs.contains("bootstrapfx")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>org.kordamp.bootstrapfx</groupId>
+                                <artifactId>bootstrapfx-core</artifactId>
+                                <version>0.4.0</version>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("controlsfx")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>org.controlsfx</groupId>
+                                <artifactId>controlsfx</artifactId>
+                                <version>11.2.1</version>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("formsfx")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>com.dlsc.formsfx</groupId>
+                                <artifactId>formsfx-core</artifactId>
+                                <version>11.6.0</version>
+                                <exclusions>
+                                    <exclusion>
+                                        <groupId>org.openjfx</groupId>
+                                        <artifactId>*</artifactId>
+                                    </exclusion>
+                                </exclusions>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("fxgl")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>com.github.almasb</groupId>
+                                <artifactId>fxgl</artifactId>
+                                <version>21.1</version>
+                                <exclusions>
+                                    <exclusion>
+                                        <groupId>org.openjfx</groupId>
+                                        <artifactId>*</artifactId>
+                                    </exclusion>
+                                </exclusions>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("ikonli")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>org.kordamp.ikonli</groupId>
+                                <artifactId>ikonli-javafx</artifactId>
+                                <version>12.3.1</version>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("tilesfx")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>eu.hansolo</groupId>
+                                <artifactId>tilesfx</artifactId>
+                                <version>21.0.9</version>
+                                <exclusions>
+                                    <exclusion>
+                                        <groupId>org.openjfx</groupId>
+                                        <artifactId>*</artifactId>
+                                    </exclusion>
+                                </exclusions>
+                            </dependency>
+                """);
+            }
+            if (selectedLibs.contains("validatorfx")) {
+                mavenDeps.append("""
+                            <dependency>
+                                <groupId>net.synedra</groupId>
+                                <artifactId>validatorfx</artifactId>
+                                <version>0.6.1</version>
+                                <exclusions>
+                                    <exclusion>
+                                        <groupId>org.openjfx</groupId>
+                                        <artifactId>*</artifactId>
+                                    </exclusion>
+                                </exclusions>
+                            </dependency>
+                """);
+            }
+
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+                    
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>
+                        <version>1.0-SNAPSHOT</version>
+                        <name>%s</name>
+                    
+                        <properties>
+                            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                            <junit.version>5.10.2</junit.version>
+                            <javafx.version>%s</javafx.version>
+                            <maven.compiler.release>%s</maven.compiler.release>
+                        </properties>
+                    
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.openjfx</groupId>
+                                <artifactId>javafx-controls</artifactId>
+                                <version>${javafx.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.openjfx</groupId>
+                                <artifactId>javafx-fxml</artifactId>
+                                <version>${javafx.version}</version>
+                            </dependency>
+                    %s
+                            <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter-api</artifactId>
+                                <version>${junit.version}</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter-engine</artifactId>
+                                <version>${junit.version}</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+                    
+                        <build>
+                            <plugins>
+                                <plugin>
+                                    <groupId>org.apache.maven.plugins</groupId>
+                                    <artifactId>maven-compiler-plugin</artifactId>
+                                    <version>3.13.0</version>
+                                    <configuration>
+                                        <release>${maven.compiler.release}</release>
+                                    </configuration>
+                                </plugin>
+                                <plugin>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-maven-plugin</artifactId>
+                                    <version>0.0.8</version>
+                                    <executions>
+                                        <execution>
+                                            <id>default-cli</id>
+                                            <configuration>
+                                                <mainClass>%s.HelloApplication</mainClass>
+                                                <launcher>app</launcher>
+                                            </configuration>
+                                        </execution>
+                                    </executions>
+                                </plugin>
+                            </plugins>
+                        </build>
+                    </project>
+                    """.formatted(spec.group(), spec.artifact(), spec.name(),
+                            javafxVersion, javaVersion, mavenDeps.toString(), pkg));
+        } else {
+            Files.writeString(dir.resolve("settings.gradle"),
+                    "rootProject.name = '" + spec.artifact() + "'\n");
+
+            StringBuilder gradleDeps = new StringBuilder();
+            if (selectedLibs.contains("bootstrapfx")) {
+                gradleDeps.append("    implementation('org.kordamp.bootstrapfx:bootstrapfx-core:0.4.0')\n");
+            }
+            if (selectedLibs.contains("controlsfx")) {
+                gradleDeps.append("    implementation('org.controlsfx:controlsfx:11.2.1')\n");
+            }
+            if (selectedLibs.contains("formsfx")) {
+                gradleDeps.append("    implementation('com.dlsc.formsfx:formsfx-core:11.6.0') { exclude(group: 'org.openjfx') }\n");
+            }
+            if (selectedLibs.contains("fxgl")) {
+                gradleDeps.append("    implementation('com.github.almasb:fxgl:21.1') { exclude(group: 'org.openjfx') }\n");
+            }
+            if (selectedLibs.contains("ikonli")) {
+                gradleDeps.append("    implementation('org.kordamp.ikonli:ikonli-javafx:12.3.1')\n");
+            }
+            if (selectedLibs.contains("tilesfx")) {
+                gradleDeps.append("    implementation('eu.hansolo:tilesfx:21.0.9') { exclude(group: 'org.openjfx') }\n");
+            }
+            if (selectedLibs.contains("validatorfx")) {
+                gradleDeps.append("    implementation('net.synedra:validatorfx:0.6.1') { exclude(group: 'org.openjfx') }\n");
+            }
+
+            Files.writeString(dir.resolve("build.gradle"), """
+                    plugins {
+                        id 'java'
+                        id 'application'
+                        id 'org.openjfx.javafxplugin' version '0.1.0'
+                    }
+
+                    group '%s'
+                    version '1.0-SNAPSHOT'
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    ext {
+                        junitVersion = '5.10.2'
+                    }
+
+                    sourceCompatibility = '%s'
+                    targetCompatibility = '%s'
+
+                    tasks.withType(JavaCompile) {
+                        options.encoding = 'UTF-8'
+                    }
+
+                    application {
+                        mainModule = '%s'
+                        mainClass = '%s.HelloApplication'
+                    }
+
+                    javafx {
+                        version = '%s'
+                        modules = ['javafx.controls', 'javafx.fxml']
+                    }
+
+                    dependencies {
+                    %s
+                        testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+                        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+                    }
+
+                    test {
+                        useJUnitPlatform()
+                    }
+                    """.formatted(spec.group(), javaVersion, javaVersion,
+                            pkg, pkg, javafxVersion, gradleDeps.toString()));
+        }
+
+        // module-info.java
+        StringBuilder moduleRequires = new StringBuilder();
+        if (selectedLibs.contains("bootstrapfx")) {
+            moduleRequires.append("    requires org.kordamp.bootstrapfx.core;\n");
+        }
+        if (selectedLibs.contains("controlsfx")) {
+            moduleRequires.append("    requires org.controlsfx.controls;\n");
+        }
+        if (selectedLibs.contains("formsfx")) {
+            moduleRequires.append("    requires com.dlsc.formsfx.core;\n");
+        }
+        if (selectedLibs.contains("fxgl")) {
+            moduleRequires.append("    requires com.almasb.fxgl.all;\n");
+        }
+        if (selectedLibs.contains("ikonli")) {
+            moduleRequires.append("    requires org.kordamp.ikonli.javafx;\n");
+        }
+        if (selectedLibs.contains("tilesfx")) {
+            moduleRequires.append("    requires eu.hansolo.tilesfx;\n");
+        }
+        if (selectedLibs.contains("validatorfx")) {
+            moduleRequires.append("    requires net.synedra.validatorfx;\n");
+        }
+
+        Files.writeString(srcMainJava.resolve("module-info.java"), """
+                module %s {
+                    requires javafx.controls;
+                    requires javafx.fxml;
+                %s
+                    opens %s to javafx.fxml;
+                    exports %s;
+                }
+                """.formatted(pkg, moduleRequires.toString(), pkg, pkg));
+
+        // Source code by language
+        if (spec.language() == ProjectSpec.Language.KOTLIN) {
+            Path kotlinDir = dir.resolve("src/main/kotlin").resolve(pkgPath);
+            Files.createDirectories(kotlinDir);
+            Files.writeString(kotlinDir.resolve("HelloApplication.kt"), """
+                    package %s
+
+                    import javafx.application.Application
+                    import javafx.fxml.FXMLLoader
+                    import javafx.scene.Scene
+                    import javafx.stage.Stage
+
+                    class HelloApplication : Application() {
+                        override fun start(stage: Stage) {
+                            val fxmlLoader = FXMLLoader(HelloApplication::class.java.getResource("hello-view.fxml"))
+                            val scene = Scene(fxmlLoader.load(), 320.0, 240.0)
+                            stage.title = "Hello!"
+                            stage.scene = scene
+                            stage.show()
+                        }
+                    }
+
+                    fun main() {
+                        Application.launch(HelloApplication::class.java)
+                    }
+                    """.formatted(pkg));
+
+            Files.writeString(kotlinDir.resolve("HelloController.kt"), """
+                    package %s
+
+                    import javafx.fxml.FXML
+                    import javafx.scene.control.Label
+
+                    class HelloController {
+                        @FXML
+                        private lateinit var welcomeText: Label
+
+                        @FXML
+                        private fun onHelloButtonClick() {
+                            welcomeText.text = "Welcome to JavaFX Application!"
+                        }
+                    }
+                    """.formatted(pkg));
+        } else if (spec.language() == ProjectSpec.Language.GROOVY) {
+            Path groovyDir = dir.resolve("src/main/groovy").resolve(pkgPath);
+            Files.createDirectories(groovyDir);
+            Files.writeString(groovyDir.resolve("HelloApplication.groovy"), """
+                    package %s
+
+                    import javafx.application.Application
+                    import javafx.fxml.FXMLLoader
+                    import javafx.scene.Scene
+                    import javafx.stage.Stage
+
+                    class HelloApplication extends Application {
+                        @Override
+                        void start(Stage stage) {
+                            FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"))
+                            Scene scene = new Scene(fxmlLoader.load(), 320, 240)
+                            stage.title = "Hello!"
+                            stage.scene = scene
+                            stage.show()
+                        }
+
+                        static void main(String[] args) {
+                            launch(args)
+                        }
+                    }
+                    """.formatted(pkg));
+
+            Files.writeString(groovyDir.resolve("HelloController.groovy"), """
+                    package %s
+
+                    import javafx.fxml.FXML
+                    import javafx.scene.control.Label
+
+                    class HelloController {
+                        @FXML
+                        private Label welcomeText
+
+                        @FXML
+                        void onHelloButtonClick() {
+                            welcomeText.text = "Welcome to JavaFX Application!"
+                        }
+                    }
+                    """.formatted(pkg));
+        } else {
+            // Standard Java
+            Files.writeString(pkgJavaDir.resolve("HelloApplication.java"), """
+                    package %s;
+
+                    import javafx.application.Application;
+                    import javafx.fxml.FXMLLoader;
+                    import javafx.scene.Scene;
+                    import javafx.stage.Stage;
+
+                    import java.io.IOException;
+
+                    public class HelloApplication extends Application {
+                        @Override
+                        public void start(Stage stage) throws IOException {
+                            FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
+                            Scene scene = new Scene(fxmlLoader.load(), 320, 240);
+                            stage.setTitle("Hello!");
+                            stage.setScene(scene);
+                            stage.show();
+                        }
+
+                        public static void main(String[] args) {
+                            launch();
+                        }
+                    }
+                    """.formatted(pkg));
+
+            Files.writeString(pkgJavaDir.resolve("HelloController.java"), """
+                    package %s;
+
+                    import javafx.fxml.FXML;
+                    import javafx.scene.control.Label;
+
+                    public class HelloController {
+                        @FXML
+                        private Label welcomeText;
+
+                        @FXML
+                        protected void onHelloButtonClick() {
+                            welcomeText.setText("Welcome to JavaFX Application!");
+                        }
+                    }
+                    """.formatted(pkg));
+        }
+
+        // hello-view.fxml in resources
+        Files.writeString(pkgResDir.resolve("hello-view.fxml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+
+                <?import javafx.geometry.Insets?>
+                <?import javafx.scene.control.Label?>
+                <?import javafx.scene.layout.VBox?>
+
+                <?import javafx.scene.control.Button?>
+                <VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
+                      fx:controller="%s.HelloController">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+                    </padding>
+
+                    <Label fx:id="welcomeText"/>
+                    <Button text="Hello!" onAction="#onHelloButtonClick"/>
+                </VBox>
+                """.formatted(pkg));
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                target/
+                build/
+                .gradle/
+                .idea/
+                .lumina/
+                *.class
+                *.log
+                """);
+
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nJavaFX application created with Lumina IDE.\n");
+    }
+
 
     // ----------------------------------------------------------- spring boot
 

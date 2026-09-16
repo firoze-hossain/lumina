@@ -2760,3 +2760,43 @@
     -fx-alignment: center;
 }
 .new-class-label { -fx-text-fill: #D8DBE6; -fx-font-size: 12.5px; }
+
+/* JavaFX Dependency Wizard styling */
+.javafx-dep-list,
+.javafx-dep-list .virtual-flow,
+.javafx-dep-list .virtual-flow .clipped-container,
+.javafx-dep-list .virtual-flow .clipped-container .sheet {
+    -fx-background-color: #1A1D28;
+    -fx-control-inner-background: #1A1D28;
+    -fx-control-inner-background-alt: #1A1D28;
+}
+.javafx-dep-list {
+    -fx-border-color: #333849;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-background-insets: 0;
+    -fx-padding: 2;
+}
+.javafx-dep-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 2 6 2 6;
+}
+.javafx-dep-list .list-cell:empty {
+    -fx-background-color: transparent;
+}
+.javafx-dep-list .list-cell:selected,
+.javafx-dep-list .list-cell:filled:selected {
+    -fx-background-color: #262A3A;
+}
+.javafx-web-link {
+    -fx-text-fill: #589DF6;
+    -fx-underline: false;
+    -fx-font-size: 12.5px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+.javafx-web-link:hover {
+    -fx-underline: true;
+    -fx-text-fill: #73B1F8;
+}
+
