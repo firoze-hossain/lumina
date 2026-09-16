@@ -26,6 +26,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
@@ -469,6 +470,34 @@ public class NewProjectDialog {
     private final Label errorLabel = new Label();
     private final VBox advancedBox = new VBox(10);
 
+    private final List<Node> serverNodes = new ArrayList<>();
+    private final List<Node> typeNodes = new ArrayList<>();
+    private final List<Node> springConfigNodes = new ArrayList<>();
+    private final List<Node> buildSystemNodes = new ArrayList<>();
+    private final List<Node> packageNodes = new ArrayList<>();
+    private Label typeLabel;
+    private Node sidebar;
+
+    // ---- Quarkus extensions page (page 2 of the wizard) ----
+    private String quarkusServerUrl = dev.lumina.project.QuarkusMetadata.DEFAULT_SERVER_URL;
+    private final ComboBox<dev.lumina.project.QuarkusMetadata.QuarkusStream> quarkusStreamBox = new ComboBox<>(
+            FXCollections.observableArrayList(dev.lumina.project.QuarkusMetadata.FALLBACK_STREAMS));
+    private final TextField quarkusSearchField = new TextField();
+    private final Label quarkusCatalogStatus = new Label();
+    private List<dev.lumina.project.QuarkusMetadata.QuarkusCategory> quarkusCategories = dev.lumina.project.QuarkusMetadata.FALLBACK_CATEGORIES;
+    private static volatile dev.lumina.project.QuarkusMetadata.QuarkusCatalog cachedQuarkusCatalog;
+    private static volatile boolean quarkusFetchFailed;
+    private boolean quarkusFetchStarted;
+    private final TreeView<Object> quarkusTree = new TreeView<>();
+    private final Set<String> selectedQuarkusExtIds = new LinkedHashSet<>();
+    private final Label quarkusDetailTitle = new Label();
+    private final Label quarkusDetailDesc = new Label();
+    private final Hyperlink quarkusGuideLink = new Hyperlink("Guide \u2197");
+    private final VBox quarkusAddedBox = new VBox(4);
+    private final Label quarkusNoExtensions = new Label("No extensions added");
+    private BorderPane quarkusDepsPage;
+    private boolean onQuarkusDepsPage;
+
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
             FXCollections.observableArrayList(FALLBACK_BOOT_VERSIONS));
@@ -519,7 +548,8 @@ public class NewProjectDialog {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "new-project-dialog");
-        root.setLeft(buildGeneratorList());
+        sidebar = buildGeneratorList();
+        root.setLeft(sidebar);
         formScroll = buildForm();
         springDepsPage = buildSpringDependencyPage();
         springDepsPage.setVisible(false);
@@ -527,7 +557,10 @@ public class NewProjectDialog {
         javafxDepsPage = buildJavaFXDependencyPage();
         javafxDepsPage.setVisible(false);
         javafxDepsPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage);
+        quarkusDepsPage = buildQuarkusDependencyPage();
+        quarkusDepsPage.setVisible(false);
+        quarkusDepsPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -774,6 +807,17 @@ public class NewProjectDialog {
 
         int row = 0;
 
+        serverUrlLabel.getStyleClass().add("form-static");
+        serverSettingsButton.getStyleClass().add("console-button");
+        serverSettingsButton.setOnAction(e -> showServerSettings());
+        serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
+        serverRow.setAlignment(Pos.CENTER_LEFT);
+        Label serverLabel = formLabel("Server URL:");
+        grid.add(serverLabel, 0, row);
+        grid.add(serverRow, 1, row++);
+        serverNodes.addAll(List.of(serverLabel, serverRow));
+        setNodesVisible(serverNodes, false);
+
         grid.add(formLabel("Name:"), 0, row);
         grid.add(nameField, 1, row++);
 
@@ -838,16 +882,6 @@ public class NewProjectDialog {
         grid.add(emptyDescription, 1, row++);
         emptyOnlyNodes.add(emptyDescription);
 
-        serverUrlLabel.getStyleClass().add("form-static");
-        serverSettingsButton.getStyleClass().add("console-button");
-        serverSettingsButton.setOnAction(e -> showServerSettings());
-        serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
-        serverRow.setAlignment(Pos.CENTER_LEFT);
-        Label serverLabel = formLabel("Server URL:");
-        grid.add(serverLabel, 0, row);
-        grid.add(serverRow, 1, row++);
-        springOnlyNodes.addAll(List.of(serverLabel, serverRow));
-
         languageGroup.getToggles().addAll(langJava, langKotlin, langGroovy);
         langJava.setToggleGroup(languageGroup);
         langKotlin.setToggleGroup(languageGroup);
@@ -879,10 +913,10 @@ public class NewProjectDialog {
         typeMaven.setSelected(true);
         typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeRow.getStyleClass().add("segmented");
-        Label typeLabel = formLabel("Type:");
+        typeLabel = formLabel("Type:");
         grid.add(typeLabel, 0, row);
         grid.add(typeRow, 1, row++);
-        springOnlyNodes.addAll(List.of(typeLabel, typeRow));
+        typeNodes.addAll(List.of(typeLabel, typeRow));
 
         packagingGroup.getToggles().addAll(packagingJar, packagingWar);
         packagingJar.setToggleGroup(packagingGroup);
@@ -895,7 +929,7 @@ public class NewProjectDialog {
         Label packagingLabel = formLabel("Packaging:");
         grid.add(packagingLabel, 0, row);
         grid.add(packagingRow, 1, row++);
-        springOnlyNodes.addAll(List.of(packagingLabel, packagingRow));
+        springConfigNodes.addAll(List.of(packagingLabel, packagingRow));
 
         configGroup.getToggles().addAll(configProperties, configYaml);
         configProperties.setToggleGroup(configGroup);
@@ -908,14 +942,16 @@ public class NewProjectDialog {
         Label configLabel = formLabel("Configuration:");
         grid.add(configLabel, 0, row);
         grid.add(configRow, 1, row++);
-        springOnlyNodes.addAll(List.of(configLabel, configRow));
+        springConfigNodes.addAll(List.of(configLabel, configRow));
 
-        setNodesVisible(springOnlyNodes, false);
+        setNodesVisible(springConfigNodes, false);
+        setNodesVisible(typeNodes, false);
 
         buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
         Label buildSystemLabel = formLabel("Build system:");
         grid.add(buildSystemLabel, 0, row);
         grid.add(buildSystemRow, 1, row++);
+        buildSystemNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
         standardOnlyNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
 
         Node groupLabel = formLabelWithHelp("Group:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
@@ -931,6 +967,7 @@ public class NewProjectDialog {
         Label packageLabel = formLabel("Package name:");
         grid.add(packageLabel, 0, row);
         grid.add(packageField, 1, row++);
+        packageNodes.addAll(List.of(packageLabel, packageField));
         standardOnlyNodes.addAll(List.of(packageLabel, packageField));
         javafxHiddenNodes.addAll(List.of(packageLabel, packageField));
 
@@ -1523,6 +1560,410 @@ public class NewProjectDialog {
         previousButton.setManaged(false);
     }
 
+    // ----------------------------------------------------------- quarkus deps
+
+    private BorderPane buildQuarkusDependencyPage() {
+        BorderPane page = new BorderPane();
+        page.getStyleClass().addAll("spring-deps-page", "quarkus-deps-page");
+        page.setPadding(new Insets(16, 20, 16, 20));
+
+        // Top bar
+        HBox streamRow = new HBox(12);
+        streamRow.setAlignment(Pos.CENTER_LEFT);
+        Label quarkusLabel = new Label("Quarkus:");
+        quarkusLabel.getStyleClass().add("form-label");
+        quarkusLabel.setStyle("-fx-text-fill: #A0A5B5; -fx-font-size: 13px;");
+
+        quarkusStreamBox.setPrefWidth(140);
+        if (!quarkusStreamBox.getItems().isEmpty()) {
+            quarkusStreamBox.getSelectionModel().selectFirst();
+        }
+        quarkusStreamBox.setOnAction(e -> {
+            dev.lumina.project.QuarkusMetadata.QuarkusStream stream = quarkusStreamBox.getValue();
+            if (stream != null) {
+                loadQuarkusExtensionsForStream(stream.key());
+            }
+        });
+
+        quarkusCatalogStatus.setStyle("-fx-text-fill: #72778A; -fx-font-size: 11px;");
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+
+        streamRow.getChildren().addAll(quarkusLabel, quarkusStreamBox, topSpacer, quarkusCatalogStatus);
+
+        Label extensionsHeader = new Label("Extensions:");
+        extensionsHeader.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+        VBox.setMargin(extensionsHeader, new Insets(14, 0, 8, 0));
+
+        VBox topBox = new VBox(streamRow, extensionsHeader);
+        page.setTop(topBox);
+
+        // Center split: Left tree, Right details & added
+        HBox center = new HBox(16);
+        center.setPadding(new Insets(6, 0, 0, 0));
+
+        // Left pane: Search field + TreeView
+        VBox leftPane = new VBox(8);
+        leftPane.setPrefWidth(430);
+        leftPane.setMinWidth(360);
+
+        HBox searchBox = new HBox(6);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.getStyleClass().add("search-box-container");
+        searchBox.setPadding(new Insets(4, 8, 4, 8));
+        searchBox.setStyle("-fx-background-color: #21242C; -fx-background-radius: 4; -fx-border-color: #363B4A; -fx-border-radius: 4;");
+
+        SVGPath searchIcon = new SVGPath();
+        searchIcon.setContent("M 6,1 C 8.8,1 11,3.2 11,6 C 11,7.2 10.6,8.3 9.9,9.1 L 13.5,12.7 L 12.7,13.5 L 9.1,9.9 C 8.3,10.6 7.2,11 6,11 C 3.2,11 1,8.8 1,6 C 1,3.2 3.2,1 6,1 Z M 6,2.2 C 3.9,2.2 2.2,3.9 2.2,6 C 2.2,8.1 3.9,9.8 6,9.8 C 8.1,9.8 9.8,8.1 9.8,6 C 9.8,3.9 8.1,2.2 6,2.2 Z");
+        searchIcon.setFill(Color.web("#8B92A6"));
+
+        quarkusSearchField.setPromptText("Search");
+        quarkusSearchField.getStyleClass().add("dep-search-field");
+        quarkusSearchField.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #72778A; -fx-border-color: transparent;");
+        HBox.setHgrow(quarkusSearchField, Priority.ALWAYS);
+        quarkusSearchField.textProperty().addListener((obs, old, text) -> rebuildQuarkusTree(text));
+
+        searchBox.getChildren().addAll(searchIcon, quarkusSearchField);
+
+        quarkusTree.setShowRoot(false);
+        quarkusTree.getStyleClass().add("dep-tree");
+        VBox.setVgrow(quarkusTree, Priority.ALWAYS);
+        quarkusTree.setCellFactory(tv -> createQuarkusCell());
+
+        quarkusTree.getSelectionModel().selectedItemProperty().addListener((obs, old, item) -> {
+            if (item != null) {
+                if (item.getValue() instanceof dev.lumina.project.QuarkusMetadata.QuarkusExtension ext) {
+                    showQuarkusExtensionDetail(ext);
+                } else if (item.getValue() instanceof String catName) {
+                    showQuarkusCategoryDetail(catName);
+                }
+            }
+        });
+
+        leftPane.getChildren().addAll(searchBox, quarkusTree);
+
+        // Right pane: Detail section + Added extensions section
+        VBox rightPane = new VBox(16);
+        HBox.setHgrow(rightPane, Priority.ALWAYS);
+
+        // Top Details
+        VBox detailBox = new VBox(8);
+        detailBox.setPadding(new Insets(12, 14, 12, 14));
+        detailBox.setStyle("-fx-background-color: #1E2129; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        detailBox.setPrefHeight(180);
+        detailBox.setMinHeight(140);
+
+        quarkusDetailTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+        quarkusDetailTitle.setText("REST");
+
+        quarkusDetailDesc.setWrapText(true);
+        quarkusDetailDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #9DA3B4; -fx-line-spacing: 2px;");
+        quarkusDetailDesc.setText("Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)");
+
+        quarkusGuideLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-padding: 0;");
+        quarkusGuideLink.setOnAction(e -> {
+            String url = (String) quarkusGuideLink.getUserData();
+            if (url != null && !url.isBlank()) {
+                openBrowser(url);
+            }
+        });
+        quarkusGuideLink.setUserData("https://quarkus.io/guides/rest");
+
+        detailBox.getChildren().addAll(quarkusDetailTitle, quarkusDetailDesc, quarkusGuideLink);
+
+        // Bottom Added extensions
+        VBox addedContainer = new VBox(8);
+        VBox.setVgrow(addedContainer, Priority.ALWAYS);
+
+        Label addedLabel = new Label("Added extensions:");
+        addedLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+
+        ScrollPane addedScroll = new ScrollPane();
+        addedScroll.setFitToWidth(true);
+        addedScroll.getStyleClass().add("dep-added-scroll");
+        VBox.setVgrow(addedScroll, Priority.ALWAYS);
+
+        quarkusAddedBox.setPadding(new Insets(10));
+        quarkusAddedBox.setStyle("-fx-background-color: #1A1D24; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        quarkusAddedBox.setMinHeight(160);
+
+        quarkusNoExtensions.setStyle("-fx-text-fill: #5E6476; -fx-font-size: 13px;");
+        quarkusNoExtensions.setAlignment(Pos.CENTER);
+        quarkusNoExtensions.setMaxWidth(Double.MAX_VALUE);
+        quarkusNoExtensions.setPadding(new Insets(30, 0, 30, 0));
+
+        quarkusAddedBox.getChildren().add(quarkusNoExtensions);
+        addedScroll.setContent(quarkusAddedBox);
+
+        addedContainer.getChildren().addAll(addedLabel, addedScroll);
+
+        rightPane.getChildren().addAll(detailBox, addedContainer);
+
+        center.getChildren().addAll(leftPane, rightPane);
+        page.setCenter(center);
+
+        rebuildQuarkusTree("");
+        return page;
+    }
+
+    private TreeCell<Object> createQuarkusCell() {
+        return new TreeCell<>() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("dep-category-cell", "dep-item-cell");
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                if (item instanceof String catName) {
+                    setText(catName);
+                    setGraphic(null);
+                    getStyleClass().add("dep-category-cell");
+                    return;
+                }
+                if (item instanceof dev.lumina.project.QuarkusMetadata.QuarkusExtension ext) {
+                    CheckBox cb = new CheckBox(ext.name());
+                    cb.getStyleClass().add("dep-checkbox");
+                    cb.setSelected(selectedQuarkusExtIds.contains(ext.id()));
+                    cb.setOnAction(e -> {
+                        if (cb.isSelected()) {
+                            selectedQuarkusExtIds.add(ext.id());
+                        } else {
+                            selectedQuarkusExtIds.remove(ext.id());
+                        }
+                        refreshAddedQuarkusExtensions();
+                    });
+                    setOnMouseEntered(e -> showQuarkusExtensionDetail(ext));
+                    setOnMouseClicked(e -> showQuarkusExtensionDetail(ext));
+                    getStyleClass().add("dep-item-cell");
+                    setGraphic(cb);
+                    setText(null);
+                }
+            }
+        };
+    }
+
+    private void rebuildQuarkusTree(String filter) {
+        String needle = filter == null ? "" : filter.trim().toLowerCase();
+        TreeItem<Object> root = new TreeItem<>("root");
+        for (dev.lumina.project.QuarkusMetadata.QuarkusCategory cat : quarkusCategories) {
+            List<dev.lumina.project.QuarkusMetadata.QuarkusExtension> matches;
+            if (needle.isEmpty()) {
+                matches = cat.extensions();
+            } else {
+                matches = cat.extensions().stream()
+                        .filter(ext -> ext.name().toLowerCase().contains(needle)
+                                || ext.id().toLowerCase().contains(needle)
+                                || ext.description().toLowerCase().contains(needle)
+                                || (ext.keywords() != null && ext.keywords().stream().anyMatch(kw -> kw.toLowerCase().contains(needle))))
+                        .toList();
+            }
+            if (matches.isEmpty()) continue;
+
+            TreeItem<Object> catItem = new TreeItem<>(cat.name());
+            catItem.setExpanded(!needle.isEmpty() || cat.name().equalsIgnoreCase("Web"));
+            for (dev.lumina.project.QuarkusMetadata.QuarkusExtension ext : matches) {
+                catItem.getChildren().add(new TreeItem<>(ext));
+            }
+            root.getChildren().add(catItem);
+        }
+        quarkusTree.setRoot(root);
+    }
+
+    private void showQuarkusExtensionDetail(dev.lumina.project.QuarkusMetadata.QuarkusExtension ext) {
+        if (ext == null) return;
+        quarkusDetailTitle.setText(ext.name());
+        quarkusDetailDesc.setText(ext.description().isBlank()
+                ? "No description available for " + ext.name() : ext.description());
+        if (ext.guide() != null && !ext.guide().isBlank()) {
+            quarkusGuideLink.setText("Guide \u2197");
+            quarkusGuideLink.setUserData(ext.guide());
+            quarkusGuideLink.setVisible(true);
+            quarkusGuideLink.setManaged(true);
+        } else {
+            quarkusGuideLink.setVisible(false);
+            quarkusGuideLink.setManaged(false);
+        }
+    }
+
+    private void showQuarkusCategoryDetail(String categoryName) {
+        quarkusDetailTitle.setText(categoryName);
+        quarkusDetailDesc.setText("Quarkus extensions under category " + categoryName + ".");
+        quarkusGuideLink.setVisible(false);
+        quarkusGuideLink.setManaged(false);
+    }
+
+    private void refreshAddedQuarkusExtensions() {
+        quarkusAddedBox.getChildren().clear();
+        if (selectedQuarkusExtIds.isEmpty()) {
+            quarkusAddedBox.getChildren().add(quarkusNoExtensions);
+            return;
+        }
+
+        for (String id : selectedQuarkusExtIds) {
+            dev.lumina.project.QuarkusMetadata.QuarkusExtension ext = findQuarkusExtension(id);
+            String label = ext != null ? ext.name() : id;
+
+            HBox row = new HBox(8);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(4, 8, 4, 8));
+            row.setStyle("-fx-background-color: #212530; -fx-background-radius: 4;");
+
+            Label name = new Label(label);
+            name.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            HBox.setHgrow(name, Priority.ALWAYS);
+
+            Button remove = new Button("\u00D7");
+            remove.getStyleClass().add("dep-added-remove");
+            remove.setStyle("-fx-background-color: transparent; -fx-text-fill: #8B92A6; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0 4 0 4;");
+            remove.setOnAction(e -> {
+                selectedQuarkusExtIds.remove(id);
+                refreshAddedQuarkusExtensions();
+                quarkusTree.refresh();
+            });
+
+            row.getChildren().addAll(name, remove);
+            quarkusAddedBox.getChildren().add(row);
+        }
+    }
+
+    private dev.lumina.project.QuarkusMetadata.QuarkusExtension findQuarkusExtension(String id) {
+        for (dev.lumina.project.QuarkusMetadata.QuarkusCategory cat : quarkusCategories) {
+            for (dev.lumina.project.QuarkusMetadata.QuarkusExtension ext : cat.extensions()) {
+                if (ext.id().equals(id)) return ext;
+            }
+        }
+        return null;
+    }
+
+    private void kickOffQuarkusMetadataFetch() {
+        if (cachedQuarkusCatalog != null) {
+            applyQuarkusCatalog(cachedQuarkusCatalog);
+            return;
+        }
+        if (quarkusFetchFailed) {
+            quarkusCatalogStatus.setText("Offline catalog");
+            return;
+        }
+        if (quarkusFetchStarted) {
+            return;
+        }
+        quarkusFetchStarted = true;
+        quarkusCatalogStatus.setText("Connecting to " + quarkusServerUrl + " …");
+
+        Thread worker = new Thread(() -> {
+            try {
+                dev.lumina.project.QuarkusMetadata.QuarkusCatalog catalog =
+                        dev.lumina.project.QuarkusMetadata.fetchCatalog(quarkusServerUrl, null);
+                cachedQuarkusCatalog = catalog;
+                Platform.runLater(() -> applyQuarkusCatalog(catalog));
+            } catch (Exception ex) {
+                quarkusFetchFailed = true;
+                Platform.runLater(() -> {
+                    quarkusCatalogStatus.setText("Offline catalog (" + ex.getClass().getSimpleName() + ")");
+                });
+            }
+        }, "lumina-quarkus-metadata");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void applyQuarkusCatalog(dev.lumina.project.QuarkusMetadata.QuarkusCatalog catalog) {
+        if (catalog.streams() != null && !catalog.streams().isEmpty()) {
+            quarkusStreamBox.setItems(FXCollections.observableArrayList(catalog.streams()));
+            dev.lumina.project.QuarkusMetadata.QuarkusStream toSelect = catalog.streams().stream()
+                    .filter(dev.lumina.project.QuarkusMetadata.QuarkusStream::recommended)
+                    .findFirst()
+                    .orElse(catalog.streams().get(0));
+            quarkusStreamBox.getSelectionModel().select(toSelect);
+        }
+        if (catalog.categories() != null && !catalog.categories().isEmpty()) {
+            quarkusCategories = catalog.categories();
+            rebuildQuarkusTree(quarkusSearchField.getText());
+        }
+        quarkusCatalogStatus.setText("");
+    }
+
+    private void loadQuarkusExtensionsForStream(String streamKey) {
+        quarkusCatalogStatus.setText("Updating extensions …");
+        Thread worker = new Thread(() -> {
+            try {
+                java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofSeconds(6))
+                        .build();
+                List<dev.lumina.project.QuarkusMetadata.QuarkusCategory> categories =
+                        dev.lumina.project.QuarkusMetadata.fetchExtensions(client,
+                                dev.lumina.project.QuarkusMetadata.normalizeServerUrl(quarkusServerUrl), streamKey);
+                Platform.runLater(() -> {
+                    if (categories != null && !categories.isEmpty()) {
+                        quarkusCategories = categories;
+                        rebuildQuarkusTree(quarkusSearchField.getText());
+                    }
+                    quarkusCatalogStatus.setText("");
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> quarkusCatalogStatus.setText(""));
+            }
+        }, "lumina-quarkus-stream-fetch");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void goToQuarkusDepsPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onQuarkusDepsPage = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        quarkusDepsPage.setVisible(true);
+        quarkusDepsPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToQuarkusForm());
+
+        kickOffQuarkusMetadataFetch();
+    }
+
+    private void backToQuarkusForm() {
+        onQuarkusDepsPage = false;
+        quarkusDepsPage.setVisible(false);
+        quarkusDepsPage.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToQuarkusDepsPage());
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
     private static void openBrowser(String url) {
         try {
             if (java.awt.Desktop.isDesktopSupported()
@@ -1559,7 +2000,7 @@ public class NewProjectDialog {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox box = new HBox(10, helpButton, errorLabel, spacer,
-                cancelButton, previousButton, createButton);
+                previousButton, createButton, cancelButton);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(12, 20, 14, 20));
         box.getStyleClass().add("dialog-footer");
@@ -1571,11 +2012,14 @@ public class NewProjectDialog {
         alert.initOwner(stage);
         alert.setTitle("New Project");
         alert.setHeaderText(selected.label());
-        alert.setContentText(selected.generator() == ProjectSpec.Generator.SPRING_BOOT
-                ? "Generates a project via start.spring.io, the same service "
-                        + "IntelliJ uses. Pick a Spring Boot version and any "
-                        + "starters you need, then Create."
-                : "Configure the project on this page, then Create.");
+        if (selected.generator() == ProjectSpec.Generator.QUARKUS) {
+            alert.setContentText("Generates a Quarkus application via code.quarkus.io, with dynamic stream selection and full extension catalog.");
+        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+            alert.setContentText("Generates a project via start.spring.io, the same service "
+                    + "IntelliJ uses, with full access to starters and versions.");
+        } else {
+            alert.setContentText("Project configuration for " + selected.label());
+        }
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         alert.showAndWait();
@@ -1930,8 +2374,18 @@ public class NewProjectDialog {
                 cancelButton.setManaged(true);
             }
         }
+        if (quarkusDepsPage != null) {
+            onQuarkusDepsPage = false;
+            quarkusDepsPage.setVisible(false);
+            quarkusDepsPage.setManaged(false);
+        }
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
+        boolean quarkus = generator == ProjectSpec.Generator.QUARKUS;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
@@ -1942,7 +2396,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -1951,21 +2405,40 @@ public class NewProjectDialog {
             dependenciesRow.setVisible(false);
             dependenciesRow.setManaged(false);
         }
-        setNodesVisible(springOnlyNodes, spring);
-        setNodesVisible(languageNodes, spring || javafx);
+        if (quarkus) {
+            serverUrlLabel.setText(quarkusServerUrl.replaceFirst("^https?://", ""));
+        } else if (spring) {
+            serverUrlLabel.setText("start.spring.io");
+        }
+        setNodesVisible(serverNodes, spring || quarkus);
+        setNodesVisible(languageNodes, spring || javafx || quarkus);
+        langGroovy.setVisible(!quarkus);
+        langGroovy.setManaged(!quarkus);
+        if (quarkus && langGroovy.isSelected()) {
+            langJava.setSelected(true);
+        }
+        if (typeLabel != null) {
+            typeLabel.setText(quarkus ? "Build system:" : "Type:");
+        }
+        setNodesVisible(typeNodes, spring || quarkus);
+        setNodesVisible(springConfigNodes, spring);
+        setNodesVisible(buildSystemNodes, !spring && !quarkus && !mavenArchetype && !rust && !empty && !web && !specific);
         setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific);
+        setNodesVisible(packageNodes, !quarkus && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy));
         setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
         setNodesVisible(webOnlyNodes, web);
         setNodesVisible(viteOnlyNodes, vite);
         setNodesVisible(angularOnlyNodes, angular);
-        setNodesVisible(sampleCodeNodes, kotlin || groovy);
+        setNodesVisible(sampleCodeNodes, kotlin || groovy || quarkus);
+        kotlinInfo.setVisible(kotlin);
+        kotlinInfo.setManaged(kotlin);
         setNodesVisible(groovyOnlyNodes, groovy);
         setNodesVisible(emptyOnlyNodes, empty);
         setNodesVisible(javafxOnlyNodes, javafx);
         // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
         // from the advanced identity fields and no wrapper/version section is shown.
         setNodesVisible(javafxHiddenNodes,
-                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy));
+                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus));
         gitCheck.setVisible(!web);
         gitCheck.setManaged(!web);
         generatorSpecificBox.setVisible(specific);
@@ -1982,6 +2455,9 @@ public class NewProjectDialog {
             } else if (javafx) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToJavaFXDepsPage());
+            } else if (quarkus) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToQuarkusDepsPage());
             } else {
                 createButton.setText(specific && generator != ProjectSpec.Generator.HTML
                         && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
@@ -1995,7 +2471,7 @@ public class NewProjectDialog {
         rustBox.setVisible(rust);
         rustBox.setManaged(rust);
 
-        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select(spring ? "21" : "25");
+        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus) ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
         updateAdvancedOptions();
@@ -2029,22 +2505,13 @@ public class NewProjectDialog {
         form.getColumnConstraints().addAll(labels, values);
         int row = 0;
 
-        if (generator == ProjectSpec.Generator.QUARKUS || generator == ProjectSpec.Generator.MICRONAUT) {
-            String url = generator == ProjectSpec.Generator.QUARKUS ? "code.quarkus.io" : "launch.micronaut.io";
+        if (generator == ProjectSpec.Generator.MICRONAUT) {
+            String url = "launch.micronaut.io";
             HBox server = new HBox(14, blueText(url), compactButton("\u2699"));
             form.add(formLabel("Server URL:"), 0, row); form.add(server, 1, row++);
         }
 
         switch (generator) {
-            case QUARKUS -> {
-                add(form, row++, "Language:", segments("Java", "Kotlin"));
-                add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
-                add(form, row++, "Group:  \u24D8", text("org.example"));
-                add(form, row++, "Artifact:  \u24D8", text("demo"));
-                add(form, row++, "JDK:", jdkChoice());
-                add(form, row++, "Java:", choice("21", "17"));
-                form.add(selectedCheck("Add sample code"), 1, row++);
-            }
             case MICRONAUT -> {
                 add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
                 add(form, row++, "Build system:", segments("Gradle - Groovy", "Gradle - Kotlin", "Maven"));
@@ -2297,6 +2764,27 @@ public class NewProjectDialog {
     }
 
     private void showServerSettings() {
+        if (selected.generator() == ProjectSpec.Generator.QUARKUS) {
+            TextInputDialog dialog = new TextInputDialog(quarkusServerUrl);
+            dialog.initOwner(stage);
+            dialog.setTitle("Quarkus Server URL");
+            dialog.setHeaderText("Specify custom code.quarkus.io server URL");
+            dialog.setContentText("Server URL:");
+            dialog.getDialogPane().getStylesheets().add(
+                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+            dialog.showAndWait().ifPresent(url -> {
+                if (!url.isBlank()) {
+                    quarkusServerUrl = dev.lumina.project.QuarkusMetadata.normalizeServerUrl(url);
+                    String display = quarkusServerUrl.replaceFirst("^https?://", "");
+                    serverUrlLabel.setText(display);
+                    cachedQuarkusCatalog = null;
+                    quarkusFetchFailed = false;
+                    quarkusFetchStarted = false;
+                    kickOffQuarkusMetadataFetch();
+                }
+            });
+            return;
+        }
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.initOwner(stage);
         alert.setTitle("Spring Initializr Server");
@@ -2324,6 +2812,7 @@ public class NewProjectDialog {
         }
         boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
+        boolean quarkus = selected.generator() == ProjectSpec.Generator.QUARKUS;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
             errorLabel.setText("Artifact is required.");
@@ -2337,7 +2826,7 @@ public class NewProjectDialog {
         ProjectSpec.BuildSystem build;
         if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
-        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT || quarkus) {
             if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
                 build = ProjectSpec.BuildSystem.GRADLE;
             } else {
@@ -2348,6 +2837,15 @@ public class NewProjectDialog {
             build = buildToggle != null && "Gradle".equals(buildToggle.getText())
                     ? ProjectSpec.BuildSystem.GRADLE
                     : ProjectSpec.BuildSystem.MAVEN;
+        }
+
+        String quarkusBuildTool = "MAVEN";
+        if (typeGradleGroovy.isSelected()) quarkusBuildTool = "GRADLE";
+        else if (typeGradleKotlin.isSelected()) quarkusBuildTool = "GRADLE_KOTLIN_DSL";
+
+        String quarkusStreamKey = "";
+        if (quarkusStreamBox.getValue() != null) {
+            quarkusStreamKey = quarkusStreamBox.getValue().key();
         }
 
         ProjectSpec.Packaging packaging = packagingJar.isSelected()
@@ -2366,7 +2864,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -2388,7 +2886,12 @@ public class NewProjectDialog {
                 rustEnvironmentField.getText().trim(),
                 selected.generator() == ProjectSpec.Generator.JAVAFX
                         ? String.join(",", selectedJavaFXDepIds)
-                        : "");
+                        : "",
+                quarkusServerUrl,
+                quarkusStreamKey,
+                quarkus ? String.join(",", selectedQuarkusExtIds) : "",
+                quarkusBuildTool,
+                sampleCodeCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

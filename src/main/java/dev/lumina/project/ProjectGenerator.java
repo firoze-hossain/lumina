@@ -54,7 +54,8 @@ public final class ProjectGenerator {
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
             case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
-            case QUARKUS, MICRONAUT, JAKARTA_EE, KTOR -> generateJava(spec, dir, log);
+            case QUARKUS -> generateQuarkus(spec, dir, log);
+            case MICRONAUT, JAKARTA_EE, KTOR -> generateJava(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
             case RUST -> generateRust(spec, dir, log);
@@ -724,6 +725,261 @@ public final class ProjectGenerator {
             if (Files.isRegularFile(w) && !w.toFile().setExecutable(true)) {
                 log.accept("Note: could not mark " + wrapper + " executable");
             }
+        }
+    }
+
+    // ----------------------------------------------------------- quarkus
+
+    private static void generateQuarkus(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String base = QuarkusMetadata.normalizeServerUrl(spec.quarkusServerUrl());
+        StringBuilder url = new StringBuilder(base).append("/api/download");
+        String group = spec.group().isBlank() ? "org.example" : spec.group();
+        String artifact = spec.artifact().isBlank() ? spec.name().toLowerCase().replaceAll("[^a-z0-9.\\-]", "") : spec.artifact();
+        String buildTool = spec.quarkusBuildTool() != null && !spec.quarkusBuildTool().isBlank()
+                ? spec.quarkusBuildTool() : "MAVEN";
+
+        url.append("?g=").append(enc(group))
+                .append("&a=").append(enc(artifact))
+                .append("&v=").append(enc(spec.projectVersion().isBlank() ? "1.0.0-SNAPSHOT" : spec.projectVersion()))
+                .append("&b=").append(enc(buildTool));
+
+        if (spec.quarkusStream() != null && !spec.quarkusStream().isBlank()) {
+            url.append("&s=").append(enc(spec.quarkusStream()));
+        }
+        if (!spec.addSampleCode()) {
+            url.append("&noCode=true");
+        }
+
+        if (spec.quarkusExtensions() != null && !spec.quarkusExtensions().isBlank()) {
+            for (String ext : spec.quarkusExtensions().split(",")) {
+                String trimmed = ext.trim();
+                if (!trimmed.isEmpty()) {
+                    url.append("&e=").append(enc(trimmed));
+                }
+            }
+        }
+        if (spec.language() == ProjectSpec.Language.KOTLIN) {
+            if (spec.quarkusExtensions() == null || !spec.quarkusExtensions().contains("quarkus-kotlin")) {
+                url.append("&e=").append(enc("io.quarkus:quarkus-kotlin"));
+            }
+        }
+
+        log.accept("Requesting Quarkus project from " + base + " …");
+
+        boolean downloaded = false;
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(12))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url.toString()))
+                    .timeout(Duration.ofSeconds(45))
+                    .header("User-Agent", "Lumina-IDE")
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() == 200 && response.body() != null && response.body().length > 0) {
+                log.accept("Unpacking Quarkus project (" + (response.body().length / 1024) + " KB) …");
+                unzip(response.body(), dir);
+                for (String wrapper : new String[]{"mvnw", "gradlew"}) {
+                    Path w = dir.resolve(wrapper);
+                    if (Files.isRegularFile(w) && !w.toFile().setExecutable(true)) {
+                        log.accept("Note: could not mark " + wrapper + " executable");
+                    }
+                }
+                downloaded = true;
+            } else {
+                log.accept("Note: " + base + " returned HTTP " + response.statusCode() + " — using offline template.");
+            }
+        } catch (Exception e) {
+            log.accept("Note: could not reach " + base + " (" + e.getMessage() + ") — using offline template.");
+        }
+
+        if (!downloaded) {
+            generateLocalQuarkus(spec, dir, group, artifact, log);
+        }
+    }
+
+    private static void generateLocalQuarkus(ProjectSpec spec, Path dir, String group, String artifact, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating local Quarkus project …");
+        String version = (spec.quarkusStream() != null && !spec.quarkusStream().isBlank())
+                ? spec.quarkusStream() : "3.15.3";
+        boolean isKotlin = spec.language() == ProjectSpec.Language.KOTLIN;
+        boolean isGradle = "GRADLE".equalsIgnoreCase(spec.quarkusBuildTool())
+                || "GRADLE_KOTLIN_DSL".equalsIgnoreCase(spec.quarkusBuildTool());
+
+        Path srcMain = isKotlin ? dir.resolve("src/main/kotlin") : dir.resolve("src/main/java");
+        String pkg = spec.packageName().isBlank() ? group : spec.packageName();
+        Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
+        Files.createDirectories(pkgDir);
+        Files.createDirectories(dir.resolve("src/main/resources"));
+        Files.createDirectories(dir.resolve("src/test/java"));
+
+        // application.properties
+        Files.writeString(dir.resolve("src/main/resources/application.properties"), """
+                # Quarkus Application Configuration
+                quarkus.application.name=%s
+                quarkus.http.port=8080
+                """.formatted(artifact));
+
+        // Sample code
+        if (spec.addSampleCode()) {
+            if (isKotlin) {
+                Files.writeString(pkgDir.resolve("GreetingResource.kt"), """
+                        package %s
+
+                        import jakarta.ws.rs.GET
+                        import jakarta.ws.rs.Path
+                        import jakarta.ws.rs.Produces
+                        import jakarta.ws.rs.core.MediaType
+
+                        @Path("/hello")
+                        class GreetingResource {
+
+                            @GET
+                            @Produces(MediaType.TEXT_PLAIN)
+                            fun hello() = "Hello from Quarkus REST"
+                        }
+                        """.formatted(pkg));
+            } else {
+                Files.writeString(pkgDir.resolve("GreetingResource.java"), """
+                        package %s;
+
+                        import jakarta.ws.rs.GET;
+                        import jakarta.ws.rs.Path;
+                        import jakarta.ws.rs.Produces;
+                        import jakarta.ws.rs.core.MediaType;
+
+                        @Path("/hello")
+                        public class GreetingResource {
+
+                            @GET
+                            @Produces(MediaType.TEXT_PLAIN)
+                            public String hello() {
+                                return "Hello from Quarkus REST";
+                            }
+                        }
+                        """.formatted(pkg));
+            }
+        }
+
+        if (isGradle) {
+            Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = '" + artifact + "'\n");
+            Files.writeString(dir.resolve("build.gradle"), """
+                    plugins {
+                        id 'java'
+                        id 'io.quarkus' version '%s'
+                    }
+
+                    group '%s'
+                    version '1.0.0-SNAPSHOT'
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                        implementation enforcedPlatform("io.quarkus.platform:quarkus-bom:%s")
+                        implementation 'io.quarkus:quarkus-rest'
+                        testImplementation 'io.quarkus:quarkus-junit5'
+                        testImplementation 'io.rest-assured:rest-assured'
+                    }
+                    """.formatted(version, group, version));
+        } else {
+            // Maven pom.xml
+            StringBuilder depsXml = new StringBuilder();
+            depsXml.append("""
+                            <dependency>
+                                <groupId>io.quarkus</groupId>
+                                <artifactId>quarkus-rest</artifactId>
+                            </dependency>
+                    """);
+            if (spec.quarkusExtensions() != null && !spec.quarkusExtensions().isBlank()) {
+                for (String ext : spec.quarkusExtensions().split(",")) {
+                    String trimmed = ext.trim();
+                    if (!trimmed.isEmpty() && !trimmed.equals("io.quarkus:quarkus-rest")) {
+                        int idx = trimmed.indexOf(':');
+                        if (idx > 0) {
+                            String g = trimmed.substring(0, idx);
+                            String a = trimmed.substring(idx + 1);
+                            depsXml.append("""
+                                            <dependency>
+                                                <groupId>%s</groupId>
+                                                <artifactId>%s</artifactId>
+                                            </dependency>
+                                    """.formatted(g, a));
+                        }
+                    }
+                }
+            }
+
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+
+                        <properties>
+                            <maven.compiler.release>%s</maven.compiler.release>
+                            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                            <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+                            <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+                            <quarkus.platform.version>%s</quarkus.platform.version>
+                        </properties>
+
+                        <dependencyManagement>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>${quarkus.platform.group-id}</groupId>
+                                    <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                                    <version>${quarkus.platform.version}</version>
+                                    <type>pom</type>
+                                    <scope>import</scope>
+                                </dependency>
+                            </dependencies>
+                        </dependencyManagement>
+
+                        <dependencies>
+                    %s        <dependency>
+                                <groupId>io.quarkus</groupId>
+                                <artifactId>quarkus-junit5</artifactId>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>io.rest-assured</groupId>
+                                <artifactId>rest-assured</artifactId>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+
+                        <build>
+                            <plugins>
+                                <plugin>
+                                    <groupId>io.quarkus.platform</groupId>
+                                    <artifactId>quarkus-maven-plugin</artifactId>
+                                    <version>${quarkus.platform.version}</version>
+                                    <extensions>true</extensions>
+                                    <executions>
+                                        <execution>
+                                            <goals>
+                                                <goal>build</goal>
+                                                <goal>generate-code</goal>
+                                                <goal>generate-code-tests</goal>
+                                            </goals>
+                                        </execution>
+                                    </executions>
+                                </plugin>
+                            </plugins>
+                        </build>
+                    </project>
+                    """.formatted(group, artifact, spec.javaVersion().isBlank() ? "21" : spec.javaVersion(), version, depsXml.toString()));
         }
     }
 
