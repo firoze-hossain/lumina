@@ -2899,3 +2899,33 @@
     -fx-font-size: 12px;
 }
 
+/* --------------------------------------------------------------------------
+   Jakarta EE Wizard
+   -------------------------------------------------------------------------- */
+.jakarta-deps-page .dep-tree .tree-cell:selected,
+.jakarta-deps-page .dep-tree .tree-cell:filled:selected {
+    -fx-background-color: #2E5FA6;
+    -fx-background-radius: 4;
+}
+
+.jakarta-deps-page .dep-tree .tree-cell:selected .text,
+.jakarta-deps-page .dep-tree .tree-cell:filled:selected .text,
+.jakarta-deps-page .dep-tree .tree-cell:selected .label,
+.jakarta-deps-page .dep-tree .tree-cell:filled:selected .label {
+    -fx-text-fill: #FFFFFF !important;
+}
+
+.jakarta-deps-page .combo-box {
+    -fx-background-color: #262A36;
+    -fx-border-color: #3B4254;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.jakarta-deps-page .combo-box .list-cell {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+}
+
+

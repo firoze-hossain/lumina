@@ -31,8 +31,32 @@ public record ProjectSpec(
         String quarkusStream,
         String quarkusExtensions,    // comma-separated, Quarkus only
         String quarkusBuildTool,     // MAVEN, GRADLE, GRADLE_KOTLIN_DSL
-        boolean addSampleCode
+        boolean addSampleCode,
+        String jakartaVersion,       // Jakarta EE version, e.g. "Jakarta EE 11"
+        String jakartaTemplate,      // "REST service", "Web application", "Library"
+        String jakartaDependencies,  // comma-separated IDs
+        String jakartaAppServer      // e.g. "<No application server>"
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, JakartaMetadata.EE_11, JakartaMetadata.TEMPLATE_REST, "", "<No application server>");
+    }
+
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,

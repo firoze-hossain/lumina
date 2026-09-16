@@ -498,6 +498,27 @@ public class NewProjectDialog {
     private BorderPane quarkusDepsPage;
     private boolean onQuarkusDepsPage;
 
+    // ---- Jakarta EE dependency-picker page (page 2 of the wizard) ----
+    private final ComboBox<String> jakartaTemplateBox = new ComboBox<>(FXCollections.observableArrayList(
+            dev.lumina.project.JakartaMetadata.SUPPORTED_TEMPLATES));
+    private final ComboBox<String> jakartaAppServerBox = new ComboBox<>(FXCollections.observableArrayList(
+            "<No application server>", "GlassFish 7.x", "WildFly 27.x+", "Apache Tomcat 10.x+", "Payara 6.x"));
+    private final Button newAppServerButton = new Button("New...");
+    private final List<Node> jakartaOnlyNodes = new ArrayList<>();
+    private final Set<String> selectedJakartaDepIds = new LinkedHashSet<>();
+    private final ComboBox<String> jakartaVersionBox = new ComboBox<>(
+            FXCollections.observableArrayList(dev.lumina.project.JakartaMetadata.SUPPORTED_VERSIONS));
+    private final TextField jakartaSearchField = new TextField();
+    private final TreeView<Object> jakartaTree = new TreeView<>();
+    private final Label jakartaDetailTitle = new Label();
+    private final Label jakartaDetailDesc = new Label();
+    private final Hyperlink jakartaWebLink = new Hyperlink("Web site \u2197");
+    private final Hyperlink jakartaSpecLink = new Hyperlink("Specification \u2197");
+    private final VBox jakartaAddedBox = new VBox(4);
+    private final Label jakartaNoDependencies = new Label("No dependencies selected");
+    private BorderPane jakartaDepsPage;
+    private boolean onJakartaDepsPage;
+
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
             FXCollections.observableArrayList(FALLBACK_BOOT_VERSIONS));
@@ -560,7 +581,10 @@ public class NewProjectDialog {
         quarkusDepsPage = buildQuarkusDependencyPage();
         quarkusDepsPage.setVisible(false);
         quarkusDepsPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage);
+        jakartaDepsPage = buildJakartaDependencyPage();
+        jakartaDepsPage.setVisible(false);
+        jakartaDepsPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -842,6 +866,26 @@ public class NewProjectDialog {
         generatorSpecificBox.setVisible(false);
         generatorSpecificBox.setManaged(false);
         grid.add(generatorSpecificBox, 0, row++, 2, 1);
+
+        // Jakarta EE template and application server controls
+        Label jakartaTemplateLabel = formLabel("Template:");
+        jakartaTemplateBox.getSelectionModel().select(dev.lumina.project.JakartaMetadata.TEMPLATE_REST);
+        jakartaTemplateBox.setMaxWidth(Double.MAX_VALUE);
+        grid.add(jakartaTemplateLabel, 0, row);
+        grid.add(jakartaTemplateBox, 1, row++);
+
+        Label jakartaServerLabel = formLabel("Application server:");
+        jakartaAppServerBox.getSelectionModel().selectFirst();
+        jakartaAppServerBox.setMaxWidth(Double.MAX_VALUE);
+        newAppServerButton.getStyleClass().add("dialog-secondary");
+        newAppServerButton.setOnAction(e -> showNewAppServerDialog());
+        HBox jakartaServerRow = new HBox(8, jakartaAppServerBox, newAppServerButton);
+        HBox.setHgrow(jakartaAppServerBox, Priority.ALWAYS);
+        grid.add(jakartaServerLabel, 0, row);
+        grid.add(jakartaServerRow, 1, row++);
+
+        jakartaOnlyNodes.addAll(List.of(jakartaTemplateLabel, jakartaTemplateBox, jakartaServerLabel, jakartaServerRow));
+        setNodesVisible(jakartaOnlyNodes, false);
 
         // JavaScript generators use the same compact runtime fields as IntelliJ's wizard.
         nodeRuntimeBox.getSelectionModel().selectFirst();
@@ -1964,6 +2008,442 @@ public class NewProjectDialog {
         previousButton.setManaged(false);
     }
 
+    private void showNewAppServerDialog() {
+        Stage dialog = new Stage();
+        dialog.initOwner(stage);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("New Application Server");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(14);
+        grid.setPadding(new Insets(20));
+
+        ComboBox<String> serverTypeBox = new ComboBox<>(FXCollections.observableArrayList(
+                "GlassFish", "WildFly", "Tomcat", "Payara", "Open Liberty", "TomEE"
+        ));
+        serverTypeBox.getSelectionModel().selectFirst();
+        serverTypeBox.setMaxWidth(Double.MAX_VALUE);
+
+        TextField homeField = new TextField();
+        homeField.setPromptText("Path to server home");
+        Button browse = new Button("\u2026");
+        browse.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Application Server Home");
+            File dir = chooser.showDialog(dialog);
+            if (dir != null) homeField.setText(dir.getAbsolutePath());
+        });
+        HBox homeRow = new HBox(8, homeField, browse);
+        HBox.setHgrow(homeField, Priority.ALWAYS);
+
+        grid.add(formLabel("Server:"), 0, 0);
+        grid.add(serverTypeBox, 1, 0);
+        grid.add(formLabel("Home:"), 0, 1);
+        grid.add(homeRow, 1, 1);
+
+        Button ok = new Button("OK");
+        ok.getStyleClass().add("dialog-primary");
+        ok.setOnAction(e -> {
+            String selectedType = serverTypeBox.getValue();
+            if (selectedType != null && !selectedType.isBlank()) {
+                String entry = selectedType + (homeField.getText().isBlank() ? "" : " (" + homeField.getText().trim() + ")");
+                if (!jakartaAppServerBox.getItems().contains(entry)) {
+                    jakartaAppServerBox.getItems().add(entry);
+                }
+                jakartaAppServerBox.getSelectionModel().select(entry);
+            }
+            dialog.close();
+        });
+
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().add("dialog-secondary");
+        cancel.setOnAction(e -> dialog.close());
+
+        HBox buttons = new HBox(10, ok, cancel);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        buttons.setPadding(new Insets(12, 0, 0, 0));
+
+        BorderPane root = new BorderPane(grid);
+        root.setBottom(buttons);
+        root.setPadding(new Insets(12));
+        root.getStyleClass().addAll("app-root", "app-server-dialog");
+        Scene scene = new Scene(root, 480, 200);
+        scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    private void goToJakartaDepsPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onJakartaDepsPage = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        jakartaDepsPage.setVisible(true);
+        jakartaDepsPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToJakartaForm());
+
+        if (selectedJakartaDepIds.isEmpty()) {
+            selectedJakartaDepIds.addAll(
+                    dev.lumina.project.JakartaMetadata.getDefaultDependenciesForTemplate(jakartaTemplateBox.getValue()));
+        }
+        refreshAddedJakartaDependencies();
+        jakartaTree.refresh();
+    }
+
+    private void backToJakartaForm() {
+        onJakartaDepsPage = false;
+        jakartaDepsPage.setVisible(false);
+        jakartaDepsPage.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToJakartaDepsPage());
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
+    private BorderPane buildJakartaDependencyPage() {
+        BorderPane page = new BorderPane();
+        page.getStyleClass().addAll("spring-deps-page", "jakarta-deps-page");
+        page.setPadding(new Insets(16, 20, 16, 20));
+
+        // Top bar
+        HBox versionRow = new HBox(12);
+        versionRow.setAlignment(Pos.CENTER_LEFT);
+        Label versionLabel = new Label("Version:");
+        versionLabel.getStyleClass().add("form-label");
+        versionLabel.setStyle("-fx-text-fill: #A0A5B5; -fx-font-size: 13px;");
+
+        jakartaVersionBox.setPrefWidth(160);
+        jakartaVersionBox.getSelectionModel().select(dev.lumina.project.JakartaMetadata.EE_11);
+        jakartaVersionBox.setOnAction(e -> {
+            jakartaTree.refresh();
+            TreeItem<Object> selectedItem = jakartaTree.getSelectionModel().getSelectedItem();
+            if (selectedItem != null && selectedItem.getValue() instanceof dev.lumina.project.JakartaMetadata.JakartaDep dep) {
+                showJakartaDependencyDetail(dep);
+            }
+        });
+
+        versionRow.getChildren().addAll(versionLabel, jakartaVersionBox);
+
+        Label depsHeader = new Label("Dependencies:");
+        depsHeader.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+        VBox.setMargin(depsHeader, new Insets(14, 0, 8, 0));
+
+        VBox topBox = new VBox(versionRow, depsHeader);
+        page.setTop(topBox);
+
+        // Center split
+        HBox center = new HBox(16);
+        center.setPadding(new Insets(6, 0, 0, 0));
+
+        // Left pane: Search field + TreeView
+        VBox leftPane = new VBox(8);
+        leftPane.setPrefWidth(430);
+        leftPane.setMinWidth(360);
+
+        HBox searchBox = new HBox(6);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.getStyleClass().add("search-box-container");
+        searchBox.setPadding(new Insets(4, 8, 4, 8));
+        searchBox.setStyle("-fx-background-color: #21242C; -fx-background-radius: 4; -fx-border-color: #363B4A; -fx-border-radius: 4;");
+
+        SVGPath searchIcon = new SVGPath();
+        searchIcon.setContent("M 6,1 C 8.8,1 11,3.2 11,6 C 11,7.2 10.6,8.3 9.9,9.1 L 13.5,12.7 L 12.7,13.5 L 9.1,9.9 C 8.3,10.6 7.2,11 6,11 C 3.2,11 1,8.8 1,6 C 1,3.2 3.2,1 6,1 Z M 6,2.2 C 3.9,2.2 2.2,3.9 2.2,6 C 2.2,8.1 3.9,9.8 6,9.8 C 8.1,9.8 9.8,8.1 9.8,6 C 9.8,3.9 8.1,2.2 6,2.2 Z");
+        searchIcon.setFill(Color.web("#8B92A6"));
+
+        jakartaSearchField.setPromptText("Search");
+        jakartaSearchField.getStyleClass().add("dep-search-field");
+        jakartaSearchField.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #72778A; -fx-border-color: transparent;");
+        HBox.setHgrow(jakartaSearchField, Priority.ALWAYS);
+        jakartaSearchField.textProperty().addListener((obs, old, text) -> rebuildJakartaTree(text));
+
+        searchBox.getChildren().addAll(searchIcon, jakartaSearchField);
+
+        jakartaTree.setShowRoot(false);
+        jakartaTree.getStyleClass().add("dep-tree");
+        VBox.setVgrow(jakartaTree, Priority.ALWAYS);
+        jakartaTree.setCellFactory(tv -> createJakartaCell());
+
+        jakartaTree.getSelectionModel().selectedItemProperty().addListener((obs, old, item) -> {
+            if (item != null) {
+                if (item.getValue() instanceof dev.lumina.project.JakartaMetadata.JakartaDep dep) {
+                    showJakartaDependencyDetail(dep);
+                } else if (item.getValue() instanceof dev.lumina.project.JakartaMetadata.JakartaCategory cat) {
+                    showJakartaCategoryDetail(cat);
+                }
+            }
+        });
+
+        leftPane.getChildren().addAll(searchBox, jakartaTree);
+
+        // Right pane: Detail section + Added dependencies section
+        VBox rightPane = new VBox(16);
+        HBox.setHgrow(rightPane, Priority.ALWAYS);
+
+        // Top Details
+        VBox detailBox = new VBox(8);
+        detailBox.setPadding(new Insets(12, 14, 12, 14));
+        detailBox.setStyle("-fx-background-color: #1E2129; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        detailBox.setPrefHeight(180);
+        detailBox.setMinHeight(140);
+
+        jakartaDetailTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+        jakartaDetailTitle.setText("Full Platform");
+
+        jakartaDetailDesc.setWrapText(true);
+        jakartaDetailDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #9DA3B4; -fx-line-spacing: 2px;");
+        jakartaDetailDesc.setText("Includes most of the Jakarta EE specifications. Compatible servers: GlassFish 7.x, Wildfly 27.x");
+
+        HBox linksBox = new HBox(12);
+        jakartaWebLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-padding: 0;");
+        jakartaWebLink.setOnAction(e -> {
+            String url = (String) jakartaWebLink.getUserData();
+            if (url != null && !url.isBlank()) openBrowser(url);
+        });
+        jakartaWebLink.setUserData("https://jakarta.ee");
+
+        jakartaSpecLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-padding: 0;");
+        jakartaSpecLink.setOnAction(e -> {
+            String url = (String) jakartaSpecLink.getUserData();
+            if (url != null && !url.isBlank()) openBrowser(url);
+        });
+        jakartaSpecLink.setUserData("https://jakarta.ee/specifications/platform/");
+
+        linksBox.getChildren().addAll(jakartaWebLink, jakartaSpecLink);
+        detailBox.getChildren().addAll(jakartaDetailTitle, jakartaDetailDesc, linksBox);
+
+        // Bottom Added dependencies
+        VBox addedContainer = new VBox(8);
+        VBox.setVgrow(addedContainer, Priority.ALWAYS);
+
+        Label addedLabel = new Label("Added dependencies:");
+        addedLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+
+        ScrollPane addedScroll = new ScrollPane();
+        addedScroll.setFitToWidth(true);
+        addedScroll.getStyleClass().add("dep-added-scroll");
+        VBox.setVgrow(addedScroll, Priority.ALWAYS);
+
+        jakartaAddedBox.setPadding(new Insets(10));
+        jakartaAddedBox.setStyle("-fx-background-color: #1A1D24; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        jakartaAddedBox.setMinHeight(160);
+
+        jakartaNoDependencies.setStyle("-fx-text-fill: #5E6476; -fx-font-size: 13px;");
+        jakartaNoDependencies.setAlignment(Pos.CENTER);
+        jakartaNoDependencies.setMaxWidth(Double.MAX_VALUE);
+        jakartaNoDependencies.setPadding(new Insets(30, 0, 30, 0));
+
+        jakartaAddedBox.getChildren().add(jakartaNoDependencies);
+        addedScroll.setContent(jakartaAddedBox);
+
+        addedContainer.getChildren().addAll(addedLabel, addedScroll);
+        rightPane.getChildren().addAll(detailBox, addedContainer);
+
+        center.getChildren().addAll(leftPane, rightPane);
+        page.setCenter(center);
+
+        rebuildJakartaTree("");
+        return page;
+    }
+
+    private TreeCell<Object> createJakartaCell() {
+        return new TreeCell<>() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("dep-category-cell", "dep-item-cell");
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                if (item instanceof dev.lumina.project.JakartaMetadata.JakartaCategory cat) {
+                    setText(cat.name());
+                    setGraphic(null);
+                    getStyleClass().add("dep-category-cell");
+                    setStyle("-fx-font-weight: bold; -fx-text-fill: #D8DBE6; -fx-font-size: 13px;");
+                    return;
+                }
+                if (item instanceof dev.lumina.project.JakartaMetadata.JakartaDep dep) {
+                    String currentVer = dev.lumina.project.JakartaMetadata.getVersion(dep.id(), jakartaVersionBox.getValue());
+                    HBox row = new HBox(8);
+                    row.setAlignment(Pos.CENTER_LEFT);
+
+                    CheckBox cb = new CheckBox();
+                    cb.getStyleClass().add("dep-checkbox");
+                    cb.setSelected(selectedJakartaDepIds.contains(dep.id()));
+                    cb.setOnAction(e -> {
+                        if (cb.isSelected()) {
+                            selectedJakartaDepIds.add(dep.id());
+                        } else {
+                            selectedJakartaDepIds.remove(dep.id());
+                        }
+                        refreshAddedJakartaDependencies();
+                    });
+
+                    Node icon = createJakartaDepIcon(dep);
+
+                    Label nameLabel = new Label(dep.name());
+                    nameLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+                    Label versionLabel = new Label(currentVer.isBlank() ? "" : "(" + currentVer + ")");
+                    versionLabel.setStyle("-fx-text-fill: #72778A; -fx-font-size: 12px;");
+
+                    row.getChildren().addAll(cb, icon, nameLabel, versionLabel);
+
+                    setOnMouseEntered(e -> showJakartaDependencyDetail(dep));
+                    setOnMouseClicked(e -> showJakartaDependencyDetail(dep));
+                    getStyleClass().add("dep-item-cell");
+                    setGraphic(row);
+                    setText(null);
+                }
+            }
+        };
+    }
+
+    private Node createJakartaDepIcon(dev.lumina.project.JakartaMetadata.JakartaDep dep) {
+        SVGPath svg = new SVGPath();
+        if ("web-profile".equals(dep.id())) {
+            svg.setContent("M 6 1 A 5 5 0 1 0 6 11 A 5 5 0 1 0 6 1 M 1 6 L 11 6 M 6 1 C 4.5 3 4.5 9 6 11 M 6 1 C 7.5 3 7.5 9 6 11");
+            svg.setStroke(Color.web("#589DF6"));
+            svg.setFill(Color.TRANSPARENT);
+        } else if ("Implementations".equals(dep.category())) {
+            svg.setContent("M 2 2 L 6 2 L 6 11 L 2 11 Z M 6 2 L 10 2 L 10 11 L 6 11 Z");
+            svg.setFill(Color.web("#B388FF"));
+        } else {
+            svg.setContent("M 2 1 L 7 1 L 10 4 L 10 11 L 2 11 Z M 7 1 L 7 4 L 10 4");
+            svg.setFill(Color.web("#6897BB"));
+        }
+        return svg;
+    }
+
+    private void rebuildJakartaTree(String filter) {
+        String needle = filter == null ? "" : filter.trim().toLowerCase();
+        TreeItem<Object> root = new TreeItem<>("root");
+        for (dev.lumina.project.JakartaMetadata.JakartaCategory cat : dev.lumina.project.JakartaMetadata.getCategories()) {
+            List<dev.lumina.project.JakartaMetadata.JakartaDep> matches;
+            if (needle.isEmpty()) {
+                matches = cat.dependencies();
+            } else {
+                matches = cat.dependencies().stream()
+                        .filter(dep -> dep.name().toLowerCase().contains(needle)
+                                || dep.id().toLowerCase().contains(needle)
+                                || dep.description().toLowerCase().contains(needle))
+                        .toList();
+            }
+            if (matches.isEmpty()) continue;
+
+            TreeItem<Object> catItem = new TreeItem<>(cat);
+            catItem.setExpanded(true);
+            for (dev.lumina.project.JakartaMetadata.JakartaDep dep : matches) {
+                catItem.getChildren().add(new TreeItem<>(dep));
+            }
+            root.getChildren().add(catItem);
+        }
+        jakartaTree.setRoot(root);
+    }
+
+    private void showJakartaDependencyDetail(dev.lumina.project.JakartaMetadata.JakartaDep dep) {
+        if (dep == null) return;
+        jakartaDetailTitle.setText(dep.name());
+        jakartaDetailDesc.setText(dep.description().isBlank()
+                ? "No description available for " + dep.name() : dep.description());
+
+        if (dep.website() != null && !dep.website().isBlank()) {
+            jakartaWebLink.setText("Web site \u2197");
+            jakartaWebLink.setUserData(dep.website());
+            jakartaWebLink.setVisible(true);
+            jakartaWebLink.setManaged(true);
+        } else {
+            jakartaWebLink.setVisible(false);
+            jakartaWebLink.setManaged(false);
+        }
+
+        if (dep.specUrl() != null && !dep.specUrl().isBlank()) {
+            jakartaSpecLink.setText("Specification \u2197");
+            jakartaSpecLink.setUserData(dep.specUrl());
+            jakartaSpecLink.setVisible(true);
+            jakartaSpecLink.setManaged(true);
+        } else {
+            jakartaSpecLink.setVisible(false);
+            jakartaSpecLink.setManaged(false);
+        }
+    }
+
+    private void showJakartaCategoryDetail(dev.lumina.project.JakartaMetadata.JakartaCategory cat) {
+        jakartaDetailTitle.setText(cat.name());
+        jakartaDetailDesc.setText(cat.description());
+        jakartaWebLink.setVisible(false);
+        jakartaWebLink.setManaged(false);
+        jakartaSpecLink.setVisible(false);
+        jakartaSpecLink.setManaged(false);
+    }
+
+    private void refreshAddedJakartaDependencies() {
+        jakartaAddedBox.getChildren().clear();
+        if (selectedJakartaDepIds.isEmpty()) {
+            jakartaAddedBox.getChildren().add(jakartaNoDependencies);
+            return;
+        }
+
+        for (String id : selectedJakartaDepIds) {
+            dev.lumina.project.JakartaMetadata.JakartaDep dep = dev.lumina.project.JakartaMetadata.getDependency(id);
+            String label = dep != null ? dep.name() : id;
+
+            HBox row = new HBox(8);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(4, 8, 4, 8));
+            row.setStyle("-fx-background-color: #212530; -fx-background-radius: 4;");
+
+            Label name = new Label(label);
+            name.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            HBox.setHgrow(name, Priority.ALWAYS);
+
+            Button remove = new Button("\u00D7");
+            remove.getStyleClass().add("dep-added-remove");
+            remove.setStyle("-fx-background-color: transparent; -fx-text-fill: #8B92A6; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0 4 0 4;");
+            remove.setOnAction(e -> {
+                selectedJakartaDepIds.remove(id);
+                refreshAddedJakartaDependencies();
+                jakartaTree.refresh();
+            });
+
+            row.getChildren().addAll(name, remove);
+            jakartaAddedBox.getChildren().add(row);
+        }
+    }
+
     private static void openBrowser(String url) {
         try {
             if (java.awt.Desktop.isDesktopSupported()
@@ -2014,6 +2494,8 @@ public class NewProjectDialog {
         alert.setHeaderText(selected.label());
         if (selected.generator() == ProjectSpec.Generator.QUARKUS) {
             alert.setContentText("Generates a Quarkus application via code.quarkus.io, with dynamic stream selection and full extension catalog.");
+        } else if (selected.generator() == ProjectSpec.Generator.JAKARTA_EE) {
+            alert.setContentText("Generates enterprise Java applications with Jakarta EE specifications and implementations, dynamically configuring Maven and Gradle build descriptors.");
         } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
             alert.setContentText("Generates a project via start.spring.io, the same service "
                     + "IntelliJ uses, with full access to starters and versions.");
@@ -2379,6 +2861,11 @@ public class NewProjectDialog {
             quarkusDepsPage.setVisible(false);
             quarkusDepsPage.setManaged(false);
         }
+        if (jakartaDepsPage != null) {
+            onJakartaDepsPage = false;
+            jakartaDepsPage.setVisible(false);
+            jakartaDepsPage.setManaged(false);
+        }
         if (sidebar != null) {
             sidebar.setVisible(true);
             sidebar.setManaged(true);
@@ -2386,6 +2873,7 @@ public class NewProjectDialog {
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
         boolean quarkus = generator == ProjectSpec.Generator.QUARKUS;
+        boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
@@ -2396,7 +2884,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case MICRONAUT, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -2411,7 +2899,8 @@ public class NewProjectDialog {
             serverUrlLabel.setText("start.spring.io");
         }
         setNodesVisible(serverNodes, spring || quarkus);
-        setNodesVisible(languageNodes, spring || javafx || quarkus);
+        setNodesVisible(jakartaOnlyNodes, jakarta);
+        setNodesVisible(languageNodes, spring || javafx || quarkus || jakarta);
         langGroovy.setVisible(!quarkus);
         langGroovy.setManaged(!quarkus);
         if (quarkus && langGroovy.isSelected()) {
@@ -2423,8 +2912,8 @@ public class NewProjectDialog {
         setNodesVisible(typeNodes, spring || quarkus);
         setNodesVisible(springConfigNodes, spring);
         setNodesVisible(buildSystemNodes, !spring && !quarkus && !mavenArchetype && !rust && !empty && !web && !specific);
-        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific);
-        setNodesVisible(packageNodes, !quarkus && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy));
+        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific && !jakarta);
+        setNodesVisible(packageNodes, !quarkus && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta));
         setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
         setNodesVisible(webOnlyNodes, web);
         setNodesVisible(viteOnlyNodes, vite);
@@ -2438,7 +2927,7 @@ public class NewProjectDialog {
         // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
         // from the advanced identity fields and no wrapper/version section is shown.
         setNodesVisible(javafxHiddenNodes,
-                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus));
+                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta));
         gitCheck.setVisible(!web);
         gitCheck.setManaged(!web);
         generatorSpecificBox.setVisible(specific);
@@ -2458,6 +2947,9 @@ public class NewProjectDialog {
             } else if (quarkus) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToQuarkusDepsPage());
+            } else if (jakarta) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToJakartaDepsPage());
             } else {
                 createButton.setText(specific && generator != ProjectSpec.Generator.HTML
                         && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
@@ -2471,7 +2963,7 @@ public class NewProjectDialog {
         rustBox.setVisible(rust);
         rustBox.setManaged(rust);
 
-        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus) ? "21" : "25");
+        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus || jakarta) ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
         updateAdvancedOptions();
@@ -2521,15 +3013,6 @@ public class NewProjectDialog {
                 add(form, row++, "Application type:", choice("Application", "CLI Application", "Function"));
                 add(form, row++, "JDK:", jdkChoice());
                 add(form, row++, "Java:", choice("21", "17"));
-            }
-            case JAKARTA_EE -> {
-                add(form, row++, "Template:", choice("REST service", "Web application", "Library"));
-                add(form, row++, "Application server:", choice("JAX-RS resource", "Servlet, web.xml, index.jsp"));
-                add(form, row++, "Language:", segments("Java", "Kotlin", "Groovy"));
-                add(form, row++, "Build system:", segments("Maven", "Gradle"));
-                add(form, row++, "Group:  \u24D8", text("org.example"));
-                add(form, row++, "Artifact:  \u24D8", text("demo"));
-                add(form, row++, "JDK:", jdkChoice());
             }
             case KTOR -> {
                 add(form, row++, "Group:", text("com.example"));
@@ -2813,6 +3296,7 @@ public class NewProjectDialog {
         boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
         boolean quarkus = selected.generator() == ProjectSpec.Generator.QUARKUS;
+        boolean jakarta = selected.generator() == ProjectSpec.Generator.JAKARTA_EE;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
             errorLabel.setText("Artifact is required.");
@@ -2864,7 +3348,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -2891,7 +3375,11 @@ public class NewProjectDialog {
                 quarkusStreamKey,
                 quarkus ? String.join(",", selectedQuarkusExtIds) : "",
                 quarkusBuildTool,
-                sampleCodeCheck.isSelected());
+                sampleCodeCheck.isSelected(),
+                jakartaVersionBox.getValue() != null ? jakartaVersionBox.getValue() : dev.lumina.project.JakartaMetadata.EE_11,
+                jakartaTemplateBox.getValue() != null ? jakartaTemplateBox.getValue() : dev.lumina.project.JakartaMetadata.TEMPLATE_REST,
+                jakarta ? String.join(",", selectedJakartaDepIds) : "",
+                jakartaAppServerBox.getValue() != null ? jakartaAppServerBox.getValue() : "<No application server>");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
