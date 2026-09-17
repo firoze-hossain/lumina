@@ -59,7 +59,8 @@ public final class ProjectGenerator {
             case JAVA, KOTLIN, GROOVY -> generateJava(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
-            case ANGULAR_CLI, VITE, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case ANGULAR_CLI, VITE, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case EXPRESS -> generateExpress(spec, dir, log);
             case REACT -> generateReact(spec, dir, log);
             case HTML -> generateHtml(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
@@ -91,6 +92,595 @@ public final class ProjectGenerator {
                 }
                 """.formatted(spec.artifact()));
         Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    // ---------------------------------------------------------------- express
+
+    private static void generateExpress(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String nodePath = spec.expressNodeInterpreter();
+        String cliVersion = spec.expressCliVersion() != null && !spec.expressCliVersion().isBlank()
+                ? spec.expressCliVersion().trim() : ExpressMetadata.DEFAULT_VERSION;
+        String viewEngineName = spec.expressViewEngine() != null && !spec.expressViewEngine().isBlank()
+                ? spec.expressViewEngine().trim() : "Pug (Jade)";
+        String stylesheetEngineName = spec.expressStylesheetEngine() != null && !spec.expressStylesheetEngine().isBlank()
+                ? spec.expressStylesheetEngine().trim() : "Plain CSS";
+
+        ExpressMetadata.ViewEngine viewEngine = ExpressMetadata.findViewEngine(viewEngineName);
+        ExpressMetadata.StylesheetEngine stylesheetEngine = ExpressMetadata.findStylesheetEngine(stylesheetEngineName);
+
+        log.accept("Generating Express application in " + dir + " …");
+        if (nodePath != null && !nodePath.isBlank()) {
+            log.accept("Node interpreter: " + nodePath);
+        }
+        log.accept("express-generator: " + cliVersion);
+        log.accept("View engine: " + viewEngine.name());
+        log.accept("Stylesheet engine: " + stylesheetEngine.name());
+
+        Path binDir = dir.resolve("bin");
+        Path routesDir = dir.resolve("routes");
+        Path viewsDir = dir.resolve("views");
+        Path publicDir = dir.resolve("public");
+        Path stylesheetsDir = publicDir.resolve("stylesheets");
+        Path imagesDir = publicDir.resolve("images");
+        Path javascriptsDir = publicDir.resolve("javascripts");
+
+        Files.createDirectories(binDir);
+        Files.createDirectories(routesDir);
+        Files.createDirectories(publicDir);
+        Files.createDirectories(stylesheetsDir);
+        Files.createDirectories(imagesDir);
+        Files.createDirectories(javascriptsDir);
+
+        String appName = sanitizeArtifact(spec.name());
+        boolean hasViews = !"None".equalsIgnoreCase(viewEngine.name());
+        if (hasViews) {
+            Files.createDirectories(viewsDir);
+        }
+
+        // 1. bin/www
+        Path wwwFile = binDir.resolve("www");
+        Files.writeString(wwwFile, """
+                #!/usr/bin/env node
+
+                /**
+                 * Module dependencies.
+                 */
+
+                var app = require('../app');
+                var debug = require('debug')('%s:server');
+                var http = require('http');
+
+                /**
+                 * Get port from environment and store in Express.
+                 */
+
+                var port = normalizePort(process.env.PORT || '3000');
+                app.set('port', port);
+
+                /**
+                 * Create HTTP server.
+                 */
+
+                var server = http.createServer(app);
+
+                /**
+                 * Listen on provided port, on all network interfaces.
+                 */
+
+                server.listen(port);
+                server.on('error', onError);
+                server.on('listening', onListening);
+
+                /**
+                 * Normalize a port into a number, string, or false.
+                 */
+
+                function normalizePort(val) {
+                  var port = parseInt(val, 10);
+
+                  if (isNaN(port)) {
+                    // named pipe
+                    return val;
+                  }
+
+                  if (port >= 0) {
+                    // port number
+                    return port;
+                  }
+
+                  return false;
+                }
+
+                /**
+                 * Event listener for HTTP server "error" event.
+                 */
+
+                function onError(error) {
+                  if (error.syscall !== 'listen') {
+                    throw error;
+                  }
+
+                  var bind = typeof port === 'string'
+                    ? 'Pipe ' + port
+                    : 'Port ' + port;
+
+                  // handle specific listen errors with friendly messages
+                  switch (error.code) {
+                    case 'EACCES':
+                      console.error(bind + ' requires elevated privileges');
+                      process.exit(1);
+                      break;
+                    case 'EADDRINUSE':
+                      console.error(bind + ' is already in use');
+                      process.exit(1);
+                      break;
+                    default:
+                      throw error;
+                  }
+                }
+
+                /**
+                 * Event listener for HTTP server "listening" event.
+                 */
+
+                function onListening() {
+                  var addr = server.address();
+                  var bind = typeof addr === 'string'
+                    ? 'pipe ' + addr
+                    : 'port ' + addr.port;
+                  debug('Listening on ' + bind);
+                }
+                """.formatted(appName));
+
+        try {
+            Set<java.nio.file.attribute.PosixFilePermission> perms = Files.getPosixFilePermissions(wwwFile);
+            perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+            perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE);
+            perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE);
+            Files.setPosixFilePermissions(wwwFile, perms);
+        } catch (Exception ignored) {}
+
+        // 2. app.js
+        StringBuilder appJs = new StringBuilder();
+        appJs.append("var createError = require('http-errors');\n");
+        appJs.append("var express = require('express');\n");
+        appJs.append("var path = require('path');\n");
+        appJs.append("var cookieParser = require('cookie-parser');\n");
+        appJs.append("var logger = require('morgan');\n");
+
+        if ("Stylus".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("var stylus = require('stylus');\n");
+        } else if ("LESS".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("var lessMiddleware = require('less-middleware');\n");
+        } else if ("Compass".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("var compass = require('node-compass');\n");
+        } else if ("SASS".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("var sassMiddleware = require('node-sass-middleware');\n");
+        }
+
+        appJs.append("\n");
+        appJs.append("var indexRouter = require('./routes/index');\n");
+        appJs.append("var usersRouter = require('./routes/users');\n\n");
+        appJs.append("var app = express();\n\n");
+
+        // View engine setup in app.js
+        if ("Pug (Jade)".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'pug');\n\n");
+        } else if ("EJS".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'ejs');\n\n");
+        } else if ("Handlebars".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'hbs');\n\n");
+        } else if ("Hogan.js".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'hjs');\n\n");
+        } else if ("Dust".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'dust');\n\n");
+        } else if ("Twig".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'twig');\n\n");
+        } else if ("Vash".equalsIgnoreCase(viewEngine.name())) {
+            appJs.append("// view engine setup\n");
+            appJs.append("app.set('views', path.join(__dirname, 'views'));\n");
+            appJs.append("app.set('view engine', 'vash');\n\n");
+        }
+
+        appJs.append("app.use(logger('dev'));\n");
+        appJs.append("app.use(express.json());\n");
+        appJs.append("app.use(express.urlencoded({ extended: false }));\n");
+        appJs.append("app.use(cookieParser());\n");
+
+        // Stylesheet engine middleware in app.js
+        if ("Stylus".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("app.use(stylus.middleware(path.join(__dirname, 'public')));\n");
+        } else if ("LESS".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("app.use(lessMiddleware(path.join(__dirname, 'public')));\n");
+        } else if ("Compass".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("app.use(compass({ mode: 'expanded' }));\n");
+        } else if ("SASS".equalsIgnoreCase(stylesheetEngine.name())) {
+            appJs.append("app.use(sassMiddleware({\n");
+            appJs.append("  src: path.join(__dirname, 'public'),\n");
+            appJs.append("  dest: path.join(__dirname, 'public'),\n");
+            appJs.append("  indentedSyntax: true, // true = .sass and false = .scss\n");
+            appJs.append("  sourceMap: true\n");
+            appJs.append("}));\n");
+        }
+
+        appJs.append("app.use(express.static(path.join(__dirname, 'public')));\n\n");
+        appJs.append("app.use('/', indexRouter);\n");
+        appJs.append("app.use('/users', usersRouter);\n\n");
+
+        appJs.append("// catch 404 and forward to error handler\n");
+        appJs.append("app.use(function(req, res, next) {\n");
+        appJs.append("  next(createError(404));\n");
+        appJs.append("});\n\n");
+
+        appJs.append("// error handler\n");
+        appJs.append("app.use(function(err, req, res, next) {\n");
+        appJs.append("  // set locals, only providing error in development\n");
+        appJs.append("  res.locals.message = err.message;\n");
+        appJs.append("  res.locals.error = req.app.get('env') === 'development' ? err : {};\n\n");
+        appJs.append("  // render the error page\n");
+        appJs.append("  res.status(err.status || 500);\n");
+        if (hasViews) {
+            appJs.append("  res.render('error');\n");
+        } else {
+            appJs.append("  res.send(err.message);\n");
+        }
+        appJs.append("});\n\n");
+        appJs.append("module.exports = app;\n");
+
+        Files.writeString(dir.resolve("app.js"), appJs.toString());
+
+        // 3. routes/index.js & routes/users.js
+        if (hasViews) {
+            Files.writeString(routesDir.resolve("index.js"), """
+                    var express = require('express');
+                    var router = express.Router();
+
+                    /* GET home page. */
+                    router.get('/', function(req, res, next) {
+                      res.render('index', { title: 'Express' });
+                    });
+
+                    module.exports = router;
+                    """);
+        } else {
+            Files.writeString(routesDir.resolve("index.js"), """
+                    var express = require('express');
+                    var router = express.Router();
+                    var path = require('path');
+
+                    /* GET home page. */
+                    router.get('/', function(req, res, next) {
+                      res.sendFile(path.join(__dirname, '../public/index.html'));
+                    });
+
+                    module.exports = router;
+                    """);
+        }
+
+        Files.writeString(routesDir.resolve("users.js"), """
+                var express = require('express');
+                var router = express.Router();
+
+                /* GET users listing. */
+                router.get('/', function(req, res, next) {
+                  res.send('respond with a resource');
+                });
+
+                module.exports = router;
+                """);
+
+        // 4. views/
+        if ("Pug (Jade)".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("layout.pug"), """
+                    doctype html
+                    html
+                      head
+                        title= title
+                        link(rel='stylesheet', href='/stylesheets/style.css')
+                      body
+                        block content
+                    """);
+            Files.writeString(viewsDir.resolve("index.pug"), """
+                    extends layout
+
+                    block content
+                      h1= title
+                      p Welcome to #{title}
+                    """);
+            Files.writeString(viewsDir.resolve("error.pug"), """
+                    extends layout
+
+                    block content
+                      h1= message
+                      h2= error.status
+                      pre #{error.stack}
+                    """);
+        } else if ("EJS".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("index.ejs"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title><%= title %></title>
+                        <link rel='stylesheet' href='/stylesheets/style.css' />
+                      </head>
+                      <body>
+                        <h1><%= title %></h1>
+                        <p>Welcome to <%= title %></p>
+                      </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("error.ejs"), """
+                    <h1><%= message %></h1>
+                    <h2><%= error.status %></h2>
+                    <pre><%= error.stack %></pre>
+                    """);
+        } else if ("Handlebars".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("layout.hbs"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>{{title}}</title>
+                        <link rel='stylesheet' href='/stylesheets/style.css' />
+                      </head>
+                      <body>
+                        {{{body}}}
+                      </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("index.hbs"), """
+                    <h1>{{title}}</h1>
+                    <p>Welcome to {{title}}</p>
+                    """);
+            Files.writeString(viewsDir.resolve("error.hbs"), """
+                    <h1>{{message}}</h1>
+                    <h2>{{error.status}}</h2>
+                    <pre>{{error.stack}}</pre>
+                    """);
+        } else if ("Hogan.js".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("index.hjs"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>{{ title }}</title>
+                        <link rel='stylesheet' href='/stylesheets/style.css' />
+                      </head>
+                      <body>
+                        <h1>{{ title }}</h1>
+                        <p>Welcome to {{ title }}</p>
+                      </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("error.hjs"), """
+                    <h1>{{ message }}</h1>
+                    <h2>{{ error.status }}</h2>
+                    <pre>{{ error.stack }}</pre>
+                    """);
+        } else if ("Twig".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("layout.twig"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>{{ title }}</title>
+                        <link rel='stylesheet' href='/stylesheets/style.css' />
+                      </head>
+                      <body>
+                        {% block body %}{% endblock %}
+                      </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("index.twig"), """
+                    {% extends 'layout.twig' %}
+
+                    {% block body %}
+                      <h1>{{ title }}</h1>
+                      <p>Welcome to {{ title }}</p>
+                    {% endblock %}
+                    """);
+            Files.writeString(viewsDir.resolve("error.twig"), """
+                    {% extends 'layout.twig' %}
+
+                    {% block body %}
+                      <h1>{{ message }}</h1>
+                      <h2>{{ error.status }}</h2>
+                      <pre>{{ error.stack }}</pre>
+                    {% endblock %}
+                    """);
+        } else if ("Vash".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("layout.vash"), """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <title>@model.title</title>
+                      <link rel='stylesheet' href='/stylesheets/style.css' />
+                    </head>
+                    <body>
+                      @html.block('content')
+                    </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("index.vash"), """
+                    @html.extend('layout', function(model) {
+                      @html.block('content', function(model) {
+                        <h1>@model.title</h1>
+                        <p>Welcome to @model.title</p>
+                      })
+                    })
+                    """);
+            Files.writeString(viewsDir.resolve("error.vash"), """
+                    @html.extend('layout', function(model) {
+                      @html.block('content', function(model) {
+                        <h1>@model.message</h1>
+                        <h2>@model.error.status</h2>
+                        <pre>@model.error.stack</pre>
+                      })
+                    })
+                    """);
+        } else if ("Dust".equalsIgnoreCase(viewEngine.name())) {
+            Files.writeString(viewsDir.resolve("index.dust"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>{title}</title>
+                        <link rel='stylesheet' href='/stylesheets/style.css' />
+                      </head>
+                      <body>
+                        <h1>{title}</h1>
+                        <p>Welcome to {title}</p>
+                      </body>
+                    </html>
+                    """);
+            Files.writeString(viewsDir.resolve("error.dust"), """
+                    <h1>{message}</h1>
+                    <h2>{error.status}</h2>
+                    <pre>{error.stack}</pre>
+                    """);
+        } else {
+            // None (static HTML)
+            Files.writeString(publicDir.resolve("index.html"), """
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>Express</title>
+                        <link rel="stylesheet" href="/stylesheets/style.css">
+                      </head>
+                      <body>
+                        <h1>Express</h1>
+                        <p>Welcome to Express</p>
+                      </body>
+                    </html>
+                    """);
+        }
+
+        // 5. Stylesheets
+        String cssContent = """
+                body {
+                  padding: 50px;
+                  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+                }
+
+                a {
+                  color: #00B7FF;
+                }
+                """;
+        Files.writeString(stylesheetsDir.resolve("style.css"), cssContent);
+
+        if ("Stylus".equalsIgnoreCase(stylesheetEngine.name())) {
+            Files.writeString(stylesheetsDir.resolve("style.styl"), """
+                    body
+                      padding: 50px
+                      font: 14px "Lucida Grande", Helvetica, Arial, sans-serif
+
+                    a
+                      color: #00B7FF
+                    """);
+        } else if ("LESS".equalsIgnoreCase(stylesheetEngine.name())) {
+            Files.writeString(stylesheetsDir.resolve("style.less"), cssContent);
+        } else if ("Compass".equalsIgnoreCase(stylesheetEngine.name())) {
+            Files.writeString(stylesheetsDir.resolve("style.scss"), cssContent);
+        } else if ("SASS".equalsIgnoreCase(stylesheetEngine.name())) {
+            Files.writeString(stylesheetsDir.resolve("style.sass"), """
+                    body
+                      padding: 50px
+                      font: 14px "Lucida Grande", Helvetica, Arial, sans-serif
+
+                    a
+                      color: #00B7FF
+                    """);
+        }
+
+        // 6. package.json
+        StringBuilder depsJson = new StringBuilder();
+        depsJson.append("    \"cookie-parser\": \"~1.4.7\",\n");
+        depsJson.append("    \"debug\": \"~2.6.9\",\n");
+        depsJson.append("    \"express\": \"~4.19.2\",\n");
+        depsJson.append("    \"http-errors\": \"~1.8.1\",\n");
+        depsJson.append("    \"morgan\": \"~1.10.0\"");
+
+        // Add view engine dependency
+        if ("Pug (Jade)".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"pug\": \"2.0.0-beta11\"");
+        } else if ("EJS".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"ejs\": \"~3.1.10\"");
+        } else if ("Handlebars".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"hbs\": \"~4.2.0\"");
+        } else if ("Hogan.js".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"hjs\": \"~0.9.0\"");
+        } else if ("Dust".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"adaro\": \"~1.0.4\"");
+        } else if ("Twig".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"twig\": \"~1.15.4\"");
+        } else if ("Vash".equalsIgnoreCase(viewEngine.name())) {
+            depsJson.append(",\n    \"vash\": \"~0.13.0\"");
+        }
+
+        // Add stylesheet engine dependency
+        if ("Stylus".equalsIgnoreCase(stylesheetEngine.name())) {
+            depsJson.append(",\n    \"stylus\": \"0.54.5\"");
+        } else if ("LESS".equalsIgnoreCase(stylesheetEngine.name())) {
+            depsJson.append(",\n    \"less-middleware\": \"~3.1.0\"");
+        } else if ("Compass".equalsIgnoreCase(stylesheetEngine.name())) {
+            depsJson.append(",\n    \"node-compass\": \"0.2.3\"");
+        } else if ("SASS".equalsIgnoreCase(stylesheetEngine.name())) {
+            depsJson.append(",\n    \"node-sass-middleware\": \"0.11.0\"");
+        }
+
+        Files.writeString(dir.resolve("package.json"), """
+                {
+                  "name": "%s",
+                  "version": "0.0.0",
+                  "private": true,
+                  "scripts": {
+                    "start": "node ./bin/www"
+                  },
+                  "dependencies": {
+                %s
+                  }
+                }
+                """.formatted(appName, depsJson.toString()));
+
+        // 7. .gitignore
+        Files.writeString(dir.resolve(".gitignore"), """
+                node_modules/
+                .DS_Store
+                *.log
+                .env
+                """);
+
+        // 8. README.md
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                Express application generated with Lumina IDE using `%s` view engine and `%s` stylesheet engine.
+
+                ## Getting Started
+
+                1. Install dependencies:
+                ```bash
+                npm install
+                ```
+
+                2. Start the application:
+                ```bash
+                npm start
+                ```
+
+                3. Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
+                """.formatted(spec.name(), viewEngine.name(), stylesheetEngine.name()));
+
+        log.accept("\u2713 Express project scaffolding complete: bin/www, app.js, routes, views, public stylesheets");
     }
 
     // ------------------------------------------------------------------ react

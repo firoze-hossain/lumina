@@ -1,5 +1,6 @@
 package dev.lumina.ui;
 
+import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.ReactMetadata;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -42,7 +43,9 @@ public class SelectCliVersionDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.initStyle(StageStyle.DECORATED);
 
-        String pkgName = ReactMetadata.getCliPackage(projectType);
+        String pkgName = "Express".equalsIgnoreCase(projectType)
+                ? ExpressMetadata.PACKAGE_NAME
+                : ReactMetadata.getCliPackage(projectType);
         stage.setTitle("Specify " + pkgName + " Version");
 
         BorderPane root = new BorderPane();
@@ -60,7 +63,9 @@ public class SelectCliVersionDialog {
         versionBox.setMaxWidth(Double.MAX_VALUE);
 
         // Load versions
-        List<String> versions = ReactMetadata.fetchAllVersions(projectType, false);
+        List<String> versions = "Express".equalsIgnoreCase(projectType)
+                ? ExpressMetadata.fetchAllVersions(false)
+                : ReactMetadata.fetchAllVersions(projectType, false);
         versionBox.getItems().setAll(versions);
 
         if (currentVersion != null && !currentVersion.isBlank()) {
@@ -71,7 +76,9 @@ public class SelectCliVersionDialog {
 
         // Asynchronously refresh versions from npm registry in background
         Thread.ofVirtual().start(() -> {
-            List<String> remote = ReactMetadata.fetchAllVersions(projectType, true);
+            List<String> remote = "Express".equalsIgnoreCase(projectType)
+                    ? ExpressMetadata.fetchAllVersions(true)
+                    : ReactMetadata.fetchAllVersions(projectType, true);
             if (remote != null && !remote.isEmpty()) {
                 Platform.runLater(() -> {
                     String cur = versionBox.getValue();

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.NodeMetadata;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
@@ -19,6 +20,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.Node;
@@ -28,6 +30,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
@@ -629,6 +632,16 @@ public class NewProjectDialog {
     private final VBox reactAdvisoryBox = new VBox(6);
     private boolean reactInitialized = false;
     private String lastValidNodeInterpreter = "";
+
+    // ---- Express generator fields ----
+    private final ComboBox<String> expressNodeInterpreterBox = new ComboBox<>();
+    private final Button expressNodeBrowseBtn = new Button("\u2026");
+    private final ComboBox<String> expressCliBox = new ComboBox<>();
+    private final Button expressCliBrowseBtn = new Button("\u2026");
+    private final ComboBox<String> expressViewEngineBox = new ComboBox<>();
+    private final ComboBox<String> expressStylesheetEngineBox = new ComboBox<>();
+    private boolean expressInitialized = false;
+    private String lastValidExpressNodeInterpreter = "";
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -3761,6 +3774,204 @@ public class NewProjectDialog {
         return defaultVer;
     }
 
+    // ------------------------------------------------------------ express logic
+
+    private void initExpressControls() {
+        if (expressInitialized) return;
+        expressInitialized = true;
+
+        expressNodeInterpreterBox.getStyleClass().add("choice-box");
+        expressNodeInterpreterBox.setPrefWidth(360);
+        expressCliBox.getStyleClass().add("choice-box");
+        expressCliBox.setPrefWidth(360);
+        expressViewEngineBox.getStyleClass().add("choice-box");
+        expressViewEngineBox.setPrefWidth(240);
+        expressStylesheetEngineBox.getStyleClass().add("choice-box");
+        expressStylesheetEngineBox.setPrefWidth(240);
+
+        expressNodeBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        expressCliBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        Tooltip.install(expressNodeBrowseBtn, new Tooltip("Select Node.js interpreter executable"));
+        Tooltip.install(expressCliBrowseBtn, new Tooltip("Specify custom express-generator CLI version or package"));
+
+        // FileChooser for Node interpreter
+        expressNodeBrowseBtn.setOnAction(e -> pickExpressNodeExecutable());
+
+        // File/version chooser for CLI
+        expressCliBrowseBtn.setOnAction(e -> pickExpressCliVersion());
+
+        // Node interpreter dropdown selection listener
+        expressNodeInterpreterBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickExpressNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    expressNodeInterpreterBox.setValue(lastValidExpressNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!expressNodeInterpreterBox.getItems().contains(display)) {
+                            expressNodeInterpreterBox.getItems().add(0, display);
+                        }
+                        expressNodeInterpreterBox.setValue(display);
+                        lastValidExpressNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidExpressNodeInterpreter = val;
+            }
+        });
+
+        // CLI box selection listener
+        expressCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (ExpressMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickExpressCliVersion);
+            }
+        });
+
+        // Populate View Engines dynamically from metadata
+        expressViewEngineBox.getItems().clear();
+        for (ExpressMetadata.ViewEngine ve : ExpressMetadata.getViewEngines()) {
+            expressViewEngineBox.getItems().add(ve.name());
+        }
+        expressViewEngineBox.setValue(ExpressMetadata.getDefaultViewEngine().name());
+
+        // Populate Stylesheet Engines dynamically from metadata
+        expressStylesheetEngineBox.getItems().clear();
+        for (ExpressMetadata.StylesheetEngine se : ExpressMetadata.getStylesheetEngines()) {
+            expressStylesheetEngineBox.getItems().add(se.name());
+        }
+        expressStylesheetEngineBox.setValue(ExpressMetadata.getDefaultStylesheetEngine().name());
+
+        // Populate CLI versions
+        ObservableList<String> cliItems = FXCollections.observableArrayList();
+        cliItems.add(ExpressMetadata.formatCliDisplay(ExpressMetadata.DEFAULT_VERSION));
+        cliItems.add(ExpressMetadata.ACTION_SELECT);
+        expressCliBox.setItems(cliItems);
+        expressCliBox.getSelectionModel().selectFirst();
+
+        // Async fetch latest version from npm registry
+        Thread t = new Thread(() -> {
+            String latest = ExpressMetadata.fetchLatestVersion(false);
+            if (latest != null && !latest.isBlank() && !latest.equals(ExpressMetadata.DEFAULT_VERSION)) {
+                Platform.runLater(() -> {
+                    String formatted = ExpressMetadata.formatCliDisplay(latest);
+                    if (!expressCliBox.getItems().contains(formatted)) {
+                        expressCliBox.getItems().add(0, formatted);
+                        expressCliBox.getSelectionModel().selectFirst();
+                    }
+                });
+            }
+        }, "lumina-express-npm-fetcher");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void refreshExpressNodeInterpreters() {
+        if (!reactNodeInterpreterBox.getItems().isEmpty()) {
+            expressNodeInterpreterBox.setItems(FXCollections.observableArrayList(reactNodeInterpreterBox.getItems()));
+            if (reactNodeInterpreterBox.getValue() != null) {
+                expressNodeInterpreterBox.setValue(reactNodeInterpreterBox.getValue());
+                lastValidExpressNodeInterpreter = reactNodeInterpreterBox.getValue();
+            } else {
+                expressNodeInterpreterBox.getSelectionModel().selectFirst();
+                lastValidExpressNodeInterpreter = expressNodeInterpreterBox.getItems().getFirst();
+            }
+            return;
+        }
+
+        Thread t = new Thread(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                expressNodeInterpreterBox.setItems(items);
+                if (!items.isEmpty()) {
+                    expressNodeInterpreterBox.getSelectionModel().selectFirst();
+                    lastValidExpressNodeInterpreter = items.getFirst();
+                }
+            });
+        }, "lumina-express-node-detector");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void pickExpressNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/local/bin");
+        if (!initial.exists()) initial = new File("/opt/homebrew/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!expressNodeInterpreterBox.getItems().contains(display)) {
+                expressNodeInterpreterBox.getItems().add(0, display);
+            }
+            expressNodeInterpreterBox.setValue(display);
+            lastValidExpressNodeInterpreter = display;
+        } else {
+            expressNodeInterpreterBox.setValue(lastValidExpressNodeInterpreter);
+        }
+    }
+
+    private void pickExpressCliVersion() {
+        String currentVer = getSelectedExpressCliVersion();
+        new SelectCliVersionDialog(stage, ExpressMetadata.TYPE_EXPRESS, currentVer, selectedVer -> {
+            String formatted = ExpressMetadata.formatCliDisplay(selectedVer);
+            if (!expressCliBox.getItems().contains(formatted)) {
+                expressCliBox.getItems().add(0, formatted);
+            }
+            expressCliBox.setValue(formatted);
+        }).show();
+    }
+
+    private String getSelectedExpressNodeInterpreter() {
+        String val = expressNodeInterpreterBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val)
+                || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return "/usr/local/bin/node";
+        }
+        String s = val.trim();
+        if (s.startsWith("node")) {
+            s = s.substring(4).trim();
+        }
+        String[] parts = s.split("\\s+");
+        if (parts.length > 0 && !parts[0].isBlank()) {
+            return parts[0].trim();
+        }
+        return "/usr/local/bin/node";
+    }
+
+    private String getSelectedExpressCliVersion() {
+        String val = expressCliBox.getValue();
+        if (val == null || val.isBlank() || ExpressMetadata.ACTION_SELECT.equals(val)) {
+            return ExpressMetadata.DEFAULT_VERSION;
+        }
+        String[] parts = val.trim().split("\\s+");
+        if (parts.length > 0) {
+            return parts[parts.length - 1].trim();
+        }
+        return ExpressMetadata.DEFAULT_VERSION;
+    }
+
+    private String getSelectedExpressViewEngine() {
+        String val = expressViewEngineBox.getValue();
+        return val != null && !val.isBlank() ? val : ExpressMetadata.getDefaultViewEngine().name();
+    }
+
+    private String getSelectedExpressStylesheetEngine() {
+        String val = expressStylesheetEngineBox.getValue();
+        return val != null && !val.isBlank() ? val : ExpressMetadata.getDefaultStylesheetEngine().name();
+    }
+
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
 
@@ -4433,12 +4644,33 @@ public class NewProjectDialog {
                 form.add(reactAdvisoryBox, 1, row++);
             }
             case EXPRESS -> {
-                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
-                add(form, row++, "express-generator:", runtime("npx --package express-generator express                    4.16.1"));
-                Label options = new Label("Options"); options.getStyleClass().add("maven-section-title");
-                form.add(options, 1, row++);
-                add(form, row++, "View Engine:", choice("Pug (Jade)", "EJS", "Handlebars"));
-                add(form, row++, "Stylesheet Engine:", choice("Plain CSS", "Sass", "Less"));
+                initExpressControls();
+                refreshExpressNodeInterpreters();
+
+                HBox nodeRow = new HBox(8, expressNodeInterpreterBox, expressNodeBrowseBtn);
+                nodeRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Node interpreter:"), 0, row);
+                form.add(nodeRow, 1, row++);
+
+                HBox cliRow = new HBox(8, expressCliBox, expressCliBrowseBtn);
+                cliRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("express-generator:"), 0, row);
+                form.add(cliRow, 1, row++);
+
+                Label optionsLabel = new Label("Options");
+                optionsLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px; -fx-font-weight: bold;");
+                Separator sep = new Separator(Orientation.HORIZONTAL);
+                HBox.setHgrow(sep, Priority.ALWAYS);
+                HBox optionsRow = new HBox(8, optionsLabel, sep);
+                optionsRow.setAlignment(Pos.CENTER_LEFT);
+                optionsRow.setPadding(new Insets(8, 0, 4, 0));
+                form.add(optionsRow, 0, row++, 2, 1);
+
+                form.add(formLabel("View engine:"), 0, row);
+                form.add(expressViewEngineBox, 1, row++);
+
+                form.add(formLabel("Stylesheet engine:"), 0, row);
+                form.add(expressStylesheetEngineBox, 1, row++);
             }
             case VUE -> {
                 add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
@@ -4801,7 +5033,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react || selected.generator() == ProjectSpec.Generator.EXPRESS)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -4851,7 +5083,11 @@ public class NewProjectDialog {
                 getSelectedReactProjectType(),
                 getSelectedReactNodeInterpreter(),
                 getSelectedReactCliVersion(),
-                reactTsCheck.isSelected());
+                reactTsCheck.isSelected(),
+                getSelectedExpressNodeInterpreter(),
+                getSelectedExpressCliVersion(),
+                getSelectedExpressViewEngine(),
+                getSelectedExpressStylesheetEngine());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
