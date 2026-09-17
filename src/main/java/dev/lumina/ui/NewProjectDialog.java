@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import dev.lumina.project.ExpressMetadata;
+import dev.lumina.project.JdkMetadata;
+import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.NodeMetadata;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
@@ -82,7 +84,11 @@ public class NewProjectDialog {
         }
     }
 
-    private record JdkEntry(String label, String detail, boolean enabled, boolean action) {
+    private record JdkEntry(String label, String detail, boolean enabled, boolean action, JdkInstallation installation) {
+        public JdkEntry(String label, String detail, boolean enabled, boolean action) {
+            this(label, detail, enabled, action, null);
+        }
+
         @Override
         public String toString() {
             return label;
@@ -366,16 +372,6 @@ public class NewProjectDialog {
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
             new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
 
-    private static final List<JdkEntry> JDK_ENTRIES = List.of(
-            new JdkEntry("Registered JDKs", "", false, false),
-            new JdkEntry("Oracle OpenJDK 25.0.2", "Registered", true, false),
-            new JdkEntry("Alibaba Dragonwell 21.0.10", "Registered", true, false),
-            new JdkEntry("dragonwell-ex-21 Alibaba Dragonwell 21.0.10", "Registered", true, false),
-            new JdkEntry("Download JDK...", "", true, true),
-            new JdkEntry("Add JDK from Disk...", "", true, true),
-            new JdkEntry("Detected JDKs", "", false, false),
-            new JdkEntry("Oracle OpenJDK 25.0.2", "/usr/lib/jvm/jdk-25.0.2-oracle-x64", true, false));
-
     private final Stage stage = new Stage();
     private final Consumer<ProjectSpec> onCreate;
 
@@ -476,6 +472,34 @@ public class NewProjectDialog {
     private final HBox configRow = new HBox(8);
     private final HBox languageRow = new HBox(8);
     private final HBox buildSystemRow = new HBox(8);
+
+    private final GridPane formGrid = new GridPane();
+    private final Label serverLabel = formLabel("Server URL:");
+    private final Label nameLabel = formLabel("Name:");
+    private final Label locationLabel = formLabel("Location:");
+    private final Button browseLocationButton = new Button();
+    private final HBox locationRow = new HBox(8);
+    private final Label languageLabel = formLabel("Language:");
+    private final Label buildSystemLabel = formLabel("Build system:");
+    private final Label packagingLabel = formLabel("Packaging:");
+    private final Label configLabel = formLabel("Configuration:");
+    private final Label jdkLabel = formLabel("JDK:");
+    private final Label javaLabel = formLabel("Java:");
+    private final Label groovySdkLabel = formLabel("Groovy SDK:");
+    private final Label jakartaTemplateLabel = formLabel("Template:");
+    private final Label jakartaServerLabel = formLabel("Application server:");
+    private final HBox jakartaServerRow = new HBox(8);
+    private final Label nodeLabel = formLabel("Node runtime:");
+    private final Label angularCliLabel = formLabel("Angular CLI:");
+    private final Label webParametersLabel = formLabel("Additional parameters:");
+    private final HBox nodeRow = new HBox(8);
+    private final HBox cliRow = new HBox(8);
+    private final HBox viteRow = new HBox(8);
+    private final Label viteLabel = formLabel("Vite:");
+    private final Label viteTemplateLabel = formLabel("Template:");
+    private final CheckBox viteTypescriptCheck = new CheckBox("Use TypeScript template");
+    private final Label ktorEngineLabel = formLabel("Engine:");
+    private final Label packageLabel = formLabel("Package name:");
 
     private final TextField dependenciesField = new TextField();
     private final Label errorLabel = new Label();
@@ -681,8 +705,15 @@ public class NewProjectDialog {
     private Button cancelButton;
     private Button previousButton;
     private boolean packageEdited;
+    private boolean artifactEdited;
     private GeneratorEntry selected = NEW_PROJECT_ENTRIES.get(0);
-    private JdkEntry selectedJdk = JDK_ENTRIES.get(1);
+    private JdkEntry selectedJdk = null;
+
+    private final HBox javaAdvancedToggle = new HBox(8);
+    private final Label javaAdvancedArrow = new Label("\u25BE  Advanced Settings");
+    private final VBox javaAdvancedContainer = new VBox(10);
+    private boolean isJavaAdvancedExpanded = true;
+    private final List<Node> advancedSettingsNodes = new ArrayList<>();
 
     public NewProjectDialog(Stage owner, Consumer<ProjectSpec> onCreate) {
         this.onCreate = onCreate;
@@ -690,6 +721,8 @@ public class NewProjectDialog {
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("New Project");
+
+        populateJdkList(null);
 
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "new-project-dialog");
@@ -948,36 +981,31 @@ public class NewProjectDialog {
     // ------------------------------------------------------------------ form
 
     private ScrollPane buildForm() {
-        GridPane grid = new GridPane();
-        grid.setHgap(14);
-        grid.setVgap(14);
-        grid.setPadding(new Insets(24, 28, 12, 28));
+        formGrid.setHgap(14);
+        formGrid.setVgap(10);
+        formGrid.setPadding(new Insets(20, 24, 16, 24));
 
-        ColumnConstraints c0 = new ColumnConstraints();
+        ColumnConstraints c0 = new ColumnConstraints(110);
         c0.setMinWidth(110);
+        c0.setPrefWidth(110);
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setHgrow(Priority.ALWAYS);
-        grid.getColumnConstraints().addAll(c0, c1);
-
-        int row = 0;
+        formGrid.getColumnConstraints().setAll(c0, c1);
 
         serverUrlLabel.getStyleClass().add("form-static");
         serverSettingsButton.getStyleClass().add("console-button");
         serverSettingsButton.setOnAction(e -> showServerSettings());
         serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
         serverRow.setAlignment(Pos.CENTER_LEFT);
-        Label serverLabel = formLabel("Server URL:");
-        grid.add(serverLabel, 0, row);
-        grid.add(serverRow, 1, row++);
-        serverNodes.addAll(List.of(serverLabel, serverRow));
-        setNodesVisible(serverNodes, false);
 
-        grid.add(formLabel("Name:"), 0, row);
-        grid.add(nameField, 1, row++);
-
-        Button browse = new Button("\uD83D\uDCC2");
-        browse.getStyleClass().add("console-button");
-        browse.setOnAction(e -> {
+        browseLocationButton.setGraphic(createBrowseFolderIcon());
+        browseLocationButton.setText(null);
+        browseLocationButton.getStyleClass().addAll("console-button", "browse-button");
+        browseLocationButton.setPrefSize(28, 28);
+        browseLocationButton.setMinSize(28, 28);
+        browseLocationButton.setMaxSize(28, 28);
+        browseLocationButton.setTooltip(new Tooltip("Select Project Location"));
+        browseLocationButton.setOnAction(e -> {
             DirectoryChooser chooser = new DirectoryChooser();
             chooser.setTitle("Project Location");
             File current = new File(locationField.getText());
@@ -985,39 +1013,22 @@ public class NewProjectDialog {
             File dir = chooser.showDialog(stage);
             if (dir != null) locationField.setText(dir.getAbsolutePath());
         });
-        HBox locationRow = new HBox(8, locationField, browse);
+        locationRow.getChildren().setAll(locationField, browseLocationButton);
+        locationRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(locationField, Priority.ALWAYS);
-        grid.add(formLabel("Location:"), 0, row);
-        grid.add(locationRow, 1, row++);
 
         locationHint.getStyleClass().add("form-hint");
-        grid.add(locationHint, 1, row++);
-        grid.add(gitCheck, 1, row++);
-        generatorSpecificBox.setVisible(false);
-        generatorSpecificBox.setManaged(false);
-        grid.add(generatorSpecificBox, 0, row++, 2, 1);
 
-        // Jakarta EE template and application server controls
-        Label jakartaTemplateLabel = formLabel("Template:");
         jakartaTemplateBox.getSelectionModel().select(dev.lumina.project.JakartaMetadata.TEMPLATE_REST);
         jakartaTemplateBox.setMaxWidth(Double.MAX_VALUE);
-        grid.add(jakartaTemplateLabel, 0, row);
-        grid.add(jakartaTemplateBox, 1, row++);
-
-        Label jakartaServerLabel = formLabel("Application server:");
         jakartaAppServerBox.getSelectionModel().selectFirst();
         jakartaAppServerBox.setMaxWidth(Double.MAX_VALUE);
         newAppServerButton.getStyleClass().add("dialog-secondary");
         newAppServerButton.setOnAction(e -> showNewAppServerDialog());
-        HBox jakartaServerRow = new HBox(8, jakartaAppServerBox, newAppServerButton);
+        jakartaServerRow.getChildren().setAll(jakartaAppServerBox, newAppServerButton);
+        jakartaServerRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(jakartaAppServerBox, Priority.ALWAYS);
-        grid.add(jakartaServerLabel, 0, row);
-        grid.add(jakartaServerRow, 1, row++);
 
-        jakartaOnlyNodes.addAll(List.of(jakartaTemplateLabel, jakartaTemplateBox, jakartaServerLabel, jakartaServerRow));
-        setNodesVisible(jakartaOnlyNodes, false);
-
-        // JavaScript generators use the same compact runtime fields as IntelliJ's wizard.
         nodeRuntimeBox.getSelectionModel().selectFirst();
         angularCliBox.getSelectionModel().selectFirst();
         viteBox.getSelectionModel().selectFirst();
@@ -1028,33 +1039,18 @@ public class NewProjectDialog {
         viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
         Button nodeMore = compactButton("\u2026");
         Button cliMore = compactButton("\u2026");
-        HBox nodeRow = wideRow(nodeRuntimeBox, nodeMore);
-        HBox cliRow = wideRow(angularCliBox, cliMore);
-        Label nodeLabel = formLabel("Node runtime:");
-        Label cliLabel = formLabel("Angular CLI:");
-        Label parametersLabel = formLabel("Additional parameters:");
-        grid.add(nodeLabel, 0, row); grid.add(nodeRow, 1, row++);
-        grid.add(cliLabel, 0, row); grid.add(cliRow, 1, row++);
-        grid.add(parametersLabel, 0, row); grid.add(webParametersField, 1, row++);
-        grid.add(angularStandaloneCheck, 1, row++);
-        grid.add(angularDefaultsCheck, 1, row++);
-        webOnlyNodes.addAll(List.of(nodeLabel, nodeRow, cliLabel, cliRow, parametersLabel,
-                webParametersField, angularStandaloneCheck, angularDefaultsCheck));
-        angularOnlyNodes.addAll(List.of(cliLabel, cliRow, parametersLabel, webParametersField,
-                angularStandaloneCheck, angularDefaultsCheck));
-
-        Label viteLabel = formLabel("Vite:");
-        HBox viteRow = wideRow(viteBox, compactButton("\u2026"));
-        Label templateLabel = formLabel("Template:");
-        CheckBox typescript = new CheckBox("Use TypeScript template");
-        grid.add(viteLabel, 0, row); grid.add(viteRow, 1, row++);
-        grid.add(templateLabel, 0, row); grid.add(viteTemplateBox, 1, row++);
-        grid.add(typescript, 1, row++);
-        viteOnlyNodes.addAll(List.of(viteLabel, viteRow, templateLabel, viteTemplateBox, typescript));
+        Button viteMore = compactButton("\u2026");
+        nodeRow.getChildren().setAll(nodeRuntimeBox, nodeMore);
+        nodeRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(nodeRuntimeBox, Priority.ALWAYS);
+        cliRow.getChildren().setAll(angularCliBox, cliMore);
+        cliRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(angularCliBox, Priority.ALWAYS);
+        viteRow.getChildren().setAll(viteBox, viteMore);
+        viteRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(viteBox, Priority.ALWAYS);
 
         emptyDescription.getStyleClass().add("form-hint");
-        grid.add(emptyDescription, 1, row++);
-        emptyOnlyNodes.add(emptyDescription);
 
         languageGroup.getToggles().addAll(langJava, langKotlin, langGroovy);
         langJava.setToggleGroup(languageGroup);
@@ -1066,10 +1062,6 @@ public class NewProjectDialog {
         langJava.setSelected(true);
         languageRow.getChildren().setAll(langJava, langKotlin, langGroovy);
         languageRow.getStyleClass().add("segmented");
-        Label languageLabel = formLabel("Language:");
-        grid.add(languageLabel, 0, row);
-        grid.add(languageRow, 1, row++);
-        languageNodes.addAll(List.of(languageLabel, languageRow));
 
         typeGroup.getToggles().addAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeGradleGroovy.setToggleGroup(typeGroup);
@@ -1088,9 +1080,6 @@ public class NewProjectDialog {
         typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeRow.getStyleClass().add("segmented");
         typeLabel = formLabel("Type:");
-        grid.add(typeLabel, 0, row);
-        grid.add(typeRow, 1, row++);
-        typeNodes.addAll(List.of(typeLabel, typeRow));
 
         testGroup.getToggles().addAll(testJUnit, testKotest, testSpock);
         testJUnit.setToggleGroup(testGroup);
@@ -1103,9 +1092,6 @@ public class NewProjectDialog {
         testFrameworkRow.getChildren().setAll(testJUnit, testKotest, testSpock);
         testFrameworkRow.getStyleClass().add("segmented");
         testFrameworkLabel = formLabel("Test framework:");
-        grid.add(testFrameworkLabel, 0, row);
-        grid.add(testFrameworkRow, 1, row++);
-        micronautStep1Nodes.addAll(List.of(testFrameworkLabel, testFrameworkRow));
 
         packagingGroup.getToggles().addAll(packagingJar, packagingWar);
         packagingJar.setToggleGroup(packagingGroup);
@@ -1115,10 +1101,6 @@ public class NewProjectDialog {
         packagingJar.setSelected(true);
         packagingRow.getChildren().setAll(packagingJar, packagingWar);
         packagingRow.getStyleClass().add("segmented");
-        Label packagingLabel = formLabel("Packaging:");
-        grid.add(packagingLabel, 0, row);
-        grid.add(packagingRow, 1, row++);
-        springConfigNodes.addAll(List.of(packagingLabel, packagingRow));
 
         configGroup.getToggles().addAll(configProperties, configYaml);
         configProperties.setToggleGroup(configGroup);
@@ -1128,30 +1110,8 @@ public class NewProjectDialog {
         configProperties.setSelected(true);
         configRow.getChildren().setAll(configProperties, configYaml);
         configRow.getStyleClass().add("segmented");
-        Label configLabel = formLabel("Configuration:");
-        grid.add(configLabel, 0, row);
-        grid.add(configRow, 1, row++);
-        springConfigNodes.addAll(List.of(configLabel, configRow));
 
-        setNodesVisible(springConfigNodes, false);
-        setNodesVisible(typeNodes, false);
-
-        buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
-        Label buildSystemLabel = formLabel("Build system:");
-        grid.add(buildSystemLabel, 0, row);
-        grid.add(buildSystemRow, 1, row++);
-        buildSystemNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
-        standardOnlyNodes.addAll(List.of(buildSystemLabel, buildSystemRow));
-
-        Node groupLabel = formLabelWithHelp("Group:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
-        grid.add(groupLabel, 0, row);
-        grid.add(groupField, 1, row++);
-        standardOnlyNodes.addAll(List.of(groupLabel, groupField));
-
-        Node artifactLabel = formLabelWithHelp("Artifact:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
-        grid.add(artifactLabel, 0, row);
-        grid.add(artifactField, 1, row++);
-        standardOnlyNodes.addAll(List.of(artifactLabel, artifactField));
+        configureBuildOptions();
 
         micronautAppTypeBox.getSelectionModel().selectFirst();
         micronautAppTypeBox.setMaxWidth(Double.MAX_VALUE);
@@ -1162,27 +1122,13 @@ public class NewProjectDialog {
             }
         });
         micronautAppTypeLabel = formLabel("Application type:");
-        grid.add(micronautAppTypeLabel, 0, row);
-        grid.add(micronautAppTypeBox, 1, row++);
-        micronautStep1Nodes.addAll(List.of(micronautAppTypeLabel, micronautAppTypeBox));
-        setNodesVisible(micronautStep1Nodes, false);
 
         ktorEngineBox.getSelectionModel().selectFirst();
         ktorEngineBox.setMaxWidth(Double.MAX_VALUE);
-        Label ktorEngineLabel = formLabel("Engine:");
-        grid.add(ktorEngineLabel, 0, row);
-        grid.add(ktorEngineBox, 1, row++);
-        ktorStep1Nodes.addAll(List.of(ktorEngineLabel, ktorEngineBox));
-
         ktorAddSampleCodeCheck.setSelected(true);
-        grid.add(ktorAddSampleCodeCheck, 1, row++);
-        ktorStep1Nodes.add(ktorAddSampleCodeCheck);
-
         ktorTutorialsLabel = new Label("Start with Ktor Server and Client tutorials \u2197");
         ktorTutorialsLabel.setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-font-size: 12px;");
         ktorTutorialsLabel.setOnMouseClicked(e -> openBrowser("https://ktor.io/docs/server-create-a-new-project.html"));
-        grid.add(ktorTutorialsLabel, 1, row++);
-        ktorStep1Nodes.add(ktorTutorialsLabel);
 
         ktorAdvancedToggle = new HBox(8);
         ktorAdvancedToggle.setAlignment(Pos.CENTER_LEFT);
@@ -1194,8 +1140,6 @@ public class NewProjectDialog {
         advLine.setMaxHeight(1);
         HBox.setHgrow(advLine, Priority.ALWAYS);
         ktorAdvancedToggle.getChildren().addAll(ktorAdvancedArrow, advLine);
-        grid.add(ktorAdvancedToggle, 0, row++, 2, 1);
-        ktorStep1Nodes.add(ktorAdvancedToggle);
 
         ktorAdvancedContainer = new VBox(12);
         ktorAdvancedContainer.setPadding(new Insets(6, 0, 6, 0));
@@ -1232,8 +1176,6 @@ public class NewProjectDialog {
         ktorAdvancedContainer.getChildren().add(advGrid);
         ktorAdvancedContainer.setVisible(false);
         ktorAdvancedContainer.setManaged(false);
-        grid.add(ktorAdvancedContainer, 0, row++, 2, 1);
-        ktorStep1Nodes.add(ktorAdvancedContainer);
 
         ktorAdvancedToggle.setOnMouseClicked(e -> {
             isKtorAdvancedExpanded = !isKtorAdvancedExpanded;
@@ -1242,18 +1184,6 @@ public class NewProjectDialog {
             ktorAdvancedContainer.setManaged(isKtorAdvancedExpanded);
         });
 
-        setNodesVisible(ktorStep1Nodes, false);
-
-        Label packageLabel = formLabel("Package name:");
-        grid.add(packageLabel, 0, row);
-        grid.add(packageField, 1, row++);
-        packageNodes.addAll(List.of(packageLabel, packageField));
-        standardOnlyNodes.addAll(List.of(packageLabel, packageField));
-        javafxHiddenNodes.addAll(List.of(packageLabel, packageField));
-
-        Label jdkLabel = formLabel("JDK:");
-        grid.add(jdkLabel, 0, row);
-        jdkCombo.setItems(FXCollections.observableArrayList(JDK_ENTRIES));
         jdkCombo.setCellFactory(listView -> createJdkCell());
         jdkCombo.setButtonCell(createJdkButtonCell());
         if (selectedJdk != null) {
@@ -1262,76 +1192,85 @@ public class NewProjectDialog {
         jdkCombo.getSelectionModel().selectedItemProperty().addListener((obs, old, entry) -> {
             if (entry == null || entry == selectedJdk) return;
             if (!entry.enabled()) {
-                jdkCombo.getSelectionModel().select(selectedJdk);
+                Platform.runLater(() -> jdkCombo.getSelectionModel().select(selectedJdk));
                 return;
             }
             if (entry.action()) {
-                handleJdkAction(entry);
-                jdkCombo.getSelectionModel().select(selectedJdk);
+                Platform.runLater(() -> {
+                    jdkCombo.getSelectionModel().select(selectedJdk);
+                    handleJdkAction(entry);
+                });
                 return;
             }
             selectedJdk = entry;
         });
-        grid.add(jdkCombo, 1, row++);
-        jdkNodes.addAll(List.of(jdkLabel, jdkCombo));
 
         groovySdkBox.getSelectionModel().selectFirst();
-        Label groovySdkLabel = formLabel("Groovy SDK:");
-        grid.add(groovySdkLabel, 0, row);
-        grid.add(groovySdkBox, 1, row++);
-        groovyOnlyNodes.addAll(List.of(groovySdkLabel, groovySdkBox));
 
         sampleCodeCheck.setSelected(true);
-        grid.add(sampleCodeCheck, 1, row++);
-        sampleCodeNodes.add(sampleCodeCheck);
         kotlinInfo.getStyleClass().add("form-hint");
-        grid.add(kotlinInfo, 1, row++);
-        sampleCodeNodes.add(kotlinInfo);
+
+        javaAdvancedToggle.setAlignment(Pos.CENTER_LEFT);
+        javaAdvancedArrow.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12px;");
+        Region javaAdvLine = new Region();
+        javaAdvLine.setStyle("-fx-background-color: #393B40;");
+        javaAdvLine.setPrefHeight(1);
+        javaAdvLine.setMaxHeight(1);
+        HBox.setHgrow(javaAdvLine, Priority.ALWAYS);
+        javaAdvancedToggle.getChildren().setAll(javaAdvancedArrow, javaAdvLine);
+        javaAdvancedToggle.setPadding(new Insets(6, 0, 2, 0));
+
+        GridPane javaAdvGrid = new GridPane();
+        javaAdvGrid.setHgap(14);
+        javaAdvGrid.setVgap(10);
+        ColumnConstraints advCol0 = new ColumnConstraints(110);
+        advCol0.setMinWidth(110);
+        advCol0.setPrefWidth(110);
+        ColumnConstraints advCol1 = new ColumnConstraints();
+        advCol1.setHgrow(Priority.ALWAYS);
+        javaAdvGrid.getColumnConstraints().addAll(advCol0, advCol1);
+
+        Node groupLabelWithHelp = formLabelWithHelp("GroupId:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
+        Node artifactLabelWithHelp = formLabelWithHelp("ArtifactId:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
+        javaAdvGrid.add(groupLabelWithHelp, 0, 0);
+        javaAdvGrid.add(groupField, 1, 0);
+        javaAdvGrid.add(artifactLabelWithHelp, 0, 1);
+        javaAdvGrid.add(artifactField, 1, 1);
+
+        javaAdvancedContainer.getChildren().setAll(javaAdvGrid);
+        javaAdvancedContainer.setPadding(new Insets(4, 0, 4, 0));
+
+        javaAdvancedToggle.setOnMouseClicked(e -> {
+            isJavaAdvancedExpanded = !isJavaAdvancedExpanded;
+            javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
+            javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
+            javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
+        });
 
         buildMavenArchetypeForm();
-        grid.add(mavenArchetypeBox, 0, row++, 2, 1);
         buildRustForm();
-        grid.add(rustBox, 0, row++, 2, 1);
 
-        Label javaLabel = formLabel("Java:");
-        grid.add(javaLabel, 0, row);
         javaVersionBox.getSelectionModel().select("21");
-        grid.add(javaVersionBox, 1, row++);
-        standardOnlyNodes.addAll(List.of(javaLabel, javaVersionBox));
-        javafxHiddenNodes.addAll(List.of(javaLabel, javaVersionBox));
 
         Label buildOptionsLabel = formLabel("Build options:");
-        grid.add(buildOptionsLabel, 0, row);
         advancedBox.setSpacing(10);
         updateAdvancedOptions();
-        grid.add(advancedBox, 1, row++);
-        standardOnlyNodes.addAll(List.of(buildOptionsLabel, advancedBox));
-        javafxHiddenNodes.addAll(List.of(buildOptionsLabel, advancedBox));
 
-        grid.add(saveSettingsCheck, 1, row++);
-        standardOnlyNodes.add(saveSettingsCheck);
-        javafxHiddenNodes.add(saveSettingsCheck);
-
-        Label depsLabel = formLabel("Dependencies:");
         dependenciesField.setPromptText("comma separated, e.g. web,data-jpa,lombok");
         dependenciesRow = new HBox(dependenciesField);
         HBox.setHgrow(dependenciesField, Priority.ALWAYS);
-        grid.add(depsLabel, 0, row);
-        grid.add(dependenciesRow, 1, row++);
-        dependenciesRow.visibleProperty().addListener((obs, old, v) -> {
-            depsLabel.setVisible(v);
-            depsLabel.setManaged(v);
-            dependenciesRow.setManaged(v);
-        });
 
         buildGroup.selectedToggleProperty().addListener((obs, old, n) -> updateAdvancedOptions());
 
         // live bindings
         nameField.textProperty().addListener((obs, old, v) -> {
-            artifactField.setText(sanitize(v));
+            if (!artifactEdited) {
+                artifactField.setText(sanitize(v));
+            }
             mavenArtifactField.setText(sanitize(v));
             updateHints();
         });
+        artifactField.setOnKeyTyped(e -> artifactEdited = true);
         locationField.textProperty().addListener((obs, old, v) -> updateHints());
         groupField.textProperty().addListener((obs, old, v) -> updateHints());
         artifactField.textProperty().addListener((obs, old, v) -> updateHints());
@@ -1339,10 +1278,266 @@ public class NewProjectDialog {
         packageField.setOnKeyTyped(e -> packageEdited = true);
         updateHints();
 
-        ScrollPane scroll = new ScrollPane(grid);
+        rebuildFormGrid();
+
+        ScrollPane scroll = new ScrollPane(formGrid);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("form-scroll");
         return scroll;
+    }
+
+    private void rebuildFormGrid() {
+        formGrid.getChildren().clear();
+        formGrid.getRowConstraints().clear();
+
+        ProjectSpec.Generator generator = selected.generator();
+        boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
+        boolean quarkus = generator == ProjectSpec.Generator.QUARKUS;
+        boolean micronaut = generator == ProjectSpec.Generator.MICRONAUT;
+        boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
+        boolean ktor = generator == ProjectSpec.Generator.KTOR;
+        boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
+        boolean rust = generator == ProjectSpec.Generator.RUST;
+        boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
+        boolean groovy = generator == ProjectSpec.Generator.GROOVY;
+        boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
+        boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
+        boolean vite = generator == ProjectSpec.Generator.VITE;
+        boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
+        boolean java = generator == ProjectSpec.Generator.JAVA;
+        boolean web = angular || vite;
+        boolean specific = switch (generator) {
+            case HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            default -> false;
+        };
+
+        int row = 0;
+
+        // 1. Server URL (for Spring Boot, Quarkus, Micronaut)
+        if (spring || quarkus || micronaut) {
+            if (micronaut) {
+                serverUrlLabel.setText(micronautServerUrl.replaceFirst("^https?://", ""));
+            } else if (quarkus) {
+                serverUrlLabel.setText(quarkusServerUrl.replaceFirst("^https?://", ""));
+            } else {
+                serverUrlLabel.setText("start.spring.io");
+            }
+            serverLabel.setVisible(true);
+            serverLabel.setManaged(true);
+            serverRow.setVisible(true);
+            serverRow.setManaged(true);
+            formGrid.add(serverLabel, 0, row);
+            formGrid.add(serverRow, 1, row++);
+        }
+
+        // 2. Name
+        nameLabel.setVisible(true);
+        nameLabel.setManaged(true);
+        nameField.setVisible(true);
+        nameField.setManaged(true);
+        formGrid.add(nameLabel, 0, row);
+        formGrid.add(nameField, 1, row++);
+
+        // 3. Location
+        locationLabel.setVisible(true);
+        locationLabel.setManaged(true);
+        locationRow.setVisible(true);
+        locationRow.setManaged(true);
+        formGrid.add(locationLabel, 0, row);
+        formGrid.add(locationRow, 1, row++);
+
+        // 4. Location hint + Git checkbox (col 1)
+        VBox locationSub = new VBox(4);
+        locationSub.setPadding(new Insets(2, 0, 4, 0));
+        locationHint.setVisible(true);
+        locationHint.setManaged(true);
+        locationSub.getChildren().add(locationHint);
+        boolean showGit = !web && !empty && !specific;
+        if (showGit) {
+            gitCheck.setVisible(true);
+            gitCheck.setManaged(true);
+            locationSub.getChildren().add(gitCheck);
+        } else {
+            gitCheck.setVisible(false);
+            gitCheck.setManaged(false);
+        }
+        formGrid.add(locationSub, 1, row++);
+
+        // 5. Generator-specific forms
+        if (specific) {
+            generatorSpecificBox.setVisible(true);
+            generatorSpecificBox.setManaged(true);
+            buildSpecificForm(generator);
+            formGrid.add(generatorSpecificBox, 0, row++, 2, 1);
+            return;
+        }
+
+        if (empty) {
+            emptyDescription.setVisible(true);
+            emptyDescription.setManaged(true);
+            formGrid.add(emptyDescription, 1, row++);
+            return;
+        }
+
+        if (rust) {
+            rustBox.setVisible(true);
+            rustBox.setManaged(true);
+            formGrid.add(rustBox, 0, row++, 2, 1);
+            return;
+        }
+
+        if (angular) {
+            formGrid.add(nodeLabel, 0, row);
+            formGrid.add(nodeRow, 1, row++);
+            formGrid.add(angularCliLabel, 0, row);
+            formGrid.add(cliRow, 1, row++);
+            formGrid.add(webParametersLabel, 0, row);
+            formGrid.add(webParametersField, 1, row++);
+            formGrid.add(angularStandaloneCheck, 1, row++);
+            formGrid.add(angularDefaultsCheck, 1, row++);
+            return;
+        }
+
+        if (vite) {
+            formGrid.add(nodeLabel, 0, row);
+            formGrid.add(nodeRow, 1, row++);
+            formGrid.add(viteLabel, 0, row);
+            formGrid.add(viteRow, 1, row++);
+            formGrid.add(viteTemplateLabel, 0, row);
+            formGrid.add(viteTemplateBox, 1, row++);
+            formGrid.add(viteTypescriptCheck, 1, row++);
+            return;
+        }
+
+        if (mavenArchetype) {
+            mavenArchetypeBox.setVisible(true);
+            mavenArchetypeBox.setManaged(true);
+            formGrid.add(mavenArchetypeBox, 0, row++, 2, 1);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            return;
+        }
+
+        if (ktor) {
+            formGrid.add(ktorEngineLabel, 0, row);
+            formGrid.add(ktorEngineBox, 1, row++);
+            formGrid.add(ktorAddSampleCodeCheck, 1, row++);
+            formGrid.add(ktorTutorialsLabel, 1, row++);
+            formGrid.add(ktorAdvancedToggle, 0, row++, 2, 1);
+            formGrid.add(ktorAdvancedContainer, 0, row++, 2, 1);
+            ktorAdvancedContainer.setVisible(isKtorAdvancedExpanded);
+            ktorAdvancedContainer.setManaged(isKtorAdvancedExpanded);
+            ktorAdvancedArrow.setText(isKtorAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
+            return;
+        }
+
+        if (jakarta) {
+            formGrid.add(jakartaTemplateLabel, 0, row);
+            formGrid.add(jakartaTemplateBox, 1, row++);
+            formGrid.add(jakartaServerLabel, 0, row);
+            formGrid.add(jakartaServerRow, 1, row++);
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(languageRow, 1, row++);
+            formGrid.add(buildSystemLabel, 0, row);
+            formGrid.add(buildSystemRow, 1, row++);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaLabel, 0, row);
+            formGrid.add(javaVersionBox, 1, row++);
+            return;
+        }
+
+        if (spring) {
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(languageRow, 1, row++);
+            typeLabel.setText("Type:");
+            formGrid.add(typeLabel, 0, row);
+            formGrid.add(typeRow, 1, row++);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaLabel, 0, row);
+            formGrid.add(javaVersionBox, 1, row++);
+            formGrid.add(packagingLabel, 0, row);
+            formGrid.add(packagingRow, 1, row++);
+            formGrid.add(configLabel, 0, row);
+            formGrid.add(configRow, 1, row++);
+            return;
+        }
+
+        if (quarkus) {
+            langGroovy.setVisible(false);
+            langGroovy.setManaged(false);
+            if (langGroovy.isSelected()) langJava.setSelected(true);
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(languageRow, 1, row++);
+            typeLabel.setText("Build system:");
+            formGrid.add(typeLabel, 0, row);
+            formGrid.add(typeRow, 1, row++);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaLabel, 0, row);
+            formGrid.add(javaVersionBox, 1, row++);
+            formGrid.add(sampleCodeCheck, 1, row++);
+            return;
+        }
+
+        if (micronaut) {
+            langGroovy.setVisible(true);
+            langGroovy.setManaged(true);
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(languageRow, 1, row++);
+            typeLabel.setText("Build system:");
+            formGrid.add(typeLabel, 0, row);
+            formGrid.add(typeRow, 1, row++);
+            formGrid.add(testFrameworkLabel, 0, row);
+            formGrid.add(testFrameworkRow, 1, row++);
+            formGrid.add(micronautAppTypeLabel, 0, row);
+            formGrid.add(micronautAppTypeBox, 1, row++);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaLabel, 0, row);
+            formGrid.add(javaVersionBox, 1, row++);
+            return;
+        }
+
+        if (javafx) {
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(languageRow, 1, row++);
+            formGrid.add(buildSystemLabel, 0, row);
+            formGrid.add(buildSystemRow, 1, row++);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
+            formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
+            javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
+            javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
+            javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
+            return;
+        }
+
+        // Standard Java / Kotlin / Groovy
+        formGrid.add(buildSystemLabel, 0, row);
+        formGrid.add(buildSystemRow, 1, row++);
+
+        formGrid.add(jdkLabel, 0, row);
+        formGrid.add(jdkCombo, 1, row++);
+
+        if (groovy) {
+            formGrid.add(groovySdkLabel, 0, row);
+            formGrid.add(groovySdkBox, 1, row++);
+        }
+
+        formGrid.add(sampleCodeCheck, 1, row++);
+
+        if (kotlin) {
+            formGrid.add(kotlinInfo, 1, row++);
+        }
+
+        formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
+        formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
+        javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
+        javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
+        javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
     }
 
     // ------------------------------------------------ Spring Boot page 2
@@ -3996,8 +4191,8 @@ public class NewProjectDialog {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox box = new HBox(10, helpButton, errorLabel, spacer,
-                previousButton, createButton, cancelButton);
+        HBox box = new HBox(10, helpButton, cancelButton, errorLabel, spacer,
+                previousButton, createButton);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(12, 20, 14, 20));
         box.getStyleClass().add("dialog-footer");
@@ -4411,6 +4606,7 @@ public class NewProjectDialog {
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
+        boolean java = generator == ProjectSpec.Generator.JAVA;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
             case HTML, REACT, EXPRESS, VUE, NUXT -> true;
@@ -4429,9 +4625,6 @@ public class NewProjectDialog {
         } else if (spring) {
             serverUrlLabel.setText("start.spring.io");
         }
-        setNodesVisible(serverNodes, spring || quarkus || micronaut);
-        setNodesVisible(jakartaOnlyNodes, jakarta);
-        setNodesVisible(languageNodes, spring || javafx || quarkus || jakarta || micronaut);
         langGroovy.setVisible(!quarkus);
         langGroovy.setManaged(!quarkus);
         if (quarkus && langGroovy.isSelected()) {
@@ -4440,9 +4633,6 @@ public class NewProjectDialog {
         if (typeLabel != null) {
             typeLabel.setText(quarkus || micronaut ? "Build system:" : "Type:");
         }
-        setNodesVisible(typeNodes, spring || quarkus || micronaut);
-        setNodesVisible(micronautStep1Nodes, micronaut);
-        setNodesVisible(ktorStep1Nodes, ktor);
         if (ktor) {
             if (nameField.getText().trim().isEmpty() || "demo".equals(nameField.getText().trim())) {
                 nameField.setText("ktor-sample");
@@ -4454,24 +4644,6 @@ public class NewProjectDialog {
                 artifactField.setText("com.example.ktor-sample");
             }
         }
-        setNodesVisible(springConfigNodes, spring);
-        setNodesVisible(buildSystemNodes, !spring && !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !ktor);
-        setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific && !jakarta);
-        setNodesVisible(packageNodes, !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta) && !ktor);
-        setNodesVisible(jdkNodes, !rust && !empty && !web && !specific && !ktor);
-        setNodesVisible(webOnlyNodes, web);
-        setNodesVisible(viteOnlyNodes, vite);
-        setNodesVisible(angularOnlyNodes, angular);
-        setNodesVisible(sampleCodeNodes, kotlin || groovy || quarkus);
-        kotlinInfo.setVisible(kotlin);
-        kotlinInfo.setManaged(kotlin);
-        setNodesVisible(groovyOnlyNodes, groovy);
-        setNodesVisible(emptyOnlyNodes, empty);
-        setNodesVisible(javafxOnlyNodes, javafx);
-        // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
-        // from the advanced identity fields and no wrapper/version section is shown.
-        setNodesVisible(javafxHiddenNodes,
-                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta || ktor));
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
         gitCheck.setVisible(!web && !html && !react);
@@ -4479,10 +4651,9 @@ public class NewProjectDialog {
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
-        // Match the wizard's sensible defaults for each page.
-        if (kotlin || groovy) configureBuildOptions(true);
-        else if (javafx) configureBuildOptions(false);
-        else configureBuildOptions(false);
+
+        configureBuildOptions();
+
         if (createButton != null) {
             if (spring) {
                 createButton.setText("Next");
@@ -4520,22 +4691,35 @@ public class NewProjectDialog {
         if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus || jakarta) ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
+
+        rebuildFormGrid();
+        updateHints();
         updateAdvancedOptions();
+    }
+
+    private void configureBuildOptions() {
+        configureBuildOptions(false);
     }
 
     private void configureBuildOptions(boolean includeIntelliJ) {
         ToggleButton selectedBuild = (ToggleButton) buildGroup.getSelectedToggle();
         String wasSelected = selectedBuild == null ? "" : selectedBuild.getText();
         buildGroup.getToggles().clear();
-        if (includeIntelliJ) {
-            buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "IntelliJ", "Maven", "Gradle"));
-        } else {
-            buildSystemRow.getChildren().setAll(segmented(buildGroup, true, "Maven", "Gradle"));
-        }
+        buildSystemRow.getChildren().setAll(segmented(buildGroup, false, "Maven", "Gradle"));
+        boolean matched = false;
         for (javafx.scene.control.Toggle toggle : buildGroup.getToggles()) {
             if (((ToggleButton) toggle).getText().equals(wasSelected)) {
                 toggle.setSelected(true);
+                matched = true;
                 break;
+            }
+        }
+        if (!matched) {
+            for (javafx.scene.control.Toggle toggle : buildGroup.getToggles()) {
+                if ("Maven".equals(((ToggleButton) toggle).getText())) {
+                    toggle.setSelected(true);
+                    break;
+                }
             }
         }
     }
@@ -4723,10 +4907,12 @@ public class NewProjectDialog {
     }
 
     private ComboBox<JdkEntry> jdkChoice() {
-        ComboBox<JdkEntry> box = new ComboBox<>(FXCollections.observableArrayList(JDK_ENTRIES));
+        ComboBox<JdkEntry> box = new ComboBox<>(jdkCombo.getItems());
         box.setCellFactory(list -> createJdkCell());
         box.setButtonCell(createJdkButtonCell());
-        box.getSelectionModel().select(JDK_ENTRIES.get(1));
+        if (selectedJdk != null) {
+            box.getSelectionModel().select(selectedJdk);
+        }
         box.setPrefWidth(398);
         return box;
     }
@@ -4777,10 +4963,14 @@ public class NewProjectDialog {
 
     private void updateHints() {
         try {
-            locationHint.setText("Project will be created in: "
-                    + Path.of(locationField.getText().isBlank() ? "." : locationField.getText())
+            String fullPath = Path.of(locationField.getText().isBlank() ? "." : locationField.getText())
                     .resolve(selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
-                            ? mavenArtifactField.getText() : nameField.getText()).toString());
+                            ? mavenArtifactField.getText() : nameField.getText()).toString();
+            String userHome = System.getProperty("user.home");
+            if (userHome != null && fullPath.startsWith(userHome)) {
+                fullPath = "~" + fullPath.substring(userHome.length());
+            }
+            locationHint.setText("Project will be created in: " + fullPath);
         } catch (java.nio.file.InvalidPathException ex) {
             locationHint.setText("Invalid location path");
         }
@@ -4808,6 +4998,60 @@ public class NewProjectDialog {
         }
     }
 
+    private void populateJdkList(JdkInstallation toSelect) {
+        List<JdkInstallation> detected = JdkMetadata.detectInstallations(false);
+        List<JdkEntry> entries = new ArrayList<>();
+        if (!detected.isEmpty()) {
+            entries.add(new JdkEntry("Detected JDKs", "", false, false));
+            for (JdkInstallation inst : detected) {
+                entries.add(new JdkEntry(inst.formatDisplay(), inst.homePath(), true, false, inst));
+            }
+        } else {
+            entries.add(new JdkEntry("No JDK detected", "", false, false));
+        }
+        entries.add(new JdkEntry(JdkMetadata.ACTION_DOWNLOAD, "", true, true));
+        entries.add(new JdkEntry(JdkMetadata.ACTION_ADD, "", true, true));
+
+        jdkCombo.setItems(FXCollections.observableArrayList(entries));
+
+        JdkEntry target = null;
+        if (toSelect != null) {
+            for (JdkEntry e : entries) {
+                if (e.installation() != null && e.installation().homePath().equals(toSelect.homePath())) {
+                    target = e;
+                    break;
+                }
+            }
+        }
+        if (target == null && selectedJdk != null && selectedJdk.installation() != null) {
+            for (JdkEntry e : entries) {
+                if (e.installation() != null && e.installation().homePath().equals(selectedJdk.installation().homePath())) {
+                    target = e;
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            for (JdkEntry e : entries) {
+                if (e.installation() != null && e.enabled() && !e.action()) {
+                    target = e;
+                    break;
+                }
+            }
+        }
+        if (target != null) {
+            selectedJdk = target;
+            jdkCombo.getSelectionModel().select(target);
+        }
+    }
+
+    private static Node createJdkFolderIcon() {
+        SVGPath folder = new SVGPath();
+        folder.setContent("M 2,3 L 6,3 L 7.5,4.8 L 14,4.8 C 14.5,4.8 15,5.3 15,5.8 L 15,12 C 15,12.5 14.5,13 14,13 L 2,13 C 1.5,13 1,12.5 1,12 L 1,4 C 1,3.5 1.5,3 2,3 Z");
+        folder.setFill(Color.web("#E5C07B"));
+        return folder;
+    }
+
     private ListCell<JdkEntry> createJdkCell() {
         return new ListCell<>() {
             @Override
@@ -4816,20 +5060,34 @@ public class NewProjectDialog {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                    setStyle("");
                     return;
                 }
                 if (!item.enabled()) {
                     setText(item.label());
-                    setStyle("-fx-text-fill: #565D75;");
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #6C7387; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 8 2 8;");
                     return;
                 }
                 if (item.action()) {
                     setText(item.label());
-                    setStyle("-fx-text-fill: #8FCE8F;");
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
                     return;
                 }
-                setText(item.label() + (item.detail().isBlank() ? "" : "  " + item.detail()));
-                setStyle("-fx-text-fill: #D8DBE6;");
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Node icon = createJdkFolderIcon();
+                Label label = new Label(item.label());
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(item.detail());
+                detail.setStyle("-fx-text-fill: #6C7387; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(icon, label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
             }
         };
     }
@@ -4844,30 +5102,56 @@ public class NewProjectDialog {
                     setGraphic(null);
                     return;
                 }
-                setText(item.label());
+                if (item.action() || !item.enabled()) {
+                    setText(item.label());
+                    setGraphic(null);
+                    return;
+                }
+                HBox box = new HBox(8);
+                box.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(item.label());
+                label.setStyle("-fx-text-fill: #DFE1E5;");
+                box.getChildren().addAll(createJdkFolderIcon(), label);
+                setText(null);
+                setGraphic(box);
             }
         };
     }
 
     private void handleJdkAction(JdkEntry entry) {
         if (entry.label().startsWith("Download JDK")) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.initOwner(stage);
-            alert.setTitle("Download JDK");
-            alert.setHeaderText("Download JDK");
-            alert.setContentText("Downloading JDK is not implemented yet.");
-            alert.getDialogPane().getStylesheets().add(
-                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
-            alert.showAndWait();
+            int initialVersion = 25;
+            if (selectedJdk != null && selectedJdk.installation() != null) {
+                initialVersion = selectedJdk.installation().majorVersion();
+            }
+            DownloadJdkDialog dialog = new DownloadJdkDialog(stage, initialVersion, installed -> {
+                populateJdkList(installed);
+            });
+            dialog.show();
         } else if (entry.label().startsWith("Add JDK")) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.initOwner(stage);
-            alert.setTitle("Add JDK");
-            alert.setHeaderText("Add JDK from Disk");
-            alert.setContentText("Adding a JDK from disk is not implemented yet.");
-            alert.getDialogPane().getStylesheets().add(
-                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
-            alert.showAndWait();
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Select JDK Home Directory");
+            File initialDir = new File("/Library/Java/JavaVirtualMachines");
+            if (!initialDir.isDirectory()) {
+                initialDir = new File(System.getProperty("user.home"));
+            }
+            chooser.setInitialDirectory(initialDir);
+            File dir = chooser.showDialog(stage);
+            if (dir != null) {
+                JdkInstallation inspected = JdkMetadata.inspectDirectory(dir.toPath(), false);
+                if (inspected != null) {
+                    populateJdkList(inspected);
+                } else {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.initOwner(stage);
+                    alert.setTitle("Invalid JDK Home");
+                    alert.setHeaderText("The selected directory does not appear to be a valid JDK home.");
+                    alert.setContentText("Directory: " + dir.getAbsolutePath() + "\n\nMake sure it contains 'bin/java' or a 'release' file.");
+                    alert.getDialogPane().getStylesheets().add(
+                            getClass().getResource("/css/lumina-dark.css").toExternalForm());
+                    alert.showAndWait();
+                }
+            }
         }
     }
 
@@ -4992,9 +5276,8 @@ public class NewProjectDialog {
             build = ktorBuildMaven.isSelected() ? ProjectSpec.BuildSystem.MAVEN : ProjectSpec.BuildSystem.GRADLE;
         } else {
             ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
-            build = buildToggle != null && "Gradle".equals(buildToggle.getText())
-                    ? ProjectSpec.BuildSystem.GRADLE
-                    : ProjectSpec.BuildSystem.MAVEN;
+            String text = buildToggle != null ? buildToggle.getText() : "Maven";
+            build = "Gradle".equals(text) ? ProjectSpec.BuildSystem.GRADLE : ProjectSpec.BuildSystem.MAVEN;
         }
 
         String quarkusBuildTool = "MAVEN";
@@ -5022,6 +5305,34 @@ public class NewProjectDialog {
         ProjectSpec.ConfigFormat configFormat = configYaml.isSelected()
                 ? ProjectSpec.ConfigFormat.YAML : ProjectSpec.ConfigFormat.PROPERTIES;
 
+        boolean isJava = selected.generator() == ProjectSpec.Generator.JAVA;
+        boolean isKotlin = selected.generator() == ProjectSpec.Generator.KOTLIN;
+        boolean isGroovy = selected.generator() == ProjectSpec.Generator.GROOVY;
+        String javaVer;
+        if (selectedJdk != null && selectedJdk.installation() != null &&
+            (isJava || isKotlin || isGroovy)) {
+            javaVer = String.valueOf(selectedJdk.installation().majorVersion());
+        } else if (selectedJdk != null && !selectedJdk.label().isBlank() && (isJava || isKotlin || isGroovy)) {
+            int parsed = JdkMetadata.parseMajorVersion(selectedJdk.label());
+            javaVer = parsed > 0 ? String.valueOf(parsed) : "21";
+        } else if (javaVersionBox.getValue() != null && !javaVersionBox.getValue().isBlank()) {
+            javaVer = javaVersionBox.getValue();
+        } else {
+            javaVer = "21";
+        }
+
+        String pkg;
+        if (mavenArchetype) {
+            pkg = (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
+        } else if (isJava) {
+            String g = sanitize(groupField.getText().trim());
+            pkg = g.isBlank() ? "" : g;
+        } else if (selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react || selected.generator() == ProjectSpec.Generator.EXPRESS) {
+            pkg = (sanitize(groupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
+        } else {
+            pkg = packageField.getText().trim();
+        }
+
         ProjectSpec spec = new ProjectSpec(
                 selected.generator(),
                 name,
@@ -5033,11 +5344,8 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react || selected.generator() == ProjectSpec.Generator.EXPRESS)
-                        ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
-                                .replaceAll("^\\.|\\.$", "")
-                        : packageField.getText().trim(),
-                javaVersionBox.getValue(),
+                pkg,
+                javaVer,
                 dependenciesField.getText().trim(),
                 selected.generator() == ProjectSpec.Generator.SPRING_BOOT
                         ? emptyIfDefault(springBootVersionBox.getValue())
@@ -5123,16 +5431,27 @@ public class NewProjectDialog {
         return version == null ? "" : version;
     }
 
-    private Label formLabel(String text) {
+    private static Label formLabel(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("form-label");
         return l;
     }
 
+    private static Node createBrowseFolderIcon() {
+        SVGPath folder = new SVGPath();
+        folder.setContent("M 1.5,3 C 1.5,2.4 1.9,2 2.5,2 L 5.8,2 C 6.2,2 6.6,2.2 6.8,2.6 L 8,4.2 L 13.5,4.2 C 14.1,4.2 14.5,4.6 14.5,5.2 L 14.5,12 C 14.5,12.6 14.1,13 13.5,13 L 2.5,13 C 1.9,13 1.5,12.6 1.5,12 Z");
+        folder.setFill(Color.TRANSPARENT);
+        folder.setStroke(Color.web("#8C919D"));
+        folder.setStrokeWidth(1.2);
+        return folder;
+    }
+
     private Node formLabelWithHelp(String text, String helpText) {
         Label label = formLabel(text);
-        Label help = new Label("(?)");
-        help.setStyle("-fx-text-fill: #707890; -fx-font-size: 11px; -fx-cursor: hand;");
+        Label help = new Label("?");
+        help.setStyle("-fx-text-fill: #707890; -fx-font-size: 10px; -fx-cursor: hand; "
+                + "-fx-border-color: #707890; -fx-border-radius: 8; -fx-min-width: 14px; "
+                + "-fx-alignment: center; -fx-padding: 0 2 0 2;");
         javafx.scene.control.Tooltip tip = new javafx.scene.control.Tooltip(helpText);
         javafx.scene.control.Tooltip.install(help, tip);
         HBox box = new HBox(4, label, help);
