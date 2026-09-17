@@ -357,6 +357,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Kotlin", ProjectSpec.Generator.KOTLIN, true),
             new GeneratorEntry("Groovy", ProjectSpec.Generator.GROOVY, true),
             new GeneratorEntry("Scala", ProjectSpec.Generator.SCALA, true),
+            new GeneratorEntry("Python", ProjectSpec.Generator.PYTHON, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
             new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
@@ -517,6 +518,24 @@ public class NewProjectDialog {
     private final Label scalaPackagePrefixLabel = formLabel("Package prefix:");
     private final TextField scalaPackagePrefixField = new TextField();
     private final TextField scalaModuleNameField = new TextField();
+
+    // Python controls
+    private final Label interpreterTypeLabel = formLabel("Interpreter type:");
+    private final ToggleGroup pythonInterpreterGroup = new ToggleGroup();
+    private final HBox pythonInterpreterRow = new HBox(8);
+    private final Label pythonVersionLabel = formLabel("Python version:");
+    private final ComboBox<dev.lumina.project.PythonMetadata.PythonInstallation> pythonVersionCombo = new ComboBox<>();
+    private final Button pythonBrowseBtn = new Button();
+    private final HBox pythonVersionRow = new HBox(8);
+    private final Label pythonVenvHintLabel = new Label();
+
+    private final ComboBox<String> uvPythonVersionCombo = new ComboBox<>();
+    private final Label pathToUvLabel = formLabel("Path to uv:");
+    private final TextField uvPathField = new TextField();
+    private final Label uvPathCheckIcon = new Label("✓");
+    private final Button uvBrowseBtn = new Button();
+    private final HBox uvPathRow = new HBox(8);
+    private final Label uvHintLabel = new Label();
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1340,6 +1359,126 @@ public class NewProjectDialog {
             }
         });
 
+        // Python controls setup
+        pythonInterpreterRow.getChildren().setAll(segmented(pythonInterpreterGroup, false, "Project venv", "uv", "Base conda", "Custom environment"));
+        for (Toggle t : pythonInterpreterGroup.getToggles()) {
+            if ("Project venv".equalsIgnoreCase(((ToggleButton) t).getText())) {
+                t.setSelected(true);
+                break;
+            }
+        }
+        pythonInterpreterGroup.selectedToggleProperty().addListener((obs, old, n) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.PYTHON) {
+                rebuildFormGrid();
+            }
+        });
+
+        pythonVersionCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox cellBox = new HBox(8);
+                    cellBox.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
+                    Label title = new Label(item.label());
+                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
+                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
+                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                    cellBox.getChildren().addAll(icon, title, pathLabel);
+                    setGraphic(cellBox);
+                    setText(null);
+                }
+            }
+        });
+        pythonVersionCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox cellBox = new HBox(8);
+                    cellBox.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
+                    Label title = new Label(item.label());
+                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
+                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
+                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                    cellBox.getChildren().addAll(icon, title, pathLabel);
+                    setGraphic(cellBox);
+                    setText(null);
+                }
+            }
+        });
+        pythonVersionCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(pythonVersionCombo, Priority.ALWAYS);
+
+        pythonVersionCombo.getItems().setAll(dev.lumina.project.PythonMetadata.fetchPythonInstallations(false));
+        if (!pythonVersionCombo.getItems().isEmpty()) {
+            pythonVersionCombo.getSelectionModel().selectFirst();
+        }
+        dev.lumina.project.PythonMetadata.fetchPythonInstallationsAsync(list -> {
+            if (list != null && !list.isEmpty()) {
+                dev.lumina.project.PythonMetadata.PythonInstallation cur = pythonVersionCombo.getValue();
+                pythonVersionCombo.getItems().setAll(list);
+                if (cur != null && list.contains(cur)) {
+                    pythonVersionCombo.setValue(cur);
+                } else {
+                    pythonVersionCombo.getSelectionModel().selectFirst();
+                }
+            }
+        });
+
+        pythonBrowseBtn.setGraphic(createBrowseFolderIcon());
+        pythonBrowseBtn.setText(null);
+        pythonBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        pythonBrowseBtn.setPrefSize(28, 28);
+        pythonBrowseBtn.setMinSize(28, 28);
+        pythonBrowseBtn.setMaxSize(28, 28);
+        pythonBrowseBtn.setTooltip(new Tooltip("Select Python Interpreter"));
+        pythonBrowseBtn.setOnAction(e -> pickPythonExecutable());
+
+        pythonVersionRow.setAlignment(Pos.CENTER_LEFT);
+        pythonVersionRow.getChildren().setAll(pythonVersionCombo, pythonBrowseBtn);
+        HBox.setHgrow(pythonVersionCombo, Priority.ALWAYS);
+
+        pythonVenvHintLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+        pythonVenvHintLabel.setWrapText(true);
+
+        uvPythonVersionCombo.getItems().setAll(dev.lumina.project.PythonMetadata.fetchUvPythonVersions());
+        uvPythonVersionCombo.getSelectionModel().select("Default");
+        uvPythonVersionCombo.setMaxWidth(160);
+
+        String detectedUv = dev.lumina.project.PythonMetadata.detectUvPath();
+        uvPathField.setText(detectedUv);
+        HBox.setHgrow(uvPathField, Priority.ALWAYS);
+
+        uvPathCheckIcon.setStyle("-fx-text-fill: #4BB543; -fx-font-size: 14px; -fx-font-weight: bold;");
+        uvPathCheckIcon.setVisible(dev.lumina.project.PythonMetadata.isValidUv(detectedUv));
+        uvPathField.textProperty().addListener((obs, old, v) -> {
+            uvPathCheckIcon.setVisible(dev.lumina.project.PythonMetadata.isValidUv(v));
+        });
+
+        uvBrowseBtn.setGraphic(createBrowseFolderIcon());
+        uvBrowseBtn.setText(null);
+        uvBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        uvBrowseBtn.setPrefSize(28, 28);
+        uvBrowseBtn.setMinSize(28, 28);
+        uvBrowseBtn.setMaxSize(28, 28);
+        uvBrowseBtn.setTooltip(new Tooltip("Select uv Executable"));
+        uvBrowseBtn.setOnAction(e -> pickUvExecutable());
+
+        uvPathRow.setAlignment(Pos.CENTER_LEFT);
+        uvPathRow.getChildren().setAll(uvPathField, uvPathCheckIcon, uvBrowseBtn);
+
+        uvHintLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+        uvHintLabel.setWrapText(true);
+
         sampleCodeCheck.setSelected(true);
         Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
         kotlinPrefix.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
@@ -1526,6 +1665,7 @@ public class NewProjectDialog {
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
         boolean groovy = generator == ProjectSpec.Generator.GROOVY;
         boolean scala = generator == ProjectSpec.Generator.SCALA;
+        boolean python = generator == ProjectSpec.Generator.PYTHON;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -1782,6 +1922,27 @@ public class NewProjectDialog {
                 formGrid.add(scalaOptionalBracesCheck, 1, row++);
 
                 formGrid.add(sampleCodeCheck, 1, row++);
+            }
+            return;
+        }
+
+        if (python) {
+            formGrid.add(interpreterTypeLabel, 0, row);
+            formGrid.add(pythonInterpreterRow, 1, row++);
+
+            if (isUvSelected()) {
+                formGrid.add(pythonVersionLabel, 0, row);
+                formGrid.add(uvPythonVersionCombo, 1, row++);
+
+                formGrid.add(pathToUvLabel, 0, row);
+                formGrid.add(uvPathRow, 1, row++);
+
+                formGrid.add(uvHintLabel, 1, row++);
+            } else {
+                formGrid.add(pythonVersionLabel, 0, row);
+                formGrid.add(pythonVersionRow, 1, row++);
+
+                formGrid.add(pythonVenvHintLabel, 1, row++);
             }
             return;
         }
@@ -5340,6 +5501,63 @@ public class NewProjectDialog {
         return t == null || !(t instanceof ToggleButton tb) || "sbt".equalsIgnoreCase(tb.getText());
     }
 
+    private boolean isUvSelected() {
+        Toggle t = pythonInterpreterGroup.getSelectedToggle();
+        return t instanceof ToggleButton tb && "uv".equalsIgnoreCase(tb.getText());
+    }
+
+    private ProjectSpec.PythonInterpreterType getSelectedPythonInterpreterType() {
+        Toggle t = pythonInterpreterGroup.getSelectedToggle();
+        if (t instanceof ToggleButton tb) {
+            String txt = tb.getText().trim();
+            if ("uv".equalsIgnoreCase(txt)) return ProjectSpec.PythonInterpreterType.UV;
+            if ("Base conda".equalsIgnoreCase(txt)) return ProjectSpec.PythonInterpreterType.BASE_CONDA;
+            if ("Custom environment".equalsIgnoreCase(txt)) return ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT;
+        }
+        return ProjectSpec.PythonInterpreterType.PROJECT_VENV;
+    }
+
+    private String getSelectedPythonPath() {
+        if (isUvSelected()) return "";
+        dev.lumina.project.PythonMetadata.PythonInstallation inst = pythonVersionCombo.getValue();
+        return inst != null && inst.executable() != null ? inst.executable() : "/usr/bin/python3";
+    }
+
+    private String getSelectedPythonVersion() {
+        if (isUvSelected()) {
+            return uvPythonVersionCombo.getValue() != null ? uvPythonVersionCombo.getValue() : "Default";
+        }
+        dev.lumina.project.PythonMetadata.PythonInstallation inst = pythonVersionCombo.getValue();
+        if (inst != null && inst.label() != null) {
+            return inst.label().replaceFirst("^Python\\s*", "");
+        }
+        return "3.12";
+    }
+
+    private void pickPythonExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Python Interpreter");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String path = file.getAbsolutePath();
+            String label = file.getName();
+            var inst = new dev.lumina.project.PythonMetadata.PythonInstallation(label, path, "custom", label + " (" + path + ") custom");
+            if (!pythonVersionCombo.getItems().contains(inst)) {
+                pythonVersionCombo.getItems().add(0, inst);
+            }
+            pythonVersionCombo.setValue(inst);
+        }
+    }
+
+    private void pickUvExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select uv Executable");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            uvPathField.setText(file.getAbsolutePath());
+        }
+    }
+
     private void showPluginManager() {
         try {
             PluginManagerDialog pm = new PluginManagerDialog(
@@ -5373,6 +5591,17 @@ public class NewProjectDialog {
         } catch (java.nio.file.InvalidPathException ex) {
             locationHint.setText("Invalid location path");
         }
+        try {
+            String loc = locationField.getText().trim();
+            if (loc.startsWith("~")) {
+                loc = System.getProperty("user.home") + loc.substring(1);
+            }
+            String nm = nameField.getText().trim();
+            if (nm.isBlank()) nm = "untitled1";
+            Path projDir = Path.of(loc.isBlank() ? "." : loc).resolve(nm);
+            pythonVenvHintLabel.setText("Python virtual environment will be created in the project root:\n" + projDir.resolve(".venv"));
+            uvHintLabel.setText("uv environment will be created in the project root: " + projDir.resolve(".venv"));
+        } catch (Exception ignored) {}
         if (!packageEdited) {
             String pkg = (sanitize(groupField.getText()) + "." + sanitize(artifactField.getText()))
                     .replaceAll("^\\.|\\.$", "");
@@ -5647,11 +5876,12 @@ public class NewProjectDialog {
         boolean ktor = selected.generator() == ProjectSpec.Generator.KTOR;
         boolean html = selected.generator() == ProjectSpec.Generator.HTML;
         boolean react = selected.generator() == ProjectSpec.Generator.REACT;
+        boolean isPython = selected.generator() == ProjectSpec.Generator.PYTHON;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react) {
+            if (html || react || isPython) {
                 artifact = sanitize(name);
-                if (artifact.isEmpty()) artifact = "untitled";
+                if (artifact.isEmpty()) artifact = "untitled1";
             } else {
                 errorLabel.setText("Artifact is required.");
                 return;
@@ -5662,10 +5892,13 @@ public class NewProjectDialog {
         if (selected.generator() == ProjectSpec.Generator.KOTLIN || ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
         else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
+        else if (isPython) language = ProjectSpec.Language.PYTHON;
 
         ProjectSpec.BuildSystem build;
         if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
+        } else if (isPython) {
+            build = ProjectSpec.BuildSystem.MAVEN;
         } else if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT || quarkus || micronaut) {
@@ -5836,7 +6069,11 @@ public class NewProjectDialog {
                 isSbtSelected() && scalaDownloadSourcesCheck.isSelected(),
                 scalaOptionalBracesCheck.isSelected(),
                 isSbtSelected() && scalaPackagePrefixField.getText() != null ? scalaPackagePrefixField.getText().trim() : "",
-                isSbtSelected() && scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name);
+                isSbtSelected() && scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name,
+                getSelectedPythonInterpreterType(),
+                getSelectedPythonPath(),
+                getSelectedPythonVersion(),
+                uvPathField.getText().trim());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
