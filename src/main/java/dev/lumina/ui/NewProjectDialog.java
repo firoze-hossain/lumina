@@ -1281,7 +1281,7 @@ public class NewProjectDialog {
         gradleVersionRow.setAlignment(Pos.CENTER_LEFT);
         gradleVersionRow.setSpacing(12);
         gradleVersionRow.getChildren().setAll(gradleVersionBox, gradleAutoSelectCheck);
-        gradleAutoSelectCheck.setSelected(false);
+        gradleAutoSelectCheck.setSelected(true);
         gradleAutoSelectCheck.selectedProperty().addListener((obs, old, sel) -> {
             if (sel) syncGradleVersionWithJdk();
         });
@@ -1310,7 +1310,7 @@ public class NewProjectDialog {
         gradleLocationRow.setAlignment(Pos.CENTER_LEFT);
         gradleLocationRow.getChildren().setAll(gradleLocationField, gradleLocationBrowseButton);
 
-        saveSettingsCheck.setSelected(false);
+        saveSettingsCheck.setSelected(true);
 
         // Load saved preferences if any
         try {
@@ -1638,7 +1638,7 @@ public class NewProjectDialog {
 
         formGrid.add(sampleCodeCheck, 1, row++);
 
-        boolean showMultiModule = isGradleSelected() && (!kotlin || isKotlinDslSelected());
+        boolean showMultiModule = kotlin && isGradleSelected() && isKotlinDslSelected();
         if (showMultiModule) {
             formGrid.add(createMultiModuleNode(), 1, row++);
         } else {
@@ -5640,7 +5640,7 @@ public class NewProjectDialog {
                 gradleDist,
                 gradleVer,
                 gradleHome,
-                multiModuleCheck.isSelected());
+                (selected != null && selected.generator() == ProjectSpec.Generator.KOTLIN && isGradleSelected() && isKotlinDslSelected()) && multiModuleCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
