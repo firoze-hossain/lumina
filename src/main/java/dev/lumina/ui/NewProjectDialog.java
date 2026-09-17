@@ -103,7 +103,10 @@ public class NewProjectDialog {
     private record CatalogEntry(String name, String type, String location) {
     }
 
-    private record RustTemplate(String label, String detail, String value) {
+    private record RustTemplate(String label, String detail, String value, boolean builtIn) {
+        public RustTemplate(String label, String detail, String value) {
+            this(label, detail, value, !value.startsWith("Custom:"));
+        }
         @Override
         public String toString() {
             return label + (detail.isBlank() ? "" : "  " + detail);
@@ -464,12 +467,33 @@ public class NewProjectDialog {
     private final VBox generatorSpecificBox = new VBox();
     private final List<Node> springOnlyNodes = new ArrayList<>();
     private final List<Node> jdkNodes = new ArrayList<>();
+    // Rust controls
+    private final Label rustToolchainLabel = formLabel("Toolchain location:");
     private final ComboBox<String> rustToolchainBox = new ComboBox<>();
+    private final Button rustToolchainBrowseBtn = new Button("…");
+    private final HBox rustToolchainRow = new HBox(8);
+
+    private final Label rustVersionTitleLabel = formLabel("Toolchain version:");
     private final Label rustVersionLabel = new Label();
+
+    private final Label rustStdlibLabel = formLabel("Standard library:");
     private final TextField rustStdlibField = new TextField();
+    private final Button rustStdlibBrowseBtn = new Button();
+    private final HBox rustStdlibRow = new HBox(8);
+
+    private final Label rustEnvironmentLabel = formLabel("Environment variables:");
     private final TextField rustEnvironmentField = new TextField();
-    private final TableView<RustTemplate> rustTemplateTable = new TableView<>();
+    private final Button rustEnvironmentBtn = new Button();
+    private final HBox rustEnvironmentRow = new HBox(8);
+
+    private final HBox rustTemplateHeaderRow = new HBox(8);
+    private final ListView<RustTemplate> rustTemplateList = new ListView<>();
     private final ObservableList<RustTemplate> rustTemplates = FXCollections.observableArrayList();
+    private final HBox rustTemplateToolbar = new HBox(5);
+    private final VBox rustTemplateContainer = new VBox();
+    private final Hyperlink rustInstallCargoGenerateLink = new Hyperlink("Install cargo-generate using Cargo");
+    private final Label rustCargoGenerateStatusLabel = new Label();
+    private final HBox rustCargoGenerateBox = new HBox(8, rustInstallCargoGenerateLink, rustCargoGenerateStatusLabel);
 
     private final ToggleButton typeGradleGroovy = new ToggleButton("Gradle - Groovy");
     private final ToggleButton typeGradleKotlin = new ToggleButton("Gradle - Kotlin");
@@ -494,6 +518,8 @@ public class NewProjectDialog {
     private final HBox buildSystemRow = new HBox(8);
 
     private final GridPane formGrid = new GridPane();
+    private final ColumnConstraints formCol0 = new ColumnConstraints(110);
+    private final ColumnConstraints formCol1 = new ColumnConstraints();
     private final Label serverLabel = formLabel("Server URL:");
     private final Label nameLabel = formLabel("Name:");
     private final Label locationLabel = formLabel("Location:");
@@ -1098,12 +1124,10 @@ public class NewProjectDialog {
         formGrid.setVgap(10);
         formGrid.setPadding(new Insets(20, 24, 16, 24));
 
-        ColumnConstraints c0 = new ColumnConstraints(110);
-        c0.setMinWidth(110);
-        c0.setPrefWidth(110);
-        ColumnConstraints c1 = new ColumnConstraints();
-        c1.setHgrow(Priority.ALWAYS);
-        formGrid.getColumnConstraints().setAll(c0, c1);
+        formCol0.setMinWidth(110);
+        formCol0.setPrefWidth(110);
+        formCol1.setHgrow(Priority.ALWAYS);
+        formGrid.getColumnConstraints().setAll(formCol0, formCol1);
 
         serverUrlLabel.getStyleClass().add("form-static");
         serverSettingsButton.getStyleClass().add("console-button");
@@ -1820,7 +1844,7 @@ public class NewProjectDialog {
         });
 
         buildMavenArchetypeForm();
-        buildRustForm();
+        setupRustControls();
 
         javaVersionBox.getSelectionModel().select("21");
 
@@ -1865,6 +1889,8 @@ public class NewProjectDialog {
     private void rebuildFormGrid() {
         formGrid.getChildren().clear();
         formGrid.getRowConstraints().clear();
+        formCol0.setMinWidth(110);
+        formCol0.setPrefWidth(110);
 
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
@@ -1972,9 +1998,24 @@ public class NewProjectDialog {
         }
 
         if (rust) {
-            rustBox.setVisible(true);
-            rustBox.setManaged(true);
-            formGrid.add(rustBox, 0, row++, 2, 1);
+            formCol0.setMinWidth(150);
+            formCol0.setPrefWidth(150);
+
+            formGrid.add(rustToolchainLabel, 0, row);
+            formGrid.add(rustToolchainRow, 1, row++);
+
+            formGrid.add(rustVersionTitleLabel, 0, row);
+            formGrid.add(rustVersionLabel, 1, row++);
+
+            formGrid.add(rustStdlibLabel, 0, row);
+            formGrid.add(rustStdlibRow, 1, row++);
+
+            formGrid.add(rustEnvironmentLabel, 0, row);
+            formGrid.add(rustEnvironmentRow, 1, row++);
+
+            formGrid.add(rustTemplateHeaderRow, 0, row++, 2, 1);
+            formGrid.add(rustTemplateContainer, 0, row++, 2, 1);
+            formGrid.add(rustCargoGenerateBox, 0, row++, 2, 1);
             return;
         }
 
@@ -5076,106 +5117,199 @@ public class NewProjectDialog {
         propertiesTable.getColumns().setAll(name, value);
     }
 
-    private void buildRustForm() {
-        String cargoHome = System.getenv().getOrDefault("CARGO_HOME",
-                System.getProperty("user.home") + File.separator + ".cargo");
-        String toolchainPath = cargoHome + File.separator + "bin";
+    private void setupRustControls() {
+        List<String> toolchains = dev.lumina.project.RustMetadata.discoverToolchains();
         rustToolchainBox.setEditable(true);
-        rustToolchainBox.getItems().setAll(toolchainPath);
-        rustToolchainBox.getSelectionModel().select(toolchainPath);
+        rustToolchainBox.getItems().setAll(toolchains);
+        String defaultToolchain = dev.lumina.project.RustMetadata.defaultToolchainPath();
+        if (!rustToolchainBox.getItems().contains(defaultToolchain) && !defaultToolchain.isBlank()) {
+            rustToolchainBox.getItems().add(0, defaultToolchain);
+        }
+        rustToolchainBox.getSelectionModel().select(defaultToolchain);
+        rustToolchainBox.getEditor().setText(defaultToolchain);
         rustToolchainBox.setPrefWidth(470);
-        rustVersionLabel.setText(detectRustVersion());
+        HBox.setHgrow(rustToolchainBox, Priority.ALWAYS);
+
+        rustToolchainBrowseBtn.setGraphic(createBrowseFolderIcon());
+        rustToolchainBrowseBtn.getStyleClass().add("console-button");
+        rustToolchainBrowseBtn.setOnAction(e -> chooseRustToolchain());
+        rustToolchainRow.getChildren().setAll(rustToolchainBox, rustToolchainBrowseBtn);
+        rustToolchainRow.setAlignment(Pos.CENTER_LEFT);
+
         rustVersionLabel.getStyleClass().add("form-static");
-        rustStdlibField.setText(toolchainPath + File.separator + "../lib/rustlib/src/rust");
-        rustEnvironmentField.setPromptText("Environment variables");
 
-        Button toolchainBrowse = new Button("\u2026");
-        toolchainBrowse.getStyleClass().add("console-button");
-        toolchainBrowse.setOnAction(e -> chooseRustToolchain());
-        HBox toolchain = new HBox(8, rustToolchainBox, toolchainBrowse);
-        toolchain.setAlignment(Pos.CENTER_LEFT);
-
-        Button stdlibBrowse = new Button("\u2302");
-        stdlibBrowse.getStyleClass().add("console-button");
-        stdlibBrowse.setOnAction(e -> chooseRustStdlib());
-        HBox stdlib = new HBox(8, rustStdlibField, stdlibBrowse);
         HBox.setHgrow(rustStdlibField, Priority.ALWAYS);
+        rustStdlibBrowseBtn.setGraphic(createBrowseFolderIcon());
+        rustStdlibBrowseBtn.getStyleClass().add("console-button");
+        rustStdlibBrowseBtn.setOnAction(e -> chooseRustStdlib());
+        rustStdlibRow.getChildren().setAll(rustStdlibField, rustStdlibBrowseBtn);
+        rustStdlibRow.setAlignment(Pos.CENTER_LEFT);
 
-        GridPane settings = new GridPane();
-        settings.setHgap(12);
-        settings.setVgap(12);
-        settings.getColumnConstraints().addAll(new ColumnConstraints(136), new ColumnConstraints());
-        settings.add(formLabel("Toolchain location:"), 0, 0);
-        settings.add(toolchain, 1, 0);
-        settings.add(formLabel("Toolchain version:"), 0, 1);
-        settings.add(rustVersionLabel, 1, 1);
-        settings.add(formLabel("Standard library:"), 0, 2);
-        settings.add(stdlib, 1, 2);
-        settings.add(formLabel("Environment variables:"), 0, 3);
-        settings.add(rustEnvironmentField, 1, 3);
+        rustEnvironmentField.setPromptText("Environment variables");
+        HBox.setHgrow(rustEnvironmentField, Priority.ALWAYS);
+        rustEnvironmentBtn.setGraphic(GeneratorIcons.envVariablesIcon());
+        rustEnvironmentBtn.getStyleClass().add("console-button");
+        rustEnvironmentBtn.setOnAction(e -> {
+            EnvironmentVariablesDialog.show(stage, rustEnvironmentField.getText().trim())
+                    .ifPresent(rustEnvironmentField::setText);
+        });
+        rustEnvironmentRow.getChildren().setAll(rustEnvironmentField, rustEnvironmentBtn);
+        rustEnvironmentRow.setAlignment(Pos.CENTER_LEFT);
 
-        rustTemplates.setAll(
-                new RustTemplate("\u25C9 Binary (application)", "", "binary"),
-                new RustTemplate("\u25C9 Library", "", "library"),
-                new RustTemplate("\u2318 Procedural Macro", "github.com/intellij-rust/rust-procmacro-quickstart-template",
-                        "Custom:https://github.com/intellij-rust/rust-procmacro-quickstart-template"),
-                new RustTemplate("\u25C8 WebAssembly Lib", "github.com/intellij-rust/wasm-pack-template",
-                        "Custom:https://github.com/intellij-rust/wasm-pack-template"));
-        rustTemplateTable.setItems(rustTemplates);
-        rustTemplateTable.getStyleClass().add("rust-template-table");
-        rustTemplateTable.setPrefHeight(150);
-        rustTemplateTable.setPlaceholder(new Label("No project templates"));
-        TableColumn<RustTemplate, String> templateColumn = new TableColumn<>();
-        templateColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().toString()));
-        templateColumn.setPrefWidth(650);
-        rustTemplateTable.getColumns().setAll(templateColumn);
-        rustTemplateTable.getSelectionModel().select(0);
+        rustInstallCargoGenerateLink.getStyleClass().setAll("cargo-generate-link");
+        rustCargoGenerateStatusLabel.setStyle("-fx-text-fill: #8C919D; -fx-font-size: 12px;");
+        rustCargoGenerateBox.setAlignment(Pos.CENTER_LEFT);
+        rustCargoGenerateBox.setPadding(new Insets(4, 0, 0, 0));
+        rustInstallCargoGenerateLink.setOnAction(e -> {
+            rustInstallCargoGenerateLink.setDisable(true);
+            rustCargoGenerateStatusLabel.setText("Installing cargo-generate...");
+            String p = rustToolchainBox.getEditor().getText().trim();
+            if (p.isBlank() && rustToolchainBox.getValue() != null) {
+                p = rustToolchainBox.getValue().trim();
+            }
+            final String toolchain = p;
+            new Thread(() -> {
+                int exitCode = dev.lumina.project.RustMetadata.installCargoGenerate(toolchain, msg -> {
+                    javafx.application.Platform.runLater(() -> rustCargoGenerateStatusLabel.setText(msg));
+                });
+                boolean success = (exitCode == 0);
+                javafx.application.Platform.runLater(() -> {
+                    rustInstallCargoGenerateLink.setDisable(false);
+                    if (success) {
+                        rustCargoGenerateStatusLabel.setText("cargo-generate installed successfully.");
+                        rustCargoGenerateBox.setVisible(false);
+                        rustCargoGenerateBox.setManaged(false);
+                    } else {
+                        rustCargoGenerateStatusLabel.setText("Installation failed. Run 'cargo install cargo-generate' manually.");
+                    }
+                });
+            }, "cargo-generate-installer").start();
+        });
+
+        Runnable updateCargoGenerateState = () -> {
+            String p = rustToolchainBox.getEditor().getText().trim();
+            if (p.isBlank() && rustToolchainBox.getValue() != null) {
+                p = rustToolchainBox.getValue().trim();
+            }
+            final String toolchain = p;
+            new Thread(() -> {
+                boolean installed = dev.lumina.project.RustMetadata.isCargoGenerateInstalled(toolchain);
+                javafx.application.Platform.runLater(() -> {
+                    rustCargoGenerateBox.setVisible(!installed);
+                    rustCargoGenerateBox.setManaged(!installed);
+                    if (!installed) {
+                        rustCargoGenerateStatusLabel.setText("");
+                    }
+                });
+            }, "cargo-generate-detector").start();
+        };
+
+        Runnable updateRustInfo = () -> {
+            String p = rustToolchainBox.getEditor().getText().trim();
+            if (p.isBlank() && rustToolchainBox.getValue() != null) {
+                p = rustToolchainBox.getValue().trim();
+            }
+            String ver = dev.lumina.project.RustMetadata.detectRustVersion(p);
+            rustVersionLabel.setText(ver);
+            String stdlib = dev.lumina.project.RustMetadata.detectStandardLibrary(p);
+            if (!stdlib.isBlank()) {
+                rustStdlibField.setText(stdlib);
+            }
+            updateCargoGenerateState.run();
+        };
+        rustToolchainBox.valueProperty().addListener((obs, oldV, newV) -> updateRustInfo.run());
+        rustToolchainBox.getEditor().textProperty().addListener((obs, oldV, newV) -> updateRustInfo.run());
+        updateRustInfo.run();
+
+        // Project Template Header
+        Label templatesTitle = new Label("Project Template");
+        templatesTitle.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-weight: normal;");
+        Region separator = new Region();
+        separator.setMinHeight(1);
+        separator.setPrefHeight(1);
+        separator.setMaxHeight(1);
+        separator.setStyle("-fx-background-color: #393B40;");
+        HBox.setHgrow(separator, Priority.ALWAYS);
+        rustTemplateHeaderRow.getChildren().setAll(templatesTitle, separator);
+        rustTemplateHeaderRow.setAlignment(Pos.CENTER_LEFT);
+        rustTemplateHeaderRow.setSpacing(8);
+        rustTemplateHeaderRow.setPadding(new Insets(10, 0, 4, 0));
+
+        // Project Templates list
+        rustTemplates.clear();
+        for (var t : dev.lumina.project.RustMetadata.defaultTemplates()) {
+            rustTemplates.add(new RustTemplate(t.name(), t.url(), t.value(), t.builtIn()));
+        }
+        rustTemplateList.setItems(rustTemplates);
+        rustTemplateList.getStyleClass().setAll("rust-template-list");
+        rustTemplateList.setPrefHeight(130);
+        rustTemplateList.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(RustTemplate item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox row = new HBox(8);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = item.builtIn()
+                            ? GeneratorIcons.rustIcon()
+                            : GeneratorIcons.rustTemplateMacroIcon();
+                    Label name = new Label(item.label());
+                    name.getStyleClass().add("rust-template-name");
+                    row.getChildren().addAll(icon, name);
+                    if (item.detail() != null && !item.detail().isBlank()) {
+                        Label detail = new Label(item.detail());
+                        detail.getStyleClass().add("rust-template-detail");
+                        row.getChildren().add(detail);
+                    }
+                    setText(null);
+                    setGraphic(row);
+                }
+            }
+        });
+        if (!rustTemplates.isEmpty()) {
+            rustTemplateList.getSelectionModel().select(0);
+        }
 
         Button addTemplate = new Button("+");
-        addTemplate.getStyleClass().add("property-button");
         addTemplate.setOnAction(e -> showAddRustTemplate());
         Button removeTemplate = new Button("\u2212");
-        removeTemplate.getStyleClass().add("property-button");
         removeTemplate.setOnAction(e -> {
-            RustTemplate selectedTemplate = rustTemplateTable.getSelectionModel().getSelectedItem();
-            if (selectedTemplate != null && selectedTemplate.value().startsWith("Custom:")) {
+            RustTemplate selectedTemplate = rustTemplateList.getSelectionModel().getSelectedItem();
+            if (selectedTemplate != null && !selectedTemplate.builtIn()) {
                 rustTemplates.remove(selectedTemplate);
             }
         });
-        HBox templatesToolbar = new HBox(5, addTemplate, removeTemplate);
-        templatesToolbar.getStyleClass().add("property-toolbar");
+        rustTemplateToolbar.getChildren().setAll(addTemplate, removeTemplate);
+        rustTemplateToolbar.getStyleClass().setAll("rust-template-toolbar");
 
-        Label templatesTitle = new Label("Project Template");
-        templatesTitle.getStyleClass().add("maven-section-title");
-        VBox templates = new VBox(5, templatesTitle, rustTemplateTable, templatesToolbar);
-        rustBox.getChildren().setAll(settings, templates);
-        rustBox.setVisible(false);
-        rustBox.setManaged(false);
-    }
-
-    private String detectRustVersion() {
-        try {
-            Process process = new ProcessBuilder("rustc", "--version").redirectErrorStream(true).start();
-            String version = new String(process.getInputStream().readAllBytes()).trim();
-            return process.waitFor() == 0 ? version.replace("rustc ", "") : "Not detected";
-        } catch (IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            return "Not detected";
-        }
+        rustTemplateContainer.getChildren().setAll(rustTemplateList, rustTemplateToolbar);
+        rustTemplateContainer.setSpacing(0);
     }
 
     private void chooseRustToolchain() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Rust Toolchain Location");
         File chosen = chooser.showDialog(stage);
-        if (chosen != null) rustToolchainBox.getEditor().setText(chosen.getAbsolutePath());
+        if (chosen != null) {
+            String path = chosen.getAbsolutePath();
+            if (!rustToolchainBox.getItems().contains(path)) {
+                rustToolchainBox.getItems().add(path);
+            }
+            rustToolchainBox.getSelectionModel().select(path);
+            rustToolchainBox.getEditor().setText(path);
+        }
     }
 
     private void chooseRustStdlib() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Rust Standard Library Location");
         File chosen = chooser.showDialog(stage);
-        if (chosen != null) rustStdlibField.setText(chosen.getAbsolutePath());
+        if (chosen != null) {
+            rustStdlibField.setText(chosen.getAbsolutePath());
+        }
     }
 
     private void showAddRustTemplate() {
@@ -5183,41 +5317,82 @@ public class NewProjectDialog {
         dialog.initOwner(stage);
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle("Add Custom Template");
+
         TextField url = new TextField();
         TextField name = new TextField();
-        Label note = new Label("The template will be generated with cargo-generate. You can provide a link to any GitHub project.");
-        note.getStyleClass().add("form-hint");
+
+        javafx.scene.text.Text textBefore = new javafx.scene.text.Text("The template will be generated with ");
+        textBefore.setFill(Color.web("#8C919D"));
+        Hyperlink link = new Hyperlink("cargo-generate \u2197");
+        link.setStyle("-fx-padding: 0; -fx-border-width: 0; -fx-text-fill: #589DF6;");
+        link.setOnAction(e -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://github.com/cargo-generate/cargo-generate"));
+            } catch (Exception ignored) {
+            }
+        });
+        javafx.scene.text.Text textAfter = new javafx.scene.text.Text(". You can provide a link to any GitHub project.");
+        textAfter.setFill(Color.web("#8C919D"));
+        javafx.scene.text.TextFlow note = new javafx.scene.text.TextFlow(textBefore, link, textAfter);
+
+        url.textProperty().addListener((obs, oldV, newV) -> {
+            if (name.getText().isBlank() && newV != null && !newV.isBlank()) {
+                String clean = newV.replaceAll(".*/", "").replaceAll("\\.git$", "");
+                if (!clean.isBlank()) {
+                    name.setText(clean);
+                }
+            }
+        });
+
+        Label help = new Label("?");
+        help.setStyle("-fx-text-fill: #707890; -fx-font-size: 10px; -fx-cursor: hand; "
+                + "-fx-border-color: #707890; -fx-border-radius: 8; -fx-min-width: 14px; "
+                + "-fx-alignment: center; -fx-padding: 0 2 0 2;");
+        javafx.scene.control.Tooltip.install(help, new javafx.scene.control.Tooltip("The name of the template"));
+
+        HBox nameRow = new HBox(8, name, help);
+        HBox.setHgrow(name, Priority.ALWAYS);
+        nameRow.setAlignment(Pos.CENTER_LEFT);
+
         GridPane fields = new GridPane();
         fields.setHgap(12);
         fields.setVgap(12);
         fields.setPadding(new Insets(18));
+        fields.getColumnConstraints().addAll(new ColumnConstraints(120), new ColumnConstraints(480));
         fields.add(formLabel("Template URL:"), 0, 0);
         fields.add(url, 1, 0);
         fields.add(note, 1, 1);
         fields.add(formLabel("Name:"), 0, 2);
-        fields.add(name, 1, 2);
+        fields.add(nameRow, 1, 2);
+
         Button add = new Button("Add");
         add.getStyleClass().add("dialog-primary");
-        add.setOnAction(e -> {
+        Runnable doAdd = () -> {
             String templateUrl = url.getText().trim();
             String templateName = name.getText().trim();
             if (!templateUrl.isBlank() && !templateName.isBlank()) {
-                RustTemplate template = new RustTemplate(templateName, templateUrl, "Custom:" + templateUrl);
+                RustTemplate template = new RustTemplate(templateName, templateUrl, "Custom:" + templateUrl, false);
                 rustTemplates.add(template);
-                rustTemplateTable.getSelectionModel().select(template);
+                rustTemplateList.getSelectionModel().select(template);
                 dialog.close();
             }
-        });
+        };
+        add.setOnAction(e -> doAdd.run());
+        url.setOnAction(e -> doAdd.run());
+        name.setOnAction(e -> doAdd.run());
+
         Button cancel = new Button("Cancel");
         cancel.getStyleClass().add("dialog-secondary");
         cancel.setOnAction(e -> dialog.close());
+
         HBox footer = new HBox(10, add, cancel);
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setPadding(new Insets(12, 18, 18, 18));
+
         BorderPane root = new BorderPane(fields);
         root.setBottom(footer);
         root.getStyleClass().addAll("app-root", "catalog-manager");
-        Scene scene = new Scene(root, 685, 230);
+        Scene scene = new Scene(root, 650, 230);
         scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
         dialog.setScene(scene);
         dialog.showAndWait();
@@ -5447,8 +5622,8 @@ public class NewProjectDialog {
         }
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
-        rustBox.setVisible(rust);
-        rustBox.setManaged(rust);
+        rustBox.setVisible(false);
+        rustBox.setManaged(false);
         emptyDescription.setVisible(empty);
         emptyDescription.setManaged(empty);
 
@@ -6276,7 +6451,7 @@ public class NewProjectDialog {
     }
 
     private RustTemplate selectedRustTemplate() {
-        RustTemplate template = rustTemplateTable.getSelectionModel().getSelectedItem();
+        RustTemplate template = rustTemplateList.getSelectionModel().getSelectedItem();
         return template == null ? rustTemplates.getFirst() : template;
     }
 
@@ -6558,6 +6733,7 @@ public class NewProjectDialog {
         else if (isPython) language = ProjectSpec.Language.PYTHON;
         else if (isPhp) language = ProjectSpec.Language.PHP;
         else if (isRuby) language = ProjectSpec.Language.RUBY;
+        else if (rust) language = ProjectSpec.Language.RUST;
 
         ProjectSpec.BuildSystem build;
         if (selected.generator() == ProjectSpec.Generator.SCALA) {

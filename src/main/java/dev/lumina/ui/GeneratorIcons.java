@@ -7,6 +7,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
@@ -123,29 +124,82 @@ public final class GeneratorIcons {
         return box(bg, text);
     }
 
-    /** Rust: circular white gear cog with center hole. */
-    private static Node rustIcon() {
-        Circle outer = new Circle(6.8);
-        outer.setFill(Color.web("#14161E"));
-        outer.setStroke(Color.web("#DCDFE6"));
-        outer.setStrokeWidth(1.6);
+    /** Rust: official IntelliJ rounded blue-gray badge with gear and "R" glyph. */
+    public static Node rustIcon() {
+        Rectangle bg = new Rectangle(15, 15);
+        bg.setArcWidth(4);
+        bg.setArcHeight(4);
+        bg.setFill(Color.web("#263042"));
 
-        Circle center = new Circle(2.6);
-        center.setFill(Color.web("#14161E"));
-        center.setStroke(Color.web("#DCDFE6"));
-        center.setStrokeWidth(1.2);
+        Circle gear = new Circle(7.5, 7.5, 4.8);
+        gear.setFill(Color.TRANSPARENT);
+        gear.setStroke(Color.web("#DFE1E5"));
+        gear.setStrokeWidth(1.1);
 
         Group teeth = new Group();
-        for (int i = 0; i < 6; i++) {
-            Rectangle tooth = new Rectangle(2.4, 2.0);
-            tooth.setFill(Color.web("#DCDFE6"));
-            tooth.setX(-1.2);
-            tooth.setY(-7.8);
-            tooth.setRotate(i * 60);
+        for (int i = 0; i < 8; i++) {
+            Rectangle tooth = new Rectangle(1.3, 1.1);
+            tooth.setFill(Color.web("#DFE1E5"));
+            tooth.setX(6.85);
+            tooth.setY(1.8);
+            tooth.setRotate(i * 45);
             teeth.getChildren().add(tooth);
         }
 
-        Group g = new Group(outer, teeth, center);
+        SVGPath rGlyph = new SVGPath();
+        rGlyph.setContent("M 6,10.2 L 6,5 M 6,5 L 8.1,5 C 9.0,5 9.4,5.5 9.4,6.3 C 9.4,7.2 8.9,7.6 7.9,7.6 L 6,7.6 M 7.7,7.6 L 9.3,10.2");
+        rGlyph.setStroke(Color.web("#DFE1E5"));
+        rGlyph.setStrokeWidth(1.1);
+        rGlyph.setFill(null);
+
+        Group g = new Group(bg, gear, teeth, rGlyph);
+        return box(g);
+    }
+
+    /** Rust procedural macro / WebAssembly template plugin icon in amber/orange. */
+    public static Node rustTemplateMacroIcon() {
+        Rectangle box1 = new Rectangle(1.5, 1.5, 6, 6);
+        box1.setFill(Color.web("#E5A158"));
+        box1.setArcWidth(2);
+        box1.setArcHeight(2);
+
+        Rectangle box2 = new Rectangle(7.5, 7.5, 6, 6);
+        box2.setFill(Color.web("#D18E48"));
+        box2.setArcWidth(2);
+        box2.setArcHeight(2);
+
+        SVGPath arrow = new SVGPath();
+        arrow.setContent("M 2.5,9.5 L 4.5,11.5 L 2.5,13.5");
+        arrow.setStroke(Color.web("#E5A158"));
+        arrow.setStrokeWidth(1.0);
+        arrow.setFill(null);
+
+        Group g = new Group(box1, box2, arrow);
+        return box(g);
+    }
+
+    /** Environment variables icon with key-value table lines. */
+    public static Node envVariablesIcon() {
+        Rectangle border = new Rectangle(1, 1, 13, 13);
+        border.setArcWidth(2);
+        border.setArcHeight(2);
+        border.setFill(Color.TRANSPARENT);
+        border.setStroke(Color.web("#8C919D"));
+        border.setStrokeWidth(1.1);
+
+        Line div = new Line(6, 1, 6, 14);
+        div.setStroke(Color.web("#8C919D"));
+        div.setStrokeWidth(0.9);
+
+        Line h1 = new Line(1, 5, 14, 5);
+        h1.setStroke(Color.web("#8C919D"));
+        h1.setStrokeWidth(0.9);
+
+        Line h2 = new Line(1, 9, 14, 9);
+        h2.setStroke(Color.web("#8C919D"));
+        h2.setStrokeWidth(0.9);
+
+        Group g = new Group(border, div, h1, h2);
         return box(g);
     }
 

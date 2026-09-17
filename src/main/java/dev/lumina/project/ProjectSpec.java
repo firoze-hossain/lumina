@@ -672,7 +672,7 @@ public record ProjectSpec(
 
     public enum GradleDsl { KOTLIN, GROOVY }
 
-    public enum Language { JAVA, KOTLIN, GROOVY, SCALA, PYTHON, PHP, RUBY }
+    public enum Language { JAVA, KOTLIN, GROOVY, SCALA, PYTHON, PHP, RUBY, RUST }
 
     public enum PythonInterpreterType { PROJECT_VENV, UV, BASE_CONDA, CUSTOM_ENVIRONMENT }
 

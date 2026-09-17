@@ -5623,9 +5623,14 @@ public final class ProjectGenerator {
             log.accept("Generating Rust project from " + url + " …");
         } else {
             command.add("new");
-            command.add(template.startsWith("Library") ? "--lib" : "--bin");
+            boolean isLib = template.equalsIgnoreCase("library") || template.toLowerCase().contains("lib");
+            command.add(isLib ? "--lib" : "--bin");
+            if (!spec.initGit()) {
+                command.add("--vcs");
+                command.add("none");
+            }
             command.add(spec.name());
-            log.accept("Generating Rust " + (template.startsWith("Library") ? "library" : "binary")
+            log.accept("Generating Rust " + (isLib ? "library" : "binary")
                     + " with Cargo …");
         }
 
@@ -5636,6 +5641,16 @@ public final class ProjectGenerator {
         runProcess(builder, "Rust project generation", log);
         if (!Files.isDirectory(dir)) {
             throw new IOException("Cargo did not create the expected project directory: " + dir);
+        }
+
+        // IntelliJ IDEA module files
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), RustMetadata.generateIdeaModulesXml(spec.name()), StandardCharsets.UTF_8);
+        Files.writeString(ideaDir.resolve(spec.name() + ".iml"), RustMetadata.generateIdeaIml(), StandardCharsets.UTF_8);
+
+        if (spec.initGit() && !Files.isDirectory(dir.resolve(".git"))) {
+            initGit(dir, log);
         }
     }
 
