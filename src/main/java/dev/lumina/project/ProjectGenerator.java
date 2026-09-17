@@ -59,7 +59,8 @@ public final class ProjectGenerator {
             case JAVA, KOTLIN, GROOVY -> generateJava(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
-            case ANGULAR_CLI, VITE, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case ANGULAR_CLI, VITE, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case REACT -> generateReact(spec, dir, log);
             case HTML -> generateHtml(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
             case MICRONAUT -> generateMicronaut(spec, dir, log);
@@ -90,6 +91,745 @@ public final class ProjectGenerator {
                 }
                 """.formatted(spec.artifact()));
         Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    // ------------------------------------------------------------------ react
+
+    private static void generateReact(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String projectType = spec.reactProjectType() != null ? spec.reactProjectType().trim() : ReactMetadata.TYPE_REACT;
+        boolean isTs = spec.reactTypeScript();
+        String cliVer = spec.reactCliVersion() != null && !spec.reactCliVersion().isBlank()
+                ? spec.reactCliVersion().trim() : "5.1.0";
+        String nodePath = spec.reactNodeInterpreter();
+
+        log.accept("Generating " + projectType + (isTs ? " (TypeScript)" : "") + " project in " + dir + " …");
+        if (nodePath != null && !nodePath.isBlank()) {
+            log.accept("Node interpreter: " + nodePath);
+        }
+
+        Files.createDirectories(dir);
+
+        if (ReactMetadata.TYPE_NEXT_JS.equalsIgnoreCase(projectType)) {
+            generateNextJs(spec, dir, cliVer, isTs, log);
+        } else if (ReactMetadata.TYPE_REACT_NATIVE.equalsIgnoreCase(projectType)) {
+            generateReactNative(spec, dir, cliVer, isTs, log);
+        } else {
+            generateStandardReact(spec, dir, cliVer, isTs, log);
+        }
+    }
+
+    private static void generateStandardReact(ProjectSpec spec, Path dir, String version, boolean isTs, Consumer<String> log)
+            throws IOException {
+        Path publicDir = dir.resolve("public");
+        Path srcDir = dir.resolve("src");
+        Files.createDirectories(publicDir);
+        Files.createDirectories(srcDir);
+
+        String appName = sanitizeArtifact(spec.name());
+
+        Files.writeString(publicDir.resolve("index.html"), """
+                <!DOCTYPE html>
+                <html lang="en">
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <meta name="theme-color" content="#000000" />
+                    <meta name="description" content="React application created with Lumina IDE" />
+                    <title>%s</title>
+                  </head>
+                  <body>
+                    <noscript>You need to enable JavaScript to run this app.</noscript>
+                    <div id="root"></div>
+                  </body>
+                </html>
+                """.formatted(spec.name()));
+
+        Files.writeString(publicDir.resolve("manifest.json"), """
+                {
+                  "short_name": "%s",
+                  "name": "%s",
+                  "icons": [],
+                  "start_url": ".",
+                  "display": "standalone",
+                  "theme_color": "#000000",
+                  "background_color": "#ffffff"
+                }
+                """.formatted(appName, spec.name()));
+
+        Files.writeString(publicDir.resolve("robots.txt"), "User-agent: *\nDisallow:\n");
+
+        Files.writeString(srcDir.resolve("App.css"), """
+                .App {
+                  text-align: center;
+                  min-height: 100vh;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  background-color: #282c34;
+                  color: white;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+
+                .App-header {
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  gap: 18px;
+                }
+
+                .App-logo {
+                  height: 120px;
+                  pointer-events: none;
+                  animation: App-logo-spin infinite 20s linear;
+                }
+
+                @keyframes App-logo-spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+
+                .App-counter-btn {
+                  background: #61dafb;
+                  border: none;
+                  border-radius: 8px;
+                  color: #20232a;
+                  font-size: 16px;
+                  font-weight: bold;
+                  padding: 12px 24px;
+                  cursor: pointer;
+                  transition: background-color 0.2s, transform 0.1s;
+                }
+
+                .App-counter-btn:hover {
+                  background: #4fa8c7;
+                  transform: translateY(-2px);
+                }
+
+                .App-link {
+                  color: #61dafb;
+                  text-decoration: none;
+                  font-weight: 500;
+                  margin-top: 8px;
+                }
+                """);
+
+        Files.writeString(srcDir.resolve("index.css"), """
+                body {
+                  margin: 0;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                    sans-serif;
+                  -webkit-font-smoothing: antialiased;
+                  -moz-osx-font-smoothing: grayscale;
+                }
+
+                code {
+                  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+                    monospace;
+                }
+                """);
+
+        if (isTs) {
+            Files.writeString(srcDir.resolve("App.tsx"), """
+                    import React, { useState } from 'react';
+                    import './App.css';
+
+                    export default function App(): React.JSX.Element {
+                      const [count, setCount] = useState<number>(0);
+
+                      return (
+                        <div className="App">
+                          <header className="App-header">
+                            <svg className="App-logo" viewBox="-11.5 -10.23174 23 20.46348" width="120" height="120">
+                              <circle cx="0" cy="0" r="2.05" fill="#61dafb"/>
+                              <g stroke="#61dafb" strokeWidth="1" fill="none">
+                                <ellipse rx="11" ry="4.2"/>
+                                <ellipse rx="11" ry="4.2" transform="rotate(60)"/>
+                                <ellipse rx="11" ry="4.2" transform="rotate(120)"/>
+                              </g>
+                            </svg>
+                            <h1>%s</h1>
+                            <p>Edit <code>src/App.tsx</code> and save to reload.</p>
+                            <button className="App-counter-btn" onClick={() => setCount(c => c + 1)}>
+                              Clicked {count} {count === 1 ? 'time' : 'times'}
+                            </button>
+                            <a
+                              className="App-link"
+                              href="https://react.dev"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Learn React ↗
+                            </a>
+                          </header>
+                        </div>
+                      );
+                    }
+                    """.formatted(spec.name()));
+
+            Files.writeString(srcDir.resolve("index.tsx"), """
+                    import React from 'react';
+                    import ReactDOM from 'react-dom/client';
+                    import './index.css';
+                    import App from './App';
+
+                    const root = ReactDOM.createRoot(
+                      document.getElementById('root') as HTMLElement
+                    );
+                    root.render(
+                      <React.StrictMode>
+                        <App />
+                      </React.StrictMode>
+                    );
+                    """);
+
+            Files.writeString(srcDir.resolve("react-app-env.d.ts"), "/// <reference types=\"react-scripts\" />\n");
+
+            Files.writeString(dir.resolve("tsconfig.json"), """
+                    {
+                      "compilerOptions": {
+                        "target": "es5",
+                        "lib": ["dom", "dom.iterable", "esnext"],
+                        "allowJs": true,
+                        "skipLibCheck": true,
+                        "esModuleInterop": true,
+                        "allowSyntheticDefaultImports": true,
+                        "strict": true,
+                        "forceConsistentCasingInFileNames": true,
+                        "noFallthroughCasesInSwitch": true,
+                        "module": "esnext",
+                        "moduleResolution": "node",
+                        "resolveJsonModule": true,
+                        "isolatedModules": true,
+                        "noEmit": true,
+                        "jsx": "react-jsx"
+                      },
+                      "include": ["src"]
+                    }
+                    """);
+
+            Files.writeString(dir.resolve("package.json"), """
+                    {
+                      "name": "%s",
+                      "version": "0.1.0",
+                      "private": true,
+                      "dependencies": {
+                        "@types/node": "^20.11.0",
+                        "@types/react": "^18.3.1",
+                        "@types/react-dom": "^18.3.1",
+                        "react": "^18.3.1",
+                        "react-dom": "^18.3.1",
+                        "react-scripts": "5.0.1",
+                        "typescript": "^5.3.3",
+                        "web-vitals": "^3.5.0"
+                      },
+                      "scripts": {
+                        "start": "react-scripts start",
+                        "build": "react-scripts build",
+                        "test": "react-scripts test",
+                        "eject": "react-scripts eject"
+                      },
+                      "browserslist": {
+                        "production": [
+                          ">0.2%%",
+                          "not dead",
+                          "not op_mini all"
+                        ],
+                        "development": [
+                          "last 1 chrome version",
+                          "last 1 firefox version",
+                          "last 1 safari version"
+                        ]
+                      }
+                    }
+                    """.formatted(appName));
+        } else {
+            Files.writeString(srcDir.resolve("App.js"), """
+                    import React, { useState } from 'react';
+                    import './App.css';
+
+                    function App() {
+                      const [count, setCount] = useState(0);
+
+                      return (
+                        <div className="App">
+                          <header className="App-header">
+                            <svg className="App-logo" viewBox="-11.5 -10.23174 23 20.46348" width="120" height="120">
+                              <circle cx="0" cy="0" r="2.05" fill="#61dafb"/>
+                              <g stroke="#61dafb" strokeWidth="1" fill="none">
+                                <ellipse rx="11" ry="4.2"/>
+                                <ellipse rx="11" ry="4.2" transform="rotate(60)"/>
+                                <ellipse rx="11" ry="4.2" transform="rotate(120)"/>
+                              </g>
+                            </svg>
+                            <h1>%s</h1>
+                            <p>Edit <code>src/App.js</code> and save to reload.</p>
+                            <button className="App-counter-btn" onClick={() => setCount(c => c + 1)}>
+                              Clicked {count} {count === 1 ? 'time' : 'times'}
+                            </button>
+                            <a
+                              className="App-link"
+                              href="https://react.dev"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Learn React ↗
+                            </a>
+                          </header>
+                        </div>
+                      );
+                    }
+
+                    export default App;
+                    """.formatted(spec.name()));
+
+            Files.writeString(srcDir.resolve("index.js"), """
+                    import React from 'react';
+                    import ReactDOM from 'react-dom/client';
+                    import './index.css';
+                    import App from './App';
+
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    root.render(
+                      <React.StrictMode>
+                        <App />
+                      </React.StrictMode>
+                    );
+                    """);
+
+            Files.writeString(dir.resolve("package.json"), """
+                    {
+                      "name": "%s",
+                      "version": "0.1.0",
+                      "private": true,
+                      "dependencies": {
+                        "react": "^18.3.1",
+                        "react-dom": "^18.3.1",
+                        "react-scripts": "5.0.1",
+                        "web-vitals": "^3.5.0"
+                      },
+                      "scripts": {
+                        "start": "react-scripts start",
+                        "build": "react-scripts build",
+                        "test": "react-scripts test",
+                        "eject": "react-scripts eject"
+                      },
+                      "browserslist": {
+                        "production": [
+                          ">0.2%%",
+                          "not dead",
+                          "not op_mini all"
+                        ],
+                        "development": [
+                          "last 1 chrome version",
+                          "last 1 firefox version",
+                          "last 1 safari version"
+                        ]
+                      }
+                    }
+                    """.formatted(appName));
+        }
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                # dependencies
+                /node_modules
+                /.pnp
+                .pnp.js
+
+                # testing
+                /coverage
+
+                # production
+                /build
+
+                # misc
+                .DS_Store
+                .env.local
+                .env.development.local
+                .env.test.local
+                .env.production.local
+                npm-debug.log*
+                yarn-debug.log*
+                yarn-error.log*
+                """);
+
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                This project was created with create-react-app (%s) and Lumina IDE.
+
+                ## Available Scripts
+
+                In the project directory, you can run:
+
+                ### `npm start`
+                Runs the app in development mode.\\
+                Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+                ### `npm test`
+                Launches the test runner in interactive watch mode.
+
+                ### `npm run build`
+                Builds the app for production to the `build` folder.
+                """.formatted(spec.name(), version));
+    }
+
+    private static void generateNextJs(ProjectSpec spec, Path dir, String version, boolean isTs, Consumer<String> log)
+            throws IOException {
+        Path appDir = dir.resolve("app");
+        Path publicDir = dir.resolve("public");
+        Files.createDirectories(appDir);
+        Files.createDirectories(publicDir);
+
+        String appName = sanitizeArtifact(spec.name());
+
+        Files.writeString(dir.resolve("next.config.mjs"), """
+                /** @type {import('next').NextConfig} */
+                const nextConfig = {};
+
+                export default nextConfig;
+                """);
+
+        Files.writeString(appDir.resolve("globals.css"), """
+                body {
+                  margin: 0;
+                  padding: 0;
+                  background-color: #0f172a;
+                  color: #f8fafc;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+
+                main {
+                  min-height: 100vh;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  text-align: center;
+                  padding: 2rem;
+                }
+
+                h1 {
+                  font-size: 3rem;
+                  margin-bottom: 1rem;
+                  background: linear-gradient(to right, #38bdf8, #818cf8);
+                  -webkit-background-clip: text;
+                  -webkit-text-fill-color: transparent;
+                }
+
+                p {
+                  color: #94a3b8;
+                  font-size: 1.25rem;
+                  max-width: 600px;
+                }
+
+                .docs-btn {
+                  margin-top: 2rem;
+                  background: #38bdf8;
+                  color: #0f172a;
+                  padding: 12px 28px;
+                  border-radius: 8px;
+                  text-decoration: none;
+                  font-weight: bold;
+                  transition: opacity 0.2s;
+                }
+
+                .docs-btn:hover {
+                  opacity: 0.9;
+                }
+                """);
+
+        if (isTs) {
+            Files.writeString(appDir.resolve("layout.tsx"), """
+                    import './globals.css';
+                    import React from 'react';
+
+                    export const metadata = {
+                      title: '%s',
+                      description: 'Generated with Next.js and Lumina IDE',
+                    };
+
+                    export default function RootLayout({
+                      children,
+                    }: {
+                      children: React.ReactNode;
+                    }) {
+                      return (
+                        <html lang="en">
+                          <body>{children}</body>
+                        </html>
+                      );
+                    }
+                    """.formatted(spec.name()));
+
+            Files.writeString(appDir.resolve("page.tsx"), """
+                    import React from 'react';
+
+                    export default function Home(): React.JSX.Element {
+                      return (
+                        <main>
+                          <h1>%s</h1>
+                          <p>Welcome to your modern Next.js App Router project created with Lumina IDE.</p>
+                          <a className="docs-btn" href="https://nextjs.org/docs" target="_blank" rel="noopener noreferrer">
+                            Next.js Documentation ↗
+                          </a>
+                        </main>
+                      );
+                    }
+                    """.formatted(spec.name()));
+
+            Files.writeString(dir.resolve("tsconfig.json"), """
+                    {
+                      "compilerOptions": {
+                        "target": "es5",
+                        "lib": ["dom", "dom.iterable", "esnext"],
+                        "allowJs": true,
+                        "skipLibCheck": true,
+                        "strict": true,
+                        "noEmit": true,
+                        "esModuleInterop": true,
+                        "module": "esnext",
+                        "moduleResolution": "bundler",
+                        "resolveJsonModule": true,
+                        "isolatedModules": true,
+                        "jsx": "preserve",
+                        "incremental": true,
+                        "plugins": [{ "name": "next" }],
+                        "paths": { "@/*": ["./*"] }
+                      },
+                      "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+                      "exclude": ["node_modules"]
+                    }
+                    """);
+
+            Files.writeString(dir.resolve("next-env.d.ts"), "/// <reference types=\"next\" />\n/// <reference types=\"next/image-types/global\" />\n");
+
+            Files.writeString(dir.resolve("package.json"), """
+                    {
+                      "name": "%s",
+                      "version": "0.1.0",
+                      "private": true,
+                      "scripts": {
+                        "dev": "next dev",
+                        "build": "next build",
+                        "start": "next start",
+                        "lint": "next lint"
+                      },
+                      "dependencies": {
+                        "react": "^19.0.0",
+                        "react-dom": "^19.0.0",
+                        "next": "^15.2.0"
+                      },
+                      "devDependencies": {
+                        "@types/node": "^20",
+                        "@types/react": "^19",
+                        "@types/react-dom": "^19",
+                        "typescript": "^5"
+                      }
+                    }
+                    """.formatted(appName));
+        } else {
+            Files.writeString(appDir.resolve("layout.jsx"), """
+                    import './globals.css';
+
+                    export const metadata = {
+                      title: '%s',
+                      description: 'Generated with Next.js and Lumina IDE',
+                    };
+
+                    export default function RootLayout({ children }) {
+                      return (
+                        <html lang="en">
+                          <body>{children}</body>
+                        </html>
+                      );
+                    }
+                    """.formatted(spec.name()));
+
+            Files.writeString(appDir.resolve("page.jsx"), """
+                    export default function Home() {
+                      return (
+                        <main>
+                          <h1>%s</h1>
+                          <p>Welcome to your modern Next.js App Router project created with Lumina IDE.</p>
+                          <a className="docs-btn" href="https://nextjs.org/docs" target="_blank" rel="noopener noreferrer">
+                            Next.js Documentation ↗
+                          </a>
+                        </main>
+                      );
+                    }
+                    """.formatted(spec.name()));
+
+            Files.writeString(dir.resolve("package.json"), """
+                    {
+                      "name": "%s",
+                      "version": "0.1.0",
+                      "private": true,
+                      "scripts": {
+                        "dev": "next dev",
+                        "build": "next build",
+                        "start": "next start",
+                        "lint": "next lint"
+                      },
+                      "dependencies": {
+                        "react": "^19.0.0",
+                        "react-dom": "^19.0.0",
+                        "next": "^15.2.0"
+                      }
+                    }
+                    """.formatted(appName));
+        }
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                # Next.js
+                /.next/
+                /out/
+
+                # Node
+                /node_modules
+                .DS_Store
+                *.log
+                .env*.local
+                """);
+
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                Next.js project created with create-next-app (%s) and Lumina IDE.
+
+                ## Getting Started
+                Run the development server:
+                ```bash
+                npm run dev
+                ```
+                Open [http://localhost:3000](http://localhost:3000) in your browser.
+                """.formatted(spec.name(), version));
+    }
+
+    private static void generateReactNative(ProjectSpec spec, Path dir, String version, boolean isTs, Consumer<String> log)
+            throws IOException {
+        String appName = sanitizeArtifact(spec.name());
+
+        Files.writeString(dir.resolve("app.json"), """
+                {
+                  "name": "%s",
+                  "displayName": "%s"
+                }
+                """.formatted(appName, spec.name()));
+
+        Files.writeString(dir.resolve("index.js"), """
+                import {AppRegistry} from 'react-native';
+                import App from './App';
+                import {name as appName} from './app.json';
+
+                AppRegistry.registerComponent(appName, () => App);
+                """);
+
+        String appCode = """
+                import React, {useState} from 'react';
+                import {SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+
+                export default function App() {
+                  const [count, setCount] = useState(0);
+
+                  return (
+                    <SafeAreaView style={styles.container}>
+                      <View style={styles.content}>
+                        <Text style={styles.title}>%s</Text>
+                        <Text style={styles.subtitle}>Welcome to your React Native application</Text>
+                        <TouchableOpacity style={styles.button} onPress={() => setCount(c => c + 1)}>
+                          <Text style={styles.buttonText}>Pressed {count} times</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </SafeAreaView>
+                  );
+                }
+
+                const styles = StyleSheet.create({
+                  container: {flex: 1, backgroundColor: '#f8fafc'},
+                  content: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24},
+                  title: {fontSize: 28, fontWeight: 'bold', color: '#0f172a', marginBottom: 8},
+                  subtitle: {fontSize: 16, color: '#64748b', marginBottom: 24},
+                  button: {backgroundColor: '#3b82f6', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 10},
+                  buttonText: {color: '#ffffff', fontSize: 16, fontWeight: '600'},
+                });
+                """.formatted(spec.name());
+
+        Files.writeString(dir.resolve(isTs ? "App.tsx" : "App.js"), appCode);
+
+        Files.writeString(dir.resolve("package.json"), """
+                {
+                  "name": "%s",
+                  "version": "0.0.1",
+                  "private": true,
+                  "scripts": {
+                    "android": "react-native run-android",
+                    "ios": "react-native run-ios",
+                    "start": "react-native start"
+                  },
+                  "dependencies": {
+                    "react": "18.3.1",
+                    "react-native": "0.76.5"
+                  }
+                }
+                """.formatted(appName));
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                # OSX
+                .DS_Store
+
+                # Xcode
+                build/
+                *.pbxuser
+                !default.pbxuser
+                *.mode1v3
+                !default.mode1v3
+                *.mode2v3
+                !default.mode2v3
+                *.perspectivev3
+                !default.perspectivev3
+                xcuserdata
+                *.xccheckout
+                *.moved-aside
+                DerivedData
+                *.hmap
+                *.ipa
+                *.xcuserstate
+
+                # Android/IntelliJ
+                build/
+                .idea
+                .gradle
+                local.properties
+                *.iml
+
+                # node.js
+                node_modules/
+                npm-debug.log
+                yarn-error.log
+                """);
+
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                React Native project created with Lumina IDE.
+
+                ## Getting Started
+                Start Metro bundler:
+                ```bash
+                npm start
+                ```
+                Run on iOS:
+                ```bash
+                npm run ios
+                ```
+                Run on Android:
+                ```bash
+                npm run android
+                ```
+                """.formatted(spec.name()));
     }
 
     // ------------------------------------------------------------------ html
