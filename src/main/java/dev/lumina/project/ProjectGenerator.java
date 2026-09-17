@@ -57,9 +57,9 @@ public final class ProjectGenerator {
                 && spec.generator() != ProjectSpec.Generator.RUST) {
             Files.createDirectories(dir);
         }
-
         switch (spec.generator()) {
-            case JAVA, KOTLIN, GROOVY -> generateJava(spec, dir, log);
+            case JAVA, GROOVY -> generateJava(spec, dir, log);
+            case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
             case ANGULAR_CLI, VITE, VUE, NUXT -> generateWebStarter(spec, dir, log);
@@ -2264,6 +2264,259 @@ public final class ProjectGenerator {
                       </component>
                     </module>
                     """);
+        }
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    .gradle/
+                    build/
+                    !gradle/wrapper/gradle-wrapper.jar
+                    !**/src/main/**/build/
+                    !**/src/test/**/build/
+
+                    ### IntelliJ IDEA & Lumina ###
+                    .idea/
+                    .lumina/
+                    *.iws
+                    *.iml
+                    *.ipr
+                    out/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        } else {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    target/
+                    build/
+                    out/
+                    .gradle/
+                    .idea/
+                    .lumina/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        }
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    private static void generateKotlin(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Kotlin project (" + spec.buildSystem() + ") …");
+
+        String pkg = spec.packageName() != null ? spec.packageName().trim() : "";
+        Path srcMain = dir.resolve("src/main/kotlin");
+        Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
+        Files.createDirectories(pkgDir);
+        Files.createDirectories(dir.resolve("src/main/resources"));
+        Path srcTest = dir.resolve("src/test/kotlin");
+        Path pkgTestDir = pkg.isBlank() ? srcTest : srcTest.resolve(pkg.replace('.', '/'));
+        Files.createDirectories(pkgTestDir);
+
+        String pkgLine = pkg.isBlank() ? "" : "package " + pkg + "\n\n";
+
+        if (spec.addSampleCode()) {
+            Files.writeString(pkgDir.resolve("Main.kt"), pkgLine + """
+                    // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
+                    // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+                    fun main() {
+                        val name = "Kotlin"
+                        // TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
+                        // to see how IntelliJ IDEA suggests fixing it.
+                        println("Hello, " + name + "!")
+
+                        for (i in 1..5) {
+                            // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
+                            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
+                            println("i = $i")
+                        }
+                    }
+                    """);
+
+            Files.writeString(pkgTestDir.resolve("MainTest.kt"), pkgLine + """
+                    import org.junit.jupiter.api.Test
+                    import org.junit.jupiter.api.Assertions.assertTrue
+
+                    class MainTest {
+                        @Test
+                        fun testExample() {
+                            assertTrue(true)
+                        }
+                    }
+                    """);
+        }
+
+        String javaVer = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "21";
+        int javaMajor = 21;
+        try {
+            javaMajor = Integer.parseInt(javaVer);
+        } catch (NumberFormatException ignored) {}
+
+        String group = spec.group() != null && !spec.group().isBlank() ? spec.group() : "com.example";
+        String artifact = spec.artifact() != null && !spec.artifact().isBlank() ? spec.artifact() : spec.name();
+        String kotlinVer = KotlinMetadata.getLatestVersion();
+        String jvmTarget = KotlinMetadata.getJvmTarget(javaMajor);
+        String mainClass = pkg.isBlank() ? "MainKt" : pkg + ".MainKt";
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>
+                        <version>1.0-SNAPSHOT</version>
+
+                        <properties>
+                            <maven.compiler.source>%s</maven.compiler.source>
+                            <maven.compiler.target>%s</maven.compiler.target>
+                            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                            <kotlin.version>%s</kotlin.version>
+                            <kotlin.compiler.jvmTarget>%s</kotlin.compiler.jvmTarget>
+                        </properties>
+
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.jetbrains.kotlin</groupId>
+                                <artifactId>kotlin-stdlib</artifactId>
+                                <version>${kotlin.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.jetbrains.kotlin</groupId>
+                                <artifactId>kotlin-test-junit5</artifactId>
+                                <version>${kotlin.version}</version>
+                                <scope>test</scope>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter</artifactId>
+                                <version>5.10.2</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+
+                        <build>
+                            <sourceDirectory>src/main/kotlin</sourceDirectory>
+                            <testSourceDirectory>src/test/kotlin</testSourceDirectory>
+                            <plugins>
+                                <plugin>
+                                    <groupId>org.jetbrains.kotlin</groupId>
+                                    <artifactId>kotlin-maven-plugin</artifactId>
+                                    <version>${kotlin.version}</version>
+                                    <executions>
+                                        <execution>
+                                            <id>compile</id>
+                                            <phase>compile</phase>
+                                            <goals>
+                                                <goal>compile</goal>
+                                            </goals>
+                                        </execution>
+                                        <execution>
+                                            <id>test-compile</id>
+                                            <phase>test-compile</phase>
+                                            <goals>
+                                                <goal>test-compile</goal>
+                                            </goals>
+                                        </execution>
+                                    </executions>
+                                    <configuration>
+                                        <jvmTarget>${kotlin.compiler.jvmTarget}</jvmTarget>
+                                    </configuration>
+                                </plugin>
+                                <plugin>
+                                    <groupId>org.apache.maven.plugins</groupId>
+                                    <artifactId>maven-surefire-plugin</artifactId>
+                                    <version>3.2.5</version>
+                                </plugin>
+                                <plugin>
+                                    <groupId>org.codehaus.mojo</groupId>
+                                    <artifactId>exec-maven-plugin</artifactId>
+                                    <version>3.1.1</version>
+                                    <configuration>
+                                        <mainClass>%s</mainClass>
+                                    </configuration>
+                                </plugin>
+                            </plugins>
+                        </build>
+                    </project>
+                    """.formatted(group, artifact, javaVer, javaVer, kotlinVer, jvmTarget, mainClass));
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
+            String gradleVersion = spec.safeGradleVersion();
+            ProjectSpec.GradleDsl dsl = spec.safeGradleDsl();
+
+            if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                Files.writeString(dir.resolve("settings.gradle.kts"),
+                        "rootProject.name = \"" + artifact + "\"\n");
+                Files.writeString(dir.resolve("build.gradle.kts"), """
+                        plugins {
+                            kotlin("jvm") version "%s"
+                            application
+                        }
+
+                        group = "%s"
+                        version = "1.0-SNAPSHOT"
+
+                        repositories {
+                            mavenCentral()
+                        }
+
+                        dependencies {
+                            testImplementation(kotlin("test"))
+                        }
+
+                        tasks.test {
+                            useJUnitPlatform()
+                        }
+
+                        kotlin {
+                            jvmToolchain(%s)
+                        }
+
+                        application {
+                            mainClass.set("%s")
+                        }
+                        """.formatted(kotlinVer, group, javaVer, mainClass));
+            } else {
+                Files.writeString(dir.resolve("settings.gradle"),
+                        "rootProject.name = '" + artifact + "'\n");
+                Files.writeString(dir.resolve("build.gradle"), """
+                        plugins {
+                            id 'org.jetbrains.kotlin.jvm' version '%s'
+                            id 'application'
+                        }
+
+                        group = '%s'
+                        version = '1.0-SNAPSHOT'
+
+                        repositories {
+                            mavenCentral()
+                        }
+
+                        dependencies {
+                            testImplementation 'org.jetbrains.kotlin:kotlin-test'
+                        }
+
+                        test {
+                            useJUnitPlatform()
+                        }
+
+                        kotlin {
+                            jvmToolchain(%s)
+                        }
+
+                        application {
+                            mainClass = '%s'
+                        }
+                        """.formatted(kotlinVer, group, javaVer, mainClass));
+            }
+
+            generateGradleWrapper(dir, gradleVersion, log);
         }
 
         if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
