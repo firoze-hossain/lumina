@@ -542,9 +542,22 @@
 .form-scroll > .viewport { -fx-background-color: #191C26; }
 
 .form-label { -fx-text-fill: #848BA3; -fx-font-size: 12px; }
-.form-hint  { -fx-text-fill: #565D75; -fx-font-size: 11px; }
+.form-hint  { -fx-text-fill: #8C919D; -fx-font-size: 11px; }
 .form-static { -fx-text-fill: #B9BECF; -fx-font-size: 12px; }
 .form-error { -fx-text-fill: #E88A8A; -fx-font-size: 12px; }
+
+.browse-button {
+    -fx-background-color: transparent;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 4 6 4 6;
+    -fx-cursor: hand;
+}
+.browse-button:hover {
+    -fx-border-color: #589DF6;
+    -fx-background-color: #26282E;
+}
 
 .maven-link {
     -fx-background-color: transparent;

@@ -275,7 +275,7 @@ public record ProjectSpec(
         ANGULAR_CLI, VUE, VITE, NUXT, RUST
     }
 
-    public enum BuildSystem { MAVEN, GRADLE }
+    public enum BuildSystem { INTELLIJ, MAVEN, GRADLE }
 
     public enum Language { JAVA, KOTLIN, GROOVY }
 

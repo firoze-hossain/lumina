@@ -2072,23 +2072,40 @@ public final class ProjectGenerator {
 
     private static void generateJava(ProjectSpec spec, Path dir, Consumer<String> log)
             throws IOException {
-        log.accept("Generating Java project (" + spec.buildSystem() + ") \u2026");
+        log.accept("Generating Java project (" + spec.buildSystem() + ") …");
 
-        String pkg = spec.packageName();
+        String pkg = spec.packageName() != null ? spec.packageName().trim() : "";
         Path srcMain = dir.resolve("src/main/java");
         Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
         Files.createDirectories(pkgDir);
         Files.createDirectories(dir.resolve("src/main/resources"));
         Files.createDirectories(dir.resolve("src/test/java"));
 
-        String pkgLine = pkg.isBlank() ? "" : "package " + pkg + ";\n\n";
-        Files.writeString(pkgDir.resolve("Main.java"), pkgLine + """
-                public class Main {
-                    public static void main(String[] args) {
-                        System.out.println("Hello from %s!");
+        if (spec.addSampleCode()) {
+            String pkgLine = pkg.isBlank() ? "" : "package " + pkg + ";\n\n";
+            Files.writeString(pkgDir.resolve("Main.java"), pkgLine + """
+                    // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
+                    // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+                    public class Main {
+                        public static void main(String[] args) {
+                            // TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
+                            // to see how IntelliJ IDEA suggests fixing it.
+                            System.out.println("Hello and welcome!");
+
+                            for (int i = 1; i <= 5; i++) {
+                                // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
+                                // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
+                                System.out.println("i = " + i);
+                            }
+                        }
                     }
-                }
-                """.formatted(spec.name()));
+                    """);
+        }
+
+        String javaVer = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "21";
+        String group = spec.group() != null && !spec.group().isBlank() ? spec.group() : "com.example";
+        String artifact = spec.artifact() != null && !spec.artifact().isBlank() ? spec.artifact() : spec.name();
 
         if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
             Files.writeString(dir.resolve("pom.xml"), """
@@ -2097,13 +2114,17 @@ public final class ProjectGenerator {
                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                              xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
                         <modelVersion>4.0.0</modelVersion>
+
                         <groupId>%s</groupId>
                         <artifactId>%s</artifactId>
                         <version>1.0-SNAPSHOT</version>
+
                         <properties>
-                            <maven.compiler.release>%s</maven.compiler.release>
+                            <maven.compiler.source>%s</maven.compiler.source>
+                            <maven.compiler.target>%s</maven.compiler.target>
                             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
                         </properties>
+
                         <dependencies>
                             <dependency>
                                 <groupId>org.junit.jupiter</groupId>
@@ -2112,6 +2133,7 @@ public final class ProjectGenerator {
                                 <scope>test</scope>
                             </dependency>
                         </dependencies>
+
                         <build>
                             <plugins>
                                 <plugin>
@@ -2122,10 +2144,10 @@ public final class ProjectGenerator {
                             </plugins>
                         </build>
                     </project>
-                    """.formatted(spec.group(), spec.artifact(), spec.javaVersion()));
-        } else {
+                    """.formatted(group, artifact, javaVer, javaVer));
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
             Files.writeString(dir.resolve("settings.gradle"),
-                    "rootProject.name = '" + spec.artifact() + "'\n");
+                    "rootProject.name = '" + artifact + "'\n");
             Files.writeString(dir.resolve("build.gradle"), """
                     plugins {
                         id 'java'
@@ -2157,18 +2179,56 @@ public final class ProjectGenerator {
                     application {
                         mainClass = '%s'
                     }
-                    """.formatted(spec.group(), spec.javaVersion(),
+                    """.formatted(group, javaVer,
                     pkg.isBlank() ? "Main" : pkg + ".Main"));
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("misc.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectRootManager" version="2" languageLevel="JDK_%s" default="true" project-jdk-name="%s" project-jdk-type="JavaSDK">
+                        <output url="file://$PROJECT_DIR$/out" />
+                      </component>
+                    </project>
+                    """.formatted(javaVer, javaVer));
+            Files.writeString(ideaDir.resolve("modules.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectModuleManager">
+                        <modules>
+                          <module fileurl="file://$PROJECT_DIR$/%s.iml" filepath="$PROJECT_DIR$/%s.iml" />
+                        </modules>
+                      </component>
+                    </project>
+                    """.formatted(artifact, artifact));
+            Files.writeString(dir.resolve(artifact + ".iml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <module type="JAVA_MODULE" version="4">
+                      <component name="NewModuleRootManager" inherit-compiler-output="true">
+                        <exclude-output />
+                        <content url="file://$MODULE_DIR$">
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
+                        </content>
+                        <orderEntry type="inheritedJdk" />
+                        <orderEntry type="sourceFolder" forTests="false" />
+                      </component>
+                    </module>
+                    """);
         }
 
         Files.writeString(dir.resolve(".gitignore"), """
                 target/
                 build/
+                out/
                 .gradle/
                 .idea/
                 .lumina/
                 *.class
                 *.log
+                .DS_Store
                 """);
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
