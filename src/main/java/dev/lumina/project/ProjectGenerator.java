@@ -67,7 +67,7 @@ public final class ProjectGenerator {
             case RUBY -> generateRuby(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
-            case EMPTY_PROJECT -> Files.createDirectories(dir);
+            case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
             case ANGULAR_CLI, VITE, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case EXPRESS -> generateExpress(spec, dir, log);
             case REACT -> generateReact(spec, dir, log);
@@ -5744,6 +5744,28 @@ public final class ProjectGenerator {
         // 6. Git initialization
         if (spec.initGit() && !Files.isDirectory(dir.resolve(".git"))) {
             initGit(dir, log);
+        }
+    }
+
+    private static void generateEmptyProject(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Creating empty project with free structure …");
+        Files.createDirectories(dir);
+
+        // 1. IntelliJ IDEA configuration files (.idea)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), EmptyProjectMetadata.generateIdeaModulesXml(), StandardCharsets.UTF_8);
+        Files.writeString(ideaDir.resolve("misc.xml"), EmptyProjectMetadata.generateIdeaMiscXml(), StandardCharsets.UTF_8);
+        Files.writeString(ideaDir.resolve(".gitignore"), EmptyProjectMetadata.generateIdeaGitIgnore(), StandardCharsets.UTF_8);
+
+        // 2. Git integration (.idea/vcs.xml & root .gitignore)
+        if (spec.initGit()) {
+            Files.writeString(ideaDir.resolve("vcs.xml"), EmptyProjectMetadata.generateIdeaVcsXml(), StandardCharsets.UTF_8);
+            Path rootGitignore = dir.resolve(".gitignore");
+            if (!Files.exists(rootGitignore)) {
+                Files.writeString(rootGitignore, EmptyProjectMetadata.generateRootGitIgnore(), StandardCharsets.UTF_8);
+            }
         }
     }
 

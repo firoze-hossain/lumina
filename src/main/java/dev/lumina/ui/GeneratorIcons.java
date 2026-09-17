@@ -204,20 +204,15 @@ public final class GeneratorIcons {
         return box(g);
     }
 
-    /** Empty Project: outline folder with sparkle star. */
+    /** Empty Project: blue outline folder matching IntelliJ IDEA. */
     private static Node emptyProjectIcon() {
         SVGPath folder = new SVGPath();
-        folder.setContent("M 2,4 L 6,4 L 7.5,5.5 L 14.5,5.5 L 14.5,13 L 2,13 Z");
-        folder.setStroke(Color.web("#9AA0A6"));
-        folder.setStrokeWidth(1.2);
-        folder.setFill(null);
+        folder.setContent("M 2,4.5 L 6,4.5 L 7.5,6 L 14,6 L 14,13.5 L 2,13.5 Z");
+        folder.setStroke(Color.web("#3574F0"));
+        folder.setStrokeWidth(1.3);
+        folder.setFill(Color.web("#3574F0", 0.08));
 
-        SVGPath star = new SVGPath();
-        star.setContent("M 12.5,1.5 L 13.1,2.7 L 14.5,3.3 L 13.1,3.9 L 12.5,5.2 L 11.9,3.9 L 10.5,3.3 L 11.9,2.7 Z");
-        star.setFill(Color.web("#61AFEF"));
-
-        Group g = new Group(folder, star);
-        return box(g);
+        return box(folder);
     }
 
     /** Maven Archetype: classic italic bright blue 'm'. */

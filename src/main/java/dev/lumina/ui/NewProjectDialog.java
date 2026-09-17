@@ -1889,8 +1889,19 @@ public class NewProjectDialog {
             mavenArtifactField.setText(sanitize(v));
             updateHints();
         });
-        artifactField.setOnKeyTyped(e -> artifactEdited = true);
-        locationField.textProperty().addListener((obs, old, v) -> updateHints());
+        locationField.textProperty().addListener((obs, old, v) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.EMPTY_PROJECT) {
+                String curName = nameField.getText().trim();
+                if (curName.isEmpty() || curName.matches("untitled\\d*")) {
+                    String locText = v != null ? v.trim() : "";
+                    Path locDir = Path.of(locText.startsWith("~")
+                            ? System.getProperty("user.home") + locText.substring(1)
+                            : locText);
+                    nameField.setText(dev.lumina.project.EmptyProjectMetadata.suggestUniqueProjectName(locDir, "untitled"));
+                }
+            }
+            updateHints();
+        });
         groupField.textProperty().addListener((obs, old, v) -> updateHints());
         artifactField.textProperty().addListener((obs, old, v) -> updateHints());
         mavenArtifactField.textProperty().addListener((obs, old, v) -> updateHints());
@@ -1940,6 +1951,18 @@ public class NewProjectDialog {
 
         int row = 0;
 
+        // Top description for Empty Project (matching IntelliJ IDEA)
+        if (empty) {
+            emptyDescription.setVisible(true);
+            emptyDescription.setManaged(true);
+            emptyDescription.setStyle("-fx-text-fill: #8C919D; -fx-font-size: 13px;");
+            formGrid.add(emptyDescription, 0, row++, 2, 1);
+            GridPane.setMargin(emptyDescription, new Insets(0, 0, 12, 0));
+        } else {
+            emptyDescription.setVisible(false);
+            emptyDescription.setManaged(false);
+        }
+
         // 1. Server URL (for Spring Boot, Quarkus, Micronaut)
         if (spring || quarkus || micronaut) {
             if (micronaut) {
@@ -1979,7 +2002,7 @@ public class NewProjectDialog {
         locationHint.setVisible(true);
         locationHint.setManaged(true);
         locationSub.getChildren().add(locationHint);
-        boolean showGit = !web && !empty && !specific;
+        boolean showGit = !web && !specific;
         if (showGit) {
             gitCheck.setVisible(true);
             gitCheck.setManaged(true);
@@ -1990,19 +2013,16 @@ public class NewProjectDialog {
         }
         formGrid.add(locationSub, 1, row++);
 
+        if (empty) {
+            return;
+        }
+
         // 5. Generator-specific forms
         if (specific) {
             generatorSpecificBox.setVisible(true);
             generatorSpecificBox.setManaged(true);
             buildSpecificForm(generator);
             formGrid.add(generatorSpecificBox, 0, row++, 2, 1);
-            return;
-        }
-
-        if (empty) {
-            emptyDescription.setVisible(true);
-            emptyDescription.setManaged(true);
-            formGrid.add(emptyDescription, 1, row++);
             return;
         }
 
@@ -5783,9 +5803,20 @@ public class NewProjectDialog {
         mavenArchetypeBox.setVisible(mavenArchetype);
         mavenArchetypeBox.setManaged(mavenArchetype);
         rustBox.setVisible(false);
-        rustBox.setManaged(false);
         emptyDescription.setVisible(empty);
         emptyDescription.setManaged(empty);
+
+        if (empty) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || curName.matches("untitled\\d*")) {
+                String locText = locationField.getText().trim();
+                Path locDir = Path.of(locText.startsWith("~")
+                        ? System.getProperty("user.home") + locText.substring(1)
+                        : locText);
+                nameField.setText(dev.lumina.project.EmptyProjectMetadata.suggestUniqueProjectName(locDir, "untitled"));
+            }
+            gitCheck.setSelected(false);
+        }
 
         if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus || jakarta) ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
