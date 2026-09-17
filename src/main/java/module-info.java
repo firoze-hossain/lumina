@@ -14,6 +14,7 @@ module dev.lumina {
     requires com.google.common;
     requires com.google.gson;
     requires java.desktop;
+    requires java.prefs;
     requires pty4j;
     exports dev.lumina;
     exports dev.lumina.ui;
