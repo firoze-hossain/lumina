@@ -58,7 +58,8 @@ public final class ProjectGenerator {
             Files.createDirectories(dir);
         }
         switch (spec.generator()) {
-            case JAVA, GROOVY -> generateJava(spec, dir, log);
+            case JAVA -> generateJava(spec, dir, log);
+            case GROOVY -> generateGroovy(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
@@ -2078,11 +2079,13 @@ public final class ProjectGenerator {
         log.accept("Generating Java project (" + spec.buildSystem() + ") …");
 
         String pkg = spec.packageName() != null ? spec.packageName().trim() : "";
-        Path srcMain = dir.resolve("src/main/java");
+        boolean isMulti = spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE && spec.safeGenerateMultiModule();
+        Path baseDir = isMulti ? dir.resolve("app") : dir;
+        Path srcMain = baseDir.resolve("src/main/java");
         Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
         Files.createDirectories(pkgDir);
-        Files.createDirectories(dir.resolve("src/main/resources"));
-        Files.createDirectories(dir.resolve("src/test/java"));
+        Files.createDirectories(baseDir.resolve("src/main/resources"));
+        Files.createDirectories(baseDir.resolve("src/test/java"));
 
         if (spec.addSampleCode()) {
             String pkgLine = pkg.isBlank() ? "" : "package " + pkg + ";\n\n";
@@ -2150,84 +2153,179 @@ public final class ProjectGenerator {
                     """.formatted(group, artifact, javaVer, javaVer));
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
             String gradleVersion = spec.safeGradleVersion();
+            if ("Local installation".equalsIgnoreCase(spec.safeGradleDistribution()) && !spec.safeGradleLocation().isBlank()) {
+                String detected = GradleMetadata.detectGradleVersionFromHome(Path.of(spec.safeGradleLocation()));
+                if (detected != null && !detected.isBlank()) {
+                    gradleVersion = detected;
+                }
+            }
             ProjectSpec.GradleDsl dsl = spec.safeGradleDsl();
             String mainFqcn = pkg.isBlank() ? "Main" : pkg + ".Main";
 
-            if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
-                Files.writeString(dir.resolve("settings.gradle.kts"),
-                        "rootProject.name = \"" + artifact + "\"\n");
-                Files.writeString(dir.resolve("build.gradle.kts"), """
-                        plugins {
-                            id("java")
-                            id("application")
-                        }
-
-                        group = "%s"
-                        version = "1.0-SNAPSHOT"
-
-                        repositories {
-                            mavenCentral()
-                        }
-
-                        dependencies {
-                            testImplementation(platform("org.junit:junit-bom:5.10.0"))
-                            testImplementation("org.junit.jupiter:junit-jupiter")
-                            testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-                        }
-
-                        java {
-                            toolchain {
-                                languageVersion.set(JavaLanguageVersion.of(%s))
+            if (isMulti) {
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\ninclude(\"app\")\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
                             }
-                        }
+                            """);
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle.kts"), """
+                            plugins {
+                                id("java")
+                                id("application")
+                            }
 
-                        application {
-                            mainClass.set("%s")
-                        }
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
 
-                        tasks.test {
-                            useJUnitPlatform()
-                        }
-                        """.formatted(group, javaVer, mainFqcn));
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation(platform("org.junit:junit-bom:5.10.0"))
+                                testImplementation("org.junit.jupiter:junit-jupiter")
+                                testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion.set(JavaLanguageVersion.of(%s))
+                                }
+                            }
+
+                            application {
+                                mainClass.set("%s")
+                            }
+
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\ninclude 'app'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                            }
+                            """);
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle"), """
+                            plugins {
+                                id 'java'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation platform('org.junit:junit-bom:5.10.0')
+                                testImplementation 'org.junit.jupiter:junit-jupiter'
+                                testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion = JavaLanguageVersion.of(%s)
+                                }
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                }
             } else {
-                Files.writeString(dir.resolve("settings.gradle"),
-                        "rootProject.name = '" + artifact + "'\n");
-                Files.writeString(dir.resolve("build.gradle"), """
-                        plugins {
-                            id 'java'
-                            id 'application'
-                        }
-
-                        group = '%s'
-                        version = '1.0-SNAPSHOT'
-
-                        repositories {
-                            mavenCentral()
-                        }
-
-                        dependencies {
-                            testImplementation platform('org.junit:junit-bom:5.10.0')
-                            testImplementation 'org.junit.jupiter:junit-jupiter'
-                            testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-                        }
-
-                        java {
-                            toolchain {
-                                languageVersion = JavaLanguageVersion.of(%s)
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
+                                id("java")
+                                id("application")
                             }
-                        }
 
-                        application {
-                            mainClass = '%s'
-                        }
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
 
-                        test {
-                            useJUnitPlatform()
-                        }
-                        """.formatted(group, javaVer, mainFqcn));
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation(platform("org.junit:junit-bom:5.10.0"))
+                                testImplementation("org.junit.jupiter:junit-jupiter")
+                                testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion.set(JavaLanguageVersion.of(%s))
+                                }
+                            }
+
+                            application {
+                                mainClass.set("%s")
+                            }
+
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                                id 'java'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation platform('org.junit:junit-bom:5.10.0')
+                                testImplementation 'org.junit.jupiter:junit-jupiter'
+                                testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion = JavaLanguageVersion.of(%s)
+                                }
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                }
             }
 
             generateGradleWrapper(dir, gradleVersion, log);
+            writeIdeaGradleXml(dir, spec.safeGradleDistribution(), spec.safeGradleLocation());
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
             Path ideaDir = dir.resolve(".idea");
             Files.createDirectories(ideaDir);
@@ -2307,11 +2405,13 @@ public final class ProjectGenerator {
         log.accept("Generating Kotlin project (" + spec.buildSystem() + ") …");
 
         String pkg = spec.packageName() != null ? spec.packageName().trim() : "";
-        Path srcMain = dir.resolve("src/main/kotlin");
+        boolean isMulti = spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE && spec.safeGenerateMultiModule();
+        Path baseDir = isMulti ? dir.resolve("app") : dir;
+        Path srcMain = baseDir.resolve("src/main/kotlin");
         Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
         Files.createDirectories(pkgDir);
-        Files.createDirectories(dir.resolve("src/main/resources"));
-        Path srcTest = dir.resolve("src/test/kotlin");
+        Files.createDirectories(baseDir.resolve("src/main/resources"));
+        Path srcTest = baseDir.resolve("src/test/kotlin");
         Path pkgTestDir = pkg.isBlank() ? srcTest : srcTest.resolve(pkg.replace('.', '/'));
         Files.createDirectories(pkgTestDir);
 
@@ -2448,75 +2548,201 @@ public final class ProjectGenerator {
                     """.formatted(group, artifact, javaVer, javaVer, kotlinVer, jvmTarget, mainClass));
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
             String gradleVersion = spec.safeGradleVersion();
+            if ("Local installation".equalsIgnoreCase(spec.safeGradleDistribution()) && !spec.safeGradleLocation().isBlank()) {
+                String detected = GradleMetadata.detectGradleVersionFromHome(Path.of(spec.safeGradleLocation()));
+                if (detected != null && !detected.isBlank()) {
+                    gradleVersion = detected;
+                }
+            }
             ProjectSpec.GradleDsl dsl = spec.safeGradleDsl();
 
-            if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
-                Files.writeString(dir.resolve("settings.gradle.kts"),
-                        "rootProject.name = \"" + artifact + "\"\n");
-                Files.writeString(dir.resolve("build.gradle.kts"), """
-                        plugins {
-                            kotlin("jvm") version "%s"
-                            application
-                        }
+            if (isMulti) {
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\ninclude(\"app\")\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
+                                kotlin("jvm") version "%s" apply false
+                            }
+                            """.formatted(kotlinVer));
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle.kts"), """
+                            plugins {
+                                kotlin("jvm")
+                                application
+                            }
 
-                        group = "%s"
-                        version = "1.0-SNAPSHOT"
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
 
-                        repositories {
-                            mavenCentral()
-                        }
+                            repositories {
+                                mavenCentral()
+                            }
 
-                        dependencies {
-                            testImplementation(kotlin("test"))
-                        }
+                            dependencies {
+                                testImplementation(kotlin("test"))
+                            }
 
-                        tasks.test {
-                            useJUnitPlatform()
-                        }
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
 
-                        kotlin {
-                            jvmToolchain(%s)
-                        }
+                            kotlin {
+                                jvmToolchain(%s)
+                            }
 
-                        application {
-                            mainClass.set("%s")
-                        }
-                        """.formatted(kotlinVer, group, javaVer, mainClass));
+                            application {
+                                mainClass.set("%s")
+                            }
+                            """.formatted(group, javaVer, mainClass));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\ninclude 'app'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                                id 'org.jetbrains.kotlin.jvm' version '%s' apply false
+                            }
+                            """.formatted(kotlinVer));
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle"), """
+                            plugins {
+                                id 'org.jetbrains.kotlin.jvm'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation 'org.jetbrains.kotlin:kotlin-test'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+
+                            kotlin {
+                                jvmToolchain(%s)
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+                            """.formatted(group, javaVer, mainClass));
+                }
             } else {
-                Files.writeString(dir.resolve("settings.gradle"),
-                        "rootProject.name = '" + artifact + "'\n");
-                Files.writeString(dir.resolve("build.gradle"), """
-                        plugins {
-                            id 'org.jetbrains.kotlin.jvm' version '%s'
-                            id 'application'
-                        }
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
+                                kotlin("jvm") version "%s"
+                                application
+                            }
 
-                        group = '%s'
-                        version = '1.0-SNAPSHOT'
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
 
-                        repositories {
-                            mavenCentral()
-                        }
+                            repositories {
+                                mavenCentral()
+                            }
 
-                        dependencies {
-                            testImplementation 'org.jetbrains.kotlin:kotlin-test'
-                        }
+                            dependencies {
+                                testImplementation(kotlin("test"))
+                            }
 
-                        test {
-                            useJUnitPlatform()
-                        }
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
 
-                        kotlin {
-                            jvmToolchain(%s)
-                        }
+                            kotlin {
+                                jvmToolchain(%s)
+                            }
 
-                        application {
-                            mainClass = '%s'
-                        }
-                        """.formatted(kotlinVer, group, javaVer, mainClass));
+                            application {
+                                mainClass.set("%s")
+                            }
+                            """.formatted(kotlinVer, group, javaVer, mainClass));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                                id 'org.jetbrains.kotlin.jvm' version '%s'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                testImplementation 'org.jetbrains.kotlin:kotlin-test'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+
+                            kotlin {
+                                jvmToolchain(%s)
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+                            """.formatted(kotlinVer, group, javaVer, mainClass));
+                }
             }
 
             generateGradleWrapper(dir, gradleVersion, log);
+            writeIdeaGradleXml(dir, spec.safeGradleDistribution(), spec.safeGradleLocation());
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("misc.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectRootManager" version="2" languageLevel="JDK_%s" default="true" project-jdk-name="%s" project-jdk-type="JavaSDK">
+                        <output url="file://$PROJECT_DIR$/out" />
+                      </component>
+                    </project>
+                    """.formatted(javaVer, javaVer));
+            Files.writeString(ideaDir.resolve("modules.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectModuleManager">
+                        <modules>
+                          <module fileurl="file://$PROJECT_DIR$/%s.iml" filepath="$PROJECT_DIR$/%s.iml" />
+                        </modules>
+                      </component>
+                    </project>
+                    """.formatted(artifact, artifact));
+            Files.writeString(dir.resolve(artifact + ".iml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <module type="JAVA_MODULE" version="4">
+                      <component name="NewModuleRootManager" inherit-compiler-output="true">
+                        <exclude-output />
+                        <content url="file://$MODULE_DIR$">
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/kotlin" isTestSource="false" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/test/kotlin" isTestSource="true" />
+                        </content>
+                          <orderEntry type="inheritedJdk" />
+                          <orderEntry type="sourceFolder" forTests="false" />
+                          <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
+                      </component>
+                    </module>
+                    """);
         }
 
         if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
@@ -2553,6 +2779,403 @@ public final class ProjectGenerator {
         }
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    private static void generateGroovy(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Groovy project (" + spec.buildSystem() + ") …");
+
+        String pkg = spec.packageName() != null ? spec.packageName().trim() : "";
+        boolean isMulti = spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE && spec.safeGenerateMultiModule();
+        Path baseDir = isMulti ? dir.resolve("app") : dir;
+        Path srcMain = baseDir.resolve("src/main/groovy");
+        Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
+        Files.createDirectories(pkgDir);
+        Files.createDirectories(baseDir.resolve("src/main/resources"));
+        Path srcTest = baseDir.resolve("src/test/groovy");
+        Path pkgTestDir = pkg.isBlank() ? srcTest : srcTest.resolve(pkg.replace('.', '/'));
+        Files.createDirectories(pkgTestDir);
+
+        String pkgLine = pkg.isBlank() ? "" : "package " + pkg + "\n\n";
+
+        if (spec.addSampleCode()) {
+            Files.writeString(pkgDir.resolve("Main.groovy"), pkgLine + """
+                    // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
+                    // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+                    static void main(String[] args) {
+                        // TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
+                        // to see how IntelliJ IDEA suggests fixing it.
+                        println "Hello and welcome!"
+
+                        for (int i = 1; i <= 5; i++) {
+                            // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
+                            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
+                            println "i = $i"
+                        }
+                    }
+                    """);
+
+            Files.writeString(pkgTestDir.resolve("MainTest.groovy"), pkgLine + """
+                    import org.junit.jupiter.api.Test
+                    import static org.junit.jupiter.api.Assertions.assertTrue
+
+                    class MainTest {
+                        @Test
+                        void testExample() {
+                            assertTrue(true)
+                        }
+                    }
+                    """);
+        }
+
+        String javaVer = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "21";
+        String group = spec.group() != null && !spec.group().isBlank() ? spec.group() : "com.example";
+        String artifact = spec.artifact() != null && !spec.artifact().isBlank() ? spec.artifact() : spec.name();
+        String mainFqcn = pkg.isBlank() ? "Main" : pkg + ".Main";
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>
+                        <version>1.0-SNAPSHOT</version>
+
+                        <properties>
+                            <maven.compiler.source>%s</maven.compiler.source>
+                            <maven.compiler.target>%s</maven.compiler.target>
+                            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                            <groovy.version>4.0.24</groovy.version>
+                        </properties>
+
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.apache.groovy</groupId>
+                                <artifactId>groovy</artifactId>
+                                <version>${groovy.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.junit.jupiter</groupId>
+                                <artifactId>junit-jupiter</artifactId>
+                                <version>5.10.2</version>
+                                <scope>test</scope>
+                            </dependency>
+                        </dependencies>
+
+                        <build>
+                            <sourceDirectory>src/main/groovy</sourceDirectory>
+                            <testSourceDirectory>src/test/groovy</testSourceDirectory>
+                            <plugins>
+                                <plugin>
+                                    <groupId>org.codehaus.gmavenplus</groupId>
+                                    <artifactId>gmavenplus-plugin</artifactId>
+                                    <version>3.0.2</version>
+                                    <executions>
+                                        <execution>
+                                            <goals>
+                                                <goal>addSources</goal>
+                                                <goal>addTestSources</goal>
+                                                <goal>compile</goal>
+                                                <goal>compileTests</goal>
+                                            </goals>
+                                        </execution>
+                                    </executions>
+                                </plugin>
+                                <plugin>
+                                    <groupId>org.apache.maven.plugins</groupId>
+                                    <artifactId>maven-surefire-plugin</artifactId>
+                                    <version>3.2.5</version>
+                                </plugin>
+                            </plugins>
+                        </build>
+                    </project>
+                    """.formatted(group, artifact, javaVer, javaVer));
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
+            String gradleVersion = spec.safeGradleVersion();
+            if ("Local installation".equalsIgnoreCase(spec.safeGradleDistribution()) && !spec.safeGradleLocation().isBlank()) {
+                String detected = GradleMetadata.detectGradleVersionFromHome(Path.of(spec.safeGradleLocation()));
+                if (detected != null && !detected.isBlank()) {
+                    gradleVersion = detected;
+                }
+            }
+            ProjectSpec.GradleDsl dsl = spec.safeGradleDsl();
+
+            if (isMulti) {
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\ninclude(\"app\")\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
+                            }
+                            """);
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle.kts"), """
+                            plugins {
+                                groovy
+                                application
+                            }
+
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                implementation("org.apache.groovy:groovy:4.0.24")
+                                testImplementation(platform("org.junit:junit-bom:5.10.0"))
+                                testImplementation("org.junit.jupiter:junit-jupiter")
+                                testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion.set(JavaLanguageVersion.of(%s))
+                                }
+                            }
+
+                            application {
+                                mainClass.set("%s")
+                            }
+
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\ninclude 'app'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                            }
+                            """);
+                    Path appDir = dir.resolve("app");
+                    Files.createDirectories(appDir);
+                    Files.writeString(appDir.resolve("build.gradle"), """
+                            plugins {
+                                id 'groovy'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                implementation 'org.apache.groovy:groovy:4.0.24'
+                                testImplementation platform('org.junit:junit-bom:5.10.0')
+                                testImplementation 'org.junit.jupiter:junit-jupiter'
+                                testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion = JavaLanguageVersion.of(%s)
+                                }
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                }
+            } else {
+                if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                    Files.writeString(dir.resolve("settings.gradle.kts"),
+                            "rootProject.name = \"" + artifact + "\"\n");
+                    Files.writeString(dir.resolve("build.gradle.kts"), """
+                            plugins {
+                                groovy
+                                application
+                            }
+
+                            group = "%s"
+                            version = "1.0-SNAPSHOT"
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                implementation("org.apache.groovy:groovy:4.0.24")
+                                testImplementation(platform("org.junit:junit-bom:5.10.0"))
+                                testImplementation("org.junit.jupiter:junit-jupiter")
+                                testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion.set(JavaLanguageVersion.of(%s))
+                                }
+                            }
+
+                            application {
+                                mainClass.set("%s")
+                            }
+
+                            tasks.test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                } else {
+                    Files.writeString(dir.resolve("settings.gradle"),
+                            "rootProject.name = '" + artifact + "'\n");
+                    Files.writeString(dir.resolve("build.gradle"), """
+                            plugins {
+                                id 'groovy'
+                                id 'application'
+                            }
+
+                            group = '%s'
+                            version = '1.0-SNAPSHOT'
+
+                            repositories {
+                                mavenCentral()
+                            }
+
+                            dependencies {
+                                implementation 'org.apache.groovy:groovy:4.0.24'
+                                testImplementation platform('org.junit:junit-bom:5.10.0')
+                                testImplementation 'org.junit.jupiter:junit-jupiter'
+                                testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                            }
+
+                            java {
+                                toolchain {
+                                    languageVersion = JavaLanguageVersion.of(%s)
+                                }
+                            }
+
+                            application {
+                                mainClass = '%s'
+                            }
+
+                            test {
+                                useJUnitPlatform()
+                            }
+                            """.formatted(group, javaVer, mainFqcn));
+                }
+            }
+
+            generateGradleWrapper(dir, gradleVersion, log);
+            writeIdeaGradleXml(dir, spec.safeGradleDistribution(), spec.safeGradleLocation());
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("misc.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectRootManager" version="2" languageLevel="JDK_%s" default="true" project-jdk-name="%s" project-jdk-type="JavaSDK">
+                        <output url="file://$PROJECT_DIR$/out" />
+                      </component>
+                    </project>
+                    """.formatted(javaVer, javaVer));
+            Files.writeString(ideaDir.resolve("modules.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="ProjectModuleManager">
+                        <modules>
+                          <module fileurl="file://$PROJECT_DIR$/%s.iml" filepath="$PROJECT_DIR$/%s.iml" />
+                        </modules>
+                      </component>
+                    </project>
+                    """.formatted(artifact, artifact));
+            Files.writeString(dir.resolve(artifact + ".iml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <module type="JAVA_MODULE" version="4">
+                      <component name="NewModuleRootManager" inherit-compiler-output="true">
+                        <exclude-output />
+                        <content url="file://$MODULE_DIR$">
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/groovy" isTestSource="false" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
+                          <sourceFolder url="file://$MODULE_DIR$/src/test/groovy" isTestSource="true" />
+                        </content>
+                          <orderEntry type="inheritedJdk" />
+                          <orderEntry type="sourceFolder" forTests="false" />
+                          <orderEntry type="library" name="groovy-4.0.24" level="project" />
+                      </component>
+                    </module>
+                    """);
+        }
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    .gradle/
+                    build/
+                    !gradle/wrapper/gradle-wrapper.jar
+                    !**/src/main/**/build/
+                    !**/src/test/**/build/
+
+                    ### IntelliJ IDEA & Lumina ###
+                    .idea/
+                    .lumina/
+                    *.iws
+                    *.iml
+                    *.ipr
+                    out/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        } else {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    target/
+                    build/
+                    out/
+                    .gradle/
+                    .idea/
+                    .lumina/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        }
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        boolean isLocal = "Local installation".equalsIgnoreCase(distributionType) || "LOCAL".equalsIgnoreCase(distributionType);
+        String typeValue = isLocal ? "LOCAL" : "DEFAULT_WRAPPED";
+        String homeOption = (isLocal && gradleHome != null && !gradleHome.isBlank())
+                ? "\n        <option name=\"gradleHome\" value=\"" + gradleHome.replace("\\", "/") + "\" />"
+                : "";
+        String content = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="GradleMigrationSettings" migrationVersion="1" />
+                  <component name="GradleSettings">
+                    <option name="linkedExternalProjectsSettings">
+                      <GradleProjectSettings>
+                        <option name="distributionType" value="%s" />
+                        <option name="externalProjectPath" value="$PROJECT_DIR$" />%s
+                        <option name="modules">
+                          <set>
+                            <option value="$PROJECT_DIR$" />
+                          </set>
+                        </option>
+                      </GradleProjectSettings>
+                    </option>
+                  </component>
+                </project>
+                """.formatted(typeValue, homeOption);
+        Files.writeString(ideaDir.resolve("gradle.xml"), content);
     }
 
     public static void generateGradleWrapper(Path dir, String gradleVersion, Consumer<String> log) throws IOException {

@@ -95,7 +95,7 @@ public final class GradleMetadata {
                         : "https://services.gradle.org/distributions/gradle-" + version + "-bin.zip";
 
                 // We only want stable final releases matching IntelliJ IDEA's default dropdown
-                if (snapshot || nightly || broken || releaseCandidate) {
+                if (snapshot || nightly || broken || releaseCandidate || version.contains("-")) {
                     continue;
                 }
 
@@ -251,8 +251,12 @@ public final class GradleMetadata {
             detected.add(envHome);
         }
 
-        // 2. Common macOS / Linux package manager locations
+        // 2. Common Linux / macOS package manager locations
         List<Path> searchPaths = List.of(
+                Path.of("/usr/share/gradle"),
+                Path.of("/usr/lib/gradle"),
+                Path.of("/opt/gradle"),
+                Path.of("/usr/local/gradle"),
                 Path.of("/opt/homebrew/opt/gradle"),
                 Path.of("/usr/local/opt/gradle"),
                 Path.of("/opt/homebrew/bin/gradle"),
@@ -266,7 +270,8 @@ public final class GradleMetadata {
                     Path real = p.toRealPath();
                     Path home = Files.isDirectory(real) && Files.exists(real.resolve("bin/gradle"))
                             ? real
-                            : (Files.isRegularFile(real) ? real.getParent().getParent() : null);
+                            : (Files.isRegularFile(real) && real.getParent() != null && real.getParent().getParent() != null
+                                    ? real.getParent().getParent() : null);
                     if (home != null && isValidGradleHome(home) && !detected.contains(home.toString())) {
                         detected.add(home.toString());
                     }
@@ -275,7 +280,48 @@ public final class GradleMetadata {
             }
         }
 
+        // 3. Search PATH for 'gradle' binary
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null && !pathEnv.isBlank()) {
+            for (String part : pathEnv.split(File.pathSeparator)) {
+                if (part.isBlank()) continue;
+                Path binDir = Path.of(part);
+                Path gradleBin = binDir.resolve("gradle");
+                if (Files.isRegularFile(gradleBin)) {
+                    try {
+                        Path realBin = gradleBin.toRealPath();
+                        Path homeCandidate = realBin.getParent() != null ? realBin.getParent().getParent() : null;
+                        if (homeCandidate != null && isValidGradleHome(homeCandidate) && !detected.contains(homeCandidate.toString())) {
+                            detected.add(homeCandidate.toString());
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        }
+
         return detected;
+    }
+
+    /**
+     * Inspects a local Gradle home directory to determine its release version.
+     */
+    public static String detectGradleVersionFromHome(Path home) {
+        if (home == null || !Files.isDirectory(home)) return null;
+        Path libDir = home.resolve("lib");
+        if (Files.isDirectory(libDir)) {
+            try (var stream = Files.list(libDir)) {
+                for (Path jar : stream.toList()) {
+                    String fileName = jar.getFileName().toString();
+                    Matcher m = Pattern.compile("^gradle-(?:launcher|core|base-services)-([0-9]+(?:\\.[0-9]+)+.*?)\\.jar$").matcher(fileName);
+                    if (m.find()) {
+                        return m.group(1);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
     }
 
     private static boolean isValidGradleHome(Path home) {
