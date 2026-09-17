@@ -57,7 +57,8 @@ public final class ProjectGenerator {
             case EMPTY_PROJECT -> Files.createDirectories(dir);
             case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
-            case MICRONAUT, KTOR -> generateJava(spec, dir, log);
+            case MICRONAUT -> generateMicronaut(spec, dir, log);
+            case KTOR -> generateJava(spec, dir, log);
             case JAKARTA_EE -> generateJakarta(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
@@ -986,6 +987,395 @@ public final class ProjectGenerator {
         }
     }
 
+    // ----------------------------------------------------------- micronaut
+
+    private static void generateMicronaut(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String base = MicronautMetadata.normalizeServerUrl(spec.micronautServerUrl());
+        String appType = (spec.micronautAppType() != null && !spec.micronautAppType().isBlank())
+                ? spec.micronautAppType().toLowerCase() : "default";
+
+        String group = spec.group() == null || spec.group().isBlank() ? "org.example" : spec.group().trim();
+        String artifact = spec.artifact() == null || spec.artifact().isBlank()
+                ? (spec.name().isBlank() ? "demo" : spec.name().trim()) : spec.artifact().trim();
+        String projectIdentifier = (group + "." + artifact).replaceAll("^\\.+|\\.+$", "");
+
+        String lang = "java";
+        if (spec.language() == ProjectSpec.Language.KOTLIN) lang = "kotlin";
+        else if (spec.language() == ProjectSpec.Language.GROOVY) lang = "groovy";
+
+        String build = "gradle";
+        if (spec.micronautBuild() != null && !spec.micronautBuild().isBlank()) {
+            build = spec.micronautBuild();
+        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            build = "maven";
+        }
+
+        String test = "junit";
+        if (spec.micronautTestFramework() != null && !spec.micronautTestFramework().isBlank()) {
+            test = spec.micronautTestFramework().toLowerCase();
+        }
+
+        String javaVersion = (spec.javaVersion() != null && !spec.javaVersion().isBlank())
+                ? spec.javaVersion() : "21";
+
+        StringBuilder url = new StringBuilder(base)
+                .append("/create/").append(enc(appType))
+                .append("/").append(enc(projectIdentifier))
+                .append("?lang=").append(enc(lang))
+                .append("&build=").append(enc(build))
+                .append("&test=").append(enc(test))
+                .append("&javaVersion=").append(enc(javaVersion));
+
+        if (spec.micronautFeatures() != null && !spec.micronautFeatures().isBlank()) {
+            for (String f : spec.micronautFeatures().split(",")) {
+                String trimmed = f.trim();
+                if (!trimmed.isEmpty()) {
+                    url.append("&features=").append(enc(trimmed));
+                }
+            }
+        }
+
+        log.accept("Requesting Micronaut project from " + base + " …");
+
+        boolean downloaded = false;
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(12))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url.toString()))
+                    .timeout(Duration.ofSeconds(45))
+                    .header("User-Agent", "Lumina-IDE")
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if ((response.statusCode() == 200 || response.statusCode() == 201)
+                    && response.body() != null && response.body().length > 0) {
+                log.accept("Unpacking Micronaut project (" + (response.body().length / 1024) + " KB) …");
+                unzip(response.body(), dir);
+                for (String wrapper : new String[]{"mvnw", "gradlew"}) {
+                    Path w = dir.resolve(wrapper);
+                    if (Files.isRegularFile(w) && !w.toFile().setExecutable(true)) {
+                        log.accept("Note: could not mark " + wrapper + " executable");
+                    }
+                }
+                downloaded = true;
+            } else {
+                log.accept("Note: " + base + " returned HTTP " + response.statusCode() + " — using offline template.");
+            }
+        } catch (Exception e) {
+            log.accept("Note: could not reach " + base + " (" + e.getMessage() + ") — using offline template.");
+        }
+
+        if (!downloaded) {
+            generateLocalMicronaut(spec, dir, group, artifact, lang, build, test, javaVersion, log);
+        }
+    }
+
+    private static void generateLocalMicronaut(ProjectSpec spec, Path dir, String group, String artifact,
+                                               String lang, String build, String test, String javaVersion,
+                                               Consumer<String> log) throws IOException {
+        log.accept("Generating local Micronaut project …");
+        String version = (spec.micronautVersion() != null && !spec.micronautVersion().isBlank())
+                ? spec.micronautVersion() : MicronautMetadata.DEFAULT_VERSION;
+
+        boolean isKotlin = "kotlin".equalsIgnoreCase(lang);
+        boolean isGroovy = "groovy".equalsIgnoreCase(lang);
+        boolean isMaven = "maven".equalsIgnoreCase(build);
+        boolean isGradleKotlin = "gradle_kotlin".equalsIgnoreCase(build);
+
+        String pkg = spec.packageName();
+        if (pkg == null || pkg.isBlank()) {
+            pkg = (group + "." + artifact).replaceAll("[^a-zA-Z0-9_.]", "").replaceAll("^\\.+|\\.+$", "");
+        }
+        String pkgPath = pkg.replace('.', '/');
+
+        Path srcMain = dir.resolve(isKotlin ? "src/main/kotlin/" + pkgPath : (isGroovy ? "src/main/groovy/" + pkgPath : "src/main/java/" + pkgPath));
+        Path srcTest = dir.resolve(isKotlin ? "src/test/kotlin/" + pkgPath : (isGroovy ? "src/test/groovy/" + pkgPath : "src/test/java/" + pkgPath));
+        Path resources = dir.resolve("src/main/resources");
+
+        Files.createDirectories(srcMain);
+        Files.createDirectories(srcTest);
+        Files.createDirectories(resources);
+
+        // application.properties
+        Files.writeString(resources.resolve("application.properties"), """
+                micronaut.application.name=%s
+                """.formatted(artifact));
+
+        // logback.xml
+        Files.writeString(resources.resolve("logback.xml"), """
+                <configuration>
+                    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                        <encoder>
+                            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                        </encoder>
+                    </appender>
+                    <root level="info">
+                        <appender-ref ref="STDOUT" />
+                    </root>
+                </configuration>
+                """);
+
+        // Application code
+        if (isKotlin) {
+            Files.writeString(srcMain.resolve("Application.kt"), """
+                    package %s
+
+                    import io.micronaut.runtime.Micronaut.run
+
+                    fun main(args: Array<String>) {
+                        run(*args)
+                    }
+                    """.formatted(pkg));
+            Files.writeString(srcTest.resolve("ApplicationTest.kt"), """
+                    package %s
+
+                    import io.micronaut.runtime.EmbeddedApplication
+                    import io.micronaut.test.extensions.junit5.annotation.MicronautTest
+                    import org.junit.jupiter.api.Assertions
+                    import org.junit.jupiter.api.Test
+                    import jakarta.inject.Inject
+
+                    @MicronautTest
+                    class ApplicationTest {
+
+                        @Inject
+                        lateinit var application: EmbeddedApplication<*>
+
+                        @Test
+                        fun testItWorks() {
+                            Assertions.assertTrue(application.isRunning)
+                        }
+                    }
+                    """.formatted(pkg));
+        } else if (isGroovy) {
+            Files.writeString(srcMain.resolve("Application.groovy"), """
+                    package %s
+
+                    import io.micronaut.runtime.Micronaut
+                    import groovy.transform.CompileStatic
+
+                    @CompileStatic
+                    class Application {
+                        static void main(String[] args) {
+                            Micronaut.run(Application, args)
+                        }
+                    }
+                    """.formatted(pkg));
+            Files.writeString(srcTest.resolve("ApplicationSpec.groovy"), """
+                    package %s
+
+                    import io.micronaut.runtime.EmbeddedApplication
+                    import io.micronaut.test.extensions.spock.annotation.MicronautTest
+                    import spock.lang.Specification
+                    import jakarta.inject.Inject
+
+                    @MicronautTest
+                    class ApplicationSpec extends Specification {
+
+                        @Inject
+                        EmbeddedApplication<?> application
+
+                        void "test it works"() {
+                            expect:
+                            application.running
+                        }
+                    }
+                    """.formatted(pkg));
+        } else {
+            Files.writeString(srcMain.resolve("Application.java"), """
+                    package %s;
+
+                    import io.micronaut.runtime.Micronaut;
+
+                    public class Application {
+
+                        public static void main(String[] args) {
+                            Micronaut.run(Application.class, args);
+                        }
+                    }
+                    """.formatted(pkg));
+            Files.writeString(srcTest.resolve("ApplicationTest.java"), """
+                    package %s;
+
+                    import io.micronaut.runtime.EmbeddedApplication;
+                    import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+                    import org.junit.jupiter.api.Test;
+                    import org.junit.jupiter.api.Assertions;
+                    import jakarta.inject.Inject;
+
+                    @MicronautTest
+                    class ApplicationTest {
+
+                        @Inject
+                        EmbeddedApplication<?> application;
+
+                        @Test
+                        void testItWorks() {
+                            Assertions.assertTrue(application.isRunning());
+                        }
+                    }
+                    """.formatted(pkg));
+        }
+
+        // Build file
+        if (isMaven) {
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                      <modelVersion>4.0.0</modelVersion>
+                      <groupId>%s</groupId>
+                      <artifactId>%s</artifactId>
+                      <version>0.1</version>
+                      <packaging>jar</packaging>
+
+                      <parent>
+                        <groupId>io.micronaut.platform</groupId>
+                        <artifactId>micronaut-parent</artifactId>
+                        <version>%s</version>
+                      </parent>
+
+                      <properties>
+                        <packaging>jar</packaging>
+                        <jdk.version>%s</jdk.version>
+                        <release.version>%s</release.version>
+                        <micronaut.version>%s</micronaut.version>
+                        <micronaut.runtime>netty</micronaut.runtime>
+                        <exec.mainClass>%s.Application</exec.mainClass>
+                      </properties>
+
+                      <dependencies>
+                        <dependency>
+                          <groupId>io.micronaut</groupId>
+                          <artifactId>micronaut-http-server-netty</artifactId>
+                          <scope>compile</scope>
+                        </dependency>
+                        <dependency>
+                          <groupId>io.micronaut.serde</groupId>
+                          <artifactId>micronaut-serde-jackson</artifactId>
+                          <scope>compile</scope>
+                        </dependency>
+                        <dependency>
+                          <groupId>ch.qos.logback</groupId>
+                          <artifactId>logback-classic</artifactId>
+                          <scope>runtime</scope>
+                        </dependency>
+                        <dependency>
+                          <groupId>io.micronaut.test</groupId>
+                          <artifactId>micronaut-test-junit5</artifactId>
+                          <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                          <groupId>org.junit.jupiter</groupId>
+                          <artifactId>junit-jupiter-api</artifactId>
+                          <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                          <groupId>org.junit.jupiter</groupId>
+                          <artifactId>junit-jupiter-engine</artifactId>
+                          <scope>test</scope>
+                        </dependency>
+                      </dependencies>
+
+                      <build>
+                        <plugins>
+                          <plugin>
+                            <groupId>io.micronaut.maven</groupId>
+                            <artifactId>micronaut-maven-plugin</artifactId>
+                          </plugin>
+                          <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-compiler-plugin</artifactId>
+                            <configuration>
+                              <annotationProcessorPaths combine.children="append">
+                                <path>
+                                  <groupId>io.micronaut</groupId>
+                                  <artifactId>micronaut-inject-java</artifactId>
+                                  <version>${micronaut.core.version}</version>
+                                </path>
+                              </annotationProcessorPaths>
+                            </configuration>
+                          </plugin>
+                        </plugins>
+                      </build>
+                    </project>
+                    """.formatted(group, artifact, version, javaVersion, javaVersion, version, pkg));
+        } else if (isGradleKotlin) {
+            Files.writeString(dir.resolve("settings.gradle.kts"), "rootProject.name = \"" + artifact + "\"\n");
+            Files.writeString(dir.resolve("build.gradle.kts"), """
+                    plugins {
+                        id("io.micronaut.application") version "%s"
+                    }
+
+                    version = "0.1"
+                    group = "%s"
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                        annotationProcessor("io.micronaut:micronaut-http-validation")
+                        annotationProcessor("io.micronaut.serde:micronaut-serde-processor")
+                        implementation("io.micronaut:micronaut-http-server-netty")
+                        implementation("io.micronaut.serde:micronaut-serde-jackson")
+                        runtimeOnly("ch.qos.logback:logback-classic")
+                        testImplementation("io.micronaut.test:micronaut-test-junit5")
+                        testImplementation("org.junit.jupiter:junit-jupiter-api")
+                        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+                    }
+
+                    application {
+                        mainClass.set("%s.Application")
+                    }
+
+                    java {
+                        sourceCompatibility = JavaVersion.toVersion("%s")
+                        targetCompatibility = JavaVersion.toVersion("%s")
+                    }
+                    """.formatted(version, group, pkg, javaVersion, javaVersion));
+        } else {
+            // Gradle Groovy
+            Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = '" + artifact + "'\n");
+            Files.writeString(dir.resolve("build.gradle"), """
+                    plugins {
+                        id 'io.micronaut.application' version '%s'
+                    }
+
+                    version = '0.1'
+                    group = '%s'
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                        annotationProcessor 'io.micronaut:micronaut-http-validation'
+                        annotationProcessor 'io.micronaut.serde:micronaut-serde-processor'
+                        implementation 'io.micronaut:micronaut-http-server-netty'
+                        implementation 'io.micronaut.serde:micronaut-serde-jackson'
+                        runtimeOnly 'ch.qos.logback:logback-classic'
+                        testImplementation 'io.micronaut.test:micronaut-test-junit5'
+                        testImplementation 'org.junit.jupiter:junit-jupiter-api'
+                        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+                    }
+
+                    application {
+                        mainClass = '%s.Application'
+                    }
+
+                    java {
+                        sourceCompatibility = JavaVersion.toVersion('%s')
+                        targetCompatibility = JavaVersion.toVersion('%s')
+                    }
+                    """.formatted(version, group, pkg, javaVersion, javaVersion));
+        }
+    }
+
     // -------------------------------------------------------- maven archetype
 
     private static void generateMavenArchetype(ProjectSpec spec, Path dir, Consumer<String> log)
@@ -1123,10 +1513,46 @@ public final class ProjectGenerator {
 
     private static void unzip(byte[] zipBytes, Path target) throws IOException {
         Path root = target.toAbsolutePath().normalize();
+        String commonPrefix = null;
+        boolean hasMultipleRoots = false;
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                Path out = root.resolve(entry.getName()).normalize();
+                String name = entry.getName();
+                if (name.startsWith("/")) name = name.substring(1);
+                int slash = name.indexOf('/');
+                if (slash > 0) {
+                    String prefix = name.substring(0, slash + 1);
+                    if (commonPrefix == null) {
+                        commonPrefix = prefix;
+                    } else if (!name.startsWith(commonPrefix)) {
+                        hasMultipleRoots = true;
+                        break;
+                    }
+                } else if (!entry.isDirectory()) {
+                    hasMultipleRoots = true;
+                    break;
+                }
+                zis.closeEntry();
+            }
+        }
+        if (hasMultipleRoots || commonPrefix == null) {
+            commonPrefix = "";
+        }
+
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name.startsWith("/")) name = name.substring(1);
+                if (!commonPrefix.isEmpty() && name.startsWith(commonPrefix)) {
+                    name = name.substring(commonPrefix.length());
+                }
+                if (name.isEmpty() || name.equals("/")) {
+                    zis.closeEntry();
+                    continue;
+                }
+                Path out = root.resolve(name).normalize();
                 if (!out.startsWith(root)) {
                     throw new IOException("Blocked zip entry outside target: " + entry.getName());
                 }
@@ -1134,7 +1560,7 @@ public final class ProjectGenerator {
                     Files.createDirectories(out);
                 } else {
                     Files.createDirectories(out.getParent());
-                    Files.copy(zis, out);
+                    Files.copy(zis, out, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 }
                 zis.closeEntry();
             }

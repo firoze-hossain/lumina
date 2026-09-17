@@ -35,7 +35,13 @@ public record ProjectSpec(
         String jakartaVersion,       // Jakarta EE version, e.g. "Jakarta EE 11"
         String jakartaTemplate,      // "REST service", "Web application", "Library"
         String jakartaDependencies,  // comma-separated IDs
-        String jakartaAppServer      // e.g. "<No application server>"
+        String jakartaAppServer,     // e.g. "<No application server>"
+        String micronautServerUrl,
+        String micronautVersion,
+        String micronautTestFramework,
+        String micronautAppType,
+        String micronautFeatures,
+        String micronautBuild
 ) {
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
@@ -54,7 +60,33 @@ public record ProjectSpec(
                 archetypeVersion, projectVersion, additionalProperties,
                 rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
                 quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
-                addSampleCode, JakartaMetadata.EE_11, JakartaMetadata.TEMPLATE_REST, "", "<No application server>");
+                addSampleCode, JakartaMetadata.EE_11, JakartaMetadata.TEMPLATE_REST, "", "<No application server>",
+                MicronautMetadata.DEFAULT_SERVER_URL, MicronautMetadata.DEFAULT_VERSION, "JUNIT", "default", "", "gradle");
+    }
+
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer,
+                MicronautMetadata.DEFAULT_SERVER_URL, MicronautMetadata.DEFAULT_VERSION,
+                "JUNIT", "default", "", "gradle");
     }
 
     public ProjectSpec(

@@ -519,6 +519,51 @@ public class NewProjectDialog {
     private BorderPane jakartaDepsPage;
     private boolean onJakartaDepsPage;
 
+    // ---- Micronaut features page (page 2 of the wizard) ----
+    private record MicronautAppType(String label, String value) {
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private final ToggleButton testJUnit = new ToggleButton("JUnit");
+    private final ToggleButton testKotest = new ToggleButton("Kotest");
+    private final ToggleButton testSpock = new ToggleButton("Spock");
+    private final ToggleGroup testGroup = new ToggleGroup();
+    private final HBox testFrameworkRow = new HBox(8);
+    private Label testFrameworkLabel;
+
+    private final ComboBox<MicronautAppType> micronautAppTypeBox = new ComboBox<>(
+            FXCollections.observableArrayList(
+                    new MicronautAppType("Application", "default"),
+                    new MicronautAppType("CLI Application", "cli"),
+                    new MicronautAppType("Function", "function"),
+                    new MicronautAppType("gRPC Application", "grpc"),
+                    new MicronautAppType("Messaging-Driven Application", "messaging")
+            )
+    );
+    private Label micronautAppTypeLabel;
+    private final List<Node> micronautStep1Nodes = new ArrayList<>();
+
+    private String micronautServerUrl = dev.lumina.project.MicronautMetadata.DEFAULT_SERVER_URL;
+    private String micronautVersion = dev.lumina.project.MicronautMetadata.DEFAULT_VERSION;
+    private final Label micronautVersionHeaderLabel = new Label("Micronaut: " + dev.lumina.project.MicronautMetadata.DEFAULT_VERSION);
+    private final TextField micronautSearchField = new TextField();
+    private final Label micronautCatalogStatus = new Label();
+    private List<dev.lumina.project.MicronautMetadata.MicronautCategory> micronautCategories = dev.lumina.project.MicronautMetadata.FALLBACK_CATEGORIES;
+    private static volatile dev.lumina.project.MicronautMetadata.MicronautCatalog cachedMicronautCatalog;
+    private static volatile boolean micronautFetchFailed;
+    private boolean micronautFetchStarted;
+    private final TreeView<Object> micronautTree = new TreeView<>();
+    private final Set<String> selectedMicronautFeatureIds = new LinkedHashSet<>();
+    private final Label micronautDetailTitle = new Label();
+    private final Label micronautDetailDesc = new Label();
+    private final VBox micronautAddedBox = new VBox(4);
+    private final Label micronautNoFeatures = new Label("No features added");
+    private BorderPane micronautFeaturesPage;
+    private boolean onMicronautFeaturesPage;
+
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
             FXCollections.observableArrayList(FALLBACK_BOOT_VERSIONS));
@@ -584,7 +629,10 @@ public class NewProjectDialog {
         jakartaDepsPage = buildJakartaDependencyPage();
         jakartaDepsPage.setVisible(false);
         jakartaDepsPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage);
+        micronautFeaturesPage = buildMicronautFeaturesPage();
+        micronautFeaturesPage.setVisible(false);
+        micronautFeaturesPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage, micronautFeaturesPage);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -962,6 +1010,21 @@ public class NewProjectDialog {
         grid.add(typeRow, 1, row++);
         typeNodes.addAll(List.of(typeLabel, typeRow));
 
+        testGroup.getToggles().addAll(testJUnit, testKotest, testSpock);
+        testJUnit.setToggleGroup(testGroup);
+        testKotest.setToggleGroup(testGroup);
+        testSpock.setToggleGroup(testGroup);
+        testJUnit.getStyleClass().addAll("segment", "segment-first");
+        testKotest.getStyleClass().addAll("segment");
+        testSpock.getStyleClass().addAll("segment", "segment-last");
+        testJUnit.setSelected(true);
+        testFrameworkRow.getChildren().setAll(testJUnit, testKotest, testSpock);
+        testFrameworkRow.getStyleClass().add("segmented");
+        testFrameworkLabel = formLabel("Test framework:");
+        grid.add(testFrameworkLabel, 0, row);
+        grid.add(testFrameworkRow, 1, row++);
+        micronautStep1Nodes.addAll(List.of(testFrameworkLabel, testFrameworkRow));
+
         packagingGroup.getToggles().addAll(packagingJar, packagingWar);
         packagingJar.setToggleGroup(packagingGroup);
         packagingWar.setToggleGroup(packagingGroup);
@@ -1007,6 +1070,20 @@ public class NewProjectDialog {
         grid.add(artifactLabel, 0, row);
         grid.add(artifactField, 1, row++);
         standardOnlyNodes.addAll(List.of(artifactLabel, artifactField));
+
+        micronautAppTypeBox.getSelectionModel().selectFirst();
+        micronautAppTypeBox.setMaxWidth(Double.MAX_VALUE);
+        micronautAppTypeBox.setOnAction(e -> {
+            MicronautAppType appType = micronautAppTypeBox.getValue();
+            if (appType != null) {
+                loadMicronautFeaturesForAppType(appType.value());
+            }
+        });
+        micronautAppTypeLabel = formLabel("Application type:");
+        grid.add(micronautAppTypeLabel, 0, row);
+        grid.add(micronautAppTypeBox, 1, row++);
+        micronautStep1Nodes.addAll(List.of(micronautAppTypeLabel, micronautAppTypeBox));
+        setNodesVisible(micronautStep1Nodes, false);
 
         Label packageLabel = formLabel("Package name:");
         grid.add(packageLabel, 0, row);
@@ -2444,6 +2521,367 @@ public class NewProjectDialog {
         }
     }
 
+    // ----------------------------------------------------------- micronaut features
+
+    private BorderPane buildMicronautFeaturesPage() {
+        BorderPane page = new BorderPane();
+        page.getStyleClass().addAll("spring-deps-page", "micronaut-deps-page");
+        page.setPadding(new Insets(16, 20, 16, 20));
+
+        // Top bar
+        HBox versionRow = new HBox(12);
+        versionRow.setAlignment(Pos.CENTER_LEFT);
+        micronautVersionHeaderLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+        micronautCatalogStatus.setStyle("-fx-text-fill: #72778A; -fx-font-size: 11px;");
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+        versionRow.getChildren().addAll(micronautVersionHeaderLabel, topSpacer, micronautCatalogStatus);
+
+        Label featuresHeader = new Label("Features:");
+        featuresHeader.setStyle("-fx-font-size: 13px; -fx-text-fill: #A0A5B5;");
+        VBox.setMargin(featuresHeader, new Insets(10, 0, 8, 0));
+
+        VBox topBox = new VBox(versionRow, featuresHeader);
+        page.setTop(topBox);
+
+        // Center split: Left tree, Right details & added
+        HBox center = new HBox(16);
+        center.setPadding(new Insets(6, 0, 0, 0));
+
+        // Left pane: Search field + TreeView
+        VBox leftPane = new VBox(8);
+        leftPane.setPrefWidth(450);
+        leftPane.setMinWidth(360);
+
+        HBox searchBox = new HBox(6);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.getStyleClass().add("search-box-container");
+        searchBox.setPadding(new Insets(4, 8, 4, 8));
+        searchBox.setStyle("-fx-background-color: #21242C; -fx-background-radius: 4; -fx-border-color: #363B4A; -fx-border-radius: 4;");
+
+        SVGPath searchIcon = new SVGPath();
+        searchIcon.setContent("M 6,1 C 8.8,1 11,3.2 11,6 C 11,7.2 10.6,8.3 9.9,9.1 L 13.5,12.7 L 12.7,13.5 L 9.1,9.9 C 8.3,10.6 7.2,11 6,11 C 3.2,11 1,8.8 1,6 C 1,3.2 3.2,1 6,1 Z M 6,2.2 C 3.9,2.2 2.2,3.9 2.2,6 C 2.2,8.1 3.9,9.8 6,9.8 C 8.1,9.8 9.8,8.1 9.8,6 C 9.8,3.9 8.1,2.2 6,2.2 Z");
+        searchIcon.setFill(Color.web("#8B92A6"));
+
+        micronautSearchField.setPromptText("Search");
+        micronautSearchField.getStyleClass().add("dep-search-field");
+        micronautSearchField.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #72778A; -fx-border-color: transparent;");
+        HBox.setHgrow(micronautSearchField, Priority.ALWAYS);
+        micronautSearchField.textProperty().addListener((obs, old, text) -> rebuildMicronautTree(text));
+
+        searchBox.getChildren().addAll(searchIcon, micronautSearchField);
+
+        micronautTree.setShowRoot(false);
+        micronautTree.getStyleClass().add("dep-tree");
+        VBox.setVgrow(micronautTree, Priority.ALWAYS);
+        micronautTree.setCellFactory(tv -> createMicronautCell());
+
+        micronautTree.getSelectionModel().selectedItemProperty().addListener((obs, old, item) -> {
+            if (item != null) {
+                if (item.getValue() instanceof dev.lumina.project.MicronautMetadata.MicronautFeature feat) {
+                    showMicronautFeatureDetail(feat);
+                } else if (item.getValue() instanceof String catName) {
+                    showMicronautCategoryDetail(catName);
+                }
+            }
+        });
+
+        leftPane.getChildren().addAll(searchBox, micronautTree);
+
+        // Right pane: Detail section + Added features section
+        VBox rightPane = new VBox(16);
+        HBox.setHgrow(rightPane, Priority.ALWAYS);
+
+        // Top Details
+        VBox detailBox = new VBox(8);
+        detailBox.setPadding(new Insets(12, 14, 12, 14));
+        detailBox.setStyle("-fx-background-color: #1E2129; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        detailBox.setPrefHeight(160);
+        detailBox.setMinHeight(130);
+
+        micronautDetailTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #FFFFFF;");
+        micronautDetailTitle.setText("Server");
+
+        micronautDetailDesc.setWrapText(true);
+        micronautDetailDesc.setStyle("-fx-font-size: 12px; -fx-text-fill: #9DA3B4; -fx-line-spacing: 2px;");
+        micronautDetailDesc.setText("");
+
+        detailBox.getChildren().addAll(micronautDetailTitle, micronautDetailDesc);
+
+        // Bottom Added features
+        VBox addedContainer = new VBox(8);
+        VBox.setVgrow(addedContainer, Priority.ALWAYS);
+
+        Label addedLabel = new Label("Added features:");
+        addedLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #D8DBE6;");
+
+        ScrollPane addedScroll = new ScrollPane();
+        addedScroll.setFitToWidth(true);
+        addedScroll.getStyleClass().add("dep-added-scroll");
+        VBox.setVgrow(addedScroll, Priority.ALWAYS);
+
+        micronautAddedBox.setPadding(new Insets(10));
+        micronautAddedBox.setStyle("-fx-background-color: #1A1D24; -fx-background-radius: 6; -fx-border-color: #2D323E; -fx-border-radius: 6;");
+        micronautAddedBox.setMinHeight(160);
+
+        micronautNoFeatures.setStyle("-fx-text-fill: #5E6476; -fx-font-size: 13px;");
+        micronautNoFeatures.setAlignment(Pos.CENTER);
+        micronautNoFeatures.setMaxWidth(Double.MAX_VALUE);
+        micronautNoFeatures.setPadding(new Insets(30, 0, 30, 0));
+
+        micronautAddedBox.getChildren().add(micronautNoFeatures);
+        addedScroll.setContent(micronautAddedBox);
+
+        addedContainer.getChildren().addAll(addedLabel, addedScroll);
+
+        rightPane.getChildren().addAll(detailBox, addedContainer);
+
+        center.getChildren().addAll(leftPane, rightPane);
+        page.setCenter(center);
+
+        rebuildMicronautTree("");
+        return page;
+    }
+
+    private TreeCell<Object> createMicronautCell() {
+        return new TreeCell<>() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("dep-category-cell", "dep-item-cell");
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                if (item instanceof String catName) {
+                    setText(catName);
+                    setGraphic(null);
+                    getStyleClass().add("dep-category-cell");
+                    return;
+                }
+                if (item instanceof dev.lumina.project.MicronautMetadata.MicronautFeature feat) {
+                    CheckBox cb = new CheckBox(feat.title());
+                    cb.getStyleClass().add("dep-checkbox");
+                    cb.setSelected(selectedMicronautFeatureIds.contains(feat.name()));
+                    cb.setOnAction(e -> {
+                        if (cb.isSelected()) {
+                            selectedMicronautFeatureIds.add(feat.name());
+                        } else {
+                            selectedMicronautFeatureIds.remove(feat.name());
+                        }
+                        refreshAddedMicronautFeatures();
+                    });
+                    setOnMouseEntered(e -> showMicronautFeatureDetail(feat));
+                    setOnMouseClicked(e -> showMicronautFeatureDetail(feat));
+                    getStyleClass().add("dep-item-cell");
+                    setGraphic(cb);
+                    setText(null);
+                }
+            }
+        };
+    }
+
+    private void rebuildMicronautTree(String filter) {
+        String needle = filter == null ? "" : filter.trim().toLowerCase();
+        TreeItem<Object> root = new TreeItem<>("root");
+        for (dev.lumina.project.MicronautMetadata.MicronautCategory cat : micronautCategories) {
+            List<dev.lumina.project.MicronautMetadata.MicronautFeature> matches;
+            if (needle.isEmpty()) {
+                matches = cat.features();
+            } else {
+                matches = cat.features().stream()
+                        .filter(f -> f.title().toLowerCase().contains(needle)
+                                || f.name().toLowerCase().contains(needle)
+                                || f.description().toLowerCase().contains(needle))
+                        .toList();
+            }
+            if (matches.isEmpty()) continue;
+
+            TreeItem<Object> catItem = new TreeItem<>(cat.name());
+            catItem.setExpanded(!needle.isEmpty() || cat.name().equalsIgnoreCase("Server"));
+            for (dev.lumina.project.MicronautMetadata.MicronautFeature f : matches) {
+                catItem.getChildren().add(new TreeItem<>(f));
+            }
+            root.getChildren().add(catItem);
+        }
+        micronautTree.setRoot(root);
+    }
+
+    private void showMicronautFeatureDetail(dev.lumina.project.MicronautMetadata.MicronautFeature feat) {
+        if (feat == null) return;
+        micronautDetailTitle.setText(feat.title());
+        micronautDetailDesc.setText(feat.description().isBlank()
+                ? "No description available for " + feat.title() : feat.description());
+    }
+
+    private void showMicronautCategoryDetail(String categoryName) {
+        micronautDetailTitle.setText(categoryName);
+        micronautDetailDesc.setText("");
+    }
+
+    private void refreshAddedMicronautFeatures() {
+        micronautAddedBox.getChildren().clear();
+        if (selectedMicronautFeatureIds.isEmpty()) {
+            micronautAddedBox.getChildren().add(micronautNoFeatures);
+            return;
+        }
+
+        for (String name : selectedMicronautFeatureIds) {
+            dev.lumina.project.MicronautMetadata.MicronautFeature feat = findMicronautFeature(name);
+            String label = feat != null ? feat.title() : name;
+
+            HBox row = new HBox(8);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(4, 8, 4, 8));
+            row.setStyle("-fx-background-color: #212530; -fx-background-radius: 4;");
+
+            Label nameLbl = new Label(label);
+            nameLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            HBox.setHgrow(nameLbl, Priority.ALWAYS);
+
+            Button remove = new Button("\u00D7");
+            remove.getStyleClass().add("dep-added-remove");
+            remove.setStyle("-fx-background-color: transparent; -fx-text-fill: #8B92A6; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0 4 0 4;");
+            remove.setOnAction(e -> {
+                selectedMicronautFeatureIds.remove(name);
+                refreshAddedMicronautFeatures();
+                micronautTree.refresh();
+            });
+
+            row.getChildren().addAll(nameLbl, remove);
+            micronautAddedBox.getChildren().add(row);
+        }
+    }
+
+    private dev.lumina.project.MicronautMetadata.MicronautFeature findMicronautFeature(String name) {
+        for (dev.lumina.project.MicronautMetadata.MicronautCategory cat : micronautCategories) {
+            for (dev.lumina.project.MicronautMetadata.MicronautFeature feat : cat.features()) {
+                if (feat.name().equals(name)) return feat;
+            }
+        }
+        return null;
+    }
+
+    private void kickOffMicronautMetadataFetch() {
+        if (cachedMicronautCatalog != null) {
+            applyMicronautCatalog(cachedMicronautCatalog);
+            return;
+        }
+        if (micronautFetchStarted) return;
+        micronautFetchStarted = true;
+        micronautCatalogStatus.setText("Checking launch.micronaut.io …");
+
+        Thread worker = new Thread(() -> {
+            try {
+                String appType = micronautAppTypeBox.getValue() != null
+                        ? micronautAppTypeBox.getValue().value() : "default";
+                dev.lumina.project.MicronautMetadata.MicronautCatalog catalog =
+                        dev.lumina.project.MicronautMetadata.fetchCatalog(micronautServerUrl, appType);
+                cachedMicronautCatalog = catalog;
+                Platform.runLater(() -> applyMicronautCatalog(catalog));
+            } catch (Exception e) {
+                micronautFetchFailed = true;
+                Platform.runLater(() -> {
+                    micronautCatalogStatus.setText("");
+                    applyMicronautCatalog(dev.lumina.project.MicronautMetadata.FALLBACK_CATALOG);
+                });
+            }
+        }, "lumina-micronaut-metadata-fetch");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void applyMicronautCatalog(dev.lumina.project.MicronautMetadata.MicronautCatalog catalog) {
+        if (catalog.version() != null && !catalog.version().isBlank()) {
+            micronautVersion = catalog.version();
+            micronautVersionHeaderLabel.setText("Micronaut: " + micronautVersion);
+        }
+        if (catalog.categories() != null && !catalog.categories().isEmpty()) {
+            micronautCategories = catalog.categories();
+            rebuildMicronautTree(micronautSearchField.getText());
+        }
+        micronautCatalogStatus.setText("");
+    }
+
+    private void loadMicronautFeaturesForAppType(String appType) {
+        micronautCatalogStatus.setText("Updating features …");
+        Thread worker = new Thread(() -> {
+            try {
+                java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofSeconds(6))
+                        .build();
+                List<dev.lumina.project.MicronautMetadata.MicronautCategory> categories =
+                        dev.lumina.project.MicronautMetadata.fetchFeatures(client,
+                                dev.lumina.project.MicronautMetadata.normalizeServerUrl(micronautServerUrl), appType);
+                Platform.runLater(() -> {
+                    if (categories != null && !categories.isEmpty()) {
+                        micronautCategories = categories;
+                        rebuildMicronautTree(micronautSearchField.getText());
+                    }
+                    micronautCatalogStatus.setText("");
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> micronautCatalogStatus.setText(""));
+            }
+        }, "lumina-micronaut-features-fetch");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void goToMicronautFeaturesPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onMicronautFeaturesPage = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        micronautFeaturesPage.setVisible(true);
+        micronautFeaturesPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToMicronautForm());
+
+        kickOffMicronautMetadataFetch();
+    }
+
+    private void backToMicronautForm() {
+        onMicronautFeaturesPage = false;
+        micronautFeaturesPage.setVisible(false);
+        micronautFeaturesPage.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToMicronautFeaturesPage());
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
     private static void openBrowser(String url) {
         try {
             if (java.awt.Desktop.isDesktopSupported()
@@ -2866,6 +3304,11 @@ public class NewProjectDialog {
             jakartaDepsPage.setVisible(false);
             jakartaDepsPage.setManaged(false);
         }
+        if (micronautFeaturesPage != null) {
+            onMicronautFeaturesPage = false;
+            micronautFeaturesPage.setVisible(false);
+            micronautFeaturesPage.setManaged(false);
+        }
         if (sidebar != null) {
             sidebar.setVisible(true);
             sidebar.setManaged(true);
@@ -2873,6 +3316,7 @@ public class NewProjectDialog {
         ProjectSpec.Generator generator = selected.generator();
         boolean spring = generator == ProjectSpec.Generator.SPRING_BOOT;
         boolean quarkus = generator == ProjectSpec.Generator.QUARKUS;
+        boolean micronaut = generator == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
@@ -2884,7 +3328,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case MICRONAUT, KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -2893,27 +3337,30 @@ public class NewProjectDialog {
             dependenciesRow.setVisible(false);
             dependenciesRow.setManaged(false);
         }
-        if (quarkus) {
+        if (micronaut) {
+            serverUrlLabel.setText(micronautServerUrl.replaceFirst("^https?://", ""));
+        } else if (quarkus) {
             serverUrlLabel.setText(quarkusServerUrl.replaceFirst("^https?://", ""));
         } else if (spring) {
             serverUrlLabel.setText("start.spring.io");
         }
-        setNodesVisible(serverNodes, spring || quarkus);
+        setNodesVisible(serverNodes, spring || quarkus || micronaut);
         setNodesVisible(jakartaOnlyNodes, jakarta);
-        setNodesVisible(languageNodes, spring || javafx || quarkus || jakarta);
+        setNodesVisible(languageNodes, spring || javafx || quarkus || jakarta || micronaut);
         langGroovy.setVisible(!quarkus);
         langGroovy.setManaged(!quarkus);
         if (quarkus && langGroovy.isSelected()) {
             langJava.setSelected(true);
         }
         if (typeLabel != null) {
-            typeLabel.setText(quarkus ? "Build system:" : "Type:");
+            typeLabel.setText(quarkus || micronaut ? "Build system:" : "Type:");
         }
-        setNodesVisible(typeNodes, spring || quarkus);
+        setNodesVisible(typeNodes, spring || quarkus || micronaut);
+        setNodesVisible(micronautStep1Nodes, micronaut);
         setNodesVisible(springConfigNodes, spring);
-        setNodesVisible(buildSystemNodes, !spring && !quarkus && !mavenArchetype && !rust && !empty && !web && !specific);
+        setNodesVisible(buildSystemNodes, !spring && !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific);
         setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific && !jakarta);
-        setNodesVisible(packageNodes, !quarkus && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta));
+        setNodesVisible(packageNodes, !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta));
         setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
         setNodesVisible(webOnlyNodes, web);
         setNodesVisible(viteOnlyNodes, vite);
@@ -2947,6 +3394,9 @@ public class NewProjectDialog {
             } else if (quarkus) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToQuarkusDepsPage());
+            } else if (micronaut) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToMicronautFeaturesPage());
             } else if (jakarta) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToJakartaDepsPage());
@@ -3268,6 +3718,27 @@ public class NewProjectDialog {
             });
             return;
         }
+        if (selected.generator() == ProjectSpec.Generator.MICRONAUT) {
+            TextInputDialog dialog = new TextInputDialog(micronautServerUrl);
+            dialog.initOwner(stage);
+            dialog.setTitle("Micronaut Server URL");
+            dialog.setHeaderText("Specify custom launch.micronaut.io server URL");
+            dialog.setContentText("Server URL:");
+            dialog.getDialogPane().getStylesheets().add(
+                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+            dialog.showAndWait().ifPresent(url -> {
+                if (!url.isBlank()) {
+                    micronautServerUrl = dev.lumina.project.MicronautMetadata.normalizeServerUrl(url);
+                    String display = micronautServerUrl.replaceFirst("^https?://", "");
+                    serverUrlLabel.setText(display);
+                    cachedMicronautCatalog = null;
+                    micronautFetchFailed = false;
+                    micronautFetchStarted = false;
+                    kickOffMicronautMetadataFetch();
+                }
+            });
+            return;
+        }
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.initOwner(stage);
         alert.setTitle("Spring Initializr Server");
@@ -3296,6 +3767,7 @@ public class NewProjectDialog {
         boolean mavenArchetype = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = selected.generator() == ProjectSpec.Generator.RUST;
         boolean quarkus = selected.generator() == ProjectSpec.Generator.QUARKUS;
+        boolean micronaut = selected.generator() == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = selected.generator() == ProjectSpec.Generator.JAKARTA_EE;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
@@ -3310,7 +3782,7 @@ public class NewProjectDialog {
         ProjectSpec.BuildSystem build;
         if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
-        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT || quarkus) {
+        } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT || quarkus || micronaut) {
             if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
                 build = ProjectSpec.BuildSystem.GRADLE;
             } else {
@@ -3332,6 +3804,17 @@ public class NewProjectDialog {
             quarkusStreamKey = quarkusStreamBox.getValue().key();
         }
 
+        String micronautBuild = "gradle";
+        if (typeGradleKotlin.isSelected()) micronautBuild = "gradle_kotlin";
+        else if (typeMaven.isSelected()) micronautBuild = "maven";
+
+        String micronautTest = "JUNIT";
+        if (testKotest.isSelected()) micronautTest = "KOTEST";
+        else if (testSpock.isSelected()) micronautTest = "SPOCK";
+
+        String micronautAppType = micronautAppTypeBox.getValue() != null
+                ? micronautAppTypeBox.getValue().value() : "default";
+
         ProjectSpec.Packaging packaging = packagingJar.isSelected()
                 ? ProjectSpec.Packaging.JAR : ProjectSpec.Packaging.WAR;
         ProjectSpec.ConfigFormat configFormat = configYaml.isSelected()
@@ -3348,7 +3831,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -3379,7 +3862,13 @@ public class NewProjectDialog {
                 jakartaVersionBox.getValue() != null ? jakartaVersionBox.getValue() : dev.lumina.project.JakartaMetadata.EE_11,
                 jakartaTemplateBox.getValue() != null ? jakartaTemplateBox.getValue() : dev.lumina.project.JakartaMetadata.TEMPLATE_REST,
                 jakarta ? String.join(",", selectedJakartaDepIds) : "",
-                jakartaAppServerBox.getValue() != null ? jakartaAppServerBox.getValue() : "<No application server>");
+                jakartaAppServerBox.getValue() != null ? jakartaAppServerBox.getValue() : "<No application server>",
+                micronautServerUrl,
+                micronautVersion,
+                micronautTest,
+                micronautAppType,
+                micronaut ? String.join(",", selectedMicronautFeatureIds) : "",
+                micronautBuild);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
