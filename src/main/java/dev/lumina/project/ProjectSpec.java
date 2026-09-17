@@ -64,8 +64,57 @@ public record ProjectSpec(
         String gradleVersion,
         String gradleHome,
         boolean generateMultiModule,
-        String groovyVersion
+        String groovyVersion,
+        String sbtVersion,
+        String scalaVersion,
+        boolean scalaDownloadSbtSources,
+        boolean scalaDownloadScalaSources,
+        boolean scalaOptionalBraces,
+        String scalaPackagePrefix,
+        String scalaModuleName
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins, String htmlProjectType,
+            String htmlVersion, String reactProjectType, String reactNodeInterpreter,
+            String reactCliVersion, boolean reactTypeScript,
+            String expressNodeInterpreter, String expressCliVersion,
+            String expressViewEngine, String expressStylesheetEngine,
+            GradleDsl gradleDsl, String gradleDistribution, String gradleVersion,
+            String gradleHome, boolean generateMultiModule, String groovyVersion
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                htmlProjectType, htmlVersion, reactProjectType, reactNodeInterpreter,
+                reactCliVersion, reactTypeScript,
+                expressNodeInterpreter, expressCliVersion,
+                expressViewEngine, expressStylesheetEngine,
+                gradleDsl, gradleDistribution, gradleVersion, gradleHome, generateMultiModule,
+                groovyVersion != null && !groovyVersion.isBlank() ? groovyVersion : "5.1.1",
+                "2.0.9", "3.9.0", false, true, false, "", "");
+    }
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,
@@ -397,16 +446,16 @@ public record ProjectSpec(
     }
 
     public enum Generator {
-        JAVA, KOTLIN, GROOVY, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
+        JAVA, KOTLIN, GROOVY, SCALA, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
         JAVAFX, QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS,
         ANGULAR_CLI, VUE, VITE, NUXT, RUST
     }
 
-    public enum BuildSystem { INTELLIJ, MAVEN, GRADLE }
+    public enum BuildSystem { INTELLIJ, MAVEN, GRADLE, SBT, SCALA_CLI }
 
     public enum GradleDsl { KOTLIN, GROOVY }
 
-    public enum Language { JAVA, KOTLIN, GROOVY }
+    public enum Language { JAVA, KOTLIN, GROOVY, SCALA }
 
     public enum Packaging { JAR, WAR }
 
@@ -441,6 +490,34 @@ public record ProjectSpec(
             return "5.1.1";
         }
         return groovyVersion.trim();
+    }
+
+    public String safeSbtVersion() {
+        return sbtVersion != null && !sbtVersion.isBlank() ? sbtVersion.trim() : "2.0.9";
+    }
+
+    public String safeScalaVersion() {
+        return scalaVersion != null && !scalaVersion.isBlank() ? scalaVersion.trim() : "3.9.0";
+    }
+
+    public boolean safeScalaDownloadSbtSources() {
+        return scalaDownloadSbtSources;
+    }
+
+    public boolean safeScalaDownloadScalaSources() {
+        return scalaDownloadScalaSources;
+    }
+
+    public boolean safeScalaOptionalBraces() {
+        return scalaOptionalBraces;
+    }
+
+    public String safeScalaPackagePrefix() {
+        return scalaPackagePrefix != null ? scalaPackagePrefix.trim() : "";
+    }
+
+    public String safeScalaModuleName() {
+        return scalaModuleName != null && !scalaModuleName.isBlank() ? scalaModuleName.trim() : (name != null ? name.trim() : "untitled1");
     }
 
     public Path projectDir() {
