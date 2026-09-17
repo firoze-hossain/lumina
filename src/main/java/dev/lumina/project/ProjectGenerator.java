@@ -61,6 +61,7 @@ public final class ProjectGenerator {
             case JAVA -> generateJava(spec, dir, log);
             case GROOVY -> generateGroovy(spec, dir, log);
             case SCALA -> generateScala(spec, dir, log);
+            case PYTHON -> generatePython(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
@@ -3294,6 +3295,81 @@ public final class ProjectGenerator {
 
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    private static void generatePython(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Python project (" + spec.safePythonInterpreterType() + ") …");
+
+        Files.createDirectories(dir);
+
+        // 1. main.py (sample script matching PyCharm / IntelliJ)
+        Files.writeString(dir.resolve("main.py"), """
+                def print_hi(name):
+                    # Use a breakpoint in the code line below to debug your script.
+                    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+
+
+                # Press the green button in the gutter to run the script.
+                if __name__ == '__main__':
+                    print_hi('PyCharm')
+                """);
+
+        // 2. .gitignore
+        Files.writeString(dir.resolve(".gitignore"), """
+                .venv/
+                venv/
+                ENV/
+                env/
+                .idea/
+                .lumina/
+                __pycache__/
+                *.py[cod]
+                *$py.class
+                .pytest_cache/
+                .ruff_cache/
+                .mypy_cache/
+                dist/
+                build/
+                *.egg-info/
+                """);
+
+        // 3. uv-specific project files (pyproject.toml, .python-version)
+        if (spec.safePythonInterpreterType() == ProjectSpec.PythonInterpreterType.UV) {
+            String pyVer = spec.safePythonVersion();
+            String reqVer = "Default".equalsIgnoreCase(pyVer) ? "3.12" : pyVer;
+
+            StringBuilder toml = new StringBuilder();
+            toml.append("[project]\n");
+            toml.append("name = \"").append(spec.name().toLowerCase().replaceAll("[^a-z0-9_-]", "-")).append("\"\n");
+            toml.append("version = \"0.1.0\"\n");
+            toml.append("description = \"Add your description here\"\n");
+            toml.append("readme = \"README.md\"\n");
+            toml.append("requires-python = \">=").append(reqVer).append("\"\n");
+            toml.append("dependencies = []\n");
+            Files.writeString(dir.resolve("pyproject.toml"), toml.toString());
+
+            if (!"Default".equalsIgnoreCase(pyVer)) {
+                Files.writeString(dir.resolve(".python-version"), pyVer + "\n");
+            }
+        }
+
+        // 4. README.md
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+
+        // 5. .idea/misc.xml (Python SDK integration)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        String sdkName = spec.safePythonInterpreterType() == ProjectSpec.PythonInterpreterType.UV
+                ? "Python " + spec.safePythonVersion() + " (uv)"
+                : "Python " + spec.safePythonVersion() + " (" + spec.name() + ")";
+        Files.writeString(ideaDir.resolve("misc.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="ProjectRootManager" version="2" project-jdk-name="%s" project-jdk-type="Python SDK" />
+                </project>
+                """.formatted(sdkName));
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {

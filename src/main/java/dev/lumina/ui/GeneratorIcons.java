@@ -30,6 +30,7 @@ public final class GeneratorIcons {
             case "Kotlin" -> kotlinIcon();
             case "Groovy" -> groovyIcon();
             case "Scala" -> scalaIcon();
+            case "Python" -> pythonIcon();
             case "Rust" -> rustIcon();
             case "Empty Project" -> emptyProjectIcon();
             case "Maven Archetype" -> mavenIcon();
@@ -356,6 +357,20 @@ public final class GeneratorIcons {
         scala.setContent("M 12.37 0.75 c 0.00 1.15 -5.56 2.04 -8.75 2.25 v 3.28 c 1.35 0.09 3.12 0.30 4.71 0.60 c -1.60 0.30 -3.36 0.51 -4.71 0.60 v 3.28 c 1.35 0.09 3.11 0.30 4.71 0.60 c -1.59 0.30 -3.36 0.51 -4.71 0.60 V 15.25 l 1.58 -0.23 c 2.95 -0.44 6.20 -1.28 7.17 -2.02 V 9.69 c 0.00 -0.21 -0.38 -0.43 -0.98 -0.66 c 0.43 -0.17 0.77 -0.34 0.98 -0.51 V 5.22 c 0.00 -0.21 -0.37 -0.43 -0.97 -0.66 c 0.42 -0.17 0.76 -0.35 0.97 -0.51 V 0.75 z M 11.39 9.39 c 0.44 0.17 0.59 0.29 0.64 0.34 c -0.04 0.07 -0.17 0.21 -0.55 0.40 c -0.06 0.03 -0.13 0.06 -0.19 0.08 l 0.00 0.00 c -0.65 0.28 -1.67 0.56 -2.97 0.80 c -0.64 -0.12 -1.32 -0.23 -2.01 -0.32 C 8.26 10.35 10.17 9.86 11.39 9.39 z M 11.40 4.92 c 0.43 0.17 0.58 0.29 0.63 0.34 c -0.03 0.05 -0.11 0.15 -0.32 0.28 l -0.00 -0.00 c -0.04 0.02 -0.09 0.05 -0.14 0.08 c -0.62 0.33 -1.74 0.65 -3.22 0.93 c -0.64 -0.12 -1.33 -0.23 -2.01 -0.32 C 8.28 5.88 10.17 5.40 11.40 4.92 z");
         scala.setFill(Color.web("#DE3423"));
         return box(scala);
+    }
+
+    /** Python: official blue and yellow intertwined snakes matching IntelliJ IDEA. */
+    public static Node pythonIcon() {
+        SVGPath blueSnake = new SVGPath();
+        blueSnake.setContent("M 7.94 1.05 c -3.55 0.00 -3.33 1.53 -3.33 1.53 V 4.18 h 3.38 v 0.50 H 3.27 S 1.00 4.40 1.00 8.00 s 2.01 3.46 2.01 3.46 H 4.17 V 9.78 s -0.07 -2.01 1.95 -2.01 h 3.38 s 1.89 0.03 1.89 -1.83 V 2.90 s 0.29 -1.86 -3.42 -1.86 h 0.00 Z M 6.08 2.12 a 0.61 0.61 0 1 1 -0.59 0.62 v -0.01 a 0.61 0.61 0 0 1 0.61 -0.61 h 0.00 Z");
+        blueSnake.setFill(Color.web("#3776AB"));
+
+        SVGPath yellowSnake = new SVGPath();
+        yellowSnake.setContent("M 8.04 14.96 c 3.55 0.00 3.33 -1.54 3.33 -1.54 V 11.82 H 7.99 v -0.50 h 4.74 S 15.00 11.58 15.00 8.00 s -2.01 -3.46 -2.01 -3.46 H 11.82 V 6.20 s 0.07 2.01 -1.95 2.01 H 6.49 S 4.60 8.18 4.60 10.03 V 13.10 s -0.29 1.86 3.42 1.86 h 0.02 Z m 1.87 -1.07 a 0.61 0.61 0 1 1 0.59 -0.62 v 0.01 a 0.61 0.61 0 0 1 -0.61 0.61 h 0.01 Z");
+        yellowSnake.setFill(Color.web("#FFD43B"));
+
+        Group g = new Group(blueSnake, yellowSnake);
+        return box(g);
     }
 
     /** Default fallback bullet. */
