@@ -72,6 +72,27 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
                     List.of(List.of(openCmd, indexHtml.toAbsolutePath().toString())), root));
         }
 
+        Path packageJson = root.resolve("package.json");
+        if (Files.isRegularFile(packageJson)) {
+            String content = readQuiet(packageJson);
+            String npmCmd = System.getProperty("os.name", "").toLowerCase().contains("win") ? "npm.cmd" : "npm";
+            if (content.contains("\"start\":")) {
+                configs.add(new RunConfiguration(
+                        "npm start \u2014 " + root.getFileName(),
+                        List.of(List.of(npmCmd, "start")), root));
+            }
+            if (content.contains("\"dev\":")) {
+                configs.add(new RunConfiguration(
+                        "npm run dev \u2014 " + root.getFileName(),
+                        List.of(List.of(npmCmd, "run", "dev")), root));
+            }
+            if (content.contains("\"test\":")) {
+                configs.add(new RunConfiguration(
+                        "npm test \u2014 " + root.getFileName(),
+                        List.of(List.of(npmCmd, "test")), root));
+            }
+        }
+
         return configs;
     }
 

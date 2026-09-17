@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import dev.lumina.project.NodeMetadata;
 import dev.lumina.project.ProjectSpec;
+import dev.lumina.project.ReactMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -615,6 +617,18 @@ public class NewProjectDialog {
     private final Button htmlRefreshButton = new Button("\u27F3");
     private boolean htmlInitialized = false;
     private volatile boolean htmlFetching = false;
+
+    // ---- React generator fields (React / React Native / Next.js) ----
+    private final ToggleGroup reactProjectTypeGroup = new ToggleGroup();
+    private final ComboBox<String> reactNodeInterpreterBox = new ComboBox<>();
+    private final Button reactNodeBrowseBtn = new Button("\u2026");
+    private final ComboBox<String> reactCliBox = new ComboBox<>();
+    private final Button reactCliBrowseBtn = new Button("\u2026");
+    private final Label reactCliLabel = new Label("create-react-app:");
+    private final CheckBox reactTsCheck = new CheckBox("Create TypeScript project");
+    private final VBox reactAdvisoryBox = new VBox(6);
+    private boolean reactInitialized = false;
+    private String lastValidNodeInterpreter = "";
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -3501,7 +3515,243 @@ public class NewProjectDialog {
         t.start();
     }
 
+    // ------------------------------------------------------------ react logic
 
+    private void initReactControls() {
+        if (reactInitialized) return;
+        reactInitialized = true;
+
+        reactNodeInterpreterBox.getStyleClass().add("choice-box");
+        reactNodeInterpreterBox.setPrefWidth(360);
+        reactCliBox.getStyleClass().add("choice-box");
+        reactCliBox.setPrefWidth(360);
+
+        reactCliLabel.getStyleClass().add("form-label");
+
+        reactNodeBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        reactCliBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        Tooltip.install(reactNodeBrowseBtn, new Tooltip("Select Node.js interpreter executable"));
+        Tooltip.install(reactCliBrowseBtn, new Tooltip("Specify custom CLI version or package"));
+
+        // FileChooser for Node interpreter
+        reactNodeBrowseBtn.setOnAction(e -> pickNodeExecutable());
+
+        // File/version chooser for CLI
+        reactCliBrowseBtn.setOnAction(e -> pickCliVersion());
+
+        // Node interpreter dropdown selection listener
+        reactNodeInterpreterBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    reactNodeInterpreterBox.setValue(lastValidNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!reactNodeInterpreterBox.getItems().contains(display)) {
+                            reactNodeInterpreterBox.getItems().add(0, display);
+                        }
+                        reactNodeInterpreterBox.setValue(display);
+                        lastValidNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidNodeInterpreter = val;
+            }
+        });
+
+        // CLI box selection listener
+        reactCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (ReactMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickCliVersion);
+            }
+        });
+
+        // Populate Node interpreters
+        refreshNodeInterpreters();
+
+        // Populate initial CLI
+        updateCliBoxForType(ReactMetadata.TYPE_REACT);
+
+        // Build Advisory warning box matching screenshot
+        buildReactAdvisory();
+
+        // Project type change listener
+        reactProjectTypeGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
+            if (toggle instanceof ToggleButton tb) {
+                String type = tb.getText();
+                reactCliLabel.setText(ReactMetadata.getCliLabel(type));
+                updateCliBoxForType(type);
+                boolean isReact = ReactMetadata.TYPE_REACT.equalsIgnoreCase(type);
+                reactAdvisoryBox.setVisible(isReact);
+                reactAdvisoryBox.setManaged(isReact);
+            }
+        });
+    }
+
+    private void refreshNodeInterpreters() {
+        Thread t = new Thread(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                reactNodeInterpreterBox.setItems(items);
+                if (!items.isEmpty()) {
+                    reactNodeInterpreterBox.getSelectionModel().selectFirst();
+                    lastValidNodeInterpreter = items.getFirst();
+                }
+            });
+        }, "lumina-node-detector");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void updateCliBoxForType(String type) {
+        List<String> versions = ReactMetadata.getVersions(type);
+        ObservableList<String> items = FXCollections.observableArrayList();
+        for (String v : versions) {
+            items.add(ReactMetadata.formatCliDisplay(type, v));
+        }
+        items.add(ReactMetadata.ACTION_SELECT);
+        reactCliBox.setItems(items);
+        reactCliBox.getSelectionModel().selectFirst();
+
+        // Async fetch latest from npm
+        Thread t = new Thread(() -> {
+            String latest = ReactMetadata.fetchLatestVersion(type, false);
+            if (latest != null && !latest.isBlank()) {
+                Platform.runLater(() -> {
+                    if (getSelectedReactProjectType().equalsIgnoreCase(type)) {
+                        String formatted = ReactMetadata.formatCliDisplay(type, latest);
+                        if (!reactCliBox.getItems().contains(formatted)) {
+                            reactCliBox.getItems().add(0, formatted);
+                            reactCliBox.getSelectionModel().selectFirst();
+                        }
+                    }
+                });
+            }
+        }, "lumina-npm-fetcher");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void buildReactAdvisory() {
+        reactAdvisoryBox.getChildren().clear();
+        reactAdvisoryBox.setPadding(new Insets(6, 0, 0, 0));
+
+        javafx.scene.text.Text text1 = new javafx.scene.text.Text("Using the ");
+        text1.setFill(Color.web("#E06C75"));
+
+        javafx.scene.text.Text textBold = new javafx.scene.text.Text("create-react-app");
+        textBold.setFill(Color.web("#E06C75"));
+        textBold.setStyle("-fx-font-weight: bold;");
+
+        javafx.scene.text.Text text2 = new javafx.scene.text.Text(" is not the advised method for creating React applications. The preferred\napproach is to use a template with the ");
+        text2.setFill(Color.web("#E06C75"));
+
+        javafx.scene.text.Text textLink = new javafx.scene.text.Text("Vite bundler");
+        textLink.setFill(Color.web("#61AFEF"));
+        textLink.setUnderline(true);
+        textLink.setCursor(javafx.scene.Cursor.HAND);
+        textLink.setOnMouseClicked(e -> {
+            for (GeneratorEntry entry : allSidebarEntries) {
+                if (entry.generator() == ProjectSpec.Generator.VITE) {
+                    selectSidebarEntry(entry);
+                    break;
+                }
+            }
+        });
+
+        javafx.scene.text.Text text3 = new javafx.scene.text.Text(" when using React without a framework.");
+        text3.setFill(Color.web("#E06C75"));
+
+        javafx.scene.text.TextFlow textFlow = new javafx.scene.text.TextFlow(text1, textBold, text2, textLink, text3);
+        textFlow.setLineSpacing(3);
+        reactAdvisoryBox.getChildren().setAll(textFlow);
+    }
+
+    private void pickNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/local/bin");
+        if (!initial.exists()) initial = new File("/opt/homebrew/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!reactNodeInterpreterBox.getItems().contains(display)) {
+                reactNodeInterpreterBox.getItems().add(0, display);
+            }
+            reactNodeInterpreterBox.setValue(display);
+            lastValidNodeInterpreter = display;
+        } else {
+            reactNodeInterpreterBox.setValue(lastValidNodeInterpreter);
+        }
+    }
+
+    private void pickCliVersion() {
+        TextInputDialog dialog = new TextInputDialog("5.1.0");
+        dialog.setTitle("Select CLI Version");
+        dialog.setHeaderText("Specify package version or custom command:");
+        dialog.setContentText("Version:");
+        dialog.initOwner(stage);
+        var opt = dialog.showAndWait();
+        if (opt.isPresent() && !opt.get().isBlank()) {
+            String customVer = opt.get().trim();
+            String formatted = ReactMetadata.formatCliDisplay(getSelectedReactProjectType(), customVer);
+            if (!reactCliBox.getItems().contains(formatted)) {
+                reactCliBox.getItems().add(0, formatted);
+            }
+            reactCliBox.setValue(formatted);
+        } else {
+            reactCliBox.getSelectionModel().selectFirst();
+        }
+    }
+
+    private String getSelectedReactProjectType() {
+        Toggle t = reactProjectTypeGroup.getSelectedToggle();
+        if (t instanceof ToggleButton tb) {
+            return tb.getText();
+        }
+        return ReactMetadata.TYPE_REACT;
+    }
+
+    private String getSelectedReactNodeInterpreter() {
+        String val = reactNodeInterpreterBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val)
+                || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return "/usr/local/bin/node";
+        }
+        String s = val.trim();
+        if (s.startsWith("node")) {
+            s = s.substring(4).trim();
+        }
+        String[] parts = s.split("\\s+");
+        if (parts.length > 0 && !parts[0].isBlank()) {
+            return parts[0].trim();
+        }
+        return "/usr/local/bin/node";
+    }
+
+    private String getSelectedReactCliVersion() {
+        String val = reactCliBox.getValue();
+        if (val == null || val.isBlank() || ReactMetadata.ACTION_SELECT.equals(val)) {
+            return "5.1.0";
+        }
+        String[] parts = val.trim().split("\\s+");
+        if (parts.length > 0) {
+            return parts[parts.length - 1].trim();
+        }
+        return "5.1.0";
+    }
 
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
@@ -4004,8 +4254,9 @@ public class NewProjectDialog {
         setNodesVisible(javafxHiddenNodes,
                 !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta || ktor));
         boolean html = generator == ProjectSpec.Generator.HTML;
-        gitCheck.setVisible(!web && !html);
-        gitCheck.setManaged(!web && !html);
+        boolean react = generator == ProjectSpec.Generator.REACT;
+        gitCheck.setVisible(!web && !html && !react);
+        gitCheck.setManaged(!web && !html && !react);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -4044,6 +4295,8 @@ public class NewProjectDialog {
         mavenArchetypeBox.setManaged(mavenArchetype);
         rustBox.setVisible(rust);
         rustBox.setManaged(rust);
+        emptyDescription.setVisible(empty);
+        emptyDescription.setManaged(empty);
 
         if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus || jakarta) ? "21" : "25");
         errorLabel.setText(selected.enabled() ? ""
@@ -4097,7 +4350,7 @@ public class NewProjectDialog {
                 add(form, row++, "Java:", choice("21", "17"));
             }
             case KTOR -> {
-                add(form, row++, "Group:", text("com.example"));
+                add(form, row++, "Server:", text(ktorServerUrl));
                 add(form, row++, "Artifact:", text("com.example.ktor-sample"));
                 add(form, row++, "Engine:", choice("Netty  Default", "CIO"));
                 form.add(selectedCheck("Add sample code"), 1, row++);
@@ -4134,12 +4387,39 @@ public class NewProjectDialog {
                 form.add(versionRow, 1, row++);
             }
             case REACT -> {
-                add(form, row++, "Project type:", segments("React", "React Native", "Next.js"));
-                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
-                add(form, row++, "create-react-app:", runtime("npx create-react-app                                      5.1.0"));
-                form.add(new CheckBox("Create TypeScript project"), 1, row++);
-                Label warning = new Label("Using the create-react-app is not the advised method for creating React applications. The preferred\napproach is to use a template with the Vite bundler when using React without a framework.");
-                warning.getStyleClass().add("form-error"); form.add(warning, 1, row++);
+                initReactControls();
+                Toggle previous = reactProjectTypeGroup.getSelectedToggle();
+                String selectedName = previous instanceof ToggleButton tb ? tb.getText() : ReactMetadata.TYPE_REACT;
+                reactProjectTypeGroup.getToggles().clear();
+                HBox typeSegments = segmented(reactProjectTypeGroup, false, ReactMetadata.TYPE_REACT, ReactMetadata.TYPE_REACT_NATIVE, ReactMetadata.TYPE_NEXT_JS);
+                for (Toggle t : reactProjectTypeGroup.getToggles()) {
+                    if (t instanceof ToggleButton tb && tb.getText().equalsIgnoreCase(selectedName)) {
+                        tb.setSelected(true);
+                        break;
+                    }
+                }
+                if (reactProjectTypeGroup.getSelectedToggle() == null && !reactProjectTypeGroup.getToggles().isEmpty()) {
+                    ((ToggleButton) reactProjectTypeGroup.getToggles().getFirst()).setSelected(true);
+                }
+                form.add(formLabel("Project type:"), 0, row);
+                form.add(typeSegments, 1, row++);
+
+                HBox nodeRow = new HBox(8, reactNodeInterpreterBox, reactNodeBrowseBtn);
+                nodeRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Node interpreter:"), 0, row);
+                form.add(nodeRow, 1, row++);
+
+                HBox cliRow = new HBox(8, reactCliBox, reactCliBrowseBtn);
+                cliRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(reactCliLabel, 0, row);
+                form.add(cliRow, 1, row++);
+
+                form.add(reactTsCheck, 1, row++);
+
+                boolean isReact = ReactMetadata.TYPE_REACT.equalsIgnoreCase(getSelectedReactProjectType());
+                reactAdvisoryBox.setVisible(isReact);
+                reactAdvisoryBox.setManaged(isReact);
+                form.add(reactAdvisoryBox, 1, row++);
             }
             case EXPRESS -> {
                 add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
@@ -4440,9 +4720,10 @@ public class NewProjectDialog {
         boolean jakarta = selected.generator() == ProjectSpec.Generator.JAKARTA_EE;
         boolean ktor = selected.generator() == ProjectSpec.Generator.KTOR;
         boolean html = selected.generator() == ProjectSpec.Generator.HTML;
+        boolean react = selected.generator() == ProjectSpec.Generator.REACT;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html) {
+            if (html || react) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled";
             } else {
@@ -4509,7 +4790,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -4555,7 +4836,11 @@ public class NewProjectDialog {
                 ktorConfigInBox.getValue() != null ? ktorConfigInBox.getValue() : "YAML File",
                 ktor ? String.join(",", selectedKtorPluginIds) : "",
                 getSelectedHtmlProjectType(),
-                htmlVersionBox.getValue() != null ? htmlVersionBox.getValue() : "v9.0.1");
+                htmlVersionBox.getValue() != null ? htmlVersionBox.getValue() : "v9.0.1",
+                getSelectedReactProjectType(),
+                getSelectedReactNodeInterpreter(),
+                getSelectedReactCliVersion(),
+                reactTsCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
