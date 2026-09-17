@@ -29,6 +29,7 @@ public final class GeneratorIcons {
             case "Java" -> javaIcon();
             case "Kotlin" -> kotlinIcon();
             case "Groovy" -> groovyIcon();
+            case "Scala" -> scalaIcon();
             case "Rust" -> rustIcon();
             case "Empty Project" -> emptyProjectIcon();
             case "Maven Archetype" -> mavenIcon();
@@ -347,6 +348,14 @@ public final class GeneratorIcons {
 
         Group nuxt = new Group(m1, m2);
         return box(nuxt);
+    }
+
+    /** Scala: red spiral staircase logo matching IntelliJ IDEA. */
+    private static Node scalaIcon() {
+        SVGPath scala = new SVGPath();
+        scala.setContent("M 12.37 0.75 c 0.00 1.15 -5.56 2.04 -8.75 2.25 v 3.28 c 1.35 0.09 3.12 0.30 4.71 0.60 c -1.60 0.30 -3.36 0.51 -4.71 0.60 v 3.28 c 1.35 0.09 3.11 0.30 4.71 0.60 c -1.59 0.30 -3.36 0.51 -4.71 0.60 V 15.25 l 1.58 -0.23 c 2.95 -0.44 6.20 -1.28 7.17 -2.02 V 9.69 c 0.00 -0.21 -0.38 -0.43 -0.98 -0.66 c 0.43 -0.17 0.77 -0.34 0.98 -0.51 V 5.22 c 0.00 -0.21 -0.37 -0.43 -0.97 -0.66 c 0.42 -0.17 0.76 -0.35 0.97 -0.51 V 0.75 z M 11.39 9.39 c 0.44 0.17 0.59 0.29 0.64 0.34 c -0.04 0.07 -0.17 0.21 -0.55 0.40 c -0.06 0.03 -0.13 0.06 -0.19 0.08 l 0.00 0.00 c -0.65 0.28 -1.67 0.56 -2.97 0.80 c -0.64 -0.12 -1.32 -0.23 -2.01 -0.32 C 8.26 10.35 10.17 9.86 11.39 9.39 z M 11.40 4.92 c 0.43 0.17 0.58 0.29 0.63 0.34 c -0.03 0.05 -0.11 0.15 -0.32 0.28 l -0.00 -0.00 c -0.04 0.02 -0.09 0.05 -0.14 0.08 c -0.62 0.33 -1.74 0.65 -3.22 0.93 c -0.64 -0.12 -1.33 -0.23 -2.01 -0.32 C 8.28 5.88 10.17 5.40 11.40 4.92 z");
+        scala.setFill(Color.web("#DE3423"));
+        return box(scala);
     }
 
     /** Default fallback bullet. */

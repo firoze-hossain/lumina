@@ -179,4 +179,58 @@ class ScalaSbtGeneratorTest {
         assertTrue(content.contains("//> using jvm 25"));
         assertTrue(content.contains("@main def main(): Unit ="));
     }
+
+    @Test
+    void testScalaCliProjectGenerationWithoutSampleCode(@TempDir Path tempDir) throws IOException {
+        ProjectSpec spec = new ProjectSpec(
+                ProjectSpec.Generator.SCALA,
+                "scala-cli-empty",
+                tempDir,
+                false,
+                ProjectSpec.BuildSystem.SCALA_CLI,
+                ProjectSpec.Language.SCALA,
+                ProjectSpec.Packaging.JAR,
+                ProjectSpec.ConfigFormat.PROPERTIES,
+                "org.example",
+                "scala-cli-empty",
+                "",
+                "25",
+                "", "", "", "", "", "1.0-SNAPSHOT", "",
+                "", "", "", "",
+                "", "", "", "GRADLE",
+                false, // addSampleCode = false
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", false, "", "", "", "",
+                "HTML5 Boilerplate", "v9.0.1", "React", "", "5.1.0", false,
+                "", "", "", "",
+                ProjectSpec.GradleDsl.KOTLIN,
+                "Wrapper",
+                "9.2.0",
+                "",
+                false,
+                "5.1.1",
+                "2.0.9",
+                "3.9.0",
+                false,
+                true,
+                true,
+                "",
+                "scala-cli-empty"
+        );
+
+        Path projectDir = ProjectGenerator.generate(spec, msg -> {});
+        Path mainFile = projectDir.resolve("src/main.scala");
+        assertTrue(Files.isRegularFile(mainFile), "src/main.scala must exist");
+        String content = Files.readString(mainFile);
+        assertTrue(content.contains("//> using scala 3.9.0"));
+        assertTrue(content.contains("//> using jvm 25"));
+        assertFalse(content.contains("@main def main(): Unit ="), "No sample code should be included when unchecked");
+    }
+
+    @Test
+    void testScalaIcon() {
+        javafx.scene.Node icon = dev.lumina.ui.GeneratorIcons.getIcon("Scala");
+        assertNotNull(icon, "Scala icon node must not be null");
+        assertTrue(icon instanceof javafx.scene.layout.StackPane, "Scala icon should be a StackPane");
+    }
 }
