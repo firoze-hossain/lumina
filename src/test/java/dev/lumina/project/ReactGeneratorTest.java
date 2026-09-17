@@ -35,7 +35,7 @@ public class ReactGeneratorTest {
     @Test
     void testReactMetadataLabelsAndFormatting() {
         assertEquals("create-react-app:", ReactMetadata.getCliLabel(ReactMetadata.TYPE_REACT));
-        assertEquals("react-native:", ReactMetadata.getCliLabel(ReactMetadata.TYPE_REACT_NATIVE));
+        assertEquals("React Native:", ReactMetadata.getCliLabel(ReactMetadata.TYPE_REACT_NATIVE));
         assertEquals("create-next-app:", ReactMetadata.getCliLabel(ReactMetadata.TYPE_NEXT_JS));
 
         assertEquals("create-react-app", ReactMetadata.getCliPackage(ReactMetadata.TYPE_REACT));
@@ -49,6 +49,37 @@ public class ReactGeneratorTest {
         String formatted = ReactMetadata.formatCliDisplay(ReactMetadata.TYPE_REACT, "5.1.0");
         assertTrue(formatted.contains("npx create-react-app"));
         assertTrue(formatted.endsWith("5.1.0"));
+
+        String rnFormatted = ReactMetadata.formatCliDisplay(ReactMetadata.TYPE_REACT_NATIVE, "20.2.0");
+        assertTrue(rnFormatted.contains("npx --package @react-native-community/cli rnc-cli"));
+        assertTrue(rnFormatted.endsWith("20.2.0"));
+
+        List<String> rnVersions = ReactMetadata.fetchAllVersions(ReactMetadata.TYPE_REACT_NATIVE, false);
+        assertFalse(rnVersions.isEmpty());
+        assertTrue(rnVersions.contains("20.2.0"));
+    }
+
+    @Test
+    void testParseNpmVersions() {
+        String sampleJson = """
+                {
+                  "name": "@react-native-community/cli",
+                  "versions": {
+                    "19.0.0": {},
+                    "20.0.0": {},
+                    "20.1.1": {},
+                    "20.2.0": {},
+                    "21.0.0-alpha.1": {}
+                  }
+                }
+                """;
+        List<String> versions = ReactMetadata.parseNpmVersions(sampleJson);
+        assertNotNull(versions);
+        assertEquals(4, versions.size(), "Should parse non-alpha versions");
+        assertEquals("20.2.0", versions.get(0), "Latest version should be first after reverse");
+        assertEquals("20.1.1", versions.get(1));
+        assertEquals("20.0.0", versions.get(2));
+        assertEquals("19.0.0", versions.get(3));
     }
 
     @Test
@@ -347,7 +378,7 @@ public class ReactGeneratorTest {
                 "v9.0.1",
                 ReactMetadata.TYPE_REACT_NATIVE,
                 "/usr/local/bin/node",
-                "15.1.3",
+                "20.2.0",
                 false
         );
 
@@ -355,11 +386,18 @@ public class ReactGeneratorTest {
 
         assertTrue(Files.exists(projectDir.resolve("app.json")), "app.json should exist");
         assertTrue(Files.exists(projectDir.resolve("index.js")), "index.js should exist");
-        assertTrue(Files.exists(projectDir.resolve("App.js")), "App.js should exist");
+        assertTrue(Files.exists(projectDir.resolve("App.tsx")), "App.tsx should exist");
+        assertTrue(Files.exists(projectDir.resolve("metro.config.js")), "metro.config.js should exist");
+        assertTrue(Files.exists(projectDir.resolve("babel.config.js")), "babel.config.js should exist");
+        assertTrue(Files.exists(projectDir.resolve("tsconfig.json")), "tsconfig.json should exist");
+        assertTrue(Files.exists(projectDir.resolve("Gemfile")), "Gemfile should exist");
+        assertTrue(Files.exists(projectDir.resolve("android")), "android directory should exist");
+        assertTrue(Files.exists(projectDir.resolve("ios")), "ios directory should exist");
         assertTrue(Files.exists(projectDir.resolve("package.json")), "package.json should exist");
 
         String packageJson = Files.readString(projectDir.resolve("package.json"));
         assertTrue(packageJson.contains("\"react-native\":"), "package.json should contain react-native");
+        assertTrue(packageJson.contains("\"@react-native-community/cli\": \"20.2.0\""), "package.json should contain cli version");
 
         // RunConfiguration detection
         List<RunConfiguration> runConfigs = RunConfiguration.detect(projectDir);

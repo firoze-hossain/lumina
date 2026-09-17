@@ -3585,8 +3585,11 @@ public class NewProjectDialog {
                 reactCliLabel.setText(ReactMetadata.getCliLabel(type));
                 updateCliBoxForType(type);
                 boolean isReact = ReactMetadata.TYPE_REACT.equalsIgnoreCase(type);
+                boolean isReactNative = ReactMetadata.TYPE_REACT_NATIVE.equalsIgnoreCase(type);
                 reactAdvisoryBox.setVisible(isReact);
                 reactAdvisoryBox.setManaged(isReact);
+                reactTsCheck.setVisible(!isReactNative);
+                reactTsCheck.setManaged(!isReactNative);
             }
         });
     }
@@ -3615,8 +3618,14 @@ public class NewProjectDialog {
     private void updateCliBoxForType(String type) {
         List<String> versions = ReactMetadata.getVersions(type);
         ObservableList<String> items = FXCollections.observableArrayList();
-        for (String v : versions) {
-            items.add(ReactMetadata.formatCliDisplay(type, v));
+        if (ReactMetadata.TYPE_REACT_NATIVE.equalsIgnoreCase(type)) {
+            // In IntelliJ IDEA, React Native displays primary version (e.g. 20.2.0) and Select...
+            String primaryVer = versions.isEmpty() ? "20.2.0" : versions.getFirst();
+            items.add(ReactMetadata.formatCliDisplay(type, primaryVer));
+        } else {
+            for (String v : versions) {
+                items.add(ReactMetadata.formatCliDisplay(type, v));
+            }
         }
         items.add(ReactMetadata.ACTION_SELECT);
         reactCliBox.setItems(items);
@@ -3698,22 +3707,15 @@ public class NewProjectDialog {
     }
 
     private void pickCliVersion() {
-        TextInputDialog dialog = new TextInputDialog("5.1.0");
-        dialog.setTitle("Select CLI Version");
-        dialog.setHeaderText("Specify package version or custom command:");
-        dialog.setContentText("Version:");
-        dialog.initOwner(stage);
-        var opt = dialog.showAndWait();
-        if (opt.isPresent() && !opt.get().isBlank()) {
-            String customVer = opt.get().trim();
-            String formatted = ReactMetadata.formatCliDisplay(getSelectedReactProjectType(), customVer);
+        String type = getSelectedReactProjectType();
+        String currentVer = getSelectedReactCliVersion();
+        new SelectCliVersionDialog(stage, type, currentVer, selectedVer -> {
+            String formatted = ReactMetadata.formatCliDisplay(type, selectedVer);
             if (!reactCliBox.getItems().contains(formatted)) {
                 reactCliBox.getItems().add(0, formatted);
             }
             reactCliBox.setValue(formatted);
-        } else {
-            reactCliBox.getSelectionModel().selectFirst();
-        }
+        }).show();
     }
 
     private String getSelectedReactProjectType() {
@@ -3743,14 +3745,16 @@ public class NewProjectDialog {
 
     private String getSelectedReactCliVersion() {
         String val = reactCliBox.getValue();
+        String type = getSelectedReactProjectType();
+        String defaultVer = ReactMetadata.TYPE_REACT_NATIVE.equalsIgnoreCase(type) ? "20.2.0" : "5.1.0";
         if (val == null || val.isBlank() || ReactMetadata.ACTION_SELECT.equals(val)) {
-            return "5.1.0";
+            return defaultVer;
         }
         String[] parts = val.trim().split("\\s+");
         if (parts.length > 0) {
             return parts[parts.length - 1].trim();
         }
-        return "5.1.0";
+        return defaultVer;
     }
 
     private HBox buildButtons() {
@@ -4414,6 +4418,9 @@ public class NewProjectDialog {
                 form.add(reactCliLabel, 0, row);
                 form.add(cliRow, 1, row++);
 
+                boolean isReactNative = ReactMetadata.TYPE_REACT_NATIVE.equalsIgnoreCase(getSelectedReactProjectType());
+                reactTsCheck.setVisible(!isReactNative);
+                reactTsCheck.setManaged(!isReactNative);
                 form.add(reactTsCheck, 1, row++);
 
                 boolean isReact = ReactMetadata.TYPE_REACT.equalsIgnoreCase(getSelectedReactProjectType());

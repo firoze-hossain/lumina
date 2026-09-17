@@ -711,6 +711,7 @@ public final class ProjectGenerator {
     private static void generateReactNative(ProjectSpec spec, Path dir, String version, boolean isTs, Consumer<String> log)
             throws IOException {
         String appName = sanitizeArtifact(spec.name());
+        String cliVer = (version != null && !version.isBlank()) ? version : "20.2.0";
 
         Files.writeString(dir.resolve("app.json"), """
                 {
@@ -729,17 +730,38 @@ public final class ProjectGenerator {
 
         String appCode = """
                 import React, {useState} from 'react';
-                import {SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+                import {
+                  SafeAreaView,
+                  StatusBar,
+                  StyleSheet,
+                  Text,
+                  TouchableOpacity,
+                  View,
+                  useColorScheme
+                } from 'react-native';
 
-                export default function App() {
+                export default function App(): React.JSX.Element {
                   const [count, setCount] = useState(0);
+                  const isDarkMode = useColorScheme() === 'dark';
+
+                  const backgroundStyle = {
+                    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                    flex: 1,
+                  };
 
                   return (
-                    <SafeAreaView style={styles.container}>
+                    <SafeAreaView style={backgroundStyle}>
+                      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
                       <View style={styles.content}>
-                        <Text style={styles.title}>%s</Text>
-                        <Text style={styles.subtitle}>Welcome to your React Native application</Text>
-                        <TouchableOpacity style={styles.button} onPress={() => setCount(c => c + 1)}>
+                        <Text style={[styles.title, {color: isDarkMode ? '#ffffff' : '#0f172a'}]}>
+                          %s
+                        </Text>
+                        <Text style={styles.subtitle}>
+                          Welcome to your React Native application created with Lumina IDE
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.button}
+                          onPress={() => setCount(c => c + 1)}>
                           <Text style={styles.buttonText}>Pressed {count} times</Text>
                         </TouchableOpacity>
                       </View>
@@ -748,16 +770,15 @@ public final class ProjectGenerator {
                 }
 
                 const styles = StyleSheet.create({
-                  container: {flex: 1, backgroundColor: '#f8fafc'},
                   content: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24},
-                  title: {fontSize: 28, fontWeight: 'bold', color: '#0f172a', marginBottom: 8},
-                  subtitle: {fontSize: 16, color: '#64748b', marginBottom: 24},
+                  title: {fontSize: 28, fontWeight: 'bold', marginBottom: 8},
+                  subtitle: {fontSize: 16, color: '#64748b', textAlign: 'center', marginBottom: 24},
                   button: {backgroundColor: '#3b82f6', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 10},
                   buttonText: {color: '#ffffff', fontSize: 16, fontWeight: '600'},
                 });
                 """.formatted(spec.name());
 
-        Files.writeString(dir.resolve(isTs ? "App.tsx" : "App.js"), appCode);
+        Files.writeString(dir.resolve("App.tsx"), appCode);
 
         Files.writeString(dir.resolve("package.json"), """
                 {
@@ -767,13 +788,100 @@ public final class ProjectGenerator {
                   "scripts": {
                     "android": "react-native run-android",
                     "ios": "react-native run-ios",
-                    "start": "react-native start"
+                    "start": "react-native start",
+                    "test": "jest",
+                    "lint": "eslint ."
                   },
                   "dependencies": {
                     "react": "18.3.1",
                     "react-native": "0.76.5"
+                  },
+                  "devDependencies": {
+                    "@react-native-community/cli": "%s",
+                    "@react-native-community/cli-platform-android": "%s",
+                    "@react-native-community/cli-platform-ios": "%s",
+                    "@types/react": "^18.3.12",
+                    "@types/react-test-renderer": "^18.3.0",
+                    "typescript": "^5.0.4"
                   }
                 }
+                """.formatted(appName, cliVer, cliVer, cliVer));
+
+        Files.writeString(dir.resolve("metro.config.js"), """
+                const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+                const config = {};
+                module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+                """);
+
+        Files.writeString(dir.resolve("babel.config.js"), """
+                module.exports = {
+                  presets: ['module:@react-native/babel-preset'],
+                };
+                """);
+
+        Files.writeString(dir.resolve("tsconfig.json"), """
+                {
+                  "extends": "@react-native/typescript-config/tsconfig.json",
+                  "compilerOptions": {
+                    "strict": true
+                  }
+                }
+                """);
+
+        Files.writeString(dir.resolve("Gemfile"), """
+                source 'https://rubygems.org'
+                gem 'cocoapods', '>= 1.13', :groups => [:default]
+                """);
+
+        // Native skeletons: android and ios
+        Path androidApp = dir.resolve("android").resolve("app").resolve("src").resolve("main");
+        Files.createDirectories(androidApp);
+        Files.writeString(dir.resolve("android").resolve("settings.gradle"), "rootProject.name = '" + appName + "'\ninclude ':app'\n");
+        Files.writeString(dir.resolve("android").resolve("build.gradle"), """
+                buildscript {
+                    ext {
+                        buildToolsVersion = "35.0.0"
+                        minSdkVersion = 24
+                        compileSdkVersion = 35
+                        targetSdkVersion = 35
+                        ndkVersion = "26.1.10909125"
+                        kotlinVersion = "1.9.24"
+                    }
+                }
+                """);
+        Files.writeString(androidApp.resolve("AndroidManifest.xml"), """
+                <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+                    <uses-permission android:name="android.permission.INTERNET" />
+                    <application
+                        android:label="%s"
+                        android:icon="@mipmap/ic_launcher"
+                        android:roundIcon="@mipmap/ic_launcher_round"
+                        android:allowBackup="false"
+                        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                        <activity
+                            android:name=".MainActivity"
+                            android:exported="true">
+                            <intent-filter>
+                                <action android:name="android.intent.action.MAIN" />
+                                <category android:name="android.intent.category.LAUNCHER" />
+                            </intent-filter>
+                        </activity>
+                    </application>
+                </manifest>
+                """.formatted(spec.name()));
+
+        Path iosDir = dir.resolve("ios");
+        Files.createDirectories(iosDir);
+        Files.writeString(iosDir.resolve("Podfile"), """
+                require_relative '../node_modules/react-native/scripts/react_native_pods'
+                require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
+
+                platform :ios, '15.1'
+                prepare_react_native_project!
+
+                target '%s' do
+                  use_react_native!
+                end
                 """.formatted(appName));
 
         Files.writeString(dir.resolve(".gitignore"), """
@@ -814,7 +922,7 @@ public final class ProjectGenerator {
         Files.writeString(dir.resolve("README.md"), """
                 # %s
 
-                React Native project created with Lumina IDE.
+                React Native project created with Lumina IDE and `@react-native-community/cli` (%s).
 
                 ## Getting Started
                 Start Metro bundler:
@@ -829,7 +937,7 @@ public final class ProjectGenerator {
                 ```bash
                 npm run android
                 ```
-                """.formatted(spec.name()));
+                """.formatted(spec.name(), cliVer));
     }
 
     // ------------------------------------------------------------------ html
