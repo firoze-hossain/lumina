@@ -28,7 +28,7 @@ public final class ReactMetadata {
     private static final Map<String, List<String>> FALLBACK_VERSIONS = Map.of(
             TYPE_REACT, List.of("5.1.0", "5.0.1", "5.0.0"),
             TYPE_REACT_NATIVE, List.of("20.2.0", "20.1.1", "20.0.0", "19.1.2", "19.0.0", "18.0.0", "17.0.0", "16.0.0", "15.1.3", "15.0.0", "14.1.0"),
-            TYPE_NEXT_JS, List.of("15.2.0", "15.1.6", "14.2.24")
+            TYPE_NEXT_JS, List.of("16.3.5", "16.3.0", "16.2.0", "16.1.0", "16.0.0", "15.2.0", "15.1.6", "14.2.24")
     );
 
     private static final Map<String, String> CLI_PACKAGES = Map.of(

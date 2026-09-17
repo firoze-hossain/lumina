@@ -541,12 +541,14 @@ public final class ProjectGenerator {
                 }
                 """);
 
+        String nextVer = (version != null && !version.isBlank()) ? "^" + version : "^16.3.5";
+
         if (isTs) {
             Files.writeString(appDir.resolve("layout.tsx"), """
+                    import type { Metadata } from 'next';
                     import './globals.css';
-                    import React from 'react';
 
-                    export const metadata = {
+                    export const metadata: Metadata = {
                       title: '%s',
                       description: 'Generated with Next.js and Lumina IDE',
                     };
@@ -620,7 +622,7 @@ public final class ProjectGenerator {
                       "dependencies": {
                         "react": "^19.0.0",
                         "react-dom": "^19.0.0",
-                        "next": "^15.2.0"
+                        "next": "%s"
                       },
                       "devDependencies": {
                         "@types/node": "^20",
@@ -629,7 +631,7 @@ public final class ProjectGenerator {
                         "typescript": "^5"
                       }
                     }
-                    """.formatted(appName));
+                    """.formatted(appName, nextVer));
         } else {
             Files.writeString(appDir.resolve("layout.jsx"), """
                     import './globals.css';
@@ -676,10 +678,10 @@ public final class ProjectGenerator {
                       "dependencies": {
                         "react": "^19.0.0",
                         "react-dom": "^19.0.0",
-                        "next": "^15.2.0"
+                        "next": "%s"
                       }
                     }
-                    """.formatted(appName));
+                    """.formatted(appName, nextVer));
         }
 
         Files.writeString(dir.resolve(".gitignore"), """

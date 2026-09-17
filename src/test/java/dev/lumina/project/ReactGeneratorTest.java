@@ -57,6 +57,14 @@ public class ReactGeneratorTest {
         List<String> rnVersions = ReactMetadata.fetchAllVersions(ReactMetadata.TYPE_REACT_NATIVE, false);
         assertFalse(rnVersions.isEmpty());
         assertTrue(rnVersions.contains("20.2.0"));
+
+        String nextFormatted = ReactMetadata.formatCliDisplay(ReactMetadata.TYPE_NEXT_JS, "16.3.5");
+        assertTrue(nextFormatted.contains("npx create-next-app"));
+        assertTrue(nextFormatted.endsWith("16.3.5"));
+
+        List<String> nextVersions = ReactMetadata.fetchAllVersions(ReactMetadata.TYPE_NEXT_JS, false);
+        assertFalse(nextVersions.isEmpty());
+        assertTrue(nextVersions.contains("16.3.5"));
     }
 
     @Test
@@ -300,7 +308,7 @@ public class ReactGeneratorTest {
                 "v9.0.1",
                 ReactMetadata.TYPE_NEXT_JS,
                 "/usr/local/bin/node",
-                "15.2.0",
+                "16.3.5",
                 true
         );
 
@@ -315,7 +323,7 @@ public class ReactGeneratorTest {
         assertTrue(Files.exists(projectDir.resolve("package.json")), "package.json should exist");
 
         String packageJson = Files.readString(projectDir.resolve("package.json"));
-        assertTrue(packageJson.contains("\"next\":"), "package.json should contain next");
+        assertTrue(packageJson.contains("\"next\": \"^16.3.5\""), "package.json should contain next ^16.3.5");
         assertTrue(packageJson.contains("\"dev\": \"next dev\""), "package.json should contain dev script");
 
         // RunConfiguration detection
