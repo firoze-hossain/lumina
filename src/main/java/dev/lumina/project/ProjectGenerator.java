@@ -63,6 +63,7 @@ public final class ProjectGenerator {
             case SCALA -> generateScala(spec, dir, log);
             case PYTHON -> generatePython(spec, dir, log);
             case PHP -> generatePhp(spec, dir, log);
+            case RUBY -> generateRuby(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
@@ -3491,6 +3492,48 @@ public final class ProjectGenerator {
         String langLevel = PhpMetadata.detectPhpLanguageLevel();
         Files.writeString(ideaDir.resolve("php.xml"), PhpMetadata.generateIdeaPhpXml(langLevel));
         log.accept("Configured PHP language level: " + langLevel);
+    }
+
+    private static void generateRuby(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Ruby project …");
+
+        Files.createDirectories(dir);
+
+        // 1. Sample code if requested
+        if (spec.safeRubyAddSampleCode()) {
+            Files.writeString(dir.resolve("main.rb"), RubyMetadata.generateSampleCode());
+            log.accept("Created main.rb with sample code");
+        }
+
+        // 2. .gitignore
+        Files.writeString(dir.resolve(".gitignore"), RubyMetadata.generateGitignore());
+
+        // 3. README.md
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+
+        // 4. IntelliJ IDEA module and SDK configuration (.idea)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+
+        String moduleName = spec.name();
+        Files.writeString(ideaDir.resolve("modules.xml"), RubyMetadata.generateIdeaModulesXml(moduleName));
+
+        Files.writeString(ideaDir.resolve(moduleName + ".iml"), RubyMetadata.generateIdeaIml());
+
+        String rubyPath = spec.safeRubyInterpreterPath();
+        String sdkName = "Ruby";
+        if (!rubyPath.isBlank()) {
+            String ver = RubyMetadata.probeRubyVersion(rubyPath);
+            if (ver != null && !ver.isBlank()) {
+                sdkName = "ruby-" + ver;
+            } else {
+                sdkName = "ruby (" + rubyPath + ")";
+            }
+        }
+        Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
+        log.accept("Configured Ruby SDK: " + sdkName);
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {

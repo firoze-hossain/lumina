@@ -32,6 +32,7 @@ public final class GeneratorIcons {
             case "Scala" -> scalaIcon();
             case "Python", "Virtualenv" -> pythonIcon();
             case "PHP" -> phpIcon();
+            case "Ruby" -> rubyIcon();
             case "Conda" -> condaIcon();
             case "Pipenv" -> pipenvIcon();
             case "Poetry" -> poetryIcon();
@@ -471,6 +472,46 @@ public final class GeneratorIcons {
         StackPane pane = new StackPane(oval, text);
         pane.setAlignment(Pos.CENTER);
         return box(pane);
+    }
+
+    /** Ruby: official red faceted gemstone matching IntelliJ IDEA. */
+    public static Node rubyIcon() {
+        // Table & crown (upper trapezoid)
+        Polygon crown = new Polygon(
+                4.0, 3.0,
+                12.0, 3.0,
+                14.5, 7.0,
+                1.5, 7.0
+        );
+        crown.setFill(Color.web("#EF5350"));
+
+        // Pavilion (lower triangle pointing to bottom)
+        Polygon pavilion = new Polygon(
+                1.5, 7.0,
+                14.5, 7.0,
+                8.0, 14.0
+        );
+        pavilion.setFill(Color.web("#C62828"));
+
+        // Center table facet
+        Polygon centerFacet = new Polygon(
+                5.5, 3.0,
+                10.5, 3.0,
+                11.5, 7.0,
+                4.5, 7.0
+        );
+        centerFacet.setFill(Color.web("#FF7961"));
+
+        // Bottom center facet
+        Polygon centerLower = new Polygon(
+                4.5, 7.0,
+                11.5, 7.0,
+                8.0, 14.0
+        );
+        centerLower.setFill(Color.web("#B71C1C"));
+
+        Group g = new Group(crown, pavilion, centerFacet, centerLower);
+        return box(g);
     }
 
     /** Default fallback bullet. */

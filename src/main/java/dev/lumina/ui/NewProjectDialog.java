@@ -361,6 +361,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Scala", ProjectSpec.Generator.SCALA, true),
             new GeneratorEntry("Python", ProjectSpec.Generator.PYTHON, true),
             new GeneratorEntry("PHP", ProjectSpec.Generator.PHP, true),
+            new GeneratorEntry("Ruby", ProjectSpec.Generator.RUBY, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
             new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
@@ -591,6 +592,13 @@ public class NewProjectDialog {
 
     // PHP controls
     private final CheckBox phpAddComposerJsonCheck = new CheckBox("Add 'composer.json'");
+
+    // Ruby controls
+    private final Label rubyInterpreterLabel = formLabel("Ruby Interpreter:");
+    private final ComboBox<dev.lumina.project.RubyMetadata.RubyInstallation> rubyInterpreterCombo = new ComboBox<>();
+    private final Button rubyAddInterpreterBtn = new Button();
+    private final StackPane rubyInterpreterPane = new StackPane();
+    private final CheckBox rubyAddSampleCodeCheck = new CheckBox("Add sample code");
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1845,6 +1853,7 @@ public class NewProjectDialog {
         packageField.setOnKeyTyped(e -> packageEdited = true);
         updateHints();
 
+        setupRubyControls();
         rebuildFormGrid();
 
         ScrollPane scroll = new ScrollPane(formGrid);
@@ -1870,6 +1879,7 @@ public class NewProjectDialog {
         boolean scala = generator == ProjectSpec.Generator.SCALA;
         boolean python = generator == ProjectSpec.Generator.PYTHON;
         boolean php = generator == ProjectSpec.Generator.PHP;
+        boolean ruby = generator == ProjectSpec.Generator.RUBY;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -1951,6 +1961,13 @@ public class NewProjectDialog {
 
         if (php) {
             formGrid.add(phpAddComposerJsonCheck, 1, row++);
+            return;
+        }
+
+        if (ruby) {
+            formGrid.add(rubyInterpreterLabel, 0, row);
+            formGrid.add(rubyInterpreterPane, 1, row++);
+            formGrid.add(rubyAddSampleCodeCheck, 1, row++);
             return;
         }
 
@@ -6076,6 +6093,129 @@ public class NewProjectDialog {
         }
     }
 
+    private static Node createPlusIcon() {
+        SVGPath plus = new SVGPath();
+        plus.setContent("M 1 5.5 L 10 5.5 M 5.5 1 L 5.5 10");
+        plus.setStroke(Color.web("#8C919D"));
+        plus.setStrokeWidth(1.4);
+        return plus;
+    }
+
+    private void setupRubyControls() {
+        rubyInterpreterCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(rubyInterpreterCombo, Priority.ALWAYS);
+
+        rubyInterpreterCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.RubyMetadata.RubyInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.rubyIcon();
+                    Label nameLabel = new Label(item.label());
+                    nameLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    Label pathLabel = new Label("(" + item.executable() + ")");
+                    pathLabel.setStyle("-fx-text-fill: #6C7387; -fx-font-size: 11px;");
+                    Region sp = new Region();
+                    HBox.setHgrow(sp, Priority.ALWAYS);
+                    box.getChildren().addAll(icon, nameLabel, sp, pathLabel);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        });
+
+        rubyInterpreterCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.RubyMetadata.RubyInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                HBox box = new HBox(8);
+                box.setAlignment(Pos.CENTER_LEFT);
+                box.setPadding(new Insets(0, 48, 0, 0));
+                Node icon = dev.lumina.ui.GeneratorIcons.rubyIcon();
+                if (item == null) {
+                    Label label = new Label(dev.lumina.project.RubyMetadata.NO_INTERPRETER_LABEL);
+                    label.setStyle("-fx-text-fill: #E06C75; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                } else {
+                    Label label = new Label(item.label());
+                    label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                }
+                setGraphic(box);
+                setText(null);
+            }
+        });
+
+        List<dev.lumina.project.RubyMetadata.RubyInstallation> rubies = dev.lumina.project.RubyMetadata.fetchRubyInstallations(false);
+        rubyInterpreterCombo.getItems().setAll(rubies);
+        if (!rubies.isEmpty()) {
+            rubyInterpreterCombo.getSelectionModel().selectFirst();
+        }
+
+        rubyAddInterpreterBtn.setGraphic(createPlusIcon());
+        rubyAddInterpreterBtn.setText(null);
+        rubyAddInterpreterBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 6 3 6; -fx-min-width: 22px; -fx-min-height: 22px;");
+        rubyAddInterpreterBtn.setTooltip(new Tooltip("Add Ruby Interpreter"));
+        rubyAddInterpreterBtn.setOnAction(e -> pickRubyInterpreter());
+        rubyAddInterpreterBtn.setOnMouseEntered(e -> {
+            Node g = rubyAddInterpreterBtn.getGraphic();
+            if (g instanceof SVGPath p) p.setStroke(Color.web("#DFE1E5"));
+        });
+        rubyAddInterpreterBtn.setOnMouseExited(e -> {
+            Node g = rubyAddInterpreterBtn.getGraphic();
+            if (g instanceof SVGPath p) p.setStroke(Color.web("#8C919D"));
+        });
+
+        Region divider = new Region();
+        divider.setPrefWidth(1);
+        divider.setMinWidth(1);
+        divider.setMaxWidth(1);
+        divider.setPrefHeight(14);
+        divider.setMaxHeight(14);
+        divider.setStyle("-fx-background-color: #393B40;");
+
+        Region arrowSpacer = new Region();
+        arrowSpacer.setPrefWidth(22);
+        arrowSpacer.setMinWidth(22);
+        arrowSpacer.setMaxWidth(22);
+        arrowSpacer.setMouseTransparent(true);
+
+        HBox rightControls = new HBox(4);
+        rightControls.setAlignment(Pos.CENTER_RIGHT);
+        rightControls.setPickOnBounds(false);
+        rightControls.getChildren().addAll(rubyAddInterpreterBtn, divider, arrowSpacer);
+
+        rubyInterpreterPane.getChildren().setAll(rubyInterpreterCombo, rightControls);
+        HBox.setHgrow(rubyInterpreterPane, Priority.ALWAYS);
+        rubyInterpreterPane.setMaxWidth(Double.MAX_VALUE);
+    }
+
+    private void pickRubyInterpreter() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Ruby Interpreter Path");
+        String initialPath = "/usr/bin";
+        File initDir = new File(initialPath);
+        if (!initDir.isDirectory()) {
+            initDir = new File(System.getProperty("user.home", "."));
+        }
+        if (initDir.isDirectory()) {
+            chooser.setInitialDirectory(initDir);
+        }
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.exists()) {
+            var inst = dev.lumina.project.RubyMetadata.createInstallationFromPath(file.getAbsolutePath());
+            if (!rubyInterpreterCombo.getItems().contains(inst)) {
+                rubyInterpreterCombo.getItems().add(0, inst);
+            }
+            rubyInterpreterCombo.setValue(inst);
+        }
+    }
+
     private void showPluginManager() {
         try {
             PluginManagerDialog pm = new PluginManagerDialog(
@@ -6399,9 +6539,10 @@ public class NewProjectDialog {
         boolean react = selected.generator() == ProjectSpec.Generator.REACT;
         boolean isPython = selected.generator() == ProjectSpec.Generator.PYTHON;
         boolean isPhp = selected.generator() == ProjectSpec.Generator.PHP;
+        boolean isRuby = selected.generator() == ProjectSpec.Generator.RUBY;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython || isPhp) {
+            if (html || react || isPython || isPhp || isRuby) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -6416,11 +6557,12 @@ public class NewProjectDialog {
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
         else if (isPhp) language = ProjectSpec.Language.PHP;
+        else if (isRuby) language = ProjectSpec.Language.RUBY;
 
         ProjectSpec.BuildSystem build;
         if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
-        } else if (isPython || isPhp) {
+        } else if (isPython || isPhp || isRuby) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
@@ -6603,7 +6745,9 @@ public class NewProjectDialog {
                 customLocationField.getText().trim(),
                 inheritPackagesCheck.isSelected(),
                 makeAvailableCheck.isSelected(),
-                phpAddComposerJsonCheck.isSelected());
+                phpAddComposerJsonCheck.isSelected(),
+                rubyInterpreterCombo.getValue() != null ? rubyInterpreterCombo.getValue().executable() : "",
+                rubyAddSampleCodeCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
