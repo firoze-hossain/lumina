@@ -13,12 +13,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 /**
  * Creates new projects on disk.
@@ -58,7 +62,7 @@ public final class ProjectGenerator {
             case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
             case MICRONAUT -> generateMicronaut(spec, dir, log);
-            case KTOR -> generateJava(spec, dir, log);
+            case KTOR -> generateKtor(spec, dir, log);
             case JAKARTA_EE -> generateJakarta(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
@@ -1374,6 +1378,644 @@ public final class ProjectGenerator {
                     }
                     """.formatted(version, group, pkg, javaVersion, javaVersion));
         }
+    }
+
+    // -------------------------------------------------------- ktor
+
+    private static void generateKtor(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String base = KtorMetadata.normalizeServerUrl(spec.ktorServerUrl());
+        String group = spec.group() == null || spec.group().isBlank() ? "com.example" : spec.group().trim();
+        String artifact = spec.artifact() == null || spec.artifact().isBlank()
+                ? (spec.name().isBlank() ? "ktor-sample" : spec.name().trim()) : spec.artifact().trim();
+
+        String rawEngine = spec.ktorEngine() != null ? spec.ktorEngine() : "Netty";
+        String engine = rawEngine.replaceAll("(?i)\\s*default", "").trim().toUpperCase();
+        if (engine.isEmpty()) engine = "NETTY";
+
+        String bSys = spec.ktorBuildSystem() != null ? spec.ktorBuildSystem() : "Gradle";
+        String buildSystem = "GRADLE";
+        if (bSys.equalsIgnoreCase("Kotlin")) {
+            buildSystem = "GRADLE_KTS";
+        } else if (bSys.equalsIgnoreCase("Maven")) {
+            buildSystem = "MAVEN";
+        }
+
+        String cfg = spec.ktorConfigIn() != null ? spec.ktorConfigIn() : "YAML File";
+        String configIn = "YAML";
+        if (cfg.toUpperCase().contains("HOCON")) {
+            configIn = "HOCON";
+        } else if (cfg.toUpperCase().contains("CODE")) {
+            configIn = "CODE";
+        }
+
+        String rawVer = spec.ktorVersion() != null ? spec.ktorVersion() : "3.5.2";
+        String version = rawVer.replaceAll("(?i)\\s*default", "").trim();
+        if (version.isEmpty()) version = "3.5.2";
+
+        List<String> pluginsList = new ArrayList<>();
+        if (spec.ktorPlugins() != null && !spec.ktorPlugins().isBlank()) {
+            for (String p : spec.ktorPlugins().split(",")) {
+                String trimmed = p.trim().toLowerCase();
+                if (!trimmed.isEmpty()) pluginsList.add(trimmed);
+            }
+        }
+
+        JsonObject settings = new JsonObject();
+        settings.addProperty("name", artifact);
+        settings.addProperty("company", group);
+        settings.addProperty("artifact", artifact);
+        settings.addProperty("buildSystem", buildSystem);
+        settings.addProperty("engine", engine);
+        settings.addProperty("configuration", configIn);
+        settings.addProperty("ktorVersion", version);
+        settings.addProperty("sampleCode", spec.ktorAddSampleCode());
+
+        JsonArray pluginsArray = new JsonArray();
+        for (String p : pluginsList) {
+            pluginsArray.add(p);
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.add("settings", settings);
+        payload.add("plugins", pluginsArray);
+
+        log.accept("Requesting Ktor project from " + base + " …");
+
+        boolean downloaded = false;
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(12))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(base + "/api/project"))
+                    .timeout(Duration.ofSeconds(45))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/zip, application/octet-stream, */*")
+                    .header("User-Agent", "Lumina-IDE")
+                    .POST(HttpRequest.BodyPublishers.ofString(payload.toString()))
+                    .build();
+
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if ((response.statusCode() == 200 || response.statusCode() == 201)
+                    && response.body() != null && response.body().length > 0) {
+                log.accept("Unpacking Ktor project (" + (response.body().length / 1024) + " KB) …");
+                unzip(response.body(), dir);
+                for (String wrapper : new String[]{"mvnw", "gradlew"}) {
+                    Path w = dir.resolve(wrapper);
+                    if (Files.isRegularFile(w) && !w.toFile().setExecutable(true)) {
+                        log.accept("Note: could not mark " + wrapper + " executable");
+                    }
+                }
+                downloaded = true;
+            } else {
+                log.accept("Note: " + base + " returned HTTP " + response.statusCode() + " — using offline template.");
+            }
+        } catch (Exception e) {
+            log.accept("Note: could not reach " + base + " (" + e.getMessage() + ") — using offline template.");
+        }
+
+        if (!downloaded) {
+            log.accept("Generating Ktor project locally (" + bSys + ", " + engine + ", Ktor " + version + ") …");
+            generateLocalKtor(spec, dir, log);
+        }
+    }
+
+    private static void generateLocalKtor(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        Files.createDirectories(dir);
+
+        String group = spec.group() == null || spec.group().isBlank() ? "com.example" : spec.group().trim();
+        String artifact = spec.artifact() == null || spec.artifact().isBlank()
+                ? (spec.name().isBlank() ? "ktor-sample" : spec.name().trim()) : spec.artifact().trim();
+        String pkg;
+        if (spec.packageName() != null && !spec.packageName().isBlank()) {
+            pkg = spec.packageName().trim();
+        } else {
+            pkg = (group + "." + artifact.replace('-', '_')).toLowerCase().replaceAll("[^a-zA-Z0-9_.]", "");
+            if (pkg.isEmpty() || Character.isDigit(pkg.charAt(0))) pkg = "com.example." + artifact.replace('-', '_');
+        }
+
+        String rawEngine = spec.ktorEngine() != null ? spec.ktorEngine() : "Netty";
+        String engineLower = rawEngine.replaceAll("(?i)\\s*default", "").trim().toLowerCase();
+        if (engineLower.isEmpty()) engineLower = "netty";
+
+        String rawVer = spec.ktorVersion() != null ? spec.ktorVersion() : "3.5.2";
+        String version = rawVer.replaceAll("(?i)\\s*default", "").trim();
+        if (version.isEmpty()) version = "3.5.2";
+
+        String bSys = spec.ktorBuildSystem() != null ? spec.ktorBuildSystem() : "Gradle";
+        boolean isMaven = bSys.equalsIgnoreCase("Maven");
+        boolean isGradleKotlin = bSys.equalsIgnoreCase("Kotlin");
+
+        String cfg = spec.ktorConfigIn() != null ? spec.ktorConfigIn() : "YAML File";
+        boolean isYaml = cfg.toUpperCase().contains("YAML");
+        boolean isHocon = cfg.toUpperCase().contains("HOCON");
+        boolean isCodeOnly = cfg.toUpperCase().contains("CODE");
+
+        List<String> plugins = new ArrayList<>();
+        if (spec.ktorPlugins() != null && !spec.ktorPlugins().isBlank()) {
+            for (String p : spec.ktorPlugins().split(",")) {
+                String trimmed = p.trim().toLowerCase();
+                if (!trimmed.isEmpty()) plugins.add(trimmed);
+            }
+        }
+
+        Path pkgDir = dir.resolve("src/main/kotlin/" + pkg.replace('.', '/'));
+        Path pluginsDir = pkgDir.resolve("plugins");
+        Path testPkgDir = dir.resolve("src/test/kotlin/" + pkg.replace('.', '/'));
+        Path resDir = dir.resolve("src/main/resources");
+        Files.createDirectories(pkgDir);
+        Files.createDirectories(pluginsDir);
+        Files.createDirectories(testPkgDir);
+        Files.createDirectories(resDir);
+
+        // Configuration file
+        if (isYaml) {
+            Files.writeString(resDir.resolve("application.yaml"), """
+                    ktor:
+                        application:
+                            modules:
+                                - %s.ApplicationKt.module
+                        deployment:
+                            port: 8080
+                    """.formatted(pkg));
+        } else if (isHocon) {
+            Files.writeString(resDir.resolve("application.conf"), """
+                    ktor {
+                        deployment {
+                            port = 8080
+                        }
+                        application {
+                            modules = [ %s.ApplicationKt.module ]
+                        }
+                    }
+                    """.formatted(pkg));
+        }
+
+        // logback.xml
+        Files.writeString(resDir.resolve("logback.xml"), """
+                <configuration>
+                    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                        <encoder>
+                            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                        </encoder>
+                    </appender>
+                    <root level="INFO">
+                        <appender-ref ref="STDOUT"/>
+                    </root>
+                    <logger name="io.netty" level="INFO"/>
+                </configuration>
+                """);
+
+        // Application.kt
+        String engineImport = switch (engineLower) {
+            case "cio" -> "import io.ktor.server.cio.*";
+            case "tomcat" -> "import io.ktor.server.tomcat.*";
+            case "jetty" -> "import io.ktor.server.jetty.*";
+            default -> "import io.ktor.server.netty.*";
+        };
+        String engineClass = switch (engineLower) {
+            case "cio" -> "CIO";
+            case "tomcat" -> "Tomcat";
+            case "jetty" -> "Jetty";
+            default -> "Netty";
+        };
+
+        boolean hasHttp = plugins.contains("cors") || plugins.contains("compression")
+                || plugins.contains("default-headers") || plugins.contains("caching-headers")
+                || plugins.contains("conditional-headers") || plugins.contains("forwarded-headers")
+                || plugins.contains("hsts");
+        boolean hasSerialization = plugins.contains("content-negotiation")
+                || plugins.contains("kotlinx-serialization") || plugins.contains("jackson");
+        boolean hasMonitoring = plugins.contains("call-logging");
+
+        StringBuilder moduleInvocations = new StringBuilder();
+        if (hasSerialization) moduleInvocations.append("    configureSerialization()\n");
+        if (hasHttp) moduleInvocations.append("    configureHTTP()\n");
+        if (hasMonitoring) moduleInvocations.append("    configureMonitoring()\n");
+        moduleInvocations.append("    configureRouting()\n");
+
+        StringBuilder appSource = new StringBuilder();
+        appSource.append("package ").append(pkg).append("\n\n");
+        appSource.append("import io.ktor.server.application.*\n");
+        appSource.append("import io.ktor.server.engine.*\n");
+        appSource.append(engineImport).append("\n");
+        appSource.append("import ").append(pkg).append(".plugins.*\n\n");
+
+        if (isCodeOnly) {
+            appSource.append("""
+                    fun main(args: Array<String>) {
+                        embeddedServer(%s, port = 8080, host = "0.0.0.0", module = Application::module)
+                            .start(wait = true)
+                    }
+                    """.formatted(engineClass));
+        } else {
+            appSource.append("""
+                    fun main(args: Array<String>) {
+                        io.ktor.server.%s.EngineMain.main(args)
+                    }
+                    """.formatted(engineLower));
+        }
+
+        appSource.append("\nfun Application.module() {\n");
+        appSource.append(moduleInvocations);
+        appSource.append("}\n");
+
+        Files.writeString(pkgDir.resolve("Application.kt"), appSource.toString());
+
+        // plugins/Routing.kt
+        Files.writeString(pluginsDir.resolve("Routing.kt"), """
+                package %s.plugins
+
+                import io.ktor.server.application.*
+                import io.ktor.server.response.*
+                import io.ktor.server.routing.*
+
+                fun Application.configureRouting() {
+                    routing {
+                        get("/") {
+                            call.respondText("Hello World!")
+                        }
+                    }
+                }
+                """.formatted(pkg));
+
+        // plugins/HTTP.kt
+        if (hasHttp) {
+            StringBuilder httpBody = new StringBuilder();
+            httpBody.append("package ").append(pkg).append(".plugins\n\n");
+            httpBody.append("import io.ktor.server.application.*\n");
+            if (plugins.contains("cors")) httpBody.append("import io.ktor.server.plugins.cors.routing.*\n");
+            if (plugins.contains("default-headers")) httpBody.append("import io.ktor.server.plugins.defaultheaders.*\n");
+            if (plugins.contains("compression")) httpBody.append("import io.ktor.server.plugins.compression.*\n");
+            httpBody.append("\nfun Application.configureHTTP() {\n");
+            if (plugins.contains("cors")) {
+                httpBody.append("""
+                            install(CORS) {
+                                anyHost()
+                            }
+                        """);
+            }
+            if (plugins.contains("default-headers")) {
+                httpBody.append("""
+                            install(DefaultHeaders) {
+                                header("X-Engine", "Ktor")
+                            }
+                        """);
+            }
+            if (plugins.contains("compression")) {
+                httpBody.append("""
+                            install(Compression)
+                        """);
+            }
+            httpBody.append("}\n");
+            Files.writeString(pluginsDir.resolve("HTTP.kt"), httpBody.toString());
+        }
+
+        // plugins/Serialization.kt
+        if (hasSerialization) {
+            Files.writeString(pluginsDir.resolve("Serialization.kt"), """
+                    package %s.plugins
+
+                    import io.ktor.server.application.*
+                    import io.ktor.server.plugins.contentnegotiation.*
+                    import io.ktor.serialization.kotlinx.json.*
+
+                    fun Application.configureSerialization() {
+                        install(ContentNegotiation) {
+                            json()
+                        }
+                    }
+                    """.formatted(pkg));
+        }
+
+        // plugins/Monitoring.kt
+        if (hasMonitoring) {
+            Files.writeString(pluginsDir.resolve("Monitoring.kt"), """
+                    package %s.plugins
+
+                    import io.ktor.server.application.*
+                    import io.ktor.server.plugins.calllogging.*
+
+                    fun Application.configureMonitoring() {
+                        install(CallLogging)
+                    }
+                    """.formatted(pkg));
+        }
+
+        // ApplicationTest.kt
+        Files.writeString(testPkgDir.resolve("ApplicationTest.kt"), """
+                package %s
+
+                import io.ktor.client.request.*
+                import io.ktor.client.statement.*
+                import io.ktor.http.*
+                import io.ktor.server.testing.*
+                import kotlin.test.*
+
+                class ApplicationTest {
+                    @Test
+                    fun testRoot() = testApplication {
+                        application {
+                            module()
+                        }
+                        val response = client.get("/")
+                        assertEquals(HttpStatusCode.OK, response.status)
+                        assertEquals("Hello World!", response.bodyAsText())
+                    }
+                }
+                """.formatted(pkg));
+
+        // Build file
+        String kotlinVersion = "2.1.20";
+        if (isMaven) {
+            StringBuilder pomDeps = new StringBuilder();
+            pomDeps.append("""
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-core-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-%s-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                    """.formatted(version, engineLower, version));
+
+            if (isYaml) {
+                pomDeps.append("""
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-config-yaml-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        """.formatted(version));
+            }
+            if (plugins.contains("cors")) {
+                pomDeps.append("""
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-cors-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        """.formatted(version));
+            }
+            if (plugins.contains("content-negotiation") || plugins.contains("kotlinx-serialization")) {
+                pomDeps.append("""
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-content-negotiation-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-serialization-kotlinx-json-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        """.formatted(version, version));
+            }
+            if (plugins.contains("call-logging")) {
+                pomDeps.append("""
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-call-logging-jvm</artifactId>
+                            <version>%s</version>
+                        </dependency>
+                        """.formatted(version));
+            }
+
+            pomDeps.append("""
+                        <dependency>
+                            <groupId>ch.qos.logback</groupId>
+                            <artifactId>logback-classic</artifactId>
+                            <version>1.5.16</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>io.ktor</groupId>
+                            <artifactId>ktor-server-test-host-jvm</artifactId>
+                            <version>%s</version>
+                            <scope>test</scope>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.jetbrains.kotlin</groupId>
+                            <artifactId>kotlin-test-junit</artifactId>
+                            <version>%s</version>
+                            <scope>test</scope>
+                        </dependency>
+                    """.formatted(version, kotlinVersion));
+
+            Files.writeString(dir.resolve("pom.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+
+                        <groupId>%s</groupId>
+                        <artifactId>%s</artifactId>
+                        <version>0.0.1</version>
+
+                        <properties>
+                            <kotlin.version>%s</kotlin.version>
+                            <ktor.version>%s</ktor.version>
+                            <main.class>%s.ApplicationKt</main.class>
+                            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                            <maven.compiler.source>21</maven.compiler.source>
+                            <maven.compiler.target>21</maven.compiler.target>
+                        </properties>
+
+                        <dependencies>
+                    %s    </dependencies>
+
+                        <build>
+                            <sourceDirectory>src/main/kotlin</sourceDirectory>
+                            <testSourceDirectory>src/test/kotlin</testSourceDirectory>
+                            <plugins>
+                                <plugin>
+                                    <groupId>org.jetbrains.kotlin</groupId>
+                                    <artifactId>kotlin-maven-plugin</artifactId>
+                                    <version>${kotlin.version}</version>
+                                    <executions>
+                                        <execution>
+                                            <id>compile</id>
+                                            <phase>compile</phase>
+                                            <goals>
+                                                <goal>compile</goal>
+                                            </goals>
+                                        </execution>
+                                        <execution>
+                                            <id>test-compile</id>
+                                            <phase>test-compile</phase>
+                                            <goals>
+                                                <goal>test-compile</goal>
+                                            </goals>
+                                        </execution>
+                                    </executions>
+                                </plugin>
+                            </plugins>
+                        </build>
+                    </project>
+                    """.formatted(group, artifact, kotlinVersion, version, pkg, pomDeps.toString()));
+        } else if (isGradleKotlin) {
+            Files.writeString(dir.resolve("settings.gradle.kts"), "rootProject.name = \"" + artifact + "\"\n");
+            Files.writeString(dir.resolve("gradle.properties"), "ktor.version=" + version + "\nkotlin.version=" + kotlinVersion + "\n");
+
+            StringBuilder ktsDeps = new StringBuilder();
+            ktsDeps.append("""
+                        implementation("io.ktor:ktor-server-core")
+                        implementation("io.ktor:ktor-server-%s")
+                    """.formatted(engineLower));
+            if (isYaml) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-config-yaml\")\n");
+            }
+            if (plugins.contains("cors")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-cors\")\n");
+            }
+            if (plugins.contains("content-negotiation") || plugins.contains("kotlinx-serialization")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-content-negotiation\")\n");
+                ktsDeps.append("    implementation(\"io.ktor:ktor-serialization-kotlinx-json\")\n");
+            }
+            if (plugins.contains("call-logging")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-call-logging\")\n");
+            }
+            if (plugins.contains("status-pages")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-status-pages\")\n");
+            }
+            if (plugins.contains("compression")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-compression\")\n");
+            }
+            if (plugins.contains("default-headers")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-default-headers\")\n");
+            }
+            if (plugins.contains("caching-headers")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-caching-headers\")\n");
+            }
+            if (plugins.contains("conditional-headers")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-conditional-headers\")\n");
+            }
+            if (plugins.contains("forwarded-headers")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-forwarded-headers\")\n");
+            }
+            if (plugins.contains("websockets")) {
+                ktsDeps.append("    implementation(\"io.ktor:ktor-server-websockets\")\n");
+            }
+            if (plugins.contains("asyncapi")) {
+                ktsDeps.append("    implementation(\"org.openfolder:kotlin-asyncapi-ktor:1.0.0\")\n");
+            }
+            ktsDeps.append("""
+                        implementation("ch.qos.logback:logback-classic:1.5.16")
+                        testImplementation("io.ktor:ktor-server-test-host")
+                        testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+                    """);
+
+            Files.writeString(dir.resolve("build.gradle.kts"), """
+                    val ktor_version: String by extra("%s")
+                    val kotlin_version: String by extra("%s")
+
+                    plugins {
+                        kotlin("jvm") version "%s"
+                        id("io.ktor.plugin") version "%s"
+                    }
+
+                    group = "%s"
+                    version = "0.0.1"
+
+                    application {
+                        mainClass.set("%s.ApplicationKt")
+                    }
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                    %s}
+                    """.formatted(version, kotlinVersion, kotlinVersion, version, group, pkg, ktsDeps.toString()));
+        } else {
+            // Gradle Groovy
+            Files.writeString(dir.resolve("settings.gradle"), "rootProject.name = '" + artifact + "'\n");
+            Files.writeString(dir.resolve("gradle.properties"), "ktor.version=" + version + "\nkotlin.version=" + kotlinVersion + "\n");
+
+            StringBuilder groovyDeps = new StringBuilder();
+            groovyDeps.append("""
+                        implementation "io.ktor:ktor-server-core"
+                        implementation "io.ktor:ktor-server-%s"
+                    """.formatted(engineLower));
+            if (isYaml) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-config-yaml'\n");
+            }
+            if (plugins.contains("cors")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-cors'\n");
+            }
+            if (plugins.contains("content-negotiation") || plugins.contains("kotlinx-serialization")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-content-negotiation'\n");
+                groovyDeps.append("    implementation 'io.ktor:ktor-serialization-kotlinx-json'\n");
+            }
+            if (plugins.contains("call-logging")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-call-logging'\n");
+            }
+            if (plugins.contains("status-pages")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-status-pages'\n");
+            }
+            if (plugins.contains("compression")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-compression'\n");
+            }
+            if (plugins.contains("default-headers")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-default-headers'\n");
+            }
+            if (plugins.contains("caching-headers")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-caching-headers'\n");
+            }
+            if (plugins.contains("conditional-headers")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-conditional-headers'\n");
+            }
+            if (plugins.contains("forwarded-headers")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-forwarded-headers'\n");
+            }
+            if (plugins.contains("websockets")) {
+                groovyDeps.append("    implementation 'io.ktor:ktor-server-websockets'\n");
+            }
+            if (plugins.contains("asyncapi")) {
+                groovyDeps.append("    implementation 'org.openfolder:kotlin-asyncapi-ktor:1.0.0'\n");
+            }
+            groovyDeps.append("""
+                        implementation 'ch.qos.logback:logback-classic:1.5.16'
+                        testImplementation 'io.ktor:ktor-server-test-host'
+                        testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
+                    """);
+
+            Files.writeString(dir.resolve("build.gradle"), """
+                    plugins {
+                        id 'org.jetbrains.kotlin.jvm' version '%s'
+                        id 'io.ktor.plugin' version '%s'
+                    }
+
+                    group = '%s'
+                    version = '0.0.1'
+
+                    application {
+                        mainClass = '%s.ApplicationKt'
+                    }
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                    %s}
+                    """.formatted(kotlinVersion, version, group, pkg, groovyDeps.toString()));
+        }
+
+        // .gitignore
+        Files.writeString(dir.resolve(".gitignore"), """
+                .gradle/
+                build/
+                target/
+                .idea/
+                *.iml
+                """);
     }
 
     // -------------------------------------------------------- maven archetype
