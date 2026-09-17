@@ -17,6 +17,7 @@ import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.NodeMetadata;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
+import dev.lumina.project.ScalaMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -355,6 +356,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Java", ProjectSpec.Generator.JAVA, true),
             new GeneratorEntry("Kotlin", ProjectSpec.Generator.KOTLIN, true),
             new GeneratorEntry("Groovy", ProjectSpec.Generator.GROOVY, true),
+            new GeneratorEntry("Scala", ProjectSpec.Generator.SCALA, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
             new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
@@ -499,6 +501,23 @@ public class NewProjectDialog {
     private final Label jdkLabel = formLabel("JDK:");
     private final Label javaLabel = formLabel("Java:");
     private final Label groovySdkLabel = formLabel("Groovy SDK:");
+
+    // Scala controls
+    private final ToggleGroup scalaBuildGroup = new ToggleGroup();
+    private final HBox scalaBuildSystemRow = new HBox(8);
+    private final Label sbtLabel = formLabel("sbt:");
+    private final ComboBox<String> sbtVersionBox = new ComboBox<>();
+    private final CheckBox sbtDownloadSourcesCheck = new CheckBox("Download sources");
+    private final HBox sbtRow = new HBox(12);
+    private final Label scalaVersionLabel = formLabel("Scala:");
+    private final ComboBox<String> scalaVersionBox = new ComboBox<>();
+    private final CheckBox scalaDownloadSourcesCheck = new CheckBox("Download sources");
+    private final HBox scalaVersionRow = new HBox(12);
+    private final CheckBox scalaOptionalBracesCheck = new CheckBox("Use significant indentation syntax (Optional Braces)");
+    private final Label scalaPackagePrefixLabel = formLabel("Package prefix:");
+    private final TextField scalaPackagePrefixField = new TextField();
+    private final TextField scalaModuleNameField = new TextField();
+
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
     private final HBox jakartaServerRow = new HBox(8);
@@ -1260,6 +1279,67 @@ public class NewProjectDialog {
             }
         });
 
+        // Scala controls setup
+        scalaBuildSystemRow.getChildren().setAll(segmented(scalaBuildGroup, false, "sbt", "Scala CLI"));
+        for (Toggle t : scalaBuildGroup.getToggles()) {
+            if ("sbt".equalsIgnoreCase(((ToggleButton) t).getText())) {
+                t.setSelected(true);
+                break;
+            }
+        }
+        scalaBuildGroup.selectedToggleProperty().addListener((obs, old, n) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.SCALA) {
+                rebuildFormGrid();
+            }
+        });
+
+        sbtVersionBox.getItems().setAll(ScalaMetadata.fetchSbtVersions(false));
+        if (!sbtVersionBox.getItems().isEmpty()) {
+            sbtVersionBox.getSelectionModel().selectFirst();
+        }
+        ScalaMetadata.fetchSbtVersionsAsync(versions -> {
+            if (versions != null && !versions.isEmpty()) {
+                String cur = sbtVersionBox.getValue();
+                sbtVersionBox.getItems().setAll(versions);
+                if (cur != null && versions.contains(cur)) {
+                    sbtVersionBox.setValue(cur);
+                } else {
+                    sbtVersionBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
+        sbtDownloadSourcesCheck.setSelected(false);
+        sbtRow.setAlignment(Pos.CENTER_LEFT);
+        sbtRow.getChildren().setAll(sbtVersionBox, sbtDownloadSourcesCheck);
+
+        scalaVersionBox.getItems().setAll(ScalaMetadata.fetchScalaVersions(false));
+        if (!scalaVersionBox.getItems().isEmpty()) {
+            scalaVersionBox.getSelectionModel().selectFirst();
+        }
+        ScalaMetadata.fetchScalaVersionsAsync(versions -> {
+            if (versions != null && !versions.isEmpty()) {
+                String cur = scalaVersionBox.getValue();
+                scalaVersionBox.getItems().setAll(versions);
+                if (cur != null && versions.contains(cur)) {
+                    scalaVersionBox.setValue(cur);
+                } else {
+                    scalaVersionBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
+        scalaDownloadSourcesCheck.setSelected(true);
+        scalaVersionRow.setAlignment(Pos.CENTER_LEFT);
+        scalaVersionRow.getChildren().setAll(scalaVersionBox, scalaDownloadSourcesCheck);
+
+        scalaOptionalBracesCheck.setSelected(false);
+        scalaPackagePrefixField.setPromptText("Such as 'org.example.application'");
+        scalaModuleNameField.setText(nameField.getText());
+        nameField.textProperty().addListener((obs, old, v) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.SCALA) {
+                scalaModuleNameField.setText(v);
+            }
+        });
+
         sampleCodeCheck.setSelected(true);
         Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
         kotlinPrefix.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
@@ -1445,6 +1525,7 @@ public class NewProjectDialog {
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
         boolean groovy = generator == ProjectSpec.Generator.GROOVY;
+        boolean scala = generator == ProjectSpec.Generator.SCALA;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -1652,6 +1733,37 @@ public class NewProjectDialog {
             formGrid.add(buildSystemRow, 1, row++);
             formGrid.add(jdkLabel, 0, row);
             formGrid.add(jdkCombo, 1, row++);
+            formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
+            formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
+            javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
+            javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
+            javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
+            return;
+        }
+
+        if (scala) {
+            formGrid.add(buildSystemLabel, 0, row);
+            formGrid.add(scalaBuildSystemRow, 1, row++);
+
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+
+            if (isSbtSelected()) {
+                formGrid.add(sbtLabel, 0, row);
+                formGrid.add(sbtRow, 1, row++);
+            }
+
+            formGrid.add(scalaVersionLabel, 0, row);
+            formGrid.add(scalaVersionRow, 1, row++);
+
+            formGrid.add(scalaOptionalBracesCheck, 1, row++);
+
+            formGrid.add(scalaPackagePrefixLabel, 0, row);
+            formGrid.add(scalaPackagePrefixField, 1, row++);
+
+            formGrid.add(sampleCodeCheck, 1, row++);
+
+            updateJavaAdvancedGrid();
             formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
             formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
             javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
@@ -4759,6 +4871,7 @@ public class NewProjectDialog {
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
         boolean groovy = generator == ProjectSpec.Generator.GROOVY;
+        boolean scala = generator == ProjectSpec.Generator.SCALA;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -4825,6 +4938,9 @@ public class NewProjectDialog {
                     break;
                 }
             }
+        } else if (scala) {
+            sampleCodeCheck.setSelected(false);
+            scalaModuleNameField.setText(nameField.getText());
         }
 
         if (createButton != null) {
@@ -5101,6 +5217,12 @@ public class NewProjectDialog {
         javaAdvGrid.getChildren().clear();
         javaAdvGrid.getRowConstraints().clear();
 
+        if (selected != null && selected.generator() == ProjectSpec.Generator.SCALA) {
+            javaAdvGrid.add(formLabel("Module name:"), 0, 0);
+            javaAdvGrid.add(scalaModuleNameField, 1, 0);
+            return;
+        }
+
         boolean isGradle = isGradleSelected();
         int row = 0;
 
@@ -5197,6 +5319,11 @@ public class NewProjectDialog {
             return "Kotlin".equalsIgnoreCase(tb.getText());
         }
         return true;
+    }
+
+    private boolean isSbtSelected() {
+        Toggle t = scalaBuildGroup.getSelectedToggle();
+        return t == null || !(t instanceof ToggleButton tb) || "sbt".equalsIgnoreCase(tb.getText());
     }
 
     private void showPluginManager() {
@@ -5520,9 +5647,12 @@ public class NewProjectDialog {
         ProjectSpec.Language language = ProjectSpec.Language.JAVA;
         if (selected.generator() == ProjectSpec.Generator.KOTLIN || ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
         else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
+        else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
 
         ProjectSpec.BuildSystem build;
-        if (mavenArchetype || rust) {
+        if (selected.generator() == ProjectSpec.Generator.SCALA) {
+            build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
+        } else if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT || quarkus || micronaut) {
             if (typeGradleGroovy.isSelected() || typeGradleKotlin.isSelected()) {
@@ -5566,21 +5696,24 @@ public class NewProjectDialog {
         boolean isJava = selected.generator() == ProjectSpec.Generator.JAVA;
         boolean isKotlin = selected.generator() == ProjectSpec.Generator.KOTLIN;
         boolean isGroovy = selected.generator() == ProjectSpec.Generator.GROOVY;
+        boolean isScala = selected.generator() == ProjectSpec.Generator.SCALA;
         String javaVer;
         if (selectedJdk != null && selectedJdk.installation() != null &&
-            (isJava || isKotlin || isGroovy)) {
+            (isJava || isKotlin || isGroovy || isScala)) {
             javaVer = String.valueOf(selectedJdk.installation().majorVersion());
-        } else if (selectedJdk != null && !selectedJdk.label().isBlank() && (isJava || isKotlin || isGroovy)) {
+        } else if (selectedJdk != null && !selectedJdk.label().isBlank() && (isJava || isKotlin || isGroovy || isScala)) {
             int parsed = JdkMetadata.parseMajorVersion(selectedJdk.label());
-            javaVer = parsed > 0 ? String.valueOf(parsed) : "21";
+            javaVer = parsed > 0 ? String.valueOf(parsed) : "25";
         } else if (javaVersionBox.getValue() != null && !javaVersionBox.getValue().isBlank()) {
             javaVer = javaVersionBox.getValue();
         } else {
-            javaVer = "21";
+            javaVer = "25";
         }
 
         String pkg;
-        if (mavenArchetype) {
+        if (isScala) {
+            pkg = scalaPackagePrefixField.getText().trim();
+        } else if (mavenArchetype) {
             pkg = (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
         } else if (isJava || isKotlin || isGroovy) {
             String g = sanitize(groupField.getText().trim());
@@ -5682,7 +5815,14 @@ public class NewProjectDialog {
                 gradleVer,
                 gradleHome,
                 (selected != null && selected.generator() == ProjectSpec.Generator.KOTLIN && isGradleSelected() && isKotlinDslSelected()) && multiModuleCheck.isSelected(),
-                groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() && !GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovySdkBox.getValue().trim()) ? groovySdkBox.getValue().trim() : "5.1.1");
+                groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() && !GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovySdkBox.getValue().trim()) ? groovySdkBox.getValue().trim() : "5.1.1",
+                sbtVersionBox.getValue() != null && !sbtVersionBox.getValue().isBlank() ? sbtVersionBox.getValue().trim() : "2.0.9",
+                scalaVersionBox.getValue() != null && !scalaVersionBox.getValue().isBlank() ? scalaVersionBox.getValue().trim() : "3.9.0",
+                sbtDownloadSourcesCheck.isSelected(),
+                scalaDownloadSourcesCheck.isSelected(),
+                scalaOptionalBracesCheck.isSelected(),
+                scalaPackagePrefixField.getText() != null ? scalaPackagePrefixField.getText().trim() : "",
+                scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

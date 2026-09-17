@@ -60,6 +60,7 @@ public final class ProjectGenerator {
         switch (spec.generator()) {
             case JAVA -> generateJava(spec, dir, log);
             case GROOVY -> generateGroovy(spec, dir, log);
+            case SCALA -> generateScala(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
@@ -3147,6 +3148,163 @@ public final class ProjectGenerator {
                     .DS_Store
                     """);
         }
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    private static void generateScala(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Scala project (" + spec.buildSystem() + ") …");
+
+        String sbtVer = spec.safeSbtVersion();
+        String scalaVer = spec.safeScalaVersion();
+        String pkg = spec.safeScalaPackagePrefix();
+        String moduleName = spec.safeScalaModuleName();
+        boolean optionalBraces = spec.safeScalaOptionalBraces();
+        boolean addSampleCode = spec.addSampleCode();
+        String javaVer = spec.javaVersion() != null && !spec.javaVersion().isBlank()
+                ? spec.javaVersion() : "25";
+
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.SCALA_CLI) {
+            // Scala CLI project
+            Path srcDir = dir.resolve("src");
+            Files.createDirectories(srcDir);
+            Path pkgDir = pkg.isBlank() ? srcDir : srcDir.resolve(pkg.replace('.', '/'));
+            Files.createDirectories(pkgDir);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("//> using scala ").append(scalaVer).append("\n");
+            sb.append("//> using jvm ").append(javaVer).append("\n\n");
+            if (!pkg.isBlank()) {
+                sb.append("package ").append(pkg).append("\n\n");
+            }
+            if (addSampleCode) {
+                if (optionalBraces) {
+                    sb.append("""
+                            @main def main(): Unit =
+                              println("Hello and welcome!")
+
+                              for i <- 1 to 5 do
+                                println(s"i = $i")
+                            """);
+                } else {
+                    sb.append("""
+                            @main def main(): Unit = {
+                              println("Hello and welcome!")
+
+                              for (i <- 1 to 5) {
+                                println(s"i = $i")
+                              }
+                            }
+                            """);
+                }
+            } else {
+                if (optionalBraces) {
+                    sb.append("""
+                            @main def main(): Unit =
+                              println("Hello, world!")
+                            """);
+                } else {
+                    sb.append("""
+                            @main def main(): Unit = {
+                              println("Hello, world!")
+                            }
+                            """);
+                }
+            }
+            Files.writeString(pkgDir.resolve("main.scala"), sb.toString());
+            Files.writeString(dir.resolve(".gitignore"), """
+                    .bsp/
+                    .scala-build/
+                    target/
+                    .idea/
+                    .lumina/
+                    """);
+        } else {
+            // sbt project (default)
+            Path projectMetaDir = dir.resolve("project");
+            Files.createDirectories(projectMetaDir);
+
+            // 1. project/build.properties
+            Files.writeString(projectMetaDir.resolve("build.properties"),
+                    "sbt.version=" + sbtVer + "\n");
+
+            // 2. project/plugins.sbt
+            Files.writeString(projectMetaDir.resolve("plugins.sbt"),
+                    "addSbtPlugin(\"org.jetbrains.scala\" % \"sbt-ide-settings\" % \"1.1.4\")\n");
+
+            // 3. build.sbt
+            StringBuilder sbtBuilder = new StringBuilder();
+            sbtBuilder.append("ThisBuild / version := \"0.1.0-SNAPSHOT\"\n\n");
+            sbtBuilder.append("ThisBuild / scalaVersion := \"").append(scalaVer).append("\"\n\n");
+            sbtBuilder.append("lazy val root = (project in file(\".\"))\n");
+            sbtBuilder.append("  .settings(\n");
+            sbtBuilder.append("    name := \"").append(moduleName).append("\"");
+            if (!pkg.isBlank()) {
+                sbtBuilder.append(",\n    idePackagePrefix := Some(\"").append(pkg).append("\")");
+            }
+            sbtBuilder.append("\n  )\n");
+            Files.writeString(dir.resolve("build.sbt"), sbtBuilder.toString());
+
+            // 4. Source directories
+            Path srcMain = dir.resolve("src/main/scala");
+            Path srcResources = dir.resolve("src/main/resources");
+            Path srcTest = dir.resolve("src/test/scala");
+            Path srcTestResources = dir.resolve("src/test/resources");
+            Files.createDirectories(srcMain);
+            Files.createDirectories(srcResources);
+            Files.createDirectories(srcTest);
+            Files.createDirectories(srcTestResources);
+
+            Path pkgDir = pkg.isBlank() ? srcMain : srcMain.resolve(pkg.replace('.', '/'));
+            Files.createDirectories(pkgDir);
+
+            // 5. Sample code
+            if (addSampleCode) {
+                String pkgLine = pkg.isBlank() ? "" : "package " + pkg + "\n\n";
+                if (optionalBraces) {
+                    Files.writeString(pkgDir.resolve("Main.scala"), pkgLine + """
+                            @main def main(): Unit =
+                              println("Hello and welcome!")
+
+                              for i <- 1 to 5 do
+                                println(s"i = $i")
+                            """);
+                } else {
+                    Files.writeString(pkgDir.resolve("Main.scala"), pkgLine + """
+                            @main def main(): Unit = {
+                              println("Hello and welcome!")
+
+                              for (i <- 1 to 5) {
+                                println(s"i = $i")
+                              }
+                            }
+                            """);
+                }
+            }
+
+            // 6. .idea integration for sbt
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("sbt.xml"), """
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <project version="4">
+                      <component name="SbtProjectSettings">
+                        <option name="sbtVersion" value="%s" />
+                      </component>
+                    </project>
+                    """.formatted(sbtVer));
+
+            Files.writeString(dir.resolve(".gitignore"), """
+                    target/
+                    project/target/
+                    project/project/
+                    .bsp/
+                    .idea/
+                    .lumina/
+                    """);
+        }
+
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
     }
