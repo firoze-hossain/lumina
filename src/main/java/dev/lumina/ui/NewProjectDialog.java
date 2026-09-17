@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import dev.lumina.project.ExpressMetadata;
+import dev.lumina.project.GradleMetadata;
 import dev.lumina.project.JdkMetadata;
 import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.NodeMetadata;
@@ -402,13 +403,23 @@ public class NewProjectDialog {
     private final ComboBox<String> viteTemplateBox = new ComboBox<>(
             FXCollections.observableArrayList("React", "Vue", "Vanilla", "Svelte"));
     private final TextField webParametersField = new TextField();
-    private final CheckBox mavenWrapperCheck = new CheckBox("Use Maven wrapper");
-    private final ComboBox<String> mavenVersionBox = new ComboBox<>(
-            FXCollections.observableArrayList("3.9.5", "3.8.8"));
-    private final CheckBox gradleWrapperCheck = new CheckBox("Use Gradle wrapper");
-    private final ComboBox<String> gradleVersionBox = new ComboBox<>(
-            FXCollections.observableArrayList("9.2", "9.1", "8.3", "7.6"));
+    private final ComboBox<String> gradleVersionBox = new ComboBox<>();
     private final CheckBox saveSettingsCheck = new CheckBox("Use these settings for future projects");
+    private final Label gradleDslLabel = formLabel("Gradle DSL:");
+    private final ToggleGroup gradleDslGroup = new ToggleGroup();
+    private final HBox gradleDslRow = new HBox();
+    private final Label gradleDistributionLabel = formLabel("Gradle distribution:");
+    private final ComboBox<String> gradleDistributionBox = new ComboBox<>(
+            FXCollections.observableArrayList("Wrapper", "Local installation"));
+    private final Label gradleVersionLabel = formLabel("Gradle version:");
+    private final CheckBox gradleAutoSelectCheck = new CheckBox("Auto-select");
+    private final HBox gradleVersionRow = new HBox(16);
+    private final Label gradleHomeLabel = formLabel("Gradle home:");
+    private final TextField gradleHomeField = new TextField();
+    private final Button gradleHomeBrowseButton = new Button("…");
+    private final HBox gradleHomeRow = new HBox(6);
+    private final GridPane javaAdvGrid = new GridPane();
+    private boolean updatingGradleVersion = false;
     private final ToggleButton langJava = new ToggleButton("Java");
     private final ToggleButton langKotlin = new ToggleButton("Kotlin");
     private final ToggleButton langGroovy = new ToggleButton("Groovy");
@@ -503,7 +514,6 @@ public class NewProjectDialog {
 
     private final TextField dependenciesField = new TextField();
     private final Label errorLabel = new Label();
-    private final VBox advancedBox = new VBox(10);
 
     private final List<Node> serverNodes = new ArrayList<>();
     private final List<Node> typeNodes = new ArrayList<>();
@@ -1203,6 +1213,7 @@ public class NewProjectDialog {
                 return;
             }
             selectedJdk = entry;
+            syncGradleVersionWithJdk();
         });
 
         groovySdkBox.getSelectionModel().selectFirst();
@@ -1220,23 +1231,88 @@ public class NewProjectDialog {
         javaAdvancedToggle.getChildren().setAll(javaAdvancedArrow, javaAdvLine);
         javaAdvancedToggle.setPadding(new Insets(6, 0, 2, 0));
 
-        GridPane javaAdvGrid = new GridPane();
         javaAdvGrid.setHgap(14);
         javaAdvGrid.setVgap(10);
-        ColumnConstraints advCol0 = new ColumnConstraints(110);
-        advCol0.setMinWidth(110);
-        advCol0.setPrefWidth(110);
+        ColumnConstraints advCol0 = new ColumnConstraints(130);
+        advCol0.setMinWidth(130);
+        advCol0.setPrefWidth(130);
         ColumnConstraints advCol1 = new ColumnConstraints();
         advCol1.setHgrow(Priority.ALWAYS);
         javaAdvGrid.getColumnConstraints().addAll(advCol0, advCol1);
 
-        Node groupLabelWithHelp = formLabelWithHelp("GroupId:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
-        Node artifactLabelWithHelp = formLabelWithHelp("ArtifactId:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
-        javaAdvGrid.add(groupLabelWithHelp, 0, 0);
-        javaAdvGrid.add(groupField, 1, 0);
-        javaAdvGrid.add(artifactLabelWithHelp, 0, 1);
-        javaAdvGrid.add(artifactField, 1, 1);
+        // Gradle DSL
+        gradleDslRow.getChildren().setAll(segmented(gradleDslGroup, false, "Kotlin", "Groovy"));
+        for (Toggle t : gradleDslGroup.getToggles()) {
+            if ("Kotlin".equalsIgnoreCase(((ToggleButton) t).getText())) {
+                t.setSelected(true);
+                break;
+            }
+        }
 
+        // Gradle distribution
+        gradleDistributionBox.getSelectionModel().select("Wrapper");
+        gradleDistributionBox.setMaxWidth(Double.MAX_VALUE);
+        gradleDistributionBox.valueProperty().addListener((obs, old, n) -> updateJavaAdvancedGrid());
+
+        // Gradle version & auto-select
+        gradleVersionBox.setMinWidth(110);
+        gradleVersionBox.setPrefWidth(110);
+        gradleVersionBox.setMaxWidth(130);
+        gradleVersionRow.setAlignment(Pos.CENTER_LEFT);
+        gradleVersionRow.setSpacing(12);
+        gradleVersionRow.getChildren().setAll(gradleVersionBox, gradleAutoSelectCheck);
+        gradleAutoSelectCheck.setSelected(false);
+        gradleAutoSelectCheck.selectedProperty().addListener((obs, old, sel) -> {
+            if (sel) syncGradleVersionWithJdk();
+        });
+        gradleVersionBox.valueProperty().addListener((obs, old, n) -> {
+            if (!updatingGradleVersion && n != null) {
+                String autoVer = GradleMetadata.getLatestCompatibleVersion(getSelectedJdkMajorVersion());
+                if (!n.equals(autoVer) && gradleAutoSelectCheck.isSelected()) {
+                    gradleAutoSelectCheck.setSelected(false);
+                }
+            }
+        });
+
+        // Gradle home for local installation
+        gradleHomeField.setPromptText("Path to local Gradle installation");
+        HBox.setHgrow(gradleHomeField, Priority.ALWAYS);
+        gradleHomeBrowseButton.getStyleClass().add("browse-button");
+        gradleHomeBrowseButton.setOnAction(e -> {
+            DirectoryChooser dc = new DirectoryChooser();
+            dc.setTitle("Select Gradle Installation Directory");
+            File chosen = dc.showDialog(stage);
+            if (chosen != null) {
+                gradleHomeField.setText(chosen.getAbsolutePath());
+            }
+        });
+        gradleHomeRow.setAlignment(Pos.CENTER_LEFT);
+        gradleHomeRow.getChildren().setAll(gradleHomeField, gradleHomeBrowseButton);
+
+        saveSettingsCheck.setSelected(false);
+
+        // Load saved preferences if any
+        try {
+            java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(NewProjectDialog.class);
+            String savedDsl = prefs.get("gradle.dsl", "Kotlin");
+            for (Toggle t : gradleDslGroup.getToggles()) {
+                if (((ToggleButton) t).getText().equalsIgnoreCase(savedDsl)) {
+                    t.setSelected(true);
+                    break;
+                }
+            }
+            String savedDist = prefs.get("gradle.distribution", "Wrapper");
+            gradleDistributionBox.setValue(savedDist);
+            String savedGroup = prefs.get("gradle.group", null);
+            if (savedGroup != null && !savedGroup.isBlank()) {
+                groupField.setText(savedGroup);
+            }
+        } catch (Exception ignored) {}
+
+        syncGradleVersionWithJdk();
+        GradleMetadata.fetchReleasesAsync(releases -> syncGradleVersionWithJdk());
+
+        updateJavaAdvancedGrid();
         javaAdvancedContainer.getChildren().setAll(javaAdvGrid);
         javaAdvancedContainer.setPadding(new Insets(4, 0, 4, 0));
 
@@ -1252,15 +1328,16 @@ public class NewProjectDialog {
 
         javaVersionBox.getSelectionModel().select("21");
 
-        Label buildOptionsLabel = formLabel("Build options:");
-        advancedBox.setSpacing(10);
-        updateAdvancedOptions();
-
         dependenciesField.setPromptText("comma separated, e.g. web,data-jpa,lombok");
         dependenciesRow = new HBox(dependenciesField);
         HBox.setHgrow(dependenciesField, Priority.ALWAYS);
 
-        buildGroup.selectedToggleProperty().addListener((obs, old, n) -> updateAdvancedOptions());
+        buildGroup.selectedToggleProperty().addListener((obs, old, n) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.JAVA) {
+                rebuildFormGrid();
+                updateJavaAdvancedGrid();
+            }
+        });
 
         // live bindings
         nameField.textProperty().addListener((obs, old, v) -> {
@@ -1521,6 +1598,11 @@ public class NewProjectDialog {
 
         formGrid.add(jdkLabel, 0, row);
         formGrid.add(jdkCombo, 1, row++);
+
+        if (java && isGradleSelected()) {
+            formGrid.add(gradleDslLabel, 0, row);
+            formGrid.add(gradleDslRow, 1, row++);
+        }
 
         if (groovy) {
             formGrid.add(groovySdkLabel, 0, row);
@@ -4694,7 +4776,7 @@ public class NewProjectDialog {
 
         rebuildFormGrid();
         updateHints();
-        updateAdvancedOptions();
+        updateJavaAdvancedGrid();
     }
 
     private void configureBuildOptions() {
@@ -4923,22 +5005,100 @@ public class NewProjectDialog {
         return label;
     }
 
-    private void updateAdvancedOptions() {
-        advancedBox.getChildren().clear();
-        ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
-        boolean gradle = buildToggle != null && "Gradle".equals(buildToggle.getText());
+    private void updateJavaAdvancedGrid() {
+        javaAdvGrid.getChildren().clear();
+        javaAdvGrid.getRowConstraints().clear();
 
-        if (gradle) {
-            HBox wrapperRow = new HBox(12, gradleWrapperCheck, gradleVersionBox);
-            wrapperRow.setAlignment(Pos.CENTER_LEFT);
-            gradleWrapperCheck.setSelected(true);
-            advancedBox.getChildren().addAll(new Label("Gradle wrapper:"), wrapperRow);
-        } else {
-            HBox wrapperRow = new HBox(12, mavenWrapperCheck, mavenVersionBox);
-            wrapperRow.setAlignment(Pos.CENTER_LEFT);
-            mavenWrapperCheck.setSelected(true);
-            advancedBox.getChildren().addAll(new Label("Maven wrapper:"), wrapperRow);
+        boolean isGradle = isGradleSelected();
+        int row = 0;
+
+        if (isGradle) {
+            // 1. Gradle distribution: [ Wrapper / Local installation ]
+            javaAdvGrid.add(gradleDistributionLabel, 0, row);
+            javaAdvGrid.add(gradleDistributionBox, 1, row++);
+
+            // 2. Gradle version (with Auto-select) OR Gradle home
+            if ("Local installation".equals(gradleDistributionBox.getValue())) {
+                javaAdvGrid.add(gradleHomeLabel, 0, row);
+                javaAdvGrid.add(gradleHomeRow, 1, row++);
+            } else {
+                gradleVersionRow.getChildren().setAll(gradleVersionBox, gradleAutoSelectCheck);
+                javaAdvGrid.add(gradleVersionLabel, 0, row);
+                javaAdvGrid.add(gradleVersionRow, 1, row++);
+            }
+
+            // 3. [ ] Use these settings for future projects
+            javaAdvGrid.add(saveSettingsCheck, 1, row++);
         }
+
+        // GroupId & ArtifactId
+        Node groupLabelWithHelp = formLabelWithHelp("GroupId:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
+        Node artifactLabelWithHelp = formLabelWithHelp("ArtifactId:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
+        javaAdvGrid.add(groupLabelWithHelp, 0, row);
+        javaAdvGrid.add(groupField, 1, row++);
+        javaAdvGrid.add(artifactLabelWithHelp, 0, row);
+        javaAdvGrid.add(artifactField, 1, row++);
+    }
+
+    private void syncGradleVersionWithJdk() {
+        int jdkMajor = getSelectedJdkMajorVersion();
+        updatingGradleVersion = true;
+        try {
+            List<GradleMetadata.GradleRelease> releases = GradleMetadata.fetchReleases(false);
+            List<GradleMetadata.GradleRelease> compatible = GradleMetadata.filterCompatibleVersions(releases, jdkMajor);
+            List<String> versionStrings = compatible.stream().map(GradleMetadata.GradleRelease::version).toList();
+            String currentSelection = gradleVersionBox.getValue();
+            gradleVersionBox.getItems().setAll(versionStrings);
+
+            String best = GradleMetadata.getLatestCompatibleVersion(jdkMajor);
+            if (gradleAutoSelectCheck.isSelected() || currentSelection == null || !versionStrings.contains(currentSelection)) {
+                if (versionStrings.contains(best)) {
+                    gradleVersionBox.getSelectionModel().select(best);
+                } else if (!versionStrings.isEmpty()) {
+                    gradleVersionBox.getSelectionModel().select(versionStrings.get(versionStrings.size() - 1));
+                }
+            } else {
+                gradleVersionBox.getSelectionModel().select(currentSelection);
+            }
+        } finally {
+            updatingGradleVersion = false;
+        }
+    }
+
+    private int getSelectedJdkMajorVersion() {
+        if (selectedJdk != null) {
+            if (selectedJdk.installation() != null) {
+                return selectedJdk.installation().majorVersion();
+            }
+            if (selectedJdk.label() != null && !selectedJdk.label().isBlank()) {
+                int parsed = JdkMetadata.parseMajorVersion(selectedJdk.label());
+                if (parsed > 0) return parsed;
+            }
+        }
+        JdkEntry val = jdkCombo.getValue();
+        if (val != null) {
+            if (val.installation() != null) {
+                return val.installation().majorVersion();
+            }
+            if (val.label() != null && !val.label().isBlank()) {
+                int parsed = JdkMetadata.parseMajorVersion(val.label());
+                if (parsed > 0) return parsed;
+            }
+        }
+        return 21;
+    }
+
+    private boolean isGradleSelected() {
+        Toggle t = buildGroup.getSelectedToggle();
+        return t instanceof ToggleButton tb && "Gradle".equalsIgnoreCase(tb.getText());
+    }
+
+    private boolean isKotlinDslSelected() {
+        Toggle t = gradleDslGroup.getSelectedToggle();
+        if (t instanceof ToggleButton tb) {
+            return "Kotlin".equalsIgnoreCase(tb.getText());
+        }
+        return true;
     }
 
     private void showPluginManager() {
@@ -5333,6 +5493,26 @@ public class NewProjectDialog {
             pkg = packageField.getText().trim();
         }
 
+        ProjectSpec.GradleDsl gradleDsl = isKotlinDslSelected()
+                ? ProjectSpec.GradleDsl.KOTLIN
+                : ProjectSpec.GradleDsl.GROOVY;
+        String gradleDist = gradleDistributionBox.getValue() != null
+                ? gradleDistributionBox.getValue() : "Wrapper";
+        String gradleVer = gradleVersionBox.getValue() != null && !gradleVersionBox.getValue().isBlank()
+                ? gradleVersionBox.getValue() : "9.2.0";
+        String gradleHome = gradleHomeField.getText().trim();
+
+        if (isJava && build == ProjectSpec.BuildSystem.GRADLE && saveSettingsCheck.isSelected()) {
+            try {
+                java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(NewProjectDialog.class);
+                prefs.put("gradle.dsl", gradleDsl == ProjectSpec.GradleDsl.KOTLIN ? "Kotlin" : "Groovy");
+                prefs.put("gradle.distribution", gradleDist);
+                if (!groupField.getText().isBlank()) {
+                    prefs.put("gradle.group", groupField.getText().trim());
+                }
+            } catch (Exception ignored) {}
+        }
+
         ProjectSpec spec = new ProjectSpec(
                 selected.generator(),
                 name,
@@ -5395,7 +5575,11 @@ public class NewProjectDialog {
                 getSelectedExpressNodeInterpreter(),
                 getSelectedExpressCliVersion(),
                 getSelectedExpressViewEngine(),
-                getSelectedExpressStylesheetEngine());
+                getSelectedExpressStylesheetEngine(),
+                gradleDsl,
+                gradleDist,
+                gradleVer,
+                gradleHome);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

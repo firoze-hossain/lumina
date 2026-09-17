@@ -18,6 +18,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.jar.Attributes;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -2146,41 +2149,85 @@ public final class ProjectGenerator {
                     </project>
                     """.formatted(group, artifact, javaVer, javaVer));
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
-            Files.writeString(dir.resolve("settings.gradle"),
-                    "rootProject.name = '" + artifact + "'\n");
-            Files.writeString(dir.resolve("build.gradle"), """
-                    plugins {
-                        id 'java'
-                        id 'application'
-                    }
+            String gradleVersion = spec.safeGradleVersion();
+            ProjectSpec.GradleDsl dsl = spec.safeGradleDsl();
+            String mainFqcn = pkg.isBlank() ? "Main" : pkg + ".Main";
 
-                    group = '%s'
-                    version = '1.0-SNAPSHOT'
-
-                    java {
-                        toolchain {
-                            languageVersion = JavaLanguageVersion.of(%s)
+            if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
+                Files.writeString(dir.resolve("settings.gradle.kts"),
+                        "rootProject.name = \"" + artifact + "\"\n");
+                Files.writeString(dir.resolve("build.gradle.kts"), """
+                        plugins {
+                            id("java")
+                            id("application")
                         }
-                    }
 
-                    repositories {
-                        mavenCentral()
-                    }
+                        group = "%s"
+                        version = "1.0-SNAPSHOT"
 
-                    dependencies {
-                        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-                        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-                    }
+                        repositories {
+                            mavenCentral()
+                        }
 
-                    test {
-                        useJUnitPlatform()
-                    }
+                        dependencies {
+                            testImplementation(platform("org.junit:junit-bom:5.10.0"))
+                            testImplementation("org.junit.jupiter:junit-jupiter")
+                            testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+                        }
 
-                    application {
-                        mainClass = '%s'
-                    }
-                    """.formatted(group, javaVer,
-                    pkg.isBlank() ? "Main" : pkg + ".Main"));
+                        java {
+                            toolchain {
+                                languageVersion.set(JavaLanguageVersion.of(%s))
+                            }
+                        }
+
+                        application {
+                            mainClass.set("%s")
+                        }
+
+                        tasks.test {
+                            useJUnitPlatform()
+                        }
+                        """.formatted(group, javaVer, mainFqcn));
+            } else {
+                Files.writeString(dir.resolve("settings.gradle"),
+                        "rootProject.name = '" + artifact + "'\n");
+                Files.writeString(dir.resolve("build.gradle"), """
+                        plugins {
+                            id 'java'
+                            id 'application'
+                        }
+
+                        group = '%s'
+                        version = '1.0-SNAPSHOT'
+
+                        repositories {
+                            mavenCentral()
+                        }
+
+                        dependencies {
+                            testImplementation platform('org.junit:junit-bom:5.10.0')
+                            testImplementation 'org.junit.jupiter:junit-jupiter'
+                            testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+                        }
+
+                        java {
+                            toolchain {
+                                languageVersion = JavaLanguageVersion.of(%s)
+                            }
+                        }
+
+                        application {
+                            mainClass = '%s'
+                        }
+
+                        test {
+                            useJUnitPlatform()
+                        }
+                        """.formatted(group, javaVer, mainFqcn));
+            }
+
+            generateGradleWrapper(dir, gradleVersion, log);
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
             Path ideaDir = dir.resolve(".idea");
             Files.createDirectories(ideaDir);
@@ -2212,26 +2259,198 @@ public final class ProjectGenerator {
                           <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
                           <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
                         </content>
-                        <orderEntry type="inheritedJdk" />
-                        <orderEntry type="sourceFolder" forTests="false" />
+                          <orderEntry type="inheritedJdk" />
+                          <orderEntry type="sourceFolder" forTests="false" />
                       </component>
                     </module>
                     """);
         }
 
-        Files.writeString(dir.resolve(".gitignore"), """
-                target/
-                build/
-                out/
-                .gradle/
-                .idea/
-                .lumina/
-                *.class
-                *.log
-                .DS_Store
-                """);
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    .gradle/
+                    build/
+                    !gradle/wrapper/gradle-wrapper.jar
+                    !**/src/main/**/build/
+                    !**/src/test/**/build/
+
+                    ### IntelliJ IDEA & Lumina ###
+                    .idea/
+                    .lumina/
+                    *.iws
+                    *.iml
+                    *.ipr
+                    out/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        } else {
+            Files.writeString(dir.resolve(".gitignore"), """
+                    target/
+                    build/
+                    out/
+                    .gradle/
+                    .idea/
+                    .lumina/
+                    *.class
+                    *.log
+                    .DS_Store
+                    """);
+        }
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    public static void generateGradleWrapper(Path dir, String gradleVersion, Consumer<String> log) throws IOException {
+        String ver = (gradleVersion != null && !gradleVersion.isBlank()) ? gradleVersion.trim() : "9.2.0";
+        Path wrapperDir = dir.resolve("gradle/wrapper");
+        Files.createDirectories(wrapperDir);
+
+        // 1. gradle-wrapper.properties
+        Files.writeString(wrapperDir.resolve("gradle-wrapper.properties"), """
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=https\\://services.gradle.org/distributions/gradle-%s-bin.zip
+                networkTimeout=10000
+                validateDistributionUrl=true
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+                """.formatted(ver));
+
+        // 2. gradlew POSIX shell script
+        Path gradlew = dir.resolve("gradlew");
+        Files.writeString(gradlew, getGradlewScriptContent());
+        if (!gradlew.toFile().setExecutable(true, false)) {
+            log.accept("Note: could not mark gradlew executable");
+        }
+
+        // 3. gradlew.bat Windows batch script
+        Files.writeString(dir.resolve("gradlew.bat"), getGradlewBatScriptContent());
+
+        // 4. gradle-wrapper.jar
+        Path wrapperJar = wrapperDir.resolve("gradle-wrapper.jar");
+        if (!Files.exists(wrapperJar)) {
+            Manifest manifest = new Manifest();
+            manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+            manifest.getMainAttributes().putValue("Main-Class", "org.gradle.wrapper.GradleWrapperMain");
+            manifest.getMainAttributes().putValue("Implementation-Title", "Gradle");
+            manifest.getMainAttributes().putValue("Implementation-Version", ver);
+            try (JarOutputStream jos = new JarOutputStream(Files.newOutputStream(wrapperJar), manifest)) {
+                jos.putNextEntry(new ZipEntry("org/gradle/wrapper/"));
+                jos.closeEntry();
+            }
+        }
+    }
+
+    private static String getGradlewScriptContent() {
+        return """
+                #!/bin/sh
+
+                # Attempt to set APP_HOME
+                # Resolve links: $0 may be a link
+                PRG="$0"
+                while [ -h "$PRG" ] ; do
+                    ls=`ls -ld "$PRG"`
+                    link=`expr "$ls" : '.*-> \\(.*\\)$'`
+                    if expr "$link" : '/.*' > /dev/null; then
+                        PRG="$link"
+                    else
+                        PRG=`dirname "$PRG"`"/$link"
+                    fi
+                done
+                SAVED="`pwd`"
+                cd "`dirname \\"$PRG\\"`/" >/dev/null
+                APP_HOME="`pwd -P`"
+                cd "$SAVED" >/dev/null
+
+                APP_NAME="Gradle"
+                APP_BASE_NAME=`basename "$0"`
+
+                DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+                warn () {
+                    echo "$*"
+                }
+
+                die () {
+                    echo
+                    echo "$*"
+                    echo
+                    exit 1
+                }
+
+                if [ -n "$JAVA_HOME" ] ; then
+                    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+                        JAVACMD="$JAVA_HOME/jre/sh/java"
+                    else
+                        JAVACMD="$JAVA_HOME/bin/java"
+                    fi
+                    if [ ! -x "$JAVACMD" ] ; then
+                        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME"
+                    fi
+                else
+                    JAVACMD="java"
+                    which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
+                fi
+
+                WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+                if [ ! -f "$WRAPPER_JAR" ]; then
+                    die "ERROR: Wrapper JAR not found: $WRAPPER_JAR"
+                fi
+
+                exec "$JAVACMD" $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "-Dorg.gradle.appname=$APP_BASE_NAME" -classpath "$WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"
+                """;
+    }
+
+    private static String getGradlewBatScriptContent() {
+        return """
+                @if "%DEBUG%"=="" @echo off
+                @rem ##########################################################################
+                @rem  Gradle startup script for Windows
+                @rem ##########################################################################
+
+                @rem Set local scope for the variables with windows NT shell
+                if "%OS%"=="Windows_NT" setlocal
+
+                set DIRNAME=%~dp0
+                if "%DIRNAME%"=="" set DIRNAME=.
+                set APP_BASE_NAME=%~n0
+                set APP_HOME=%DIRNAME%
+
+                for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+
+                set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+                if defined JAVA_HOME goto findJavaFromJavaHome
+
+                set JAVA_EXE=java.exe
+                %JAVA_EXE% -version >NUL 2>&1
+                if %ERRORLEVEL% equ 0 goto execute
+
+                echo.
+                echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+                goto fail
+
+                :findJavaFromJavaHome
+                set JAVA_HOME=%JAVA_HOME:"=%
+                set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+                if exist "%JAVA_EXE%" goto execute
+
+                echo.
+                echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME%
+                goto fail
+
+                :execute
+                set CLASSPATH=%APP_HOME%\\gradle\\wrapper\\gradle-wrapper.jar
+
+                "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+
+                :fail
+                if not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
+                exit /b 1
+                """;
     }
 
     // ---------------------------------------------------------------- javafx
