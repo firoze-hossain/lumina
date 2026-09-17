@@ -62,8 +62,50 @@ public record ProjectSpec(
         GradleDsl gradleDsl,
         String gradleDistribution,
         String gradleVersion,
-        String gradleHome
+        String gradleHome,
+        boolean generateMultiModule
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins, String htmlProjectType,
+            String htmlVersion, String reactProjectType, String reactNodeInterpreter,
+            String reactCliVersion, boolean reactTypeScript,
+            String expressNodeInterpreter, String expressCliVersion,
+            String expressViewEngine, String expressStylesheetEngine,
+            GradleDsl gradleDsl, String gradleDistribution, String gradleVersion,
+            String gradleHome
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                htmlProjectType, htmlVersion, reactProjectType, reactNodeInterpreter,
+                reactCliVersion, reactTypeScript,
+                expressNodeInterpreter, expressCliVersion,
+                expressViewEngine, expressStylesheetEngine,
+                gradleDsl, gradleDistribution, gradleVersion, gradleHome, false);
+    }
+
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,
@@ -100,7 +142,7 @@ public record ProjectSpec(
                 reactCliVersion, reactTypeScript,
                 expressNodeInterpreter, expressCliVersion, expressViewEngine,
                 expressStylesheetEngine,
-                GradleDsl.GROOVY, "Wrapper", "9.2.0", "");
+                GradleDsl.GROOVY, "Wrapper", "9.2.0", "", false);
     }
 
     public ProjectSpec(
@@ -338,6 +380,18 @@ public record ProjectSpec(
 
     public String safeGradleDistribution() {
         return gradleDistribution != null && !gradleDistribution.isBlank() ? gradleDistribution.trim() : "Wrapper";
+    }
+
+    public String safeGradleLocation() {
+        return safeGradleHome();
+    }
+
+    public String safeGradleHome() {
+        return gradleHome != null ? gradleHome.trim() : "";
+    }
+
+    public boolean safeGenerateMultiModule() {
+        return generateMultiModule;
     }
 
     public Path projectDir() {

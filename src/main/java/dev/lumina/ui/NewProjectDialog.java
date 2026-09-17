@@ -405,6 +405,7 @@ public class NewProjectDialog {
     private final TextField webParametersField = new TextField();
     private final ComboBox<String> gradleVersionBox = new ComboBox<>();
     private final CheckBox saveSettingsCheck = new CheckBox("Use these settings for future projects");
+    private final CheckBox multiModuleCheck = new CheckBox("Generate multi-module build");
     private final Label gradleDslLabel = formLabel("Gradle DSL:");
     private final ToggleGroup gradleDslGroup = new ToggleGroup();
     private final HBox gradleDslRow = new HBox();
@@ -414,10 +415,10 @@ public class NewProjectDialog {
     private final Label gradleVersionLabel = formLabel("Gradle version:");
     private final CheckBox gradleAutoSelectCheck = new CheckBox("Auto-select");
     private final HBox gradleVersionRow = new HBox(16);
-    private final Label gradleHomeLabel = formLabel("Gradle home:");
-    private final TextField gradleHomeField = new TextField();
-    private final Button gradleHomeBrowseButton = new Button("…");
-    private final HBox gradleHomeRow = new HBox(6);
+    private final Label gradleLocationLabel = formLabel("Gradle location:");
+    private final TextField gradleLocationField = new TextField();
+    private final Button gradleLocationBrowseButton = new Button();
+    private final HBox gradleLocationRow = new HBox(6);
     private final GridPane javaAdvGrid = new GridPane();
     private boolean updatingGradleVersion = false;
     private final ToggleButton langJava = new ToggleButton("Java");
@@ -1260,6 +1261,13 @@ public class NewProjectDialog {
                 break;
             }
         }
+        gradleDslGroup.selectedToggleProperty().addListener((obs, old, n) -> {
+            if (selected != null && (selected.generator() == ProjectSpec.Generator.KOTLIN
+                    || selected.generator() == ProjectSpec.Generator.JAVA
+                    || selected.generator() == ProjectSpec.Generator.GROOVY)) {
+                rebuildFormGrid();
+            }
+        });
 
         // Gradle distribution
         gradleDistributionBox.getSelectionModel().select("Wrapper");
@@ -1286,20 +1294,21 @@ public class NewProjectDialog {
             }
         });
 
-        // Gradle home for local installation
-        gradleHomeField.setPromptText("Path to local Gradle installation");
-        HBox.setHgrow(gradleHomeField, Priority.ALWAYS);
-        gradleHomeBrowseButton.getStyleClass().add("browse-button");
-        gradleHomeBrowseButton.setOnAction(e -> {
+        // Gradle location for local installation
+        gradleLocationField.setPromptText("Path to local Gradle");
+        HBox.setHgrow(gradleLocationField, Priority.ALWAYS);
+        gradleLocationBrowseButton.getStyleClass().add("browse-button");
+        gradleLocationBrowseButton.setGraphic(createBrowseFolderIcon());
+        gradleLocationBrowseButton.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle("Select Gradle Installation Directory");
             File chosen = dc.showDialog(stage);
             if (chosen != null) {
-                gradleHomeField.setText(chosen.getAbsolutePath());
+                gradleLocationField.setText(chosen.getAbsolutePath());
             }
         });
-        gradleHomeRow.setAlignment(Pos.CENTER_LEFT);
-        gradleHomeRow.getChildren().setAll(gradleHomeField, gradleHomeBrowseButton);
+        gradleLocationRow.setAlignment(Pos.CENTER_LEFT);
+        gradleLocationRow.getChildren().setAll(gradleLocationField, gradleLocationBrowseButton);
 
         saveSettingsCheck.setSelected(false);
 
@@ -1315,6 +1324,10 @@ public class NewProjectDialog {
             }
             String savedDist = prefs.get("gradle.distribution", "Wrapper");
             gradleDistributionBox.setValue(savedDist);
+            String savedLoc = prefs.get("gradle.location", "");
+            if (!savedLoc.isBlank()) {
+                gradleLocationField.setText(savedLoc);
+            }
             String savedGroup = prefs.get("gradle.group", null);
             if (savedGroup != null && !savedGroup.isBlank()) {
                 groupField.setText(savedGroup);
@@ -1613,21 +1626,27 @@ public class NewProjectDialog {
         formGrid.add(jdkLabel, 0, row);
         formGrid.add(jdkCombo, 1, row++);
 
-        if (java && isGradleSelected()) {
+        if (isGradleSelected()) {
             formGrid.add(gradleDslLabel, 0, row);
             formGrid.add(gradleDslRow, 1, row++);
         }
 
-        if (groovy) {
+        if (groovy && !isGradleSelected()) {
             formGrid.add(groovySdkLabel, 0, row);
             formGrid.add(groovySdkBox, 1, row++);
         }
 
-        if (kotlin) {
-            VBox sampleBox = new VBox(4, sampleCodeCheck, kotlinInfoBox);
-            formGrid.add(sampleBox, 1, row++);
+        formGrid.add(sampleCodeCheck, 1, row++);
+
+        boolean showMultiModule = isGradleSelected() && (!kotlin || isKotlinDslSelected());
+        if (showMultiModule) {
+            formGrid.add(createMultiModuleNode(), 1, row++);
         } else {
-            formGrid.add(sampleCodeCheck, 1, row++);
+            multiModuleCheck.setSelected(false);
+        }
+
+        if (kotlin) {
+            formGrid.add(kotlinInfoBox, 1, row++);
         }
 
         formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
@@ -4751,6 +4770,22 @@ public class NewProjectDialog {
 
         configureBuildOptions();
 
+        if (kotlin) {
+            for (Toggle t : gradleDslGroup.getToggles()) {
+                if ("Kotlin".equalsIgnoreCase(((ToggleButton) t).getText())) {
+                    t.setSelected(true);
+                    break;
+                }
+            }
+        } else if (groovy) {
+            for (Toggle t : gradleDslGroup.getToggles()) {
+                if ("Groovy".equalsIgnoreCase(((ToggleButton) t).getText())) {
+                    t.setSelected(true);
+                    break;
+                }
+            }
+        }
+
         if (createButton != null) {
             if (spring) {
                 createButton.setText("Next");
@@ -4795,10 +4830,6 @@ public class NewProjectDialog {
     }
 
     private void configureBuildOptions() {
-        configureBuildOptions(false);
-    }
-
-    private void configureBuildOptions(boolean includeIntelliJ) {
         ToggleButton selectedBuild = (ToggleButton) buildGroup.getSelectedToggle();
         String wasSelected = selectedBuild == null ? "" : selectedBuild.getText();
         buildGroup.getToggles().clear();
@@ -4812,11 +4843,16 @@ public class NewProjectDialog {
             }
         }
         if (!matched) {
+            String defaultChoice = (selected != null && (selected.generator() == ProjectSpec.Generator.KOTLIN || selected.generator() == ProjectSpec.Generator.GROOVY)) ? "Gradle" : "Maven";
             for (javafx.scene.control.Toggle toggle : buildGroup.getToggles()) {
-                if ("Maven".equals(((ToggleButton) toggle).getText())) {
+                if (defaultChoice.equals(((ToggleButton) toggle).getText())) {
                     toggle.setSelected(true);
+                    matched = true;
                     break;
                 }
+            }
+            if (!matched && !buildGroup.getToggles().isEmpty()) {
+                buildGroup.getToggles().get(0).setSelected(true);
             }
         }
     }
@@ -5032,10 +5068,16 @@ public class NewProjectDialog {
             javaAdvGrid.add(gradleDistributionLabel, 0, row);
             javaAdvGrid.add(gradleDistributionBox, 1, row++);
 
-            // 2. Gradle version (with Auto-select) OR Gradle home
+            // 2. Gradle version (with Auto-select) OR Gradle location
             if ("Local installation".equals(gradleDistributionBox.getValue())) {
-                javaAdvGrid.add(gradleHomeLabel, 0, row);
-                javaAdvGrid.add(gradleHomeRow, 1, row++);
+                if (gradleLocationField.getText().isBlank()) {
+                    List<String> localInstalls = GradleMetadata.detectLocalInstallations();
+                    if (!localInstalls.isEmpty()) {
+                        gradleLocationField.setText(localInstalls.get(0));
+                    }
+                }
+                javaAdvGrid.add(gradleLocationLabel, 0, row);
+                javaAdvGrid.add(gradleLocationRow, 1, row++);
             } else {
                 gradleVersionRow.getChildren().setAll(gradleVersionBox, gradleAutoSelectCheck);
                 javaAdvGrid.add(gradleVersionLabel, 0, row);
@@ -5452,7 +5494,7 @@ public class NewProjectDialog {
         } else {
             ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
             String text = buildToggle != null ? buildToggle.getText() : "Maven";
-            build = "Gradle".equals(text) ? ProjectSpec.BuildSystem.GRADLE : ProjectSpec.BuildSystem.MAVEN;
+            build = "Gradle".equals(text) ? ProjectSpec.BuildSystem.GRADLE : ("IntelliJ".equals(text) ? ProjectSpec.BuildSystem.INTELLIJ : ProjectSpec.BuildSystem.MAVEN);
         }
 
         String quarkusBuildTool = "MAVEN";
@@ -5515,13 +5557,16 @@ public class NewProjectDialog {
                 ? gradleDistributionBox.getValue() : "Wrapper";
         String gradleVer = gradleVersionBox.getValue() != null && !gradleVersionBox.getValue().isBlank()
                 ? gradleVersionBox.getValue() : "9.2.0";
-        String gradleHome = gradleHomeField.getText().trim();
+        String gradleHome = gradleLocationField.getText().trim();
 
         if ((isJava || isKotlin || isGroovy) && build == ProjectSpec.BuildSystem.GRADLE && saveSettingsCheck.isSelected()) {
             try {
                 java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(NewProjectDialog.class);
                 prefs.put("gradle.dsl", gradleDsl == ProjectSpec.GradleDsl.KOTLIN ? "Kotlin" : "Groovy");
                 prefs.put("gradle.distribution", gradleDist);
+                if (!gradleHome.isBlank()) {
+                    prefs.put("gradle.location", gradleHome);
+                }
                 if (!groupField.getText().isBlank()) {
                     prefs.put("gradle.group", groupField.getText().trim());
                 }
@@ -5594,7 +5639,8 @@ public class NewProjectDialog {
                 gradleDsl,
                 gradleDist,
                 gradleVer,
-                gradleHome);
+                gradleHome,
+                multiModuleCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
@@ -5654,6 +5700,18 @@ public class NewProjectDialog {
         javafx.scene.control.Tooltip tip = new javafx.scene.control.Tooltip(helpText);
         javafx.scene.control.Tooltip.install(help, tip);
         HBox box = new HBox(4, label, help);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
+
+    private Node createMultiModuleNode() {
+        Label help = new Label("?");
+        help.setStyle("-fx-text-fill: #707890; -fx-font-size: 10px; -fx-cursor: hand; "
+                + "-fx-border-color: #707890; -fx-border-radius: 8; -fx-min-width: 14px; "
+                + "-fx-alignment: center; -fx-padding: 0 2 0 2;");
+        javafx.scene.control.Tooltip tip = new javafx.scene.control.Tooltip("Create a project with a root directory and a subproject.");
+        javafx.scene.control.Tooltip.install(help, tip);
+        HBox box = new HBox(6, multiModuleCheck, help);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;
     }
