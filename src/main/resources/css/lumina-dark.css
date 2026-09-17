@@ -2957,4 +2957,27 @@
     -fx-font-size: 12px;
 }
 
+/* HTML Generator Refresh Button */
+.html-refresh-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: #3C4254;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: #9AA1B5;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-padding: 3 8 3 8;
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+}
+.html-refresh-btn:hover {
+    -fx-background-color: #262A3A;
+    -fx-text-fill: #E6E9F2;
+    -fx-border-color: #555D75;
+}
+.html-refresh-btn:disabled {
+    -fx-opacity: 0.5;
+}
+
+
 

@@ -59,7 +59,8 @@ public final class ProjectGenerator {
             case JAVA, KOTLIN, GROOVY -> generateJava(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
-            case ANGULAR_CLI, VITE, HTML, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case ANGULAR_CLI, VITE, REACT, EXPRESS, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case HTML -> generateHtml(spec, dir, log);
             case QUARKUS -> generateQuarkus(spec, dir, log);
             case MICRONAUT -> generateMicronaut(spec, dir, log);
             case KTOR -> generateKtor(spec, dir, log);
@@ -89,6 +90,542 @@ public final class ProjectGenerator {
                 }
                 """.formatted(spec.artifact()));
         Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    // ------------------------------------------------------------------ html
+
+    private static void generateHtml(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String projectType = spec.htmlProjectType() != null ? spec.htmlProjectType().trim() : HtmlMetadata.TYPE_H5BP;
+        boolean isBootstrap = projectType.equalsIgnoreCase(HtmlMetadata.TYPE_BOOTSTRAP);
+        String version = spec.htmlVersion() != null && !spec.htmlVersion().isBlank()
+                ? spec.htmlVersion().trim()
+                : (isBootstrap ? "v5.3.8" : "v9.0.1");
+
+        log.accept("Generating " + (isBootstrap ? "Bootstrap" : "HTML5 Boilerplate") + " (" + version + ") project …");
+
+        Files.createDirectories(dir);
+
+        if (isBootstrap) {
+            generateBootstrapProject(spec, dir, version, log);
+        } else {
+            generateH5bpProject(spec, dir, version, log);
+        }
+    }
+
+    private static void generateH5bpProject(ProjectSpec spec, Path dir, String version, Consumer<String> log)
+            throws IOException {
+        boolean downloaded = false;
+        String cleanVer = version.startsWith("v") ? version.substring(1) : version;
+
+        String[] possibleUrls = {
+                "https://github.com/h5bp/html5-boilerplate/releases/download/" + version + "/html5-boilerplate_" + version + ".zip",
+                "https://github.com/h5bp/html5-boilerplate/releases/download/" + version + "/html5-boilerplate-" + version + ".zip",
+                "https://github.com/h5bp/html5-boilerplate/releases/download/v" + cleanVer + "/html5-boilerplate_v" + cleanVer + ".zip"
+        };
+
+        for (String downloadUrl : possibleUrls) {
+            try {
+                HttpClient client = HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(6))
+                        .followRedirects(HttpClient.Redirect.NORMAL)
+                        .build();
+                HttpRequest request = HttpRequest.newBuilder(URI.create(downloadUrl))
+                        .timeout(Duration.ofSeconds(12))
+                        .header("User-Agent", "Lumina-IDE")
+                        .GET()
+                        .build();
+                HttpResponse<byte[]> resp = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                if (resp.statusCode() == 200 && resp.body() != null && resp.body().length > 1000) {
+                    unzip(resp.body(), dir);
+                    log.accept("Downloaded and extracted HTML5 Boilerplate " + version);
+                    downloaded = true;
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (!downloaded) {
+            log.accept("Using built-in HTML5 Boilerplate " + version + " template …");
+            Files.createDirectories(dir.resolve("css"));
+            Files.createDirectories(dir.resolve("js"));
+
+            Files.writeString(dir.resolve("index.html"), """
+                    <!doctype html>
+                    <html class="no-js" lang="en">
+
+                    <head>
+                      <meta charset="utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1">
+                      <title>%s</title>
+                      <link rel="stylesheet" href="css/style.css">
+                      <meta name="description" content="HTML5 Boilerplate project created with Lumina IDE">
+
+                      <meta property="og:title" content="%s">
+                      <meta property="og:type" content="website">
+
+                      <link rel="icon" href="/favicon.ico" sizes="any">
+                      <link rel="icon" href="/icon.svg" type="image/svg+xml">
+                      <link rel="apple-touch-icon" href="icon.png">
+
+                      <link rel="manifest" href="site.webmanifest">
+                      <meta name="theme-color" content="#fafafa">
+                    </head>
+
+                    <body>
+                      <!-- Add your site or application content here -->
+                      <p>Hello world! This is HTML5 Boilerplate (%s).</p>
+                      <script src="js/app.js"></script>
+                    </body>
+
+                    </html>
+                    """.formatted(spec.name(), spec.name(), version));
+
+            Files.writeString(dir.resolve("css/style.css"), """
+                    /*! HTML5 Boilerplate v%s | MIT License | https://html5boilerplate.com/ */
+
+                    /* ==========================================================================
+                       Base styles: opinionated defaults
+                       ========================================================================== */
+
+                    html {
+                      color: #222;
+                      font-size: 1em;
+                      line-height: 1.4;
+                      box-sizing: border-box;
+                    }
+
+                    *, *:before, *:after {
+                      box-sizing: inherit;
+                    }
+
+                    body {
+                      margin: 0;
+                      padding: 24px;
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    }
+
+                    ::-moz-selection {
+                      background: #b3d4fc;
+                      text-shadow: none;
+                    }
+
+                    ::selection {
+                      background: #b3d4fc;
+                      text-shadow: none;
+                    }
+
+                    hr {
+                      display: block;
+                      height: 1px;
+                      border: 0;
+                      border-top: 1px solid #ccc;
+                      margin: 1em 0;
+                      padding: 0;
+                    }
+
+                    /* ==========================================================================
+                       Author's custom styles
+                       ========================================================================== */
+
+                    p {
+                      font-size: 1.2rem;
+                      color: #333;
+                    }
+
+                    /* ==========================================================================
+                       Helper classes
+                       ========================================================================== */
+
+                    .visually-hidden {
+                      border: 0;
+                      clip: rect(0, 0, 0, 0);
+                      height: 1px;
+                      margin: -1px;
+                      overflow: hidden;
+                      padding: 0;
+                      position: absolute;
+                      white-space: nowrap;
+                      width: 1px;
+                    }
+
+                    .clearfix::before,
+                    .clearfix::after {
+                      content: " ";
+                      display: table;
+                    }
+
+                    .clearfix::after {
+                      clear: both;
+                    }
+                    """.formatted(cleanVer));
+
+            Files.writeString(dir.resolve("js/app.js"), """
+                    // HTML5 Boilerplate application script
+                    console.log('HTML5 Boilerplate (%s) loaded successfully.');
+                    """.formatted(version));
+
+            Files.writeString(dir.resolve("robots.txt"), """
+                    # www.robotstxt.org/
+                    User-agent: *
+                    Disallow:
+                    """);
+
+            Files.writeString(dir.resolve("404.html"), """
+                    <!doctype html>
+                    <html lang="en">
+                    <head>
+                      <meta charset="utf-8">
+                      <title>Page Not Found</title>
+                      <meta name="viewport" content="width=device-width, initial-scale=1">
+                      <style>
+                        * { line-height: 1.2; margin: 0; }
+                        html { color: #888; display: table; font-family: sans-serif; height: 100%; text-align: center; width: 100%; }
+                        body { display: table-cell; vertical-align: middle; margin: 2em auto; }
+                        h1 { color: #555; font-size: 2em; font-weight: 400; }
+                        p { margin: 0 auto; width: 280px; }
+                      </style>
+                    </head>
+                    <body>
+                      <h1>Page Not Found</h1>
+                      <p>Sorry, but the page you were trying to view does not exist.</p>
+                    </body>
+                    </html>
+                    """);
+
+            Files.writeString(dir.resolve("site.webmanifest"), """
+                    {
+                      "name": "%s",
+                      "short_name": "%s",
+                      "icons": [
+                        { "src": "/icon.png", "sizes": "192x192", "type": "image/png" }
+                      ],
+                      "theme_color": "#fafafa",
+                      "background_color": "#fafafa",
+                      "display": "standalone"
+                    }
+                    """.formatted(spec.name(), spec.name()));
+
+            Files.writeString(dir.resolve("package.json"), """
+                    {
+                      "name": "%s",
+                      "version": "1.0.0",
+                      "description": "HTML5 Boilerplate %s project created with Lumina IDE",
+                      "scripts": {
+                        "start": "npx serve ."
+                      },
+                      "dependencies": {
+                        "html5-boilerplate": "^%s"
+                      }
+                    }
+                    """.formatted(sanitizeArtifact(spec.name()), version, cleanVer));
+        }
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                node_modules/
+                .idea/
+                .lumina/
+                *.log
+                .DS_Store
+                """);
+
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                HTML5 Boilerplate (%s) project created with Lumina IDE.
+
+                ## Getting Started
+                Open `index.html` in your favorite web browser or start a local server:
+                ```bash
+                npx serve .
+                ```
+                """.formatted(spec.name(), version));
+    }
+
+    private static void generateBootstrapProject(ProjectSpec spec, Path dir, String version, Consumer<String> log)
+            throws IOException {
+        String cleanVer = version.startsWith("v") ? version.substring(1) : version;
+        Files.createDirectories(dir.resolve("css"));
+        Files.createDirectories(dir.resolve("js"));
+
+        boolean downloadedAssets = false;
+
+        // Try downloading official Bootstrap dist zip
+        String distZipUrl = "https://github.com/twbs/bootstrap/releases/download/" + version + "/bootstrap-" + cleanVer + "-dist.zip";
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(6))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(distZipUrl))
+                    .timeout(Duration.ofSeconds(12))
+                    .header("User-Agent", "Lumina-IDE")
+                    .GET()
+                    .build();
+            HttpResponse<byte[]> resp = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (resp.statusCode() == 200 && resp.body() != null && resp.body().length > 1000) {
+                try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(resp.body()))) {
+                    ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        String name = entry.getName();
+                        if (name.endsWith("css/bootstrap.min.css")) {
+                            Files.copy(zis, dir.resolve("css/bootstrap.min.css"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        } else if (name.endsWith("js/bootstrap.bundle.min.js")) {
+                            Files.copy(zis, dir.resolve("js/bootstrap.bundle.min.js"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                        }
+                        zis.closeEntry();
+                    }
+                }
+                if (Files.exists(dir.resolve("css/bootstrap.min.css")) && Files.exists(dir.resolve("js/bootstrap.bundle.min.js"))) {
+                    downloadedAssets = true;
+                    log.accept("Downloaded official Bootstrap " + version + " distribution assets.");
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // If dist zip wasn't downloaded, try jsDelivr CDN
+        if (!downloadedAssets) {
+            try {
+                HttpClient client = HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(4))
+                        .followRedirects(HttpClient.Redirect.NORMAL)
+                        .build();
+                String cssUrl = "https://cdn.jsdelivr.net/npm/bootstrap@" + cleanVer + "/dist/css/bootstrap.min.css";
+                String jsUrl = "https://cdn.jsdelivr.net/npm/bootstrap@" + cleanVer + "/dist/js/bootstrap.bundle.min.js";
+
+                HttpResponse<byte[]> cssResp = client.send(
+                        HttpRequest.newBuilder(URI.create(cssUrl)).timeout(Duration.ofSeconds(8)).build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
+                HttpResponse<byte[]> jsResp = client.send(
+                        HttpRequest.newBuilder(URI.create(jsUrl)).timeout(Duration.ofSeconds(8)).build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
+
+                if (cssResp.statusCode() == 200 && jsResp.statusCode() == 200) {
+                    Files.write(dir.resolve("css/bootstrap.min.css"), cssResp.body());
+                    Files.write(dir.resolve("js/bootstrap.bundle.min.js"), jsResp.body());
+                    downloadedAssets = true;
+                    log.accept("Fetched Bootstrap " + version + " assets from CDN.");
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (!downloadedAssets) {
+            log.accept("Configured Bootstrap " + version + " with fallback styling & template.");
+            Files.writeString(dir.resolve("css/bootstrap.min.css"), """
+                    /*! Bootstrap v%s baseline fallback (Lumina IDE) */
+                    :root{--bs-primary:#0d6efd;--bs-secondary:#6c757d;--bs-light:#f8f9fa;--bs-dark:#212529}
+                    *,::after,::before{box-sizing:border-box}
+                    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:1rem;font-weight:400;line-height:1.5;color:#212529;background-color:#fff}
+                    .container{width:100%%;padding-right:var(--bs-gutter-x,.75rem);padding-left:var(--bs-gutter-x,.75rem);margin-right:auto;margin-left:auto;max-width:1140px}
+                    .navbar{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;padding-top:.5rem;padding-bottom:.5rem}
+                    .navbar-dark{color:rgba(255,255,255,.55);background-color:#212529}
+                    .navbar-brand{padding-top:.3125rem;padding-bottom:.3125rem;margin-right:1rem;font-size:1.25rem;text-decoration:none;white-space:nowrap;color:#fff}
+                    .btn{display:inline-block;font-weight:400;line-height:1.5;text-align:center;text-decoration:none;vertical-align:middle;cursor:pointer;user-select:none;border:1px solid transparent;padding:.375rem .75rem;font-size:1rem;border-radius:.375rem;transition:color .15s,background-color .15s}
+                    .btn-primary{color:#fff;background-color:#0d6efd;border-color:#0d6efd}
+                    .btn-primary:hover{background-color:#0b5ed7;border-color:#0a58ca}
+                    .btn-outline-secondary{color:#6c757d;border-color:#6c757d}
+                    .btn-outline-secondary:hover{color:#fff;background-color:#6c757d}
+                    .card{position:relative;display:flex;flex-direction:column;min-width:0;word-wrap:break-word;background-color:#fff;background-clip:border-box;border:1px solid rgba(0,0,0,.125);border-radius:.375rem}
+                    .card-body{flex:1 1 auto;padding:1.25rem}
+                    .card-title{margin-bottom:.5rem;font-size:1.25rem;font-weight:500}
+                    .card-text:last-child{margin-bottom:0}
+                    .row{display:flex;flex-wrap:wrap;margin-top:calc(-1 * var(--bs-gutter-y, 0));margin-right:calc(-.5 * var(--bs-gutter-x, 1.5rem));margin-left:calc(-.5 * var(--bs-gutter-x, 1.5rem))}
+                    .col{flex:1 0 0%%}
+                    .p-5{padding:3rem!important}
+                    .mb-4{margin-bottom:1.5rem!important}
+                    .mb-5{margin-bottom:3rem!important}
+                    .my-4{margin-top:1.5rem!important;margin-bottom:1.5rem!important}
+                    .my-5{margin-top:3rem!important;margin-bottom:3rem!important}
+                    .mt-4{margin-top:1.5rem!important}
+                    .pt-3{padding-top:1rem!important}
+                    .py-3{padding-top:1rem!important;padding-bottom:1rem!important}
+                    .py-4{padding-top:1.5rem!important;padding-bottom:1.5rem!important}
+                    .text-muted{color:#6c757d!important}
+                    .text-secondary{color:#6c757d!important}
+                    .text-primary{color:#0d6efd!important}
+                    .bg-light{background-color:#f8f9fa!important}
+                    .bg-primary{background-color:#0d6efd!important}
+                    .text-white{color:#fff!important}
+                    .rounded-3{border-radius:.5rem!important}
+                    .shadow-sm{box-shadow:0 .125rem .25rem rgba(0,0,0,.075)!important}
+                    .text-center{text-align:center!important}
+                    .border{border:1px solid #dee2e6!important}
+                    .border-0{border:0!important}
+                    .border-top{border-top:1px solid #dee2e6!important}
+                    .fw-bold{font-weight:700!important}
+                    .display-5{font-size:2.5rem;font-weight:300;line-height:1.2}
+                    .fs-5{font-size:1.25rem!important}
+                    .d-flex{display:flex!important}
+                    .align-items-center{align-items:center!important}
+                    .gap-3{gap:1rem!important}
+                    .badge{display:inline-block;padding:.35em .65em;font-size:.75em;font-weight:700;line-height:1;text-align:center;white-space:nowrap;vertical-align:baseline;border-radius:.25rem}
+                    """.formatted(cleanVer));
+
+            Files.writeString(dir.resolve("js/bootstrap.bundle.min.js"), """
+                    /*! Bootstrap bundle stub (Lumina IDE) */
+                    console.log('Bootstrap v%s bundle initialized.');
+                    """.formatted(cleanVer));
+        }
+
+        Files.writeString(dir.resolve("index.html"), """
+                <!doctype html>
+                <html lang="en">
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <title>%s - Bootstrap %s</title>
+                  <!-- Bootstrap CSS -->
+                  <link rel="stylesheet" href="css/bootstrap.min.css">
+                  <!-- Custom CSS -->
+                  <link rel="stylesheet" href="css/style.css">
+                </head>
+                <body>
+                  <!-- Navbar -->
+                  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+                    <div class="container">
+                      <a class="navbar-brand fw-bold" href="#">%s</a>
+                      <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-primary text-white">Bootstrap %s</span>
+                      </div>
+                    </div>
+                  </nav>
+
+                  <!-- Main Content -->
+                  <main class="container my-5">
+                    <!-- Hero -->
+                    <div class="p-5 mb-5 bg-light rounded-3 shadow-sm border">
+                      <div class="container-fluid py-3">
+                        <h1 class="display-5 fw-bold">Welcome to your Bootstrap App</h1>
+                        <p class="col-md-8 fs-5 text-secondary">
+                          This project is pre-configured with Bootstrap %s and structured with modern best practices by Lumina IDE.
+                        </p>
+                        <button class="btn btn-primary btn-lg me-2" type="button" id="getStartedBtn">Get Started</button>
+                        <a href="https://getbootstrap.com/docs/%s" target="_blank" class="btn btn-outline-secondary btn-lg">Documentation ↗</a>
+                      </div>
+                    </div>
+
+                    <!-- 3-Column Features -->
+                    <div class="row row-cols-1 row-cols-md-3 g-4">
+                      <div class="col">
+                        <div class="card h-100 shadow-sm border-0 bg-light p-3">
+                          <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">Responsive Design</h5>
+                            <p class="card-text text-secondary">
+                              Quickly build mobile-first sites with the responsive 12-column grid system and flexible components.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col">
+                        <div class="card h-100 shadow-sm border-0 bg-light p-3">
+                          <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">Prebuilt Components</h5>
+                            <p class="card-text text-secondary">
+                              Take advantage of clean Navbars, Modals, Cards, Buttons, Alerts, and Dropdowns out of the box.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col">
+                        <div class="card h-100 shadow-sm border-0 bg-light p-3">
+                          <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">Modern Tooling</h5>
+                            <p class="card-text text-secondary">
+                              Easily extend with Sass variables, custom stylesheets, and utility classes tailored for speed.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </main>
+
+                  <!-- Footer -->
+                  <footer class="container py-4 my-4 border-top text-muted text-center small">
+                    Created with Lumina IDE &middot; Powered by Bootstrap %s
+                  </footer>
+
+                  <!-- Scripts -->
+                  <script src="js/bootstrap.bundle.min.js"></script>
+                  <script src="js/main.js"></script>
+                </body>
+                </html>
+                """.formatted(spec.name(), version, spec.name(), version, version, cleanVer.startsWith("5") ? "5.3" : "4.6", version));
+
+        Files.writeString(dir.resolve("css/style.css"), """
+                /* Custom project styles */
+                body {
+                  min-height: 100vh;
+                  display: flex;
+                  flex-direction: column;
+                }
+
+                main {
+                  flex: 1;
+                }
+
+                .card {
+                  transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .card:hover {
+                  transform: translateY(-4px);
+                  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+                }
+                """);
+
+        Files.writeString(dir.resolve("js/main.js"), """
+                // Custom project script
+                document.addEventListener('DOMContentLoaded', () => {
+                  const getStartedBtn = document.getElementById('getStartedBtn');
+                  if (getStartedBtn) {
+                    getStartedBtn.addEventListener('click', () => {
+                      alert('Welcome to your new Bootstrap application!');
+                    });
+                  }
+                });
+                """);
+
+        Files.writeString(dir.resolve("package.json"), """
+                {
+                  "name": "%s",
+                  "version": "1.0.0",
+                  "description": "Bootstrap %s project created with Lumina IDE",
+                  "scripts": {
+                    "start": "npx serve ."
+                  },
+                  "dependencies": {
+                    "bootstrap": "^%s"
+                  }
+                }
+                """.formatted(sanitizeArtifact(spec.name()), version, cleanVer));
+
+        Files.writeString(dir.resolve(".gitignore"), """
+                node_modules/
+                .idea/
+                .lumina/
+                *.log
+                .DS_Store
+                """);
+
+        Files.writeString(dir.resolve("README.md"), """
+                # %s
+
+                Bootstrap (%s) project created with Lumina IDE.
+
+                ## Getting Started
+                Open `index.html` in your favorite web browser or start a local server:
+                ```bash
+                npx serve .
+                ```
+                """.formatted(spec.name(), version));
+    }
+
+    private static String sanitizeArtifact(String s) {
+        if (s == null || s.isBlank()) return "app";
+        return s.toLowerCase().replaceAll("[^a-z0-9_-]", "");
     }
 
     // ------------------------------------------------------------ plain java

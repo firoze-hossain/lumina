@@ -42,6 +42,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeCell;
@@ -607,6 +608,13 @@ public class NewProjectDialog {
     private Button ktorDetailActionBtn;
     private VBox ktorDetailContentBox;
     private boolean ktorFetchStarted;
+
+    // ---- HTML generator fields (HTML5 Boilerplate / Bootstrap) ----
+    private final ToggleGroup htmlProjectTypeGroup = new ToggleGroup();
+    private final ComboBox<String> htmlVersionBox = new ComboBox<>();
+    private final Button htmlRefreshButton = new Button("\u27F3");
+    private boolean htmlInitialized = false;
+    private volatile boolean htmlFetching = false;
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -3425,6 +3433,75 @@ public class NewProjectDialog {
         }
     }
 
+    // ------------------------------------------------------------- html logic
+
+    private void initHtmlControls() {
+        if (htmlInitialized) return;
+        htmlInitialized = true;
+
+        htmlVersionBox.setItems(FXCollections.observableArrayList(dev.lumina.project.HtmlMetadata.getH5bpVersions()));
+        htmlVersionBox.getSelectionModel().selectFirst();
+        htmlVersionBox.getStyleClass().add("choice-box");
+
+        htmlRefreshButton.getStyleClass().addAll("console-button", "html-refresh-btn");
+        Tooltip.install(htmlRefreshButton, new Tooltip("Check for new versions"));
+        htmlRefreshButton.setOnAction(e -> refreshHtmlVersions(true));
+
+        htmlProjectTypeGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
+            if (toggle instanceof ToggleButton tb) {
+                boolean isBootstrap = tb.getText().equalsIgnoreCase(dev.lumina.project.HtmlMetadata.TYPE_BOOTSTRAP);
+                List<String> versions = isBootstrap
+                        ? dev.lumina.project.HtmlMetadata.getBootstrapVersions()
+                        : dev.lumina.project.HtmlMetadata.getH5bpVersions();
+                htmlVersionBox.setItems(FXCollections.observableArrayList(versions));
+                htmlVersionBox.getSelectionModel().selectFirst();
+                refreshHtmlVersions(false);
+            }
+        });
+
+        refreshHtmlVersions(false);
+    }
+
+    private String getSelectedHtmlProjectType() {
+        Toggle toggle = htmlProjectTypeGroup.getSelectedToggle();
+        if (toggle instanceof ToggleButton tb) {
+            return tb.getText();
+        }
+        return dev.lumina.project.HtmlMetadata.TYPE_H5BP;
+    }
+
+    private void refreshHtmlVersions(boolean force) {
+        if (htmlFetching) return;
+        htmlFetching = true;
+        htmlRefreshButton.setDisable(true);
+        String currentType = getSelectedHtmlProjectType();
+
+        Thread t = new Thread(() -> {
+            try {
+                List<String> versions = dev.lumina.project.HtmlMetadata.fetchVersions(currentType, force);
+                Platform.runLater(() -> {
+                    if (getSelectedHtmlProjectType().equalsIgnoreCase(currentType)) {
+                        String currentSelected = htmlVersionBox.getValue();
+                        htmlVersionBox.setItems(FXCollections.observableArrayList(versions));
+                        if (currentSelected != null && versions.contains(currentSelected)) {
+                            htmlVersionBox.getSelectionModel().select(currentSelected);
+                        } else {
+                            htmlVersionBox.getSelectionModel().selectFirst();
+                        }
+                    }
+                });
+            } finally {
+                Platform.runLater(() -> {
+                    htmlFetching = false;
+                    htmlRefreshButton.setDisable(false);
+                });
+            }
+        }, "lumina-html-version-fetcher");
+        t.setDaemon(true);
+        t.start();
+    }
+
+
 
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
@@ -3926,8 +4003,9 @@ public class NewProjectDialog {
         // from the advanced identity fields and no wrapper/version section is shown.
         setNodesVisible(javafxHiddenNodes,
                 !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta || ktor));
-        gitCheck.setVisible(!web);
-        gitCheck.setManaged(!web);
+        boolean html = generator == ProjectSpec.Generator.HTML;
+        gitCheck.setVisible(!web && !html);
+        gitCheck.setManaged(!web && !html);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -4032,8 +4110,28 @@ public class NewProjectDialog {
                 add(form, row++, "Configuration in:", choice("YAML File  Default", "HOCON File"));
             }
             case HTML -> {
-                add(form, row++, "Project type:", segments("HTML5 Boilerplate", "Bootstrap"));
-                add(form, row++, "Version:", choice("v9.0.1", "v8.0.0"));
+                initHtmlControls();
+                Toggle previous = htmlProjectTypeGroup.getSelectedToggle();
+                String selectedName = previous instanceof ToggleButton tb ? tb.getText() : dev.lumina.project.HtmlMetadata.TYPE_H5BP;
+                htmlProjectTypeGroup.getToggles().clear();
+                HBox typeSegments = segmented(htmlProjectTypeGroup, false, dev.lumina.project.HtmlMetadata.TYPE_H5BP, dev.lumina.project.HtmlMetadata.TYPE_BOOTSTRAP);
+                for (Toggle t : htmlProjectTypeGroup.getToggles()) {
+                    if (t instanceof ToggleButton tb && tb.getText().equalsIgnoreCase(selectedName)) {
+                        tb.setSelected(true);
+                        break;
+                    }
+                }
+                if (htmlProjectTypeGroup.getSelectedToggle() == null && !htmlProjectTypeGroup.getToggles().isEmpty()) {
+                    ((ToggleButton) htmlProjectTypeGroup.getToggles().getFirst()).setSelected(true);
+                }
+                form.add(formLabel("Project type:"), 0, row);
+                form.add(typeSegments, 1, row++);
+
+                htmlVersionBox.setPrefWidth(240);
+                HBox versionRow = new HBox(8, htmlVersionBox, htmlRefreshButton);
+                versionRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Version:"), 0, row);
+                form.add(versionRow, 1, row++);
             }
             case REACT -> {
                 add(form, row++, "Project type:", segments("React", "React Native", "Next.js"));
@@ -4341,10 +4439,16 @@ public class NewProjectDialog {
         boolean micronaut = selected.generator() == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = selected.generator() == ProjectSpec.Generator.JAKARTA_EE;
         boolean ktor = selected.generator() == ProjectSpec.Generator.KTOR;
+        boolean html = selected.generator() == ProjectSpec.Generator.HTML;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            errorLabel.setText("Artifact is required.");
-            return;
+            if (html) {
+                artifact = sanitize(name);
+                if (artifact.isEmpty()) artifact = "untitled";
+            } else {
+                errorLabel.setText("Artifact is required.");
+                return;
+            }
         }
 
         ProjectSpec.Language language = ProjectSpec.Language.JAVA;
@@ -4405,7 +4509,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -4449,7 +4553,9 @@ public class NewProjectDialog {
                 ktorBuildKotlin.isSelected() ? "Kotlin" : (ktorBuildMaven.isSelected() ? "Maven" : "Gradle"),
                 ktorVersionBox.getValue() != null ? ktorVersionBox.getValue() : "3.5.2",
                 ktorConfigInBox.getValue() != null ? ktorConfigInBox.getValue() : "YAML File",
-                ktor ? String.join(",", selectedKtorPluginIds) : "");
+                ktor ? String.join(",", selectedKtorPluginIds) : "",
+                getSelectedHtmlProjectType(),
+                htmlVersionBox.getValue() != null ? htmlVersionBox.getValue() : "v9.0.1");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
