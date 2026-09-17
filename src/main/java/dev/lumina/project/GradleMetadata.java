@@ -192,14 +192,32 @@ public final class GradleMetadata {
         return 2.0;
     }
 
+    public static String getMinGradleVersionStringForJava(int javaMajorVersion) {
+        if (javaMajorVersion >= 25) return "9.1";
+        if (javaMajorVersion == 24) return "8.12";
+        if (javaMajorVersion == 23) return "8.10";
+        if (javaMajorVersion == 22) return "8.7";
+        if (javaMajorVersion == 21) return "8.5";
+        if (javaMajorVersion == 20) return "8.3";
+        if (javaMajorVersion == 19) return "7.6";
+        if (javaMajorVersion == 18) return "7.5";
+        if (javaMajorVersion == 17) return "7.3";
+        if (javaMajorVersion == 16) return "7.0";
+        if (javaMajorVersion == 15) return "6.7";
+        if (javaMajorVersion == 14) return "6.3";
+        if (javaMajorVersion == 13) return "6.0";
+        if (javaMajorVersion == 12) return "5.4";
+        if (javaMajorVersion == 11) return "5.0";
+        return "2.0";
+    }
+
     /**
      * Checks if a Gradle release version string (e.g. "9.2.0", "8.12.1") supports the given Java major version.
      */
     public static boolean isCompatible(String gradleVersion, int javaMajorVersion) {
         if (gradleVersion == null || gradleVersion.isBlank()) return false;
-        double minRequired = getMinGradleVersionForJava(javaMajorVersion);
-        double actual = parseVersionAsDouble(gradleVersion);
-        return actual >= minRequired;
+        String minRequired = getMinGradleVersionStringForJava(javaMajorVersion);
+        return compareVersions(gradleVersion, minRequired) >= 0;
     }
 
     /**
