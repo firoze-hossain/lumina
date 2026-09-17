@@ -30,6 +30,11 @@ import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
+import javafx.scene.Group;
+import javafx.scene.control.OverrunStyle;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.TextArea;
+import javafx.scene.shape.Polygon;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
@@ -564,6 +569,45 @@ public class NewProjectDialog {
     private BorderPane micronautFeaturesPage;
     private boolean onMicronautFeaturesPage;
 
+    // ---- Ktor Generator fields & Step 2 Plugins page ----
+    private String ktorServerUrl = dev.lumina.project.KtorMetadata.DEFAULT_SERVER_URL;
+    private final ComboBox<String> ktorEngineBox = new ComboBox<>(FXCollections.observableArrayList(
+            "Netty  Default", "CIO", "Tomcat", "Jetty"));
+    private final CheckBox ktorAddSampleCodeCheck = new CheckBox("Add sample code");
+    private Label ktorTutorialsLabel;
+    private HBox ktorAdvancedToggle;
+    private Label ktorAdvancedArrow;
+    private VBox ktorAdvancedContainer;
+    private boolean isKtorAdvancedExpanded = false;
+    private final ToggleGroup ktorBuildGroup = new ToggleGroup();
+    private final RadioButton ktorBuildGradle = new RadioButton("Gradle");
+    private final RadioButton ktorBuildKotlin = new RadioButton("Kotlin");
+    private final RadioButton ktorBuildMaven = new RadioButton("Maven");
+    private final HBox ktorBuildSystemRow = new HBox();
+    private final ComboBox<String> ktorVersionBox = new ComboBox<>(FXCollections.observableArrayList(
+            "3.5.2  Default", "3.1.1", "3.0.3", "2.3.13"));
+    private final ComboBox<String> ktorConfigInBox = new ComboBox<>(FXCollections.observableArrayList(
+            "YAML File  Default", "HOCON file", "Code in application.kt"));
+    private final List<Node> ktorStep1Nodes = new ArrayList<>();
+
+    private BorderPane ktorPluginsPage;
+    private boolean onKtorPluginsPage;
+    private final TextField ktorSearchField = new TextField();
+    private final Label ktorPluginsCountLabel = new Label("0 plugins added");
+    private final Hyperlink ktorShowAddedLink = new Hyperlink("Show");
+    private boolean ktorShowOnlyAdded = false;
+    private final VBox ktorCardsBox = new VBox(4);
+    private final Set<String> selectedKtorPluginIds = new LinkedHashSet<>();
+    private final List<dev.lumina.project.KtorMetadata.KtorPlugin> ktorPluginsList = new ArrayList<>(dev.lumina.project.KtorMetadata.FALLBACK_PLUGINS);
+    private dev.lumina.project.KtorMetadata.KtorPlugin selectedKtorPlugin;
+    private Label ktorDetailName;
+    private Hyperlink ktorDetailVendor;
+    private Label ktorDetailVersion;
+    private Hyperlink ktorDetailGithub;
+    private Button ktorDetailActionBtn;
+    private VBox ktorDetailContentBox;
+    private boolean ktorFetchStarted;
+
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
             FXCollections.observableArrayList(FALLBACK_BOOT_VERSIONS));
@@ -632,7 +676,10 @@ public class NewProjectDialog {
         micronautFeaturesPage = buildMicronautFeaturesPage();
         micronautFeaturesPage.setVisible(false);
         micronautFeaturesPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage, micronautFeaturesPage);
+        ktorPluginsPage = buildKtorPluginsPage();
+        ktorPluginsPage.setVisible(false);
+        ktorPluginsPage.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage, micronautFeaturesPage, ktorPluginsPage);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -1084,6 +1131,83 @@ public class NewProjectDialog {
         grid.add(micronautAppTypeBox, 1, row++);
         micronautStep1Nodes.addAll(List.of(micronautAppTypeLabel, micronautAppTypeBox));
         setNodesVisible(micronautStep1Nodes, false);
+
+        ktorEngineBox.getSelectionModel().selectFirst();
+        ktorEngineBox.setMaxWidth(Double.MAX_VALUE);
+        Label ktorEngineLabel = formLabel("Engine:");
+        grid.add(ktorEngineLabel, 0, row);
+        grid.add(ktorEngineBox, 1, row++);
+        ktorStep1Nodes.addAll(List.of(ktorEngineLabel, ktorEngineBox));
+
+        ktorAddSampleCodeCheck.setSelected(true);
+        grid.add(ktorAddSampleCodeCheck, 1, row++);
+        ktorStep1Nodes.add(ktorAddSampleCodeCheck);
+
+        ktorTutorialsLabel = new Label("Start with Ktor Server and Client tutorials \u2197");
+        ktorTutorialsLabel.setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-font-size: 12px;");
+        ktorTutorialsLabel.setOnMouseClicked(e -> openBrowser("https://ktor.io/docs/server-create-a-new-project.html"));
+        grid.add(ktorTutorialsLabel, 1, row++);
+        ktorStep1Nodes.add(ktorTutorialsLabel);
+
+        ktorAdvancedToggle = new HBox(8);
+        ktorAdvancedToggle.setAlignment(Pos.CENTER_LEFT);
+        ktorAdvancedArrow = new Label("\u25B8  Advanced Settings");
+        ktorAdvancedArrow.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12px;");
+        Region advLine = new Region();
+        advLine.setStyle("-fx-background-color: #393B40;");
+        advLine.setPrefHeight(1);
+        advLine.setMaxHeight(1);
+        HBox.setHgrow(advLine, Priority.ALWAYS);
+        ktorAdvancedToggle.getChildren().addAll(ktorAdvancedArrow, advLine);
+        grid.add(ktorAdvancedToggle, 0, row++, 2, 1);
+        ktorStep1Nodes.add(ktorAdvancedToggle);
+
+        ktorAdvancedContainer = new VBox(12);
+        ktorAdvancedContainer.setPadding(new Insets(6, 0, 6, 0));
+        GridPane advGrid = new GridPane();
+        advGrid.setHgap(16);
+        advGrid.setVgap(12);
+
+        Label ktorBuildLabel = formLabel("Build system:");
+        ktorBuildGroup.getToggles().addAll(ktorBuildGradle, ktorBuildKotlin, ktorBuildMaven);
+        ktorBuildGradle.setToggleGroup(ktorBuildGroup);
+        ktorBuildKotlin.setToggleGroup(ktorBuildGroup);
+        ktorBuildMaven.setToggleGroup(ktorBuildGroup);
+        ktorBuildGradle.getStyleClass().addAll("segment", "segment-first");
+        ktorBuildKotlin.getStyleClass().addAll("segment");
+        ktorBuildMaven.getStyleClass().addAll("segment", "segment-last");
+        ktorBuildGradle.setSelected(true);
+        ktorBuildSystemRow.getChildren().setAll(ktorBuildGradle, ktorBuildKotlin, ktorBuildMaven);
+        ktorBuildSystemRow.getStyleClass().add("segmented");
+        advGrid.add(ktorBuildLabel, 0, 0);
+        advGrid.add(ktorBuildSystemRow, 1, 0);
+
+        Label ktorVerLabel = formLabel("Ktor version:");
+        ktorVersionBox.getSelectionModel().selectFirst();
+        ktorVersionBox.setMaxWidth(Double.MAX_VALUE);
+        advGrid.add(ktorVerLabel, 0, 1);
+        advGrid.add(ktorVersionBox, 1, 1);
+
+        Label ktorCfgLabel = formLabel("Configuration in:");
+        ktorConfigInBox.getSelectionModel().selectFirst();
+        ktorConfigInBox.setMaxWidth(Double.MAX_VALUE);
+        advGrid.add(ktorCfgLabel, 0, 2);
+        advGrid.add(ktorConfigInBox, 1, 2);
+
+        ktorAdvancedContainer.getChildren().add(advGrid);
+        ktorAdvancedContainer.setVisible(false);
+        ktorAdvancedContainer.setManaged(false);
+        grid.add(ktorAdvancedContainer, 0, row++, 2, 1);
+        ktorStep1Nodes.add(ktorAdvancedContainer);
+
+        ktorAdvancedToggle.setOnMouseClicked(e -> {
+            isKtorAdvancedExpanded = !isKtorAdvancedExpanded;
+            ktorAdvancedArrow.setText(isKtorAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
+            ktorAdvancedContainer.setVisible(isKtorAdvancedExpanded);
+            ktorAdvancedContainer.setManaged(isKtorAdvancedExpanded);
+        });
+
+        setNodesVisible(ktorStep1Nodes, false);
 
         Label packageLabel = formLabel("Package name:");
         grid.add(packageLabel, 0, row);
@@ -2882,6 +3006,415 @@ public class NewProjectDialog {
         previousButton.setManaged(false);
     }
 
+    // -------------------------------------------------------- Ktor wizard page & methods
+
+    private BorderPane buildKtorPluginsPage() {
+        BorderPane page = new BorderPane();
+        page.getStyleClass().add("ktor-plugins-page");
+
+        HBox mainLayout = new HBox(0);
+        mainLayout.setStyle("-fx-background-color: #1E1F22;");
+
+        // Left Column (width 400px):
+        VBox leftCol = new VBox(0);
+        leftCol.setPrefWidth(400);
+        leftCol.setMinWidth(350);
+        leftCol.setMaxWidth(460);
+        leftCol.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-width: 0 1 0 0;");
+
+        // Search bar at top
+        HBox searchBox = new HBox(8);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(10, 14, 10, 14));
+        searchBox.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0;");
+
+        Label searchIcon = new Label("🔍");
+        searchIcon.setStyle("-fx-font-size: 13px; -fx-text-fill: #8B92A6;");
+        ktorSearchField.setPromptText("Type / to see options");
+        ktorSearchField.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #6F737A; -fx-border-color: transparent; -fx-font-size: 13px;");
+        HBox.setHgrow(ktorSearchField, Priority.ALWAYS);
+
+        searchBox.getChildren().addAll(searchIcon, ktorSearchField);
+
+        // Status header row
+        HBox statusRow = new HBox(8);
+        statusRow.setAlignment(Pos.CENTER_LEFT);
+        statusRow.setPadding(new Insets(8, 14, 8, 14));
+        statusRow.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #2B2D30; -fx-border-width: 0 0 1 0;");
+
+        ktorPluginsCountLabel.setStyle("-fx-text-fill: #8B92A6; -fx-font-size: 12px;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        ktorShowAddedLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-underline: false;");
+        ktorShowAddedLink.setOnAction(e -> {
+            ktorShowOnlyAdded = !ktorShowOnlyAdded;
+            ktorShowAddedLink.setText(ktorShowOnlyAdded ? "Show all" : "Show");
+            rebuildKtorCards(ktorSearchField.getText());
+        });
+
+        statusRow.getChildren().addAll(ktorPluginsCountLabel, spacer, ktorShowAddedLink);
+
+        // Cards ScrollPane
+        ktorCardsBox.setPadding(new Insets(4, 0, 4, 0));
+        ScrollPane scrollCards = new ScrollPane(ktorCardsBox);
+        scrollCards.setFitToWidth(true);
+        scrollCards.setStyle("-fx-background: #1E1F22; -fx-background-color: #1E1F22; -fx-border-color: transparent;");
+        VBox.setVgrow(scrollCards, Priority.ALWAYS);
+
+        // Bottom progress / indicator bar
+        HBox bottomIndicatorBar = new HBox();
+        bottomIndicatorBar.setAlignment(Pos.CENTER_RIGHT);
+        bottomIndicatorBar.setPadding(new Insets(4, 14, 8, 14));
+        Region bar = new Region();
+        bar.setPrefSize(44, 4);
+        bar.setStyle("-fx-background-color: #357444; -fx-background-radius: 2;");
+        bottomIndicatorBar.getChildren().add(bar);
+
+        leftCol.getChildren().addAll(searchBox, statusRow, scrollCards, bottomIndicatorBar);
+
+        // Right Column:
+        VBox rightCol = new VBox(0);
+        rightCol.setStyle("-fx-background-color: #1E1F22;");
+        HBox.setHgrow(rightCol, Priority.ALWAYS);
+
+        // Right Header
+        HBox detailHeader = new HBox(16);
+        detailHeader.setAlignment(Pos.CENTER_LEFT);
+        detailHeader.setPadding(new Insets(16, 24, 16, 24));
+        detailHeader.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0;");
+
+        Node headerIcon = createLargeKtorIcon();
+
+        VBox headerTitles = new VBox(4);
+        ktorDetailName = new Label("AsyncAPI");
+        ktorDetailName.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #DFE1E5;");
+
+        HBox subHeaderRow = new HBox(12);
+        subHeaderRow.setAlignment(Pos.CENTER_LEFT);
+        ktorDetailVendor = new Hyperlink("AsyncAPI");
+        ktorDetailVendor.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 13px; -fx-padding: 0;");
+        ktorDetailVendor.setOnAction(e -> {
+            if (selectedKtorPlugin != null && !selectedKtorPlugin.githubUrl().isBlank()) {
+                openBrowser(selectedKtorPlugin.githubUrl());
+            }
+        });
+
+        ktorDetailVersion = new Label("1.0.0");
+        ktorDetailVersion.setStyle("-fx-text-fill: #8B92A6; -fx-font-size: 13px;");
+
+        ktorDetailGithub = new Hyperlink("See plugin's Github \u2197");
+        ktorDetailGithub.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 13px; -fx-padding: 0;");
+        ktorDetailGithub.setOnAction(e -> {
+            if (selectedKtorPlugin != null && !selectedKtorPlugin.githubUrl().isBlank()) {
+                openBrowser(selectedKtorPlugin.githubUrl());
+            }
+        });
+
+        subHeaderRow.getChildren().addAll(ktorDetailVendor, ktorDetailVersion, ktorDetailGithub);
+        headerTitles.getChildren().addAll(ktorDetailName, subHeaderRow);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        ktorDetailActionBtn = new Button("Add");
+        ktorDetailActionBtn.setPrefWidth(88);
+        updateKtorButtonAppearance(ktorDetailActionBtn, false);
+        ktorDetailActionBtn.setOnAction(e -> {
+            if (selectedKtorPlugin != null) {
+                toggleKtorPlugin(selectedKtorPlugin.id());
+            }
+        });
+
+        detailHeader.getChildren().addAll(headerIcon, headerTitles, headerSpacer, ktorDetailActionBtn);
+
+        // Right Content ScrollPane
+        ktorDetailContentBox = new VBox(16);
+        ktorDetailContentBox.setPadding(new Insets(24, 28, 28, 28));
+        ScrollPane detailScroll = new ScrollPane(ktorDetailContentBox);
+        detailScroll.setFitToWidth(true);
+        detailScroll.setStyle("-fx-background: #1E1F22; -fx-background-color: #1E1F22; -fx-border-color: transparent;");
+        VBox.setVgrow(detailScroll, Priority.ALWAYS);
+
+        rightCol.getChildren().addAll(detailHeader, detailScroll);
+
+        mainLayout.getChildren().addAll(leftCol, rightCol);
+        page.setCenter(mainLayout);
+
+        ktorSearchField.textProperty().addListener((obs, oldV, newV) -> rebuildKtorCards(newV));
+
+        rebuildKtorCards("");
+        if (!ktorPluginsList.isEmpty()) {
+            showKtorPluginDetail(ktorPluginsList.get(0));
+        }
+
+        return page;
+    }
+
+    private Node createLargeKtorIcon() {
+        Polygon p1 = new Polygon(11.25, 1.5, 21, 11.25, 11.25, 11.25);
+        p1.setFill(Color.web("#7F52FF"));
+
+        Polygon p2 = new Polygon(1.5, 11.25, 11.25, 11.25, 11.25, 21);
+        p2.setFill(Color.web("#C757BC"));
+
+        Polygon p3 = new Polygon(11.25, 11.25, 21, 21, 1.5, 21);
+        p3.setFill(Color.web("#E24A4A"));
+
+        Group ktor = new Group(p1, p2, p3);
+        StackPane sp = new StackPane(ktor);
+        sp.setPrefSize(28, 28);
+        return sp;
+    }
+
+    private void rebuildKtorCards(String filter) {
+        ktorCardsBox.getChildren().clear();
+        String needle = filter == null ? "" : filter.trim().toLowerCase();
+
+        for (dev.lumina.project.KtorMetadata.KtorPlugin p : ktorPluginsList) {
+            boolean isAdded = selectedKtorPluginIds.contains(p.id());
+            if (ktorShowOnlyAdded && !isAdded) continue;
+
+            if (!needle.isEmpty()) {
+                boolean match = p.name().toLowerCase().contains(needle)
+                        || p.id().toLowerCase().contains(needle)
+                        || p.description().toLowerCase().contains(needle)
+                        || p.category().toLowerCase().contains(needle);
+                if (!match) continue;
+            }
+
+            HBox card = new HBox(12);
+            card.setAlignment(Pos.CENTER_LEFT);
+            card.setPadding(new Insets(10, 14, 10, 14));
+
+            boolean isCurrent = selectedKtorPlugin != null && selectedKtorPlugin.id().equals(p.id());
+            if (isCurrent) {
+                card.setStyle("-fx-background-color: #2E436E; -fx-cursor: hand;");
+            } else {
+                card.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                card.setOnMouseEntered(e -> {
+                    if (selectedKtorPlugin == null || !selectedKtorPlugin.id().equals(p.id())) {
+                        card.setStyle("-fx-background-color: #26282E; -fx-cursor: hand;");
+                    }
+                });
+                card.setOnMouseExited(e -> {
+                    if (selectedKtorPlugin == null || !selectedKtorPlugin.id().equals(p.id())) {
+                        card.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                    }
+                });
+            }
+
+            Node icon = dev.lumina.ui.GeneratorIcons.getIcon("Ktor");
+
+            VBox textCol = new VBox(3);
+            Label title = new Label(p.name());
+            title.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+            Label desc = new Label(p.description());
+            desc.setStyle("-fx-text-fill: #8B92A6; -fx-font-size: 11px;");
+            desc.setMaxWidth(220);
+            desc.setTextOverrun(OverrunStyle.ELLIPSIS);
+            textCol.getChildren().addAll(title, desc);
+
+            Region cardSpacer = new Region();
+            HBox.setHgrow(cardSpacer, Priority.ALWAYS);
+
+            Button btn = new Button();
+            btn.setPrefWidth(72);
+            updateKtorButtonAppearance(btn, isAdded);
+            btn.setOnAction(e -> {
+                toggleKtorPlugin(p.id());
+                e.consume();
+            });
+
+            card.getChildren().addAll(icon, textCol, cardSpacer, btn);
+
+            card.setOnMouseClicked(e -> {
+                showKtorPluginDetail(p);
+                rebuildKtorCards(ktorSearchField.getText());
+            });
+
+            ktorCardsBox.getChildren().add(card);
+        }
+    }
+
+    private void updateKtorButtonAppearance(Button btn, boolean isAdded) {
+        if (isAdded) {
+            btn.setText("Remove");
+            btn.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #357444; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #438C56; -fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand;");
+        } else {
+            btn.setText("Add");
+            btn.setStyle("-fx-background-color: #357444; -fx-border-color: #357444; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand;");
+        }
+    }
+
+    private void toggleKtorPlugin(String id) {
+        if (selectedKtorPluginIds.contains(id)) {
+            selectedKtorPluginIds.remove(id);
+        } else {
+            selectedKtorPluginIds.add(id);
+        }
+        int count = selectedKtorPluginIds.size();
+        ktorPluginsCountLabel.setText(count + (count == 1 ? " plugin added" : " plugins added"));
+        if (selectedKtorPlugin != null) {
+            updateKtorButtonAppearance(ktorDetailActionBtn, selectedKtorPluginIds.contains(selectedKtorPlugin.id()));
+        }
+        rebuildKtorCards(ktorSearchField.getText());
+    }
+
+    private void showKtorPluginDetail(dev.lumina.project.KtorMetadata.KtorPlugin p) {
+        if (p == null) return;
+        selectedKtorPlugin = p;
+        ktorDetailName.setText(p.name());
+        ktorDetailVendor.setText(p.group());
+        ktorDetailVersion.setText(p.version());
+        updateKtorButtonAppearance(ktorDetailActionBtn, selectedKtorPluginIds.contains(p.id()));
+
+        ktorDetailContentBox.getChildren().clear();
+
+        Label descHeader = new Label("Description");
+        descHeader.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #DFE1E5;");
+
+        Label descBody = new Label(p.description());
+        descBody.setWrapText(true);
+        descBody.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 14px; -fx-line-spacing: 4px;");
+
+        ktorDetailContentBox.getChildren().addAll(descHeader, descBody);
+
+        if (!p.usageMarkdown().isBlank()) {
+            Label usageHeader = new Label("Usage");
+            usageHeader.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #DFE1E5; -fx-padding: 12 0 0 0;");
+            ktorDetailContentBox.getChildren().add(usageHeader);
+
+            renderKtorUsage(ktorDetailContentBox, p.usageMarkdown());
+        }
+    }
+
+    private void renderKtorUsage(VBox container, String markdown) {
+        String[] lines = markdown.split("\n");
+        boolean inCode = false;
+        StringBuilder codeBuilder = new StringBuilder();
+
+        for (String line : lines) {
+            if (line.trim().startsWith("```")) {
+                if (inCode) {
+                    container.getChildren().add(createCodeSnippetBox(codeBuilder.toString().trim()));
+                    codeBuilder.setLength(0);
+                    inCode = false;
+                } else {
+                    inCode = true;
+                }
+                continue;
+            }
+            if (inCode) {
+                codeBuilder.append(line).append("\n");
+            } else {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("###") || trimmed.startsWith("The `")) continue;
+                if (trimmed.startsWith("- ")) {
+                    HBox bulletRow = new HBox(8);
+                    bulletRow.setAlignment(Pos.TOP_LEFT);
+                    Label bullet = new Label("•");
+                    bullet.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+                    Label text = new Label(trimmed.substring(2));
+                    text.setWrapText(true);
+                    text.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+                    bulletRow.getChildren().addAll(bullet, text);
+                    container.getChildren().add(bulletRow);
+                } else {
+                    Label text = new Label(trimmed);
+                    text.setWrapText(true);
+                    text.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-line-spacing: 3px;");
+                    container.getChildren().add(text);
+                }
+            }
+        }
+        if (inCode && !codeBuilder.isEmpty()) {
+            container.getChildren().add(createCodeSnippetBox(codeBuilder.toString().trim()));
+        }
+    }
+
+    private VBox createCodeSnippetBox(String code) {
+        VBox box = new VBox(4);
+        box.setPadding(new Insets(10, 14, 10, 14));
+        box.setStyle("-fx-background-color: #141517; -fx-background-radius: 6; -fx-border-color: #2B2D30; -fx-border-radius: 6;");
+
+        TextArea area = new TextArea(code);
+        area.setEditable(false);
+        area.setWrapText(false);
+        area.setStyle("-fx-font-family: 'JetBrains Mono', monospace; -fx-font-size: 12px; -fx-text-fill: #DFE1E5; -fx-background-color: transparent; -fx-border-color: transparent;");
+        area.setPrefRowCount(Math.min(10, Math.max(3, code.split("\n").length)));
+        box.getChildren().add(area);
+        return box;
+    }
+
+    private void kickOffKtorPluginsFetch() {
+        if (ktorFetchStarted) return;
+        ktorFetchStarted = true;
+        Thread.ofVirtual().start(() -> {
+            List<dev.lumina.project.KtorMetadata.KtorPlugin> fetched =
+                    dev.lumina.project.KtorMetadata.fetchPlugins(ktorServerUrl);
+            if (fetched != null && !fetched.isEmpty()) {
+                Platform.runLater(() -> {
+                    ktorPluginsList.clear();
+                    ktorPluginsList.addAll(fetched);
+                    rebuildKtorCards(ktorSearchField.getText());
+                });
+            }
+        });
+    }
+
+    private void goToKtorPluginsPage() {
+        String name = nameField.getText().trim();
+        String location = locationField.getText().trim();
+        String artifact = artifactField.getText().trim();
+        if (name.isEmpty()) {
+            errorLabel.setText("Project name is required.");
+            return;
+        }
+        if (location.isEmpty()) {
+            errorLabel.setText("Location is required.");
+            return;
+        }
+        if (artifact.isEmpty()) {
+            errorLabel.setText("Artifact is required.");
+            return;
+        }
+        errorLabel.setText("");
+        onKtorPluginsPage = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        ktorPluginsPage.setVisible(true);
+        ktorPluginsPage.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToKtorForm());
+
+        kickOffKtorPluginsFetch();
+    }
+
+    private void backToKtorForm() {
+        onKtorPluginsPage = false;
+        ktorPluginsPage.setVisible(false);
+        ktorPluginsPage.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToKtorPluginsPage());
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
     private static void openBrowser(String url) {
         try {
             if (java.awt.Desktop.isDesktopSupported()
@@ -3309,6 +3842,11 @@ public class NewProjectDialog {
             micronautFeaturesPage.setVisible(false);
             micronautFeaturesPage.setManaged(false);
         }
+        if (ktorPluginsPage != null) {
+            onKtorPluginsPage = false;
+            ktorPluginsPage.setVisible(false);
+            ktorPluginsPage.setManaged(false);
+        }
         if (sidebar != null) {
             sidebar.setVisible(true);
             sidebar.setManaged(true);
@@ -3318,6 +3856,7 @@ public class NewProjectDialog {
         boolean quarkus = generator == ProjectSpec.Generator.QUARKUS;
         boolean micronaut = generator == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
+        boolean ktor = generator == ProjectSpec.Generator.KTOR;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
@@ -3328,7 +3867,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case KTOR, HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case HTML, REACT, EXPRESS, VUE, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -3357,11 +3896,23 @@ public class NewProjectDialog {
         }
         setNodesVisible(typeNodes, spring || quarkus || micronaut);
         setNodesVisible(micronautStep1Nodes, micronaut);
+        setNodesVisible(ktorStep1Nodes, ktor);
+        if (ktor) {
+            if (nameField.getText().trim().isEmpty() || "demo".equals(nameField.getText().trim())) {
+                nameField.setText("ktor-sample");
+            }
+            if (groupField.getText().trim().isEmpty() || "org.example".equals(groupField.getText().trim())) {
+                groupField.setText("com.example");
+            }
+            if (artifactField.getText().trim().isEmpty() || "demo".equals(artifactField.getText().trim())) {
+                artifactField.setText("com.example.ktor-sample");
+            }
+        }
         setNodesVisible(springConfigNodes, spring);
-        setNodesVisible(buildSystemNodes, !spring && !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific);
+        setNodesVisible(buildSystemNodes, !spring && !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !ktor);
         setNodesVisible(standardOnlyNodes, !mavenArchetype && !rust && !empty && !web && !specific && !jakarta);
-        setNodesVisible(packageNodes, !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta));
-        setNodesVisible(jdkNodes, !rust && !empty && !web && !specific);
+        setNodesVisible(packageNodes, !quarkus && !micronaut && !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || jakarta) && !ktor);
+        setNodesVisible(jdkNodes, !rust && !empty && !web && !specific && !ktor);
         setNodesVisible(webOnlyNodes, web);
         setNodesVisible(viteOnlyNodes, vite);
         setNodesVisible(angularOnlyNodes, angular);
@@ -3374,7 +3925,7 @@ public class NewProjectDialog {
         // Kotlin and Groovy use their shorter, IDE-style forms: the package is derived
         // from the advanced identity fields and no wrapper/version section is shown.
         setNodesVisible(javafxHiddenNodes,
-                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta));
+                !mavenArchetype && !rust && !empty && !web && !specific && !(javafx || kotlin || groovy || quarkus || jakarta || ktor));
         gitCheck.setVisible(!web);
         gitCheck.setManaged(!web);
         generatorSpecificBox.setVisible(specific);
@@ -3397,6 +3948,9 @@ public class NewProjectDialog {
             } else if (micronaut) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToMicronautFeaturesPage());
+            } else if (ktor) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToKtorPluginsPage());
             } else if (jakarta) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToJakartaDepsPage());
@@ -3739,6 +4293,23 @@ public class NewProjectDialog {
             });
             return;
         }
+        if (selected.generator() == ProjectSpec.Generator.KTOR) {
+            TextInputDialog dialog = new TextInputDialog(ktorServerUrl);
+            dialog.initOwner(stage);
+            dialog.setTitle("Ktor Server URL");
+            dialog.setHeaderText("Specify custom start.ktor.io server URL");
+            dialog.setContentText("Server URL:");
+            dialog.getDialogPane().getStylesheets().add(
+                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+            dialog.showAndWait().ifPresent(url -> {
+                if (!url.isBlank()) {
+                    ktorServerUrl = dev.lumina.project.KtorMetadata.normalizeServerUrl(url);
+                    ktorFetchStarted = false;
+                    kickOffKtorPluginsFetch();
+                }
+            });
+            return;
+        }
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.initOwner(stage);
         alert.setTitle("Spring Initializr Server");
@@ -3769,6 +4340,7 @@ public class NewProjectDialog {
         boolean quarkus = selected.generator() == ProjectSpec.Generator.QUARKUS;
         boolean micronaut = selected.generator() == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = selected.generator() == ProjectSpec.Generator.JAKARTA_EE;
+        boolean ktor = selected.generator() == ProjectSpec.Generator.KTOR;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
             errorLabel.setText("Artifact is required.");
@@ -3776,7 +4348,7 @@ public class NewProjectDialog {
         }
 
         ProjectSpec.Language language = ProjectSpec.Language.JAVA;
-        if (langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
+        if (ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
         else if (langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
 
         ProjectSpec.BuildSystem build;
@@ -3788,6 +4360,8 @@ public class NewProjectDialog {
             } else {
                 build = ProjectSpec.BuildSystem.MAVEN;
             }
+        } else if (ktor) {
+            build = ktorBuildMaven.isSelected() ? ProjectSpec.BuildSystem.MAVEN : ProjectSpec.BuildSystem.GRADLE;
         } else {
             ToggleButton buildToggle = (ToggleButton) buildGroup.getSelectedToggle();
             build = buildToggle != null && "Gradle".equals(buildToggle.getText())
@@ -3831,7 +4405,7 @@ public class NewProjectDialog {
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
                 artifact,
-                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut)
+                (mavenArchetype || selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor)
                         ? (sanitize((mavenArchetype ? mavenGroupField : groupField).getText()) + "." + sanitize(artifact))
                                 .replaceAll("^\\.|\\.$", "")
                         : packageField.getText().trim(),
@@ -3868,7 +4442,14 @@ public class NewProjectDialog {
                 micronautTest,
                 micronautAppType,
                 micronaut ? String.join(",", selectedMicronautFeatureIds) : "",
-                micronautBuild);
+                micronautBuild,
+                ktorServerUrl,
+                ktorEngineBox.getValue() != null ? ktorEngineBox.getValue() : "Netty",
+                ktorAddSampleCodeCheck.isSelected(),
+                ktorBuildKotlin.isSelected() ? "Kotlin" : (ktorBuildMaven.isSelected() ? "Maven" : "Gradle"),
+                ktorVersionBox.getValue() != null ? ktorVersionBox.getValue() : "3.5.2",
+                ktorConfigInBox.getValue() != null ? ktorConfigInBox.getValue() : "YAML File",
+                ktor ? String.join(",", selectedKtorPluginIds) : "");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
