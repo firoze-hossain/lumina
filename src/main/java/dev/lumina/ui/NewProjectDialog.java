@@ -62,6 +62,7 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -69,6 +70,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -536,6 +538,55 @@ public class NewProjectDialog {
     private final Button uvBrowseBtn = new Button();
     private final HBox uvPathRow = new HBox(8);
     private final Label uvHintLabel = new Label();
+
+    // Base conda controls
+    private final HBox condaWarningBanner = new HBox(8);
+    private final Label condaWarningIcon = new Label("⚠");
+    private final Label condaWarningText = new Label("No conda executable found");
+    private final Hyperlink condaInstallLink = new Hyperlink("Install Miniconda");
+    private final Hyperlink condaSelectPathLink = new Hyperlink("Select path");
+    private final Label condaErrorCallout = new Label("Executable is not detected");
+    private final ProgressIndicator condaInstallSpinner = new ProgressIndicator();
+    private final Label condaInstallStatus = new Label();
+    private final Hyperlink condaCancelInstallLink = new Hyperlink("Cancel");
+    private final Hyperlink condaOpenWebLink = new Hyperlink("Download in browser ↗");
+    private volatile CompletableFuture<Path> activeCondaInstallFuture = null;
+    private final Label pathToCondaLabel = formLabel("Path to conda:");
+    private final TextField condaPathField = new TextField();
+    private final Button condaBrowseBtn = new Button();
+    private final HBox condaPathRow = new HBox(8);
+    private final Label condaSubtextLabel = new Label("To create a new conda environment or choose an existing one, proceed with Custom environment");
+    private final ComboBox<String> condaPythonVersionCombo = new ComboBox<>();
+
+    // Custom environment controls
+    private final Label customEnvLabel = formLabel("Environment:");
+    private final ToggleGroup customEnvGroup = new ToggleGroup();
+    private final RadioButton customEnvGenerateNewRadio = new RadioButton("Generate new");
+    private final RadioButton customEnvSelectExistingRadio = new RadioButton("Select existing");
+    private final HBox customEnvRadioRow = new HBox(16);
+
+    private final Label customTypeLabel = formLabel("Type:");
+    private final ComboBox<String> customTypeCombo = new ComboBox<>();
+
+    private final Label customBasePythonLabel = formLabel("Base Python:");
+    private final ComboBox<dev.lumina.project.PythonMetadata.PythonInstallation> customBasePythonCombo = new ComboBox<>();
+    private final Button customBasePythonBrowseBtn = new Button();
+    private final HBox customBasePythonRow = new HBox(8);
+
+    private final Label customLocationLabel = formLabel("Location:");
+    private final TextField customLocationField = new TextField();
+    private final Label customLocationCheckIcon = new Label("✓");
+    private final Button customLocationBrowseBtn = new Button();
+    private final HBox customLocationRow = new HBox(8);
+    private boolean customLocationFieldEdited = false;
+
+    private final CheckBox inheritPackagesCheck = new CheckBox("Inherit packages from base interpreter");
+    private final CheckBox makeAvailableCheck = new CheckBox("Make available to all projects");
+
+    private final Label customPythonPathLabel = formLabel("Python path:");
+    private final ComboBox<dev.lumina.project.PythonMetadata.PythonInstallation> customPythonPathCombo = new ComboBox<>();
+    private final Button customPythonPathBrowseBtn = new Button();
+    private final HBox customPythonPathRow = new HBox(8);
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1373,55 +1424,32 @@ public class NewProjectDialog {
             }
         });
 
-        pythonVersionCombo.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    HBox cellBox = new HBox(8);
-                    cellBox.setAlignment(Pos.CENTER_LEFT);
-                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
-                    Label title = new Label(item.label());
-                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
-                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
-                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
-                    cellBox.getChildren().addAll(icon, title, pathLabel);
-                    setGraphic(cellBox);
-                    setText(null);
-                }
-            }
-        });
-        pythonVersionCombo.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    HBox cellBox = new HBox(8);
-                    cellBox.setAlignment(Pos.CENTER_LEFT);
-                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
-                    Label title = new Label(item.label());
-                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
-                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
-                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
-                    cellBox.getChildren().addAll(icon, title, pathLabel);
-                    setGraphic(cellBox);
-                    setText(null);
-                }
-            }
-        });
+        setupPythonComboCellFactory(pythonVersionCombo);
         pythonVersionCombo.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(pythonVersionCombo, Priority.ALWAYS);
 
-        pythonVersionCombo.getItems().setAll(dev.lumina.project.PythonMetadata.fetchPythonInstallations(false));
+        setupPythonComboCellFactory(customBasePythonCombo);
+        customBasePythonCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(customBasePythonCombo, Priority.ALWAYS);
+
+        setupPythonComboCellFactory(customPythonPathCombo);
+        customPythonPathCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(customPythonPathCombo, Priority.ALWAYS);
+
+        List<dev.lumina.project.PythonMetadata.PythonInstallation> initPy = dev.lumina.project.PythonMetadata.fetchPythonInstallations(false);
+        pythonVersionCombo.getItems().setAll(initPy);
         if (!pythonVersionCombo.getItems().isEmpty()) {
             pythonVersionCombo.getSelectionModel().selectFirst();
         }
+        customBasePythonCombo.getItems().setAll(initPy);
+        if (!customBasePythonCombo.getItems().isEmpty()) {
+            customBasePythonCombo.getSelectionModel().selectFirst();
+        }
+        customPythonPathCombo.getItems().setAll(initPy);
+        if (!customPythonPathCombo.getItems().isEmpty()) {
+            customPythonPathCombo.getSelectionModel().selectFirst();
+        }
+
         dev.lumina.project.PythonMetadata.fetchPythonInstallationsAsync(list -> {
             if (list != null && !list.isEmpty()) {
                 dev.lumina.project.PythonMetadata.PythonInstallation cur = pythonVersionCombo.getValue();
@@ -1430,6 +1458,22 @@ public class NewProjectDialog {
                     pythonVersionCombo.setValue(cur);
                 } else {
                     pythonVersionCombo.getSelectionModel().selectFirst();
+                }
+
+                dev.lumina.project.PythonMetadata.PythonInstallation baseCur = customBasePythonCombo.getValue();
+                customBasePythonCombo.getItems().setAll(list);
+                if (baseCur != null && list.contains(baseCur)) {
+                    customBasePythonCombo.setValue(baseCur);
+                } else {
+                    customBasePythonCombo.getSelectionModel().selectFirst();
+                }
+
+                dev.lumina.project.PythonMetadata.PythonInstallation pathCur = customPythonPathCombo.getValue();
+                customPythonPathCombo.getItems().setAll(list);
+                if (pathCur != null && list.contains(pathCur)) {
+                    customPythonPathCombo.setValue(pathCur);
+                } else {
+                    customPythonPathCombo.getSelectionModel().selectFirst();
                 }
             }
         });
@@ -1478,6 +1522,161 @@ public class NewProjectDialog {
 
         uvHintLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
         uvHintLabel.setWrapText(true);
+
+        // Base Conda setup
+        condaWarningBanner.setAlignment(Pos.CENTER_LEFT);
+        condaWarningBanner.setSpacing(8);
+        condaWarningBanner.setStyle("-fx-background-color: #3D3222; -fx-background-radius: 4px; -fx-border-color: #5E4B28; -fx-border-radius: 4px; -fx-padding: 8px 12px;");
+        condaWarningIcon.setStyle("-fx-text-fill: #E5A83B; -fx-font-size: 13px; -fx-font-weight: bold;");
+        condaWarningText.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Region bannerSpacer = new Region();
+        HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
+        condaInstallLink.setStyle("-fx-text-fill: #548AF7; -fx-font-size: 12px; -fx-cursor: hand; -fx-underline: false; -fx-padding: 0;");
+        condaInstallLink.setOnAction(e -> startMinicondaInstallation());
+        condaSelectPathLink.setStyle("-fx-text-fill: #548AF7; -fx-font-size: 12px; -fx-cursor: hand; -fx-underline: false; -fx-padding: 0;");
+        condaSelectPathLink.setOnAction(e -> pickCondaExecutable());
+        HBox linksBox = new HBox(12, condaInstallLink, condaSelectPathLink);
+        linksBox.setAlignment(Pos.CENTER_RIGHT);
+        condaWarningBanner.getChildren().setAll(condaWarningIcon, condaWarningText, bannerSpacer, linksBox);
+
+        condaErrorCallout.setStyle("-fx-background-color: #56282D; -fx-text-fill: #F5B5BA; -fx-border-color: #8A3940; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 3px 8px; -fx-font-size: 11px;");
+
+        String detectedConda = dev.lumina.project.PythonMetadata.detectCondaPath();
+        condaPathField.setText(detectedConda);
+        HBox.setHgrow(condaPathField, Priority.ALWAYS);
+        updateCondaValidation(detectedConda);
+        condaPathField.textProperty().addListener((obs, old, v) -> updateCondaValidation(v));
+
+        condaBrowseBtn.setGraphic(createBrowseFolderIcon());
+        condaBrowseBtn.setText(null);
+        condaBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        condaBrowseBtn.setPrefSize(28, 28);
+        condaBrowseBtn.setMinSize(28, 28);
+        condaBrowseBtn.setMaxSize(28, 28);
+        condaBrowseBtn.setTooltip(new Tooltip("Select Conda Executable"));
+        condaBrowseBtn.setOnAction(e -> pickCondaExecutable());
+
+        condaPathRow.setAlignment(Pos.CENTER_LEFT);
+        condaPathRow.getChildren().setAll(condaPathField, condaBrowseBtn);
+
+        condaSubtextLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+        condaSubtextLabel.setWrapText(true);
+
+        condaPythonVersionCombo.getItems().setAll(dev.lumina.project.PythonMetadata.fetchCondaPythonVersions());
+        condaPythonVersionCombo.getSelectionModel().select("3.12");
+        condaPythonVersionCombo.setMaxWidth(160);
+
+        // Custom environment setup
+        customEnvGenerateNewRadio.setToggleGroup(customEnvGroup);
+        customEnvSelectExistingRadio.setToggleGroup(customEnvGroup);
+        customEnvGenerateNewRadio.setSelected(true);
+        customEnvRadioRow.setAlignment(Pos.CENTER_LEFT);
+        customEnvRadioRow.getChildren().setAll(customEnvGenerateNewRadio, customEnvSelectExistingRadio);
+        customEnvGroup.selectedToggleProperty().addListener((obs, old, n) -> {
+            boolean isGenNew = customEnvGenerateNewRadio.isSelected();
+            if (isGenNew) {
+                customTypeCombo.getItems().setAll(dev.lumina.project.PythonMetadata.CUSTOM_ENV_GENERATE_NEW_TYPES);
+                customTypeCombo.getSelectionModel().select("Virtualenv");
+            } else {
+                customTypeCombo.getItems().setAll(dev.lumina.project.PythonMetadata.CUSTOM_ENV_SELECT_EXISTING_TYPES);
+                customTypeCombo.getSelectionModel().select("Python");
+            }
+            if (selected != null && selected.generator() == ProjectSpec.Generator.PYTHON) {
+                rebuildFormGrid();
+            }
+        });
+
+        customTypeCombo.getItems().setAll(dev.lumina.project.PythonMetadata.CUSTOM_ENV_GENERATE_NEW_TYPES);
+        customTypeCombo.getSelectionModel().select("Virtualenv");
+        customTypeCombo.setPrefWidth(160);
+        javafx.util.Callback<ListView<String>, ListCell<String>> typeCellFactory = lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.getIcon(item);
+                    Label label = new Label(item);
+                    label.setStyle("-fx-text-fill: #DFE1E5;");
+                    box.getChildren().addAll(icon, label);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        };
+        customTypeCombo.setCellFactory(typeCellFactory);
+        customTypeCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.getIcon(item);
+                    Label label = new Label(item);
+                    label.setStyle("-fx-text-fill: #DFE1E5;");
+                    box.getChildren().addAll(icon, label);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        });
+        customTypeCombo.valueProperty().addListener((obs, old, n) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.PYTHON) {
+                rebuildFormGrid();
+            }
+        });
+
+        customBasePythonBrowseBtn.setGraphic(createBrowseFolderIcon());
+        customBasePythonBrowseBtn.setText(null);
+        customBasePythonBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        customBasePythonBrowseBtn.setPrefSize(28, 28);
+        customBasePythonBrowseBtn.setMinSize(28, 28);
+        customBasePythonBrowseBtn.setMaxSize(28, 28);
+        customBasePythonBrowseBtn.setTooltip(new Tooltip("Select Base Python Interpreter"));
+        customBasePythonBrowseBtn.setOnAction(e -> pickCustomBasePython());
+
+        customBasePythonRow.setAlignment(Pos.CENTER_LEFT);
+        customBasePythonRow.getChildren().setAll(customBasePythonCombo, customBasePythonBrowseBtn);
+
+        customLocationCheckIcon.setStyle("-fx-text-fill: #4BB543; -fx-font-size: 14px; -fx-font-weight: bold;");
+        customLocationCheckIcon.setVisible(true);
+        customLocationField.textProperty().addListener((obs, old, v) -> {
+            customLocationFieldEdited = true;
+            customLocationCheckIcon.setVisible(v != null && !v.isBlank());
+        });
+        HBox.setHgrow(customLocationField, Priority.ALWAYS);
+
+        customLocationBrowseBtn.setGraphic(createBrowseFolderIcon());
+        customLocationBrowseBtn.setText(null);
+        customLocationBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        customLocationBrowseBtn.setPrefSize(28, 28);
+        customLocationBrowseBtn.setMinSize(28, 28);
+        customLocationBrowseBtn.setMaxSize(28, 28);
+        customLocationBrowseBtn.setTooltip(new Tooltip("Select Environment Location"));
+        customLocationBrowseBtn.setOnAction(e -> pickCustomLocation());
+
+        customLocationRow.setAlignment(Pos.CENTER_LEFT);
+        customLocationRow.getChildren().setAll(customLocationField, customLocationCheckIcon, customLocationBrowseBtn);
+
+        customPythonPathBrowseBtn.setGraphic(createBrowseFolderIcon());
+        customPythonPathBrowseBtn.setText(null);
+        customPythonPathBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        customPythonPathBrowseBtn.setPrefSize(28, 28);
+        customPythonPathBrowseBtn.setMinSize(28, 28);
+        customPythonPathBrowseBtn.setMaxSize(28, 28);
+        customPythonPathBrowseBtn.setTooltip(new Tooltip("Select Python Interpreter"));
+        customPythonPathBrowseBtn.setOnAction(e -> pickCustomPythonPath());
+
+        customPythonPathRow.setAlignment(Pos.CENTER_LEFT);
+        customPythonPathRow.getChildren().setAll(customPythonPathCombo, customPythonPathBrowseBtn);
 
         sampleCodeCheck.setSelected(true);
         Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
@@ -1930,7 +2129,8 @@ public class NewProjectDialog {
             formGrid.add(interpreterTypeLabel, 0, row);
             formGrid.add(pythonInterpreterRow, 1, row++);
 
-            if (isUvSelected()) {
+            ProjectSpec.PythonInterpreterType interpType = getSelectedPythonInterpreterType();
+            if (interpType == ProjectSpec.PythonInterpreterType.UV) {
                 formGrid.add(pythonVersionLabel, 0, row);
                 formGrid.add(uvPythonVersionCombo, 1, row++);
 
@@ -1938,7 +2138,80 @@ public class NewProjectDialog {
                 formGrid.add(uvPathRow, 1, row++);
 
                 formGrid.add(uvHintLabel, 1, row++);
+            } else if (interpType == ProjectSpec.PythonInterpreterType.BASE_CONDA) {
+                if (condaWarningBanner.isVisible()) {
+                    formGrid.add(condaWarningBanner, 1, row++);
+                }
+                if (condaErrorCallout.isVisible()) {
+                    formGrid.add(condaErrorCallout, 1, row++);
+                }
+                formGrid.add(pathToCondaLabel, 0, row);
+                formGrid.add(condaPathRow, 1, row++);
+
+                formGrid.add(condaSubtextLabel, 1, row++);
+            } else if (interpType == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT) {
+                formGrid.add(customEnvLabel, 0, row);
+                formGrid.add(customEnvRadioRow, 1, row++);
+
+                formGrid.add(customTypeLabel, 0, row);
+                formGrid.add(customTypeCombo, 1, row++);
+
+                boolean isGenNew = customEnvGenerateNewRadio.isSelected();
+                String selectedType = customTypeCombo.getValue() != null ? customTypeCombo.getValue() : "Virtualenv";
+
+                if (isGenNew) {
+                    if ("Virtualenv".equalsIgnoreCase(selectedType)) {
+                        formGrid.add(customBasePythonLabel, 0, row);
+                        formGrid.add(customBasePythonRow, 1, row++);
+
+                        formGrid.add(customLocationLabel, 0, row);
+                        formGrid.add(customLocationRow, 1, row++);
+
+                        VBox checkBoxes = new VBox(6, inheritPackagesCheck, makeAvailableCheck);
+                        checkBoxes.setPadding(new Insets(4, 0, 4, 0));
+                        formGrid.add(checkBoxes, 1, row++);
+                    } else if ("Conda".equalsIgnoreCase(selectedType)) {
+                        if (condaWarningBanner.isVisible()) {
+                            formGrid.add(condaWarningBanner, 1, row++);
+                        }
+                        formGrid.add(pythonVersionLabel, 0, row);
+                        formGrid.add(condaPythonVersionCombo, 1, row++);
+
+                        if (condaErrorCallout.isVisible()) {
+                            formGrid.add(condaErrorCallout, 1, row++);
+                        }
+                        formGrid.add(pathToCondaLabel, 0, row);
+                        formGrid.add(condaPathRow, 1, row++);
+                    } else if ("uv".equalsIgnoreCase(selectedType)) {
+                        formGrid.add(pythonVersionLabel, 0, row);
+                        formGrid.add(uvPythonVersionCombo, 1, row++);
+
+                        formGrid.add(pathToUvLabel, 0, row);
+                        formGrid.add(uvPathRow, 1, row++);
+                    } else {
+                        // Pipenv, Poetry, Hatch
+                        formGrid.add(customBasePythonLabel, 0, row);
+                        formGrid.add(customBasePythonRow, 1, row++);
+                    }
+                } else {
+                    // Select existing
+                    if ("Conda".equalsIgnoreCase(selectedType)) {
+                        if (condaWarningBanner.isVisible()) {
+                            formGrid.add(condaWarningBanner, 1, row++);
+                        }
+                        if (condaErrorCallout.isVisible()) {
+                            formGrid.add(condaErrorCallout, 1, row++);
+                        }
+                        formGrid.add(pathToCondaLabel, 0, row);
+                        formGrid.add(condaPathRow, 1, row++);
+                    } else {
+                        // Python
+                        formGrid.add(customPythonPathLabel, 0, row);
+                        formGrid.add(customPythonPathRow, 1, row++);
+                    }
+                }
             } else {
+                // Project venv
                 formGrid.add(pythonVersionLabel, 0, row);
                 formGrid.add(pythonVersionRow, 1, row++);
 
@@ -5517,21 +5790,256 @@ public class NewProjectDialog {
         return ProjectSpec.PythonInterpreterType.PROJECT_VENV;
     }
 
+    private void setupPythonComboCellFactory(ComboBox<dev.lumina.project.PythonMetadata.PythonInstallation> combo) {
+        combo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox cellBox = new HBox(8);
+                    cellBox.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
+                    Label title = new Label(item.label());
+                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
+                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
+                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                    cellBox.getChildren().addAll(icon, title, pathLabel);
+                    setGraphic(cellBox);
+                    setText(null);
+                }
+            }
+        });
+        combo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(dev.lumina.project.PythonMetadata.PythonInstallation item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox cellBox = new HBox(8);
+                    cellBox.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.pythonIcon();
+                    Label title = new Label(item.label());
+                    title.setStyle("-fx-font-weight: 500; -fx-text-fill: #DFE1E5;");
+                    Label pathLabel = new Label("(" + item.executable() + ") " + item.type());
+                    pathLabel.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                    cellBox.getChildren().addAll(icon, title, pathLabel);
+                    setGraphic(cellBox);
+                    setText(null);
+                }
+            }
+        });
+    }
+
+    private void updateCondaValidation(String path) {
+        boolean valid = dev.lumina.project.PythonMetadata.isValidConda(path);
+        boolean wasBannerVisible = condaWarningBanner.isVisible();
+        boolean wasCalloutVisible = condaErrorCallout.isVisible();
+        if (valid) {
+            condaWarningBanner.setVisible(false);
+            condaWarningBanner.setManaged(false);
+            condaErrorCallout.setVisible(false);
+            condaErrorCallout.setManaged(false);
+            condaPathField.setStyle("");
+        } else {
+            condaWarningBanner.setVisible(true);
+            condaWarningBanner.setManaged(true);
+            condaErrorCallout.setVisible(true);
+            condaErrorCallout.setManaged(true);
+            condaPathField.setStyle("-fx-border-color: #DE3423; -fx-border-radius: 4px;");
+        }
+        if ((wasBannerVisible != condaWarningBanner.isVisible() || wasCalloutVisible != condaErrorCallout.isVisible())
+                && selected != null && selected.generator() == ProjectSpec.Generator.PYTHON) {
+            rebuildFormGrid();
+        }
+    }
+
+    private void startMinicondaInstallation() {
+        if (activeCondaInstallFuture != null && !activeCondaInstallFuture.isDone()) {
+            activeCondaInstallFuture.cancel(true);
+        }
+
+        condaInstallSpinner.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        condaInstallSpinner.setPrefSize(16, 16);
+        condaInstallSpinner.setMinSize(16, 16);
+        condaInstallSpinner.setMaxSize(16, 16);
+        condaInstallSpinner.setStyle("-fx-progress-color: #548AF7;");
+
+        condaInstallStatus.setText("Connecting to Miniconda repository…");
+        condaInstallStatus.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        condaCancelInstallLink.setStyle("-fx-text-fill: #548AF7; -fx-font-size: 12px; -fx-cursor: hand; -fx-underline: false; -fx-padding: 0;");
+        condaCancelInstallLink.setOnAction(e -> cancelMinicondaInstallation());
+
+        condaOpenWebLink.setStyle("-fx-text-fill: #548AF7; -fx-font-size: 12px; -fx-cursor: hand; -fx-underline: false; -fx-padding: 0;");
+        condaOpenWebLink.setOnAction(e -> dev.lumina.project.PythonMetadata.openExternalUrl("https://docs.anaconda.com/miniconda/"));
+
+        Region bannerSpacer = new Region();
+        HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
+        HBox progressBox = new HBox(8, condaInstallSpinner, condaInstallStatus);
+        progressBox.setAlignment(Pos.CENTER_LEFT);
+        HBox actionsBox = new HBox(12, condaCancelInstallLink, condaOpenWebLink);
+        actionsBox.setAlignment(Pos.CENTER_RIGHT);
+        condaWarningBanner.getChildren().setAll(progressBox, bannerSpacer, actionsBox);
+
+        activeCondaInstallFuture = dev.lumina.project.PythonMetadata.installMinicondaAsync(
+                status -> javafx.application.Platform.runLater(() -> condaInstallStatus.setText(status)),
+                progress -> javafx.application.Platform.runLater(() -> {
+                    condaInstallSpinner.setProgress(progress);
+                    condaInstallStatus.setText(String.format(java.util.Locale.US, "Downloading Miniconda (%.0f%%)…", progress * 100));
+                })
+        );
+
+        activeCondaInstallFuture.thenAccept(binPath -> {
+            javafx.application.Platform.runLater(() -> {
+                activeCondaInstallFuture = null;
+                condaPathField.setText(binPath.toAbsolutePath().toString());
+                updateCondaValidation(binPath.toAbsolutePath().toString());
+                restoreCondaBannerLinks();
+            });
+        }).exceptionally(ex -> {
+            javafx.application.Platform.runLater(() -> {
+                activeCondaInstallFuture = null;
+                restoreCondaBannerLinks();
+                String msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+                condaWarningText.setText("Installation failed: " + msg);
+            });
+            return null;
+        });
+    }
+
+    private void cancelMinicondaInstallation() {
+        if (activeCondaInstallFuture != null) {
+            activeCondaInstallFuture.cancel(true);
+            activeCondaInstallFuture = null;
+        }
+        restoreCondaBannerLinks();
+    }
+
+    private void restoreCondaBannerLinks() {
+        Region bannerSpacer = new Region();
+        HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
+        HBox linksBox = new HBox(12, condaInstallLink, condaSelectPathLink);
+        linksBox.setAlignment(Pos.CENTER_RIGHT);
+        condaWarningText.setText("No conda executable found");
+        condaWarningBanner.getChildren().setAll(condaWarningIcon, condaWarningText, bannerSpacer, linksBox);
+    }
+
     private String getSelectedPythonPath() {
-        if (isUvSelected()) return "";
+        ProjectSpec.PythonInterpreterType type = getSelectedPythonInterpreterType();
+        if (type == ProjectSpec.PythonInterpreterType.UV) return "";
+        if (type == ProjectSpec.PythonInterpreterType.BASE_CONDA) {
+            return condaPathField.getText().trim();
+        }
+        if (type == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT) {
+            if (customEnvGenerateNewRadio.isSelected()) {
+                String ctype = customTypeCombo.getValue();
+                if ("Conda".equalsIgnoreCase(ctype)) {
+                    return condaPathField.getText().trim();
+                }
+                dev.lumina.project.PythonMetadata.PythonInstallation inst = customBasePythonCombo.getValue();
+                return inst != null && inst.executable() != null ? inst.executable() : "/usr/bin/python3";
+            } else {
+                String ctype = customTypeCombo.getValue();
+                if ("Conda".equalsIgnoreCase(ctype)) {
+                    return condaPathField.getText().trim();
+                }
+                dev.lumina.project.PythonMetadata.PythonInstallation inst = customPythonPathCombo.getValue();
+                return inst != null && inst.executable() != null ? inst.executable() : "/usr/bin/python3";
+            }
+        }
         dev.lumina.project.PythonMetadata.PythonInstallation inst = pythonVersionCombo.getValue();
         return inst != null && inst.executable() != null ? inst.executable() : "/usr/bin/python3";
     }
 
     private String getSelectedPythonVersion() {
-        if (isUvSelected()) {
+        ProjectSpec.PythonInterpreterType type = getSelectedPythonInterpreterType();
+        if (type == ProjectSpec.PythonInterpreterType.UV) {
             return uvPythonVersionCombo.getValue() != null ? uvPythonVersionCombo.getValue() : "Default";
+        }
+        if (type == ProjectSpec.PythonInterpreterType.BASE_CONDA) {
+            return condaPythonVersionCombo.getValue() != null ? condaPythonVersionCombo.getValue() : "3.12";
+        }
+        if (type == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT) {
+            if (customEnvGenerateNewRadio.isSelected()) {
+                String ctype = customTypeCombo.getValue();
+                if ("Conda".equalsIgnoreCase(ctype)) {
+                    return condaPythonVersionCombo.getValue() != null ? condaPythonVersionCombo.getValue() : "3.12";
+                }
+                dev.lumina.project.PythonMetadata.PythonInstallation inst = customBasePythonCombo.getValue();
+                if (inst != null && inst.label() != null) {
+                    return inst.label().replaceFirst("^Python\\s*", "");
+                }
+            } else {
+                dev.lumina.project.PythonMetadata.PythonInstallation inst = customPythonPathCombo.getValue();
+                if (inst != null && inst.label() != null) {
+                    return inst.label().replaceFirst("^Python\\s*", "");
+                }
+            }
         }
         dev.lumina.project.PythonMetadata.PythonInstallation inst = pythonVersionCombo.getValue();
         if (inst != null && inst.label() != null) {
             return inst.label().replaceFirst("^Python\\s*", "");
         }
         return "3.12";
+    }
+
+    private void openMinicondaInstallPage() {
+        dev.lumina.project.PythonMetadata.openExternalUrl("https://docs.anaconda.com/miniconda/");
+    }
+
+    private void pickCondaExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Conda Executable");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null) {
+            condaPathField.setText(file.getAbsolutePath());
+            updateCondaValidation(file.getAbsolutePath());
+        }
+    }
+
+    private void pickCustomBasePython() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Base Python Interpreter");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String path = file.getAbsolutePath();
+            String label = file.getName();
+            var inst = new dev.lumina.project.PythonMetadata.PythonInstallation(label, path, "custom", label + " (" + path + ") custom");
+            if (!customBasePythonCombo.getItems().contains(inst)) {
+                customBasePythonCombo.getItems().add(0, inst);
+            }
+            customBasePythonCombo.setValue(inst);
+        }
+    }
+
+    private void pickCustomPythonPath() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Python Interpreter");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String path = file.getAbsolutePath();
+            String label = file.getName();
+            var inst = new dev.lumina.project.PythonMetadata.PythonInstallation(label, path, "custom", label + " (" + path + ") custom");
+            if (!customPythonPathCombo.getItems().contains(inst)) {
+                customPythonPathCombo.getItems().add(0, inst);
+            }
+            customPythonPathCombo.setValue(inst);
+        }
+    }
+
+    private void pickCustomLocation() {
+        javafx.stage.DirectoryChooser chooser = new javafx.stage.DirectoryChooser();
+        chooser.setTitle("Select Environment Location");
+        File dir = chooser.showDialog(stage);
+        if (dir != null) {
+            customLocationField.setText(dir.getAbsolutePath());
+            customLocationFieldEdited = true;
+        }
     }
 
     private void pickPythonExecutable() {
@@ -5601,6 +6109,9 @@ public class NewProjectDialog {
             Path projDir = Path.of(loc.isBlank() ? "." : loc).resolve(nm);
             pythonVenvHintLabel.setText("Python virtual environment will be created in the project root:\n" + projDir.resolve(".venv"));
             uvHintLabel.setText("uv environment will be created in the project root: " + projDir.resolve(".venv"));
+            if (!customLocationFieldEdited) {
+                customLocationField.setText(projDir.resolve(".venv").toString());
+            }
         } catch (Exception ignored) {}
         if (!packageEdited) {
             String pkg = (sanitize(groupField.getText()) + "." + sanitize(artifactField.getText()))
@@ -6073,7 +6584,13 @@ public class NewProjectDialog {
                 getSelectedPythonInterpreterType(),
                 getSelectedPythonPath(),
                 getSelectedPythonVersion(),
-                uvPathField.getText().trim());
+                uvPathField.getText().trim(),
+                condaPathField.getText().trim(),
+                customEnvGenerateNewRadio.isSelected(),
+                customTypeCombo.getValue() != null ? customTypeCombo.getValue() : "Virtualenv",
+                customLocationField.getText().trim(),
+                inheritPackagesCheck.isSelected(),
+                makeAvailableCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

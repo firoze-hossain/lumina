@@ -3,6 +3,12 @@ package dev.lumina.project;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -31,6 +37,18 @@ public final class PythonMetadata {
 
     public static final List<String> UV_PYTHON_VERSIONS = List.of(
             "Default", "3.14", "3.13", "3.12", "3.11", "3.10", "3.9", "3.8"
+    );
+
+    public static final List<String> CONDA_PYTHON_VERSIONS = List.of(
+            "3.12", "3.11", "3.10", "3.9", "3.8"
+    );
+
+    public static final List<String> CUSTOM_ENV_GENERATE_NEW_TYPES = List.of(
+            "Virtualenv", "Conda", "Pipenv", "Poetry", "uv", "Hatch"
+    );
+
+    public static final List<String> CUSTOM_ENV_SELECT_EXISTING_TYPES = List.of(
+            "Python", "Conda"
     );
 
     private static volatile List<PythonInstallation> cachedInstallations = null;
@@ -297,5 +315,310 @@ public final class PythonMetadata {
      */
     public static List<String> fetchUvPythonVersions() {
         return UV_PYTHON_VERSIONS;
+    }
+
+    /**
+     * Returns the list of supported Python versions for Conda matching IntelliJ IDEA.
+     */
+    public static List<String> fetchCondaPythonVersions() {
+        return CONDA_PYTHON_VERSIONS;
+    }
+
+    /**
+     * Dynamically detects the path to the conda executable on the system matching IntelliJ IDEA.
+     * Returns empty string if conda is not installed.
+     */
+    public static String detectCondaPath() {
+        // 1. Check PATH first
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null) {
+            for (String dir : pathEnv.split(Pattern.quote(File.pathSeparator))) {
+                if (dir.isBlank()) continue;
+                File exe = new File(dir, "conda");
+                if (exe.exists() && exe.canExecute() && !exe.isDirectory()) {
+                    return exe.getAbsolutePath();
+                }
+                File exeWin = new File(dir, "conda.exe");
+                if (exeWin.exists() && !exeWin.isDirectory()) {
+                    return exeWin.getAbsolutePath();
+                }
+                File batWin = new File(dir, "conda.bat");
+                if (batWin.exists() && !batWin.isDirectory()) {
+                    return batWin.getAbsolutePath();
+                }
+            }
+        }
+
+        // 2. Common install directories
+        String userHome = System.getProperty("user.home", "");
+        List<String> candidates = new ArrayList<>();
+        if (!userHome.isBlank()) {
+            candidates.add(userHome + "/miniconda3/bin/conda");
+            candidates.add(userHome + "/miniconda3/condabin/conda");
+            candidates.add(userHome + "/anaconda3/bin/conda");
+            candidates.add(userHome + "/anaconda3/condabin/conda");
+            candidates.add(userHome + "/miniforge3/bin/conda");
+            candidates.add(userHome + "/miniforge3/condabin/conda");
+            candidates.add(userHome + "/mambaforge/bin/conda");
+            candidates.add(userHome + "/mambaforge/condabin/conda");
+            candidates.add(userHome + "/.conda/bin/conda");
+        }
+        candidates.add("/opt/conda/bin/conda");
+        candidates.add("/opt/miniconda3/bin/conda");
+        candidates.add("/opt/anaconda3/bin/conda");
+        candidates.add("/usr/local/bin/conda");
+        candidates.add("/usr/bin/conda");
+
+        // Windows candidates
+        String userProfile = System.getenv("USERPROFILE");
+        if (userProfile != null && !userProfile.isBlank()) {
+            candidates.add(userProfile + "\\miniconda3\\condabin\\conda.bat");
+            candidates.add(userProfile + "\\miniconda3\\Scripts\\conda.exe");
+            candidates.add(userProfile + "\\anaconda3\\condabin\\conda.bat");
+            candidates.add(userProfile + "\\anaconda3\\Scripts\\conda.exe");
+        }
+        candidates.add("C:\\ProgramData\\miniconda3\\condabin\\conda.bat");
+        candidates.add("C:\\ProgramData\\anaconda3\\condabin\\conda.bat");
+
+        for (String c : candidates) {
+            File f = new File(c);
+            if (f.exists() && !f.isDirectory()) {
+                if (f.canExecute() || c.endsWith(".bat") || c.endsWith(".exe")) {
+                    return f.getAbsolutePath();
+                }
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Validates whether the given path points to a valid conda executable.
+     */
+    public static boolean isValidConda(String path) {
+        if (path == null || path.isBlank()) return false;
+        try {
+            File f = new File(path.trim());
+            return f.exists() && !f.isDirectory() && (f.canExecute() || path.endsWith(".bat") || path.endsWith(".exe"));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Validates whether the given path points to a valid python executable.
+     */
+    public static boolean isValidPython(String path) {
+        if (path == null || path.isBlank()) return false;
+        try {
+            File f = new File(path.trim());
+            return f.exists() && !f.isDirectory() && (f.canExecute() || path.endsWith(".exe"));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Discovers existing conda environment paths.
+     */
+    public static List<String> detectCondaEnvironments() {
+        List<String> envs = new ArrayList<>();
+        String userHome = System.getProperty("user.home", "");
+        if (!userHome.isBlank()) {
+            File envsTxt = new File(userHome, ".conda/environments.txt");
+            if (envsTxt.exists() && envsTxt.isFile()) {
+                try {
+                    List<String> lines = Files.readAllLines(envsTxt.toPath());
+                    for (String line : lines) {
+                        String trimmed = line.trim();
+                        if (!trimmed.isBlank() && !trimmed.startsWith("#") && new File(trimmed).isDirectory()) {
+                            envs.add(trimmed);
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return envs;
+    }
+
+    /**
+     * Resolves the official Anaconda repository Miniconda installer URL for the host OS and architecture.
+     */
+    public static String getMinicondaInstallerUrl() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String arch = System.getProperty("os.arch", "").toLowerCase();
+        boolean isArm = arch.contains("aarch64") || arch.contains("arm64");
+
+        if (os.contains("win")) {
+            return "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe";
+        } else if (os.contains("mac")) {
+            return isArm
+                    ? "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
+                    : "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh";
+        } else {
+            // Linux and Unix
+            return isArm
+                    ? "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
+                    : "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh";
+        }
+    }
+
+    /**
+     * Returns the default installation directory for Miniconda (~/miniconda3).
+     */
+    public static Path getDefaultMinicondaInstallDir() {
+        String userHome = System.getProperty("user.home", "");
+        return Path.of(userHome, "miniconda3");
+    }
+
+    /**
+     * Resolves the expected path of the conda binary within an install directory.
+     */
+    public static Path getExpectedCondaBinary(Path installDir) {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        if (os.contains("win")) {
+            Path p1 = installDir.resolve("condabin").resolve("conda.bat");
+            if (Files.exists(p1)) return p1;
+            Path p2 = installDir.resolve("Scripts").resolve("conda.exe");
+            if (Files.exists(p2)) return p2;
+            return p1;
+        } else {
+            Path p1 = installDir.resolve("bin").resolve("conda");
+            if (Files.exists(p1)) return p1;
+            Path p2 = installDir.resolve("condabin").resolve("conda");
+            if (Files.exists(p2)) return p2;
+            return p1;
+        }
+    }
+
+    /**
+     * Opens an external web URL reliably across Linux (xdg-open fallback), macOS, and Windows.
+     */
+    public static void openExternalUrl(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(URI.create(url));
+                return;
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("win")) {
+                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+            } else if (os.contains("mac")) {
+                new ProcessBuilder("open", url).start();
+            } else {
+                new ProcessBuilder("xdg-open", url).start();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Downloads and installs Miniconda silently in the background with progress reporting.
+     */
+    public static CompletableFuture<Path> installMinicondaAsync(
+            Consumer<String> statusCallback,
+            Consumer<Double> progressCallback) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String installerUrl = getMinicondaInstallerUrl();
+                Path installDir = getDefaultMinicondaInstallDir();
+
+                if (statusCallback != null) {
+                    statusCallback.accept("Downloading Miniconda installer…");
+                }
+
+                String ext = installerUrl.endsWith(".exe") ? ".exe" : ".sh";
+                Path tempFile = Files.createTempFile("miniconda_installer_", ext);
+                tempFile.toFile().deleteOnExit();
+
+                // 1. Download installer with percentage progress
+                URI uri = URI.create(installerUrl);
+                HttpClient client = HttpClient.newBuilder()
+                        .followRedirects(HttpClient.Redirect.ALWAYS)
+                        .build();
+                HttpRequest req = HttpRequest.newBuilder(uri).GET().build();
+
+                HttpResponse<InputStream> resp = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
+                long totalBytes = resp.headers().firstValueAsLong("Content-Length").orElse(-1L);
+
+                try (InputStream in = resp.body();
+                     OutputStream out = Files.newOutputStream(tempFile)) {
+                    byte[] buffer = new byte[16384];
+                    long downloaded = 0;
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                        downloaded += read;
+                        if (progressCallback != null && totalBytes > 0) {
+                            double progress = (double) downloaded / totalBytes;
+                            progressCallback.accept(progress);
+                        }
+                    }
+                }
+
+                if (statusCallback != null) {
+                    statusCallback.accept("Installing Miniconda to " + installDir + "…");
+                }
+
+                // 2. Execute installer in silent batch mode
+                ProcessBuilder pb;
+                String os = System.getProperty("os.name", "").toLowerCase();
+                if (os.contains("win")) {
+                    pb = new ProcessBuilder(
+                            tempFile.toAbsolutePath().toString(),
+                            "/InstallationType=JustMe",
+                            "/RegisterPython=0",
+                            "/S",
+                            "/D=" + installDir.toAbsolutePath()
+                    );
+                } else {
+                    tempFile.toFile().setExecutable(true, false);
+                    pb = new ProcessBuilder(
+                            "bash",
+                            tempFile.toAbsolutePath().toString(),
+                            "-b",
+                            "-u",
+                            "-p",
+                            installDir.toAbsolutePath().toString()
+                    );
+                }
+                pb.redirectErrorStream(true);
+                Process p = pb.start();
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // drain output
+                    }
+                }
+
+                int exitCode = p.waitFor();
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (Exception ignored) {}
+
+                if (exitCode != 0) {
+                    throw new RuntimeException("Miniconda installer exited with code " + exitCode);
+                }
+
+                Path binary = getExpectedCondaBinary(installDir);
+                if (!Files.exists(binary)) {
+                    throw new RuntimeException("Miniconda executable not found at expected location: " + binary);
+                }
+
+                if (statusCallback != null) {
+                    statusCallback.accept("Miniconda installed successfully.");
+                }
+
+                return binary;
+            } catch (Exception e) {
+                throw new RuntimeException("Miniconda installation failed: " + e.getMessage(), e);
+            }
+        });
     }
 }

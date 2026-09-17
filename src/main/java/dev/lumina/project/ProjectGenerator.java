@@ -3334,14 +3334,17 @@ public final class ProjectGenerator {
                 *.egg-info/
                 """);
 
-        // 3. uv-specific project files (pyproject.toml, .python-version)
-        if (spec.safePythonInterpreterType() == ProjectSpec.PythonInterpreterType.UV) {
-            String pyVer = spec.safePythonVersion();
-            String reqVer = "Default".equalsIgnoreCase(pyVer) ? "3.12" : pyVer;
+        // 3. Tool-specific project files
+        ProjectSpec.PythonInterpreterType interpType = spec.safePythonInterpreterType();
+        String pyVer = spec.safePythonVersion();
+        String reqVer = "Default".equalsIgnoreCase(pyVer) ? "3.12" : pyVer;
+        String safePkgName = spec.name().toLowerCase().replaceAll("[^a-z0-9_-]", "-");
 
+        if (interpType == ProjectSpec.PythonInterpreterType.UV ||
+                (interpType == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT && spec.isCustomEnvGenerateNew() && "uv".equalsIgnoreCase(spec.safeCustomEnvType()))) {
             StringBuilder toml = new StringBuilder();
             toml.append("[project]\n");
-            toml.append("name = \"").append(spec.name().toLowerCase().replaceAll("[^a-z0-9_-]", "-")).append("\"\n");
+            toml.append("name = \"").append(safePkgName).append("\"\n");
             toml.append("version = \"0.1.0\"\n");
             toml.append("description = \"Add your description here\"\n");
             toml.append("readme = \"README.md\"\n");
@@ -3352,6 +3355,58 @@ public final class ProjectGenerator {
             if (!"Default".equalsIgnoreCase(pyVer)) {
                 Files.writeString(dir.resolve(".python-version"), pyVer + "\n");
             }
+        } else if (interpType == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT && spec.isCustomEnvGenerateNew()) {
+            String ctype = spec.safeCustomEnvType();
+            if ("Conda".equalsIgnoreCase(ctype)) {
+                Files.writeString(dir.resolve("environment.yml"), """
+                        name: %s
+                        channels:
+                          - conda-forge
+                          - defaults
+                        dependencies:
+                          - python=%s
+                        """.formatted(safePkgName, reqVer));
+            } else if ("Poetry".equalsIgnoreCase(ctype)) {
+                Files.writeString(dir.resolve("pyproject.toml"), """
+                        [tool.poetry]
+                        name = "%s"
+                        version = "0.1.0"
+                        description = ""
+                        authors = []
+
+                        [tool.poetry.dependencies]
+                        python = "^%s"
+
+                        [build-system]
+                        requires = ["poetry-core"]
+                        build-backend = "poetry.core.masonry.api"
+                        """.formatted(safePkgName, reqVer));
+            } else if ("Pipenv".equalsIgnoreCase(ctype)) {
+                Files.writeString(dir.resolve("Pipfile"), """
+                        [[source]]
+                        url = "https://pypi.org/simple"
+                        verify_ssl = true
+                        name = "pypi"
+
+                        [packages]
+
+                        [dev-packages]
+
+                        [requires]
+                        python_version = "%s"
+                        """.formatted(reqVer));
+            } else if ("Hatch".equalsIgnoreCase(ctype)) {
+                Files.writeString(dir.resolve("pyproject.toml"), """
+                        [build-system]
+                        requires = ["hatchling"]
+                        build-backend = "hatchling.build"
+
+                        [project]
+                        name = "%s"
+                        version = "0.1.0"
+                        dependencies = []
+                        """.formatted(safePkgName));
+            }
         }
 
         // 4. README.md
@@ -3361,9 +3416,28 @@ public final class ProjectGenerator {
         // 5. .idea/misc.xml (Python SDK integration)
         Path ideaDir = dir.resolve(".idea");
         Files.createDirectories(ideaDir);
-        String sdkName = spec.safePythonInterpreterType() == ProjectSpec.PythonInterpreterType.UV
-                ? "Python " + spec.safePythonVersion() + " (uv)"
-                : "Python " + spec.safePythonVersion() + " (" + spec.name() + ")";
+
+        String sdkName;
+        if (interpType == ProjectSpec.PythonInterpreterType.UV) {
+            sdkName = "Python " + pyVer + " (uv)";
+        } else if (interpType == ProjectSpec.PythonInterpreterType.BASE_CONDA) {
+            sdkName = "Python " + pyVer + " (base)";
+        } else if (interpType == ProjectSpec.PythonInterpreterType.CUSTOM_ENVIRONMENT) {
+            if (spec.isCustomEnvGenerateNew()) {
+                String ctype = spec.safeCustomEnvType();
+                sdkName = "Python " + pyVer + " (" + ctype.toLowerCase() + ")";
+            } else {
+                String ctype = spec.safeCustomEnvType();
+                if ("Conda".equalsIgnoreCase(ctype)) {
+                    sdkName = "Python " + pyVer + " (conda)";
+                } else {
+                    sdkName = "Python " + pyVer + " (" + spec.safePythonPath() + ")";
+                }
+            }
+        } else {
+            sdkName = "Python " + pyVer + " (" + spec.name() + ")";
+        }
+
         Files.writeString(ideaDir.resolve("misc.xml"), """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <project version="4">
