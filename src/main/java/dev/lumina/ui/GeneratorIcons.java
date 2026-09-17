@@ -40,6 +40,7 @@ public final class GeneratorIcons {
             case "uv" -> uvIconSmall();
             case "Hatch" -> hatchIcon();
             case "Rust" -> rustIcon();
+            case "Go" -> goIcon();
             case "Empty Project" -> emptyProjectIcon();
             case "Maven Archetype" -> mavenIcon();
             case "Spring Boot" -> springBootIcon();
@@ -565,6 +566,57 @@ public final class GeneratorIcons {
         centerLower.setFill(Color.web("#B71C1C"));
 
         Group g = new Group(crown, pavilion, centerFacet, centerLower);
+        return box(g);
+    }
+
+    /** Go: official cyan Go gopher face icon matching IntelliJ IDEA. */
+    public static Node goIcon() {
+        Color goBlue = Color.web("#00ADD8");
+        Color darkPupil = Color.web("#1E1F22");
+
+        // Ears
+        Circle leftEar = new Circle(4.2, 4.0, 1.8, goBlue);
+        Circle rightEar = new Circle(11.8, 4.0, 1.8, goBlue);
+
+        // Head
+        Rectangle head = new Rectangle(2.5, 4.0, 11.0, 10.5);
+        head.setArcWidth(7.5);
+        head.setArcHeight(7.5);
+        head.setFill(goBlue);
+
+        // Snout
+        Ellipse snout = new Ellipse(8.0, 10.5, 2.5, 1.8);
+        snout.setFill(Color.web("#C5EEF9"));
+
+        // Nose
+        Circle nose = new Circle(8.0, 9.7, 0.7, darkPupil);
+
+        // Front teeth
+        Rectangle teeth = new Rectangle(7.3, 10.6, 1.4, 1.4);
+        teeth.setArcWidth(0.5);
+        teeth.setArcHeight(0.5);
+        teeth.setFill(Color.WHITE);
+        Line teethDivider = new Line(8.0, 10.6, 8.0, 12.0);
+        teethDivider.setStroke(darkPupil);
+        teethDivider.setStrokeWidth(0.3);
+
+        // Big round gopher eyes
+        Circle leftEyeWhite = new Circle(5.6, 7.3, 2.2, Color.WHITE);
+        Circle rightEyeWhite = new Circle(10.4, 7.3, 2.2, Color.WHITE);
+
+        Circle leftPupil = new Circle(5.8, 7.3, 1.1, darkPupil);
+        Circle rightPupil = new Circle(10.6, 7.3, 1.1, darkPupil);
+
+        Circle leftHighlight = new Circle(5.3, 6.9, 0.45, Color.WHITE);
+        Circle rightHighlight = new Circle(10.1, 6.9, 0.45, Color.WHITE);
+
+        Group g = new Group(
+                leftEar, rightEar, head,
+                snout, nose, teeth, teethDivider,
+                leftEyeWhite, rightEyeWhite,
+                leftPupil, rightPupil,
+                leftHighlight, rightHighlight
+        );
         return box(g);
     }
 

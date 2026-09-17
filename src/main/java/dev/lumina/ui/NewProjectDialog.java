@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.GradleMetadata;
 import dev.lumina.project.GroovyMetadata;
+import dev.lumina.project.GoMetadata;
 import dev.lumina.project.JdkMetadata;
 import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.NodeMetadata;
@@ -33,6 +34,8 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
@@ -366,6 +369,7 @@ public class NewProjectDialog {
             new GeneratorEntry("PHP", ProjectSpec.Generator.PHP, true),
             new GeneratorEntry("Ruby", ProjectSpec.Generator.RUBY, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
+            new GeneratorEntry("Go", ProjectSpec.Generator.GO, true),
             new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
     private static final List<GeneratorEntry> GENERATOR_ENTRIES = List.of(
@@ -494,6 +498,21 @@ public class NewProjectDialog {
     private final Hyperlink rustInstallCargoGenerateLink = new Hyperlink("Install cargo-generate using Cargo");
     private final Label rustCargoGenerateStatusLabel = new Label();
     private final HBox rustCargoGenerateBox = new HBox(8, rustInstallCargoGenerateLink, rustCargoGenerateStatusLabel);
+
+    // Go controls
+    private final Label goRootLabel = formLabel("GOROOT:");
+    private final ComboBox<GoMetadata.GoSdk> goRootBox = new ComboBox<>();
+    private final Button goAddSdkBtn = new Button("Add SDK…");
+    private final HBox goRootRow = new HBox(8);
+    private final CheckBox goVendoringCheck = new CheckBox("Enable vendoring support automatically");
+    private final Label goVendoringHelp = new Label("?");
+    private final HBox goVendoringRow = new HBox(4);
+    private final Label goEnvironmentLabel = formLabel("Environment:");
+    private final TextField goEnvironmentField = new TextField();
+    private final Button goEnvironmentBtn = new Button();
+    private final HBox goEnvironmentRow = new HBox(8);
+    private final Label goEnvironmentSubtext = new Label("GOPROXY, GOPRIVATE, and other environment variables");
+    private final CheckBox goSampleCodeCheck = new CheckBox("Add sample code");
 
     private final ToggleButton typeGradleGroovy = new ToggleButton("Gradle - Groovy");
     private final ToggleButton typeGradleKotlin = new ToggleButton("Gradle - Kotlin");
@@ -1845,6 +1864,7 @@ public class NewProjectDialog {
 
         buildMavenArchetypeForm();
         setupRustControls();
+        setupGoControls();
 
         javaVersionBox.getSelectionModel().select("21");
 
@@ -1906,6 +1926,7 @@ public class NewProjectDialog {
         boolean python = generator == ProjectSpec.Generator.PYTHON;
         boolean php = generator == ProjectSpec.Generator.PHP;
         boolean ruby = generator == ProjectSpec.Generator.RUBY;
+        boolean go = generator == ProjectSpec.Generator.GO;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -2016,6 +2037,23 @@ public class NewProjectDialog {
             formGrid.add(rustTemplateHeaderRow, 0, row++, 2, 1);
             formGrid.add(rustTemplateContainer, 0, row++, 2, 1);
             formGrid.add(rustCargoGenerateBox, 0, row++, 2, 1);
+            return;
+        }
+
+        if (go) {
+            formCol0.setMinWidth(110);
+            formCol0.setPrefWidth(110);
+
+            formGrid.add(goRootLabel, 0, row);
+            formGrid.add(goRootRow, 1, row++);
+
+            formGrid.add(goVendoringRow, 1, row++);
+
+            formGrid.add(goEnvironmentLabel, 0, row);
+            VBox envCol = new VBox(4, goEnvironmentRow, goEnvironmentSubtext);
+            formGrid.add(envCol, 1, row++);
+
+            formGrid.add(goSampleCodeCheck, 1, row++);
             return;
         }
 
@@ -4996,6 +5034,8 @@ public class NewProjectDialog {
         } else if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
             alert.setContentText("Generates a project via start.spring.io, the same service "
                     + "IntelliJ uses, with full access to starters and versions.");
+        } else if (selected.generator() == ProjectSpec.Generator.GO) {
+            alert.setContentText("Generates a Go project with Go modules, vendoring support, environment variables, and sample code matching IntelliJ IDEA / GoLand.");
         } else {
             alert.setContentText("Project configuration for " + selected.label());
         }
@@ -5287,6 +5327,126 @@ public class NewProjectDialog {
 
         rustTemplateContainer.getChildren().setAll(rustTemplateList, rustTemplateToolbar);
         rustTemplateContainer.setSpacing(0);
+    }
+
+    private void setupGoControls() {
+        List<GoMetadata.GoSdk> sdks = GoMetadata.discoverGoRoots();
+        goRootBox.getItems().setAll(sdks);
+        goRootBox.setPromptText("<No SDK>");
+        goRootBox.setPrefWidth(380);
+        HBox.setHgrow(goRootBox, Priority.ALWAYS);
+
+        goRootBox.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(GoMetadata.GoSdk item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.formatDisplay());
+                }
+            }
+        });
+        goRootBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(GoMetadata.GoSdk item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.formatDisplay());
+                }
+            }
+        });
+
+        ContextMenu addSdkMenu = new ContextMenu();
+        MenuItem localItem = new MenuItem("Local…");
+        localItem.setOnAction(e -> chooseLocalGoSdk());
+        MenuItem downloadItem = new MenuItem("Download…");
+        downloadItem.setOnAction(e -> downloadGoSdk());
+        addSdkMenu.getItems().setAll(localItem, downloadItem);
+        addSdkMenu.getStyleClass().add("catalog-menu");
+
+        goAddSdkBtn.getStyleClass().add("console-button");
+        goAddSdkBtn.setOnAction(e -> {
+            addSdkMenu.show(goAddSdkBtn, javafx.geometry.Side.BOTTOM, 0, 0);
+        });
+
+        if (!sdks.isEmpty()) {
+            goRootBox.getSelectionModel().select(0);
+            goRootRow.getChildren().setAll(goRootBox, goAddSdkBtn);
+        } else {
+            goRootRow.getChildren().setAll(goAddSdkBtn);
+        }
+        goRootRow.setAlignment(Pos.CENTER_LEFT);
+
+        goVendoringCheck.setSelected(true);
+        goVendoringCheck.setStyle("-fx-font-size: 12px;");
+        goVendoringHelp.setStyle("-fx-text-fill: #707890; -fx-font-size: 10px; -fx-cursor: hand; "
+                + "-fx-border-color: #707890; -fx-border-radius: 8; -fx-min-width: 14px; "
+                + "-fx-alignment: center; -fx-padding: 0 2 0 2;");
+        Tooltip.install(goVendoringHelp, new Tooltip("Vendoring support: automatically run 'go mod vendor' or use vendor folder"));
+        goVendoringRow.getChildren().setAll(goVendoringCheck, goVendoringHelp);
+        goVendoringRow.setAlignment(Pos.CENTER_LEFT);
+        goVendoringRow.setSpacing(4);
+
+        goEnvironmentField.setPromptText("Environment variables");
+        HBox.setHgrow(goEnvironmentField, Priority.ALWAYS);
+        goEnvironmentBtn.setGraphic(GeneratorIcons.envVariablesIcon());
+        goEnvironmentBtn.getStyleClass().add("console-button");
+        goEnvironmentBtn.setOnAction(e -> {
+            EnvironmentVariablesDialog.show(stage, goEnvironmentField.getText().trim())
+                    .ifPresent(goEnvironmentField::setText);
+        });
+        goEnvironmentRow.getChildren().setAll(goEnvironmentField, goEnvironmentBtn);
+        goEnvironmentRow.setAlignment(Pos.CENTER_LEFT);
+
+        goEnvironmentSubtext.setStyle("-fx-text-fill: #8C919D; -fx-font-size: 11px;");
+
+        goSampleCodeCheck.setSelected(true);
+        goSampleCodeCheck.setStyle("-fx-font-size: 12px;");
+    }
+
+    private void chooseLocalGoSdk() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Select GOROOT Directory");
+        File chosen = chooser.showDialog(stage);
+        if (chosen != null) {
+            if (!GoMetadata.isValidGoRoot(chosen)) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.initOwner(stage);
+                alert.setTitle("Invalid GOROOT");
+                alert.setHeaderText("Invalid GOROOT Location");
+                alert.setContentText("The chosen directory does not appear to contain a valid Go SDK (missing bin/go or VERSION).");
+                alert.showAndWait();
+                return;
+            }
+            String ver = GoMetadata.detectGoVersion(chosen.getAbsolutePath());
+            GoMetadata.GoSdk sdk = new GoMetadata.GoSdk(
+                    "Go " + (ver.startsWith("go") ? ver.substring(2) : ver),
+                    ver,
+                    chosen.getAbsolutePath(),
+                    true
+            );
+            if (!goRootBox.getItems().contains(sdk)) {
+                goRootBox.getItems().add(0, sdk);
+            }
+            goRootBox.getSelectionModel().select(sdk);
+            goRootRow.getChildren().setAll(goRootBox, goAddSdkBtn);
+        }
+    }
+
+    private void downloadGoSdk() {
+        DownloadGoSdkDialog dialog = new DownloadGoSdkDialog(stage, sdk -> {
+            if (sdk != null) {
+                if (!goRootBox.getItems().contains(sdk)) {
+                    goRootBox.getItems().add(0, sdk);
+                }
+                goRootBox.getSelectionModel().select(sdk);
+                goRootRow.getChildren().setAll(goRootBox, goAddSdkBtn);
+            }
+        });
+        dialog.show();
     }
 
     private void chooseRustToolchain() {
@@ -6840,8 +7000,8 @@ public class NewProjectDialog {
                 name,
                 Path.of(location),
                 gitCheck.isSelected(),
-                build,
-                language,
+                selected.generator() == ProjectSpec.Generator.GO ? ProjectSpec.BuildSystem.INTELLIJ : build,
+                selected.generator() == ProjectSpec.Generator.GO ? ProjectSpec.Language.GO : language,
                 packaging,
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
@@ -6870,7 +7030,7 @@ public class NewProjectDialog {
                 quarkusStreamKey,
                 quarkus ? String.join(",", selectedQuarkusExtIds) : "",
                 quarkusBuildTool,
-                sampleCodeCheck.isSelected(),
+                (selected.generator() == ProjectSpec.Generator.GO ? goSampleCodeCheck.isSelected() : sampleCodeCheck.isSelected()),
                 jakartaVersionBox.getValue() != null ? jakartaVersionBox.getValue() : dev.lumina.project.JakartaMetadata.EE_11,
                 jakartaTemplateBox.getValue() != null ? jakartaTemplateBox.getValue() : dev.lumina.project.JakartaMetadata.TEMPLATE_REST,
                 jakarta ? String.join(",", selectedJakartaDepIds) : "",
@@ -6923,7 +7083,10 @@ public class NewProjectDialog {
                 makeAvailableCheck.isSelected(),
                 phpAddComposerJsonCheck.isSelected(),
                 rubyInterpreterCombo.getValue() != null ? rubyInterpreterCombo.getValue().executable() : "",
-                rubyAddSampleCodeCheck.isSelected());
+                rubyAddSampleCodeCheck.isSelected(),
+                selected.generator() == ProjectSpec.Generator.GO && goRootBox.getValue() != null ? goRootBox.getValue().path() : "",
+                goVendoringCheck.isSelected(),
+                goEnvironmentField.getText().trim());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
