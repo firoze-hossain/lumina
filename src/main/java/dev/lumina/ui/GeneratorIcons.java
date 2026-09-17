@@ -31,6 +31,7 @@ public final class GeneratorIcons {
             case "Groovy" -> groovyIcon();
             case "Scala" -> scalaIcon();
             case "Python", "Virtualenv" -> pythonIcon();
+            case "PHP" -> phpIcon();
             case "Conda" -> condaIcon();
             case "Pipenv" -> pipenvIcon();
             case "Poetry" -> poetryIcon();
@@ -456,6 +457,20 @@ public final class GeneratorIcons {
 
         Group g = new Group(hex, bird);
         return box(g);
+    }
+
+    /** PHP: official indigo/purple oval with white italic 'php' text matching IntelliJ IDEA. */
+    public static Node phpIcon() {
+        Ellipse oval = new Ellipse(7.5, 5.0);
+        oval.setFill(Color.web("#777BB4"));
+
+        Text text = new Text("php");
+        text.setFill(Color.WHITE);
+        text.setFont(Font.font("Segoe UI", FontWeight.BOLD, FontPosture.ITALIC, 7.5));
+
+        StackPane pane = new StackPane(oval, text);
+        pane.setAlignment(Pos.CENTER);
+        return box(pane);
     }
 
     /** Default fallback bullet. */
