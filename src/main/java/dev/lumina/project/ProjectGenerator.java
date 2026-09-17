@@ -2,6 +2,7 @@ package dev.lumina.project;
 
 import java.io.ByteArrayInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -78,6 +79,7 @@ public final class ProjectGenerator {
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
             case RUST -> generateRust(spec, dir, log);
+            case GO -> generateGo(spec, dir, log);
         }
 
         if (spec.initGit()) {
@@ -5652,6 +5654,125 @@ public final class ProjectGenerator {
         if (spec.initGit() && !Files.isDirectory(dir.resolve(".git"))) {
             initGit(dir, log);
         }
+    }
+
+    private static void generateGo(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        Files.createDirectories(dir);
+        log.accept("Creating Go project at " + dir + " …");
+
+        String goRoot = spec.goRoot();
+        String goVersion = "go1.24.0";
+        if (goRoot != null && !goRoot.isBlank()) {
+            goVersion = GoMetadata.detectGoVersion(goRoot);
+        }
+        String langVersion = GoMetadata.extractLanguageVersion(goVersion);
+
+        // 1. Initialize Go module: try running `go mod init <name>` if go executable is found
+        String goExe = resolveGoExecutable(goRoot);
+        boolean modInitialized = false;
+        if (goExe != null) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder(goExe, "mod", "init", spec.name())
+                        .directory(dir.toFile())
+                        .redirectErrorStream(true);
+                addEnvironment(pb, spec.goEnvironment());
+                log.accept("Initializing Go module with '" + goExe + " mod init " + spec.name() + "' …");
+                Process p = pb.start();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.accept(line);
+                    }
+                }
+                int code = p.waitFor();
+                if (code == 0 && Files.exists(dir.resolve("go.mod"))) {
+                    modInitialized = true;
+                }
+            } catch (Exception e) {
+                log.accept("Could not run go mod init: " + e.getMessage());
+            }
+        }
+
+        // Fallback: create go.mod directly if not already generated
+        if (!modInitialized && !Files.exists(dir.resolve("go.mod"))) {
+            String goModContent = "module " + spec.name() + "\n\ngo " + langVersion + "\n";
+            Files.writeString(dir.resolve("go.mod"), goModContent, StandardCharsets.UTF_8);
+            log.accept("Generated go.mod (module " + spec.name() + ", go " + langVersion + ")");
+        }
+
+        // 2. Add sample code if requested (Screenshot 1: [x] Add sample code)
+        if (spec.addSampleCode()) {
+            Path mainGo = dir.resolve("main.go");
+            if (!Files.exists(mainGo)) {
+                String sampleCode = """
+                        package main
+
+                        import "fmt"
+
+                        func main() {
+                        	fmt.Println("Hello, World!")
+                        }
+                        """;
+                Files.writeString(mainGo, sampleCode, StandardCharsets.UTF_8);
+                log.accept("Created main.go with sample code");
+            }
+        }
+
+        // 3. Vendoring support: if requested and go binary available, or create vendor dir
+        if (spec.goVendoring()) {
+            Path vendorDir = dir.resolve("vendor");
+            if (!Files.exists(vendorDir)) {
+                Files.createDirectories(vendorDir);
+                Files.writeString(vendorDir.resolve("modules.txt"), "# Automatically managed by Go vendoring\n", StandardCharsets.UTF_8);
+            }
+        }
+
+        // 4. .gitignore
+        Path gitignore = dir.resolve(".gitignore");
+        if (!Files.exists(gitignore)) {
+            Files.writeString(gitignore, GoMetadata.generateGitIgnore(), StandardCharsets.UTF_8);
+        }
+
+        // 5. IntelliJ IDEA metadata files
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), GoMetadata.generateIdeaModulesXml(spec.name()), StandardCharsets.UTF_8);
+        Files.writeString(ideaDir.resolve(spec.name() + ".iml"), GoMetadata.generateIdeaIml(), StandardCharsets.UTF_8);
+        Files.writeString(ideaDir.resolve("misc.xml"), GoMetadata.generateIdeaMiscXml(goVersion), StandardCharsets.UTF_8);
+
+        // 6. Git initialization
+        if (spec.initGit() && !Files.isDirectory(dir.resolve(".git"))) {
+            initGit(dir, log);
+        }
+    }
+
+    private static String resolveGoExecutable(String goRoot) {
+        boolean isWin = System.getProperty("os.name", "").toLowerCase().contains("win");
+        String binName = isWin ? "go.exe" : "go";
+
+        if (goRoot != null && !goRoot.isBlank()) {
+            File directBin = new File(goRoot, "bin" + File.separator + binName);
+            if (directBin.exists() && (directBin.canExecute() || isWin)) {
+                return directBin.getAbsolutePath();
+            }
+            File rootBin = new File(goRoot, binName);
+            if (rootBin.exists() && (rootBin.canExecute() || isWin)) {
+                return rootBin.getAbsolutePath();
+            }
+        }
+
+        // Check PATH
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null) {
+            for (String p : pathEnv.split(File.pathSeparator)) {
+                File candidate = new File(p, binName);
+                if (candidate.exists() && (candidate.canExecute() || isWin)) {
+                    return candidate.getAbsolutePath();
+                }
+            }
+        }
+        return null;
     }
 
     private static String cargoExecutable(String toolchainPath) {
