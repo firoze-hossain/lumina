@@ -149,6 +149,6 @@ class GroovyMavenGeneratorTest {
                 </metadata>
                 """;
         List<String> parsed = GroovyMetadata.parseVersionsXml(mockXml);
-        assertEquals(List.of("5.1.1", "5.0.8", "4.0.33", "3.0.25", "6.0.0-beta-3"), parsed);
+        assertEquals(List.of("5.1.1", "5.0.8", "4.0.33", "3.0.25", "6.0.0-beta-3", GroovyMetadata.SPECIFY_HOME_OPTION), parsed);
     }
 }

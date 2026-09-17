@@ -4,6 +4,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -24,13 +26,14 @@ public final class GroovyMetadata {
             "https://repo1.maven.org/maven2/org/codehaus/groovy/groovy/maven-metadata.xml";
 
     public static final String DEFAULT_GROOVY_VERSION = "5.1.1";
+    public static final String SPECIFY_HOME_OPTION = "Specify Groovy SDK home";
 
     /**
      * Fallback versions representing latest releases per branch, matching IntelliJ IDEA:
-     * 5.1.1, 5.0.8, 4.0.33, 3.0.25, 2.5.23, 2.4.21, 6.0.0-beta-3
+     * 5.1.1, 5.0.8, 4.0.33, 3.0.25, 2.5.23, 2.4.21, 6.0.0-beta-3, Specify Groovy SDK home
      */
     public static final List<String> FALLBACK_VERSIONS = List.of(
-            "5.1.1", "5.0.8", "4.0.33", "3.0.25", "2.5.23", "2.4.21", "6.0.0-beta-3"
+            "5.1.1", "5.0.8", "4.0.33", "3.0.25", "2.5.23", "2.4.21", "6.0.0-beta-3", SPECIFY_HOME_OPTION
     );
 
     private static volatile List<String> cachedVersions = null;
@@ -87,6 +90,9 @@ public final class GroovyMetadata {
         List<String> previews = new ArrayList<>();
 
         for (String v : versions) {
+            if (SPECIFY_HOME_OPTION.equals(v)) {
+                continue;
+            }
             String lower = v.toLowerCase();
             boolean isBeta = lower.contains("beta") || lower.contains("rc");
             if (isBeta) {
@@ -113,7 +119,47 @@ public final class GroovyMetadata {
             stable.add(previews.get(0));
         }
 
+        if (!stable.contains(SPECIFY_HOME_OPTION)) {
+            stable.add(SPECIFY_HOME_OPTION);
+        }
+
         return stable;
+    }
+
+    /**
+     * Attempts to detect the Groovy version from a local Groovy SDK home directory.
+     * Checks <home>/lib, <home>/embeddable, and <home> for groovy-<version>.jar.
+     */
+    public static String detectGroovyVersionFromHome(Path home) {
+        if (home == null || !Files.isDirectory(home)) {
+            return null;
+        }
+        List<Path> checkDirs = List.of(
+                home.resolve("lib"),
+                home.resolve("embeddable"),
+                home
+        );
+        Pattern jarPattern = Pattern.compile(
+                "^groovy-(?:core-|all-)?(\\d+\\.\\d+(?:\\.\\d+)?(?:-[a-zA-Z0-9.]+)?)(?:-indy)?\\.jar$"
+        );
+        for (Path dir : checkDirs) {
+            if (Files.isDirectory(dir)) {
+                try (var stream = Files.list(dir)) {
+                    for (Path file : stream.toList()) {
+                        String fileName = file.getFileName().toString();
+                        if (fileName.contains("-sources") || fileName.contains("-javadoc")) {
+                            continue;
+                        }
+                        Matcher m = jarPattern.matcher(fileName);
+                        if (m.find()) {
+                            return m.group(1);
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     /**
