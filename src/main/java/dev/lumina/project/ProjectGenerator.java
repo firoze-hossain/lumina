@@ -2833,6 +2833,8 @@ public final class ProjectGenerator {
         String group = spec.group() != null && !spec.group().isBlank() ? spec.group() : "com.example";
         String artifact = spec.artifact() != null && !spec.artifact().isBlank() ? spec.artifact() : spec.name();
         String mainFqcn = pkg.isBlank() ? "Main" : pkg + ".Main";
+        String groovyVer = spec.safeGroovyVersion();
+        String groovyGroupId = GroovyMetadata.getGroovyGroupId(groovyVer);
 
         if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
             Files.writeString(dir.resolve("pom.xml"), """
@@ -2850,12 +2852,12 @@ public final class ProjectGenerator {
                             <maven.compiler.source>%s</maven.compiler.source>
                             <maven.compiler.target>%s</maven.compiler.target>
                             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-                            <groovy.version>4.0.24</groovy.version>
+                            <groovy.version>%s</groovy.version>
                         </properties>
 
                         <dependencies>
                             <dependency>
-                                <groupId>org.apache.groovy</groupId>
+                                <groupId>%s</groupId>
                                 <artifactId>groovy</artifactId>
                                 <version>${groovy.version}</version>
                             </dependency>
@@ -2894,7 +2896,7 @@ public final class ProjectGenerator {
                             </plugins>
                         </build>
                     </project>
-                    """.formatted(group, artifact, javaVer, javaVer));
+                    """.formatted(group, artifact, javaVer, javaVer, groovyVer, groovyGroupId));
         } else if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
             String gradleVersion = spec.safeGradleVersion();
             if ("Local installation".equalsIgnoreCase(spec.safeGradleDistribution()) && !spec.safeGradleLocation().isBlank()) {
@@ -2929,7 +2931,7 @@ public final class ProjectGenerator {
                             }
 
                             dependencies {
-                                implementation("org.apache.groovy:groovy:4.0.24")
+                                implementation("%s:groovy:%s")
                                 testImplementation(platform("org.junit:junit-bom:5.10.0"))
                                 testImplementation("org.junit.jupiter:junit-jupiter")
                                 testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -2948,7 +2950,7 @@ public final class ProjectGenerator {
                             tasks.test {
                                 useJUnitPlatform()
                             }
-                            """.formatted(group, javaVer, mainFqcn));
+                            """.formatted(group, groovyGroupId, groovyVer, javaVer, mainFqcn));
                 } else {
                     Files.writeString(dir.resolve("settings.gradle"),
                             "rootProject.name = '" + artifact + "'\ninclude 'app'\n");
@@ -2972,7 +2974,7 @@ public final class ProjectGenerator {
                             }
 
                             dependencies {
-                                implementation 'org.apache.groovy:groovy:4.0.24'
+                                implementation '%s:groovy:%s'
                                 testImplementation platform('org.junit:junit-bom:5.10.0')
                                 testImplementation 'org.junit.jupiter:junit-jupiter'
                                 testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -2991,7 +2993,7 @@ public final class ProjectGenerator {
                             test {
                                 useJUnitPlatform()
                             }
-                            """.formatted(group, javaVer, mainFqcn));
+                            """.formatted(group, groovyGroupId, groovyVer, javaVer, mainFqcn));
                 }
             } else {
                 if (dsl == ProjectSpec.GradleDsl.KOTLIN) {
@@ -3011,7 +3013,7 @@ public final class ProjectGenerator {
                             }
 
                             dependencies {
-                                implementation("org.apache.groovy:groovy:4.0.24")
+                                implementation("%s:groovy:%s")
                                 testImplementation(platform("org.junit:junit-bom:5.10.0"))
                                 testImplementation("org.junit.jupiter:junit-jupiter")
                                 testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -3030,7 +3032,7 @@ public final class ProjectGenerator {
                             tasks.test {
                                 useJUnitPlatform()
                             }
-                            """.formatted(group, javaVer, mainFqcn));
+                            """.formatted(group, groovyGroupId, groovyVer, javaVer, mainFqcn));
                 } else {
                     Files.writeString(dir.resolve("settings.gradle"),
                             "rootProject.name = '" + artifact + "'\n");
@@ -3048,7 +3050,7 @@ public final class ProjectGenerator {
                             }
 
                             dependencies {
-                                implementation 'org.apache.groovy:groovy:4.0.24'
+                                implementation '%s:groovy:%s'
                                 testImplementation platform('org.junit:junit-bom:5.10.0')
                                 testImplementation 'org.junit.jupiter:junit-jupiter'
                                 testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -3067,13 +3069,14 @@ public final class ProjectGenerator {
                             test {
                                 useJUnitPlatform()
                             }
-                            """.formatted(group, javaVer, mainFqcn));
+                            """.formatted(group, groovyGroupId, groovyVer, javaVer, mainFqcn));
                 }
             }
 
             generateGradleWrapper(dir, gradleVersion, log);
             writeIdeaGradleXml(dir, spec.safeGradleDistribution(), spec.safeGradleLocation());
-        } else if (spec.buildSystem() == ProjectSpec.BuildSystem.INTELLIJ) {
+        } else {
+            // IntelliJ build system
             Path ideaDir = dir.resolve(".idea");
             Files.createDirectories(ideaDir);
             Files.writeString(ideaDir.resolve("misc.xml"), """
@@ -3106,10 +3109,10 @@ public final class ProjectGenerator {
                         </content>
                           <orderEntry type="inheritedJdk" />
                           <orderEntry type="sourceFolder" forTests="false" />
-                          <orderEntry type="library" name="groovy-4.0.24" level="project" />
+                          <orderEntry type="library" name="groovy-%s" level="project" />
                       </component>
                     </module>
-                    """);
+                    """.formatted(groovyVer));
         }
 
         if (spec.buildSystem() == ProjectSpec.BuildSystem.GRADLE) {
