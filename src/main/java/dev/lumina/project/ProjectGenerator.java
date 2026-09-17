@@ -3198,19 +3198,6 @@ public final class ProjectGenerator {
                             }
                             """);
                 }
-            } else {
-                if (optionalBraces) {
-                    sb.append("""
-                            @main def main(): Unit =
-                              println("Hello, world!")
-                            """);
-                } else {
-                    sb.append("""
-                            @main def main(): Unit = {
-                              println("Hello, world!")
-                            }
-                            """);
-                }
             }
             Files.writeString(pkgDir.resolve("main.scala"), sb.toString());
             Files.writeString(dir.resolve(".gitignore"), """

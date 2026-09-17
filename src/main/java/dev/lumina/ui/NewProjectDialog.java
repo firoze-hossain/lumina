@@ -1745,30 +1745,44 @@ public class NewProjectDialog {
             formGrid.add(buildSystemLabel, 0, row);
             formGrid.add(scalaBuildSystemRow, 1, row++);
 
-            formGrid.add(jdkLabel, 0, row);
-            formGrid.add(jdkCombo, 1, row++);
-
             if (isSbtSelected()) {
+                formGrid.add(jdkLabel, 0, row);
+                formGrid.add(jdkCombo, 1, row++);
+
                 formGrid.add(sbtLabel, 0, row);
                 formGrid.add(sbtRow, 1, row++);
+
+                if (scalaVersionBox.getParent() instanceof javafx.scene.layout.Pane p) {
+                    p.getChildren().remove(scalaVersionBox);
+                }
+                scalaVersionRow.getChildren().setAll(scalaVersionBox, scalaDownloadSourcesCheck);
+                formGrid.add(scalaVersionLabel, 0, row);
+                formGrid.add(scalaVersionRow, 1, row++);
+
+                formGrid.add(scalaOptionalBracesCheck, 1, row++);
+
+                formGrid.add(scalaPackagePrefixLabel, 0, row);
+                formGrid.add(scalaPackagePrefixField, 1, row++);
+
+                formGrid.add(sampleCodeCheck, 1, row++);
+
+                updateJavaAdvancedGrid();
+                formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
+                formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
+                javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
+                javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
+                javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "▾  Advanced Settings" : "▸  Advanced Settings");
+            } else {
+                if (scalaVersionBox.getParent() instanceof javafx.scene.layout.Pane p) {
+                    p.getChildren().remove(scalaVersionBox);
+                }
+                formGrid.add(scalaVersionLabel, 0, row);
+                formGrid.add(scalaVersionBox, 1, row++);
+
+                formGrid.add(scalaOptionalBracesCheck, 1, row++);
+
+                formGrid.add(sampleCodeCheck, 1, row++);
             }
-
-            formGrid.add(scalaVersionLabel, 0, row);
-            formGrid.add(scalaVersionRow, 1, row++);
-
-            formGrid.add(scalaOptionalBracesCheck, 1, row++);
-
-            formGrid.add(scalaPackagePrefixLabel, 0, row);
-            formGrid.add(scalaPackagePrefixField, 1, row++);
-
-            formGrid.add(sampleCodeCheck, 1, row++);
-
-            updateJavaAdvancedGrid();
-            formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
-            formGrid.add(javaAdvancedContainer, 0, row++, 2, 1);
-            javaAdvancedContainer.setVisible(isJavaAdvancedExpanded);
-            javaAdvancedContainer.setManaged(isJavaAdvancedExpanded);
-            javaAdvancedArrow.setText(isJavaAdvancedExpanded ? "\u25BE  Advanced Settings" : "\u25B8  Advanced Settings");
             return;
         }
 
@@ -5712,7 +5726,7 @@ public class NewProjectDialog {
 
         String pkg;
         if (isScala) {
-            pkg = scalaPackagePrefixField.getText().trim();
+            pkg = isSbtSelected() ? scalaPackagePrefixField.getText().trim() : "";
         } else if (mavenArchetype) {
             pkg = (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
         } else if (isJava || isKotlin || isGroovy) {
@@ -5818,11 +5832,11 @@ public class NewProjectDialog {
                 groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() && !GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovySdkBox.getValue().trim()) ? groovySdkBox.getValue().trim() : "5.1.1",
                 sbtVersionBox.getValue() != null && !sbtVersionBox.getValue().isBlank() ? sbtVersionBox.getValue().trim() : "2.0.9",
                 scalaVersionBox.getValue() != null && !scalaVersionBox.getValue().isBlank() ? scalaVersionBox.getValue().trim() : "3.9.0",
-                sbtDownloadSourcesCheck.isSelected(),
-                scalaDownloadSourcesCheck.isSelected(),
+                isSbtSelected() && sbtDownloadSourcesCheck.isSelected(),
+                isSbtSelected() && scalaDownloadSourcesCheck.isSelected(),
                 scalaOptionalBracesCheck.isSelected(),
-                scalaPackagePrefixField.getText() != null ? scalaPackagePrefixField.getText().trim() : "",
-                scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name);
+                isSbtSelected() && scalaPackagePrefixField.getText() != null ? scalaPackagePrefixField.getText().trim() : "",
+                isSbtSelected() && scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
