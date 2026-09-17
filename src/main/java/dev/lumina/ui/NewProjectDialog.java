@@ -451,7 +451,7 @@ public class NewProjectDialog {
     private final List<Node> javafxHiddenNodes = new ArrayList<>();
     private final List<Node> languageNodes = new ArrayList<>();
     private final Label emptyDescription = new Label("A basic project with free structure.");
-    private final Label kotlinInfo = new Label("To create a Kotlin Multiplatform project, click here \u2197");
+    private final HBox kotlinInfoBox = new HBox(4);
     private final VBox generatorSpecificBox = new VBox();
     private final List<Node> springOnlyNodes = new ArrayList<>();
     private final List<Node> jdkNodes = new ArrayList<>();
@@ -1219,7 +1219,19 @@ public class NewProjectDialog {
         groovySdkBox.getSelectionModel().selectFirst();
 
         sampleCodeCheck.setSelected(true);
-        kotlinInfo.getStyleClass().add("form-hint");
+        Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
+        kotlinPrefix.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+        Label kotlinLink = new Label("click here \u2197");
+        kotlinLink.setStyle("-fx-text-fill: #548AF7; -fx-font-size: 11px; -fx-cursor: hand;");
+        kotlinLink.setOnMouseClicked(e -> {
+            try {
+                if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html"));
+                }
+            } catch (Exception ignored) {}
+        });
+        kotlinInfoBox.setAlignment(Pos.CENTER_LEFT);
+        kotlinInfoBox.getChildren().setAll(kotlinPrefix, kotlinLink);
 
         javaAdvancedToggle.setAlignment(Pos.CENTER_LEFT);
         javaAdvancedArrow.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 12px;");
@@ -1333,7 +1345,9 @@ public class NewProjectDialog {
         HBox.setHgrow(dependenciesField, Priority.ALWAYS);
 
         buildGroup.selectedToggleProperty().addListener((obs, old, n) -> {
-            if (selected != null && selected.generator() == ProjectSpec.Generator.JAVA) {
+            if (selected != null && (selected.generator() == ProjectSpec.Generator.JAVA
+                    || selected.generator() == ProjectSpec.Generator.KOTLIN
+                    || selected.generator() == ProjectSpec.Generator.GROOVY)) {
                 rebuildFormGrid();
                 updateJavaAdvancedGrid();
             }
@@ -1609,10 +1623,11 @@ public class NewProjectDialog {
             formGrid.add(groovySdkBox, 1, row++);
         }
 
-        formGrid.add(sampleCodeCheck, 1, row++);
-
         if (kotlin) {
-            formGrid.add(kotlinInfo, 1, row++);
+            VBox sampleBox = new VBox(4, sampleCodeCheck, kotlinInfoBox);
+            formGrid.add(sampleBox, 1, row++);
+        } else {
+            formGrid.add(sampleCodeCheck, 1, row++);
         }
 
         formGrid.add(javaAdvancedToggle, 0, row++, 2, 1);
@@ -5420,8 +5435,8 @@ public class NewProjectDialog {
         }
 
         ProjectSpec.Language language = ProjectSpec.Language.JAVA;
-        if (ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
-        else if (langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
+        if (selected.generator() == ProjectSpec.Generator.KOTLIN || ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
+        else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
 
         ProjectSpec.BuildSystem build;
         if (mavenArchetype || rust) {
@@ -5484,7 +5499,7 @@ public class NewProjectDialog {
         String pkg;
         if (mavenArchetype) {
             pkg = (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
-        } else if (isJava) {
+        } else if (isJava || isKotlin || isGroovy) {
             String g = sanitize(groupField.getText().trim());
             pkg = g.isBlank() ? "" : g;
         } else if (selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react || selected.generator() == ProjectSpec.Generator.EXPRESS) {
@@ -5502,7 +5517,7 @@ public class NewProjectDialog {
                 ? gradleVersionBox.getValue() : "9.2.0";
         String gradleHome = gradleHomeField.getText().trim();
 
-        if (isJava && build == ProjectSpec.BuildSystem.GRADLE && saveSettingsCheck.isSelected()) {
+        if ((isJava || isKotlin || isGroovy) && build == ProjectSpec.BuildSystem.GRADLE && saveSettingsCheck.isSelected()) {
             try {
                 java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(NewProjectDialog.class);
                 prefs.put("gradle.dsl", gradleDsl == ProjectSpec.GradleDsl.KOTLIN ? "Kotlin" : "Groovy");

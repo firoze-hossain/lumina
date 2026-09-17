@@ -42,6 +42,10 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
                 configs.add(new RunConfiguration(
                         "JavaFX \u2014 " + root.getFileName(),
                         List.of(maven(root, "javafx:run")), root));
+            } else if (content.contains("exec-maven-plugin") || content.contains("kotlin-maven-plugin")) {
+                configs.add(new RunConfiguration(
+                        "Maven run \u2014 " + root.getFileName(),
+                        List.of(maven(root, "exec:java")), root));
             }
         }
 
