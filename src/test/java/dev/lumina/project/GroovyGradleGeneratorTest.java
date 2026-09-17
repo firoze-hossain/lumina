@@ -129,4 +129,121 @@ class GroovyGradleGeneratorTest {
         Path mainGroovy = projectDir.resolve("app/src/main/groovy/org/example/Main.groovy");
         assertTrue(Files.isRegularFile(mainGroovy));
     }
+
+    @Test
+    void testGroovyGradle2xVersionUsesCodehausGroup(@TempDir Path tempDir) throws IOException {
+        ProjectSpec spec = new ProjectSpec(
+                ProjectSpec.Generator.GROOVY,
+                "groovy-legacy",
+                tempDir,
+                false,
+                ProjectSpec.BuildSystem.GRADLE,
+                ProjectSpec.Language.GROOVY,
+                ProjectSpec.Packaging.JAR,
+                ProjectSpec.ConfigFormat.PROPERTIES,
+                "org.example",
+                "groovy-legacy",
+                "org.example",
+                "11",
+                "", "", "", "", "", "1.0-SNAPSHOT", "",
+                "", "", "", "",
+                "", "", "", "GRADLE",
+                true,
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", false, "", "", "", "",
+                "HTML5 Boilerplate", "v9.0.1", "React", "", "5.1.0", false,
+                "", "", "", "",
+                ProjectSpec.GradleDsl.GROOVY,
+                "Wrapper",
+                "8.5",
+                "",
+                false,
+                "2.5.23"
+        );
+
+        Path projectDir = ProjectGenerator.generate(spec, msg -> {});
+        Path buildFile = projectDir.resolve("build.gradle");
+        assertTrue(Files.isRegularFile(buildFile));
+        String build = Files.readString(buildFile);
+        assertTrue(build.contains("org.codehaus.groovy:groovy:2.5.23"),
+                "Groovy 2.x must use org.codehaus.groovy group");
+    }
+
+    @Test
+    void testGroovyGradle4xWithKotlinDslSingleModule(@TempDir Path tempDir) throws IOException {
+        ProjectSpec spec = new ProjectSpec(
+                ProjectSpec.Generator.GROOVY,
+                "groovy4-kts",
+                tempDir,
+                false,
+                ProjectSpec.BuildSystem.GRADLE,
+                ProjectSpec.Language.GROOVY,
+                ProjectSpec.Packaging.JAR,
+                ProjectSpec.ConfigFormat.PROPERTIES,
+                "com.test",
+                "groovy4-kts",
+                "com.test",
+                "17",
+                "", "", "", "", "", "1.0-SNAPSHOT", "",
+                "", "", "", "",
+                "", "", "", "GRADLE",
+                true,
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", false, "", "", "", "",
+                "HTML5 Boilerplate", "v9.0.1", "React", "", "5.1.0", false,
+                "", "", "", "",
+                ProjectSpec.GradleDsl.KOTLIN,
+                "Wrapper",
+                "8.10.2",
+                "",
+                false,
+                "4.0.33"
+        );
+
+        Path projectDir = ProjectGenerator.generate(spec, msg -> {});
+        Path buildFile = projectDir.resolve("build.gradle.kts");
+        assertTrue(Files.isRegularFile(buildFile));
+        String build = Files.readString(buildFile);
+        assertTrue(build.contains("implementation(\"org.apache.groovy:groovy:4.0.33\")"));
+        assertTrue(build.contains("JavaLanguageVersion.of(17)"));
+    }
+
+    @Test
+    void testGroovyGradleSpecifyHomeOptionFallback(@TempDir Path tempDir) throws IOException {
+        ProjectSpec spec = new ProjectSpec(
+                ProjectSpec.Generator.GROOVY,
+                "groovy-fallback",
+                tempDir,
+                false,
+                ProjectSpec.BuildSystem.GRADLE,
+                ProjectSpec.Language.GROOVY,
+                ProjectSpec.Packaging.JAR,
+                ProjectSpec.ConfigFormat.PROPERTIES,
+                "com.test",
+                "groovy-fallback",
+                "com.test",
+                "21",
+                "", "", "", "", "", "1.0-SNAPSHOT", "",
+                "", "", "", "",
+                "", "", "", "GRADLE",
+                true,
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", false, "", "", "", "",
+                "HTML5 Boilerplate", "v9.0.1", "React", "", "5.1.0", false,
+                "", "", "", "",
+                ProjectSpec.GradleDsl.GROOVY,
+                "Wrapper",
+                "9.2.0",
+                "",
+                false,
+                "Specify Groovy SDK home"
+        );
+
+        assertEquals("5.1.1", spec.safeGroovyVersion());
+        Path projectDir = ProjectGenerator.generate(spec, msg -> {});
+        Path buildFile = projectDir.resolve("build.gradle");
+        assertTrue(Files.isRegularFile(buildFile));
+        String build = Files.readString(buildFile);
+        assertTrue(build.contains("org.apache.groovy:groovy:5.1.1"));
+    }
 }

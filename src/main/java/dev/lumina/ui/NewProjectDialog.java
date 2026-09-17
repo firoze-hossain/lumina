@@ -1234,6 +1234,32 @@ public class NewProjectDialog {
             }
         });
 
+        groovySdkBox.setOnAction(e -> {
+            String selected = groovySdkBox.getValue();
+            if (GroovyMetadata.SPECIFY_HOME_OPTION.equals(selected)) {
+                DirectoryChooser dc = new DirectoryChooser();
+                dc.setTitle("Select Groovy SDK Home Directory");
+                File chosen = dc.showDialog(stage);
+                if (chosen != null) {
+                    String detected = GroovyMetadata.detectGroovyVersionFromHome(chosen.toPath());
+                    if (detected != null && !detected.isBlank()) {
+                        if (!groovySdkBox.getItems().contains(detected)) {
+                            groovySdkBox.getItems().add(0, detected);
+                        }
+                        groovySdkBox.setValue(detected);
+                    } else {
+                        String customLabel = chosen.getName();
+                        if (!groovySdkBox.getItems().contains(customLabel)) {
+                            groovySdkBox.getItems().add(0, customLabel);
+                        }
+                        groovySdkBox.setValue(customLabel);
+                    }
+                } else {
+                    groovySdkBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
+
         sampleCodeCheck.setSelected(true);
         Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
         kotlinPrefix.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
@@ -1641,14 +1667,14 @@ public class NewProjectDialog {
         formGrid.add(jdkLabel, 0, row);
         formGrid.add(jdkCombo, 1, row++);
 
+        if (groovy) {
+            formGrid.add(groovySdkLabel, 0, row);
+            formGrid.add(groovySdkBox, 1, row++);
+        }
+
         if (isGradleSelected()) {
             formGrid.add(gradleDslLabel, 0, row);
             formGrid.add(gradleDslRow, 1, row++);
-        }
-
-        if (groovy && !isGradleSelected()) {
-            formGrid.add(groovySdkLabel, 0, row);
-            formGrid.add(groovySdkBox, 1, row++);
         }
 
         formGrid.add(sampleCodeCheck, 1, row++);
@@ -5656,7 +5682,7 @@ public class NewProjectDialog {
                 gradleVer,
                 gradleHome,
                 (selected != null && selected.generator() == ProjectSpec.Generator.KOTLIN && isGradleSelected() && isKotlinDslSelected()) && multiModuleCheck.isSelected(),
-                groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() ? groovySdkBox.getValue().trim() : "5.1.1");
+                groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() && !GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovySdkBox.getValue().trim()) ? groovySdkBox.getValue().trim() : "5.1.1");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

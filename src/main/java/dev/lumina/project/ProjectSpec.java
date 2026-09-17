@@ -437,7 +437,10 @@ public record ProjectSpec(
     }
 
     public String safeGroovyVersion() {
-        return groovyVersion != null && !groovyVersion.isBlank() ? groovyVersion.trim() : "5.1.1";
+        if (groovyVersion == null || groovyVersion.isBlank() || GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovyVersion.trim())) {
+            return "5.1.1";
+        }
+        return groovyVersion.trim();
     }
 
     public Path projectDir() {
