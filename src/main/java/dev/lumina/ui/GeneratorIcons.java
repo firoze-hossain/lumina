@@ -30,7 +30,12 @@ public final class GeneratorIcons {
             case "Kotlin" -> kotlinIcon();
             case "Groovy" -> groovyIcon();
             case "Scala" -> scalaIcon();
-            case "Python" -> pythonIcon();
+            case "Python", "Virtualenv" -> pythonIcon();
+            case "Conda" -> condaIcon();
+            case "Pipenv" -> pipenvIcon();
+            case "Poetry" -> poetryIcon();
+            case "uv" -> uvIconSmall();
+            case "Hatch" -> hatchIcon();
             case "Rust" -> rustIcon();
             case "Empty Project" -> emptyProjectIcon();
             case "Maven Archetype" -> mavenIcon();
@@ -370,6 +375,86 @@ public final class GeneratorIcons {
         yellowSnake.setFill(Color.web("#FFD43B"));
 
         Group g = new Group(blueSnake, yellowSnake);
+        return box(g);
+    }
+
+    /** Conda: official green segmented ring matching IntelliJ IDEA. */
+    public static Node condaIcon() {
+        Circle ring = new Circle(6.5);
+        ring.setFill(null);
+        ring.setStroke(Color.web("#43B02A"));
+        ring.setStrokeWidth(2.2);
+
+        // Segment cutout dot
+        Circle dot = new Circle(1.2);
+        dot.setFill(Color.web("#43B02A"));
+        dot.setTranslateX(4.5);
+        dot.setTranslateY(-4.5);
+
+        Group g = new Group(ring, dot);
+        return box(g);
+    }
+
+    /** Pipenv: blue/cyan chemical flask/beaker matching IntelliJ IDEA. */
+    public static Node pipenvIcon() {
+        SVGPath flask = new SVGPath();
+        flask.setContent("M 6.5,1.5 L 9.5,1.5 L 9.5,4.5 L 13.5,11.5 C 14.2,12.7 13.4,14.5 12,14.5 L 4,14.5 C 2.6,14.5 1.8,12.7 2.5,11.5 L 6.5,4.5 Z");
+        flask.setFill(Color.web("#2B88D9"));
+
+        SVGPath liquid = new SVGPath();
+        liquid.setContent("M 4,14.5 L 12,14.5 L 11,11 C 9.5,11.5 6.5,10.5 5,11 Z");
+        liquid.setFill(Color.web("#68B9ED"));
+
+        Group g = new Group(flask, liquid);
+        return box(g);
+    }
+
+    /** Poetry: cyan and blue origami paper airplane matching IntelliJ IDEA. */
+    public static Node poetryIcon() {
+        Polygon leftWing = new Polygon(8, 1.5, 2, 12, 8, 9.5);
+        leftWing.setFill(Color.web("#00ADEF"));
+
+        Polygon rightWing = new Polygon(8, 1.5, 14, 12, 8, 9.5);
+        rightWing.setFill(Color.web("#0084FF"));
+
+        Polygon keel = new Polygon(8, 9.5, 8, 14.5, 6, 12);
+        keel.setFill(Color.web("#0057B8"));
+
+        Group g = new Group(leftWing, rightWing, keel);
+        return box(g);
+    }
+
+    /** uv: purple/magenta modern badge matching IntelliJ IDEA. */
+    public static Node uvIconSmall() {
+        Rectangle bg = new Rectangle(14, 14);
+        bg.setArcWidth(4);
+        bg.setArcHeight(4);
+        bg.setFill(Color.web("#8A2BE2"));
+
+        Text uvText = new Text("uv");
+        uvText.setFont(Font.font("Segoe UI", FontWeight.BOLD, 9.5));
+        uvText.setFill(Color.WHITE);
+
+        return box(bg, uvText);
+    }
+
+    /** Hatch: stylish hatch bird/hexagon icon matching IntelliJ IDEA. */
+    public static Node hatchIcon() {
+        Polygon hex = new Polygon(
+                8, 1.5,
+                13.5, 4.5,
+                13.5, 11.5,
+                8, 14.5,
+                2.5, 11.5,
+                2.5, 4.5
+        );
+        hex.setFill(Color.web("#198754"));
+
+        SVGPath bird = new SVGPath();
+        bird.setContent("M 5.5,10 L 8,5.5 L 10.5,10 L 9,10 L 8,8 L 7,10 Z");
+        bird.setFill(Color.WHITE);
+
+        Group g = new Group(hex, bird);
         return box(g);
     }
 

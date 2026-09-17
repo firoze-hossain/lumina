@@ -75,8 +75,64 @@ public record ProjectSpec(
         PythonInterpreterType pythonInterpreterType,
         String pythonPath,
         String pythonVersion,
-        String uvPath
+        String uvPath,
+        String condaPath,
+        boolean customEnvGenerateNew,
+        String customEnvType,
+        String customEnvLocation,
+        boolean customEnvInheritGlobal,
+        boolean customEnvMakeAvailable
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins, String htmlProjectType,
+            String htmlVersion, String reactProjectType, String reactNodeInterpreter,
+            String reactCliVersion, boolean reactTypeScript,
+            String expressNodeInterpreter, String expressCliVersion,
+            String expressViewEngine, String expressStylesheetEngine,
+            GradleDsl gradleDsl, String gradleDistribution, String gradleVersion,
+            String gradleHome, boolean generateMultiModule, String groovyVersion,
+            String sbtVersion, String scalaVersion, boolean scalaDownloadSbtSources,
+            boolean scalaDownloadScalaSources, boolean scalaOptionalBraces,
+            String scalaPackagePrefix, String scalaModuleName,
+            PythonInterpreterType pythonInterpreterType,
+            String pythonPath, String pythonVersion, String uvPath
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                htmlProjectType, htmlVersion, reactProjectType, reactNodeInterpreter,
+                reactCliVersion, reactTypeScript,
+                expressNodeInterpreter, expressCliVersion,
+                expressViewEngine, expressStylesheetEngine,
+                gradleDsl, gradleDistribution, gradleVersion, gradleHome, generateMultiModule,
+                groovyVersion, sbtVersion, scalaVersion, scalaDownloadSbtSources,
+                scalaDownloadScalaSources, scalaOptionalBraces, scalaPackagePrefix,
+                scalaModuleName, pythonInterpreterType, pythonPath, pythonVersion, uvPath,
+                "", true, "Virtualenv", "", false, false);
+    }
+
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,
@@ -121,7 +177,8 @@ public record ProjectSpec(
                 gradleDsl, gradleDistribution, gradleVersion, gradleHome, generateMultiModule,
                 groovyVersion, sbtVersion, scalaVersion, scalaDownloadSbtSources,
                 scalaDownloadScalaSources, scalaOptionalBraces, scalaPackagePrefix,
-                scalaModuleName, PythonInterpreterType.PROJECT_VENV, "/usr/bin/python3", "3.12", "");
+                scalaModuleName, PythonInterpreterType.PROJECT_VENV, "/usr/bin/python3", "3.12", "",
+                "", true, "Virtualenv", "", false, false);
     }
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
@@ -586,6 +643,30 @@ public record ProjectSpec(
 
     public String safeUvPath() {
         return uvPath != null ? uvPath.trim() : "";
+    }
+
+    public String safeCondaPath() {
+        return condaPath != null ? condaPath.trim() : "";
+    }
+
+    public boolean isCustomEnvGenerateNew() {
+        return customEnvGenerateNew;
+    }
+
+    public String safeCustomEnvType() {
+        return customEnvType != null && !customEnvType.isBlank() ? customEnvType.trim() : "Virtualenv";
+    }
+
+    public String safeCustomEnvLocation() {
+        return customEnvLocation != null ? customEnvLocation.trim() : "";
+    }
+
+    public boolean isCustomEnvInheritGlobal() {
+        return customEnvInheritGlobal;
+    }
+
+    public boolean isCustomEnvMakeAvailable() {
+        return customEnvMakeAvailable;
     }
 
     public Path projectDir() {
