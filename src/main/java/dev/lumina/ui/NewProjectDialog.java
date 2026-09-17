@@ -3622,6 +3622,10 @@ public class NewProjectDialog {
             // In IntelliJ IDEA, React Native displays primary version (e.g. 20.2.0) and Select...
             String primaryVer = versions.isEmpty() ? "20.2.0" : versions.getFirst();
             items.add(ReactMetadata.formatCliDisplay(type, primaryVer));
+        } else if (ReactMetadata.TYPE_NEXT_JS.equalsIgnoreCase(type)) {
+            // In IntelliJ IDEA, Next.js displays primary version (e.g. 16.3.5) and Select...
+            String primaryVer = versions.isEmpty() ? "16.3.5" : versions.getFirst();
+            items.add(ReactMetadata.formatCliDisplay(type, primaryVer));
         } else {
             for (String v : versions) {
                 items.add(ReactMetadata.formatCliDisplay(type, v));
