@@ -360,6 +360,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Groovy", ProjectSpec.Generator.GROOVY, true),
             new GeneratorEntry("Scala", ProjectSpec.Generator.SCALA, true),
             new GeneratorEntry("Python", ProjectSpec.Generator.PYTHON, true),
+            new GeneratorEntry("PHP", ProjectSpec.Generator.PHP, true),
             new GeneratorEntry("Rust", ProjectSpec.Generator.RUST, true),
             new GeneratorEntry("Empty Project", ProjectSpec.Generator.EMPTY_PROJECT, true));
 
@@ -587,6 +588,9 @@ public class NewProjectDialog {
     private final ComboBox<dev.lumina.project.PythonMetadata.PythonInstallation> customPythonPathCombo = new ComboBox<>();
     private final Button customPythonPathBrowseBtn = new Button();
     private final HBox customPythonPathRow = new HBox(8);
+
+    // PHP controls
+    private final CheckBox phpAddComposerJsonCheck = new CheckBox("Add 'composer.json'");
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1865,6 +1869,7 @@ public class NewProjectDialog {
         boolean groovy = generator == ProjectSpec.Generator.GROOVY;
         boolean scala = generator == ProjectSpec.Generator.SCALA;
         boolean python = generator == ProjectSpec.Generator.PYTHON;
+        boolean php = generator == ProjectSpec.Generator.PHP;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean vite = generator == ProjectSpec.Generator.VITE;
@@ -1941,6 +1946,11 @@ public class NewProjectDialog {
             emptyDescription.setVisible(true);
             emptyDescription.setManaged(true);
             formGrid.add(emptyDescription, 1, row++);
+            return;
+        }
+
+        if (php) {
+            formGrid.add(phpAddComposerJsonCheck, 1, row++);
             return;
         }
 
@@ -6388,9 +6398,10 @@ public class NewProjectDialog {
         boolean html = selected.generator() == ProjectSpec.Generator.HTML;
         boolean react = selected.generator() == ProjectSpec.Generator.REACT;
         boolean isPython = selected.generator() == ProjectSpec.Generator.PYTHON;
+        boolean isPhp = selected.generator() == ProjectSpec.Generator.PHP;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython) {
+            if (html || react || isPython || isPhp) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -6404,11 +6415,12 @@ public class NewProjectDialog {
         else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
+        else if (isPhp) language = ProjectSpec.Language.PHP;
 
         ProjectSpec.BuildSystem build;
         if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
-        } else if (isPython) {
+        } else if (isPython || isPhp) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
@@ -6590,7 +6602,8 @@ public class NewProjectDialog {
                 customTypeCombo.getValue() != null ? customTypeCombo.getValue() : "Virtualenv",
                 customLocationField.getText().trim(),
                 inheritPackagesCheck.isSelected(),
-                makeAvailableCheck.isSelected());
+                makeAvailableCheck.isSelected(),
+                phpAddComposerJsonCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

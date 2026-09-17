@@ -62,6 +62,7 @@ public final class ProjectGenerator {
             case GROOVY -> generateGroovy(spec, dir, log);
             case SCALA -> generateScala(spec, dir, log);
             case PYTHON -> generatePython(spec, dir, log);
+            case PHP -> generatePhp(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> Files.createDirectories(dir);
@@ -3444,6 +3445,52 @@ public final class ProjectGenerator {
                   <component name="ProjectRootManager" version="2" project-jdk-name="%s" project-jdk-type="Python SDK" />
                 </project>
                 """.formatted(sdkName));
+    }
+
+    private static void generatePhp(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating PHP project …");
+
+        Files.createDirectories(dir);
+
+        // 1. Starter index.php
+        Files.writeString(dir.resolve("index.php"), PhpMetadata.generateStarterIndexPhp());
+
+        // 2. .gitignore
+        Files.writeString(dir.resolve(".gitignore"), PhpMetadata.generateGitignore());
+
+        // 3. composer.json if requested
+        if (spec.safePhpAddComposerJson()) {
+            Files.writeString(dir.resolve("composer.json"), PhpMetadata.generateComposerJson(spec.name()));
+            Files.createDirectories(dir.resolve("src"));
+            log.accept("Added composer.json template");
+        }
+
+        // 4. README.md
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+
+        // 5. IntelliJ IDEA module and configuration (.idea)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+
+        String moduleName = spec.name();
+        Files.writeString(ideaDir.resolve("modules.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="ProjectModuleManager">
+                    <modules>
+                      <module fileurl="file://$PROJECT_DIR$/.idea/%s.iml" filepath="$PROJECT_DIR$/.idea/%s.iml" />
+                    </modules>
+                  </component>
+                </project>
+                """.formatted(moduleName, moduleName));
+
+        Files.writeString(ideaDir.resolve(moduleName + ".iml"), PhpMetadata.generateIdeaIml());
+
+        String langLevel = PhpMetadata.detectPhpLanguageLevel();
+        Files.writeString(ideaDir.resolve("php.xml"), PhpMetadata.generateIdeaPhpXml(langLevel));
+        log.accept("Configured PHP language level: " + langLevel);
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {
