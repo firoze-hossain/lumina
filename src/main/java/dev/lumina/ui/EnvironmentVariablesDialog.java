@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
@@ -61,14 +62,110 @@ public class EnvironmentVariablesDialog {
         }
     }
 
+    /**
+     * Custom TableCell supporting inline editing matching IntelliJ IDEA:
+     * - Double-click or single-click when cell is already focused starts editing.
+     * - Pressing Enter or F2 starts editing.
+     * - Escape cancels edit.
+     * - Enter commits edit.
+     * - Losing focus commits edit (prevents losing typed changes).
+     */
+    public static class EnvTableCell extends TableCell<EnvVar, String> {
+        private TextField textField;
+        private final boolean editable;
+
+        public EnvTableCell(boolean editable) {
+            this.editable = editable;
+            if (editable) {
+                setOnMouseClicked(evt -> {
+                    if (evt.getClickCount() == 2) {
+                        startEdit();
+                    } else if (evt.getClickCount() == 1 && isFocused()) {
+                        startEdit();
+                    }
+                });
+            }
+        }
+
+        @Override
+        public void startEdit() {
+            if (!editable || !getTableView().isEditable() || !getTableColumn().isEditable()) {
+                return;
+            }
+            super.startEdit();
+            if (textField == null) {
+                createTextField();
+            }
+            textField.setText(getItem() != null ? getItem() : "");
+            setText(null);
+            setGraphic(textField);
+            textField.selectAll();
+            textField.requestFocus();
+        }
+
+        @Override
+        public void cancelEdit() {
+            super.cancelEdit();
+            setText(getItem() != null ? getItem() : "");
+            setGraphic(null);
+        }
+
+        @Override
+        protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty) {
+                setText(null);
+                setGraphic(null);
+            } else {
+                if (isEditing()) {
+                    if (textField != null) {
+                        textField.setText(item != null ? item : "");
+                    }
+                    setText(null);
+                    setGraphic(textField);
+                } else {
+                    setText(item != null ? item : "");
+                    setGraphic(null);
+                    if (!editable) {
+                        setTextFill(Color.web("#8C919D"));
+                    } else {
+                        setTextFill(Color.web("#DFE1E5"));
+                    }
+                }
+            }
+        }
+
+        private void createTextField() {
+            textField = new TextField(getItem() != null ? getItem() : "");
+            textField.setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; "
+                    + "-fx-border-color: #3574F0; -fx-border-width: 1.5px; -fx-border-radius: 2px; "
+                    + "-fx-padding: 2 6 2 6; -fx-font-size: 12px;");
+            textField.setMinWidth(this.getWidth() - this.getGraphicTextGap() * 2);
+
+            textField.setOnAction(evt -> commitEdit(textField.getText()));
+
+            textField.setOnKeyPressed(t -> {
+                if (t.getCode() == KeyCode.ESCAPE) {
+                    cancelEdit();
+                    t.consume();
+                }
+            });
+
+            textField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                if (!isNowFocused && isEditing()) {
+                    commitEdit(textField.getText());
+                }
+            });
+        }
+    }
+
     private final Stage dialog = new Stage();
     private final ObservableList<EnvVar> userVariables = FXCollections.observableArrayList();
     private final TableView<EnvVar> userTable = new TableView<>(userVariables);
 
     private final ObservableList<EnvVar> systemVariables = FXCollections.observableArrayList();
     private final TableView<EnvVar> systemTable = new TableView<>(systemVariables);
-
-    private final CheckBox includeSystemCheck = new CheckBox("Include system environment variables:");
+    private final Map<String, String> initialSystemValues = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     public EnvironmentVariablesDialog(Window owner, String initialValue, Consumer<String> onSave) {
         dialog.initOwner(owner);
@@ -129,12 +226,12 @@ public class EnvironmentVariablesDialog {
 
         VBox userSection = new VBox(6, userLabel, userToolbar, userTable);
         VBox.setVgrow(userTable, Priority.ALWAYS);
+        VBox.setVgrow(userSection, Priority.ALWAYS);
 
-        // 2. Include system environment variables checkbox
-        includeSystemCheck.setSelected(true);
-        includeSystemCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        // 2. System variables section (Clean bold header matching IntelliJ, NO checkbox)
+        Label sysLabel = new Label("System environment variables:");
+        sysLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-font-size: 12px;");
 
-        // 3. System variables section
         Button copySysBtn = createIconButton(createCopyIcon(), "Copy");
         Button pasteSysBtn = createIconButton(createPasteIcon(), "Paste to user variables");
         Button revertSysBtn = createIconButton(createRevertIcon(), "Revert system variables");
@@ -148,29 +245,45 @@ public class EnvironmentVariablesDialog {
 
         setupTable(systemTable, false);
         systemTable.setPrefHeight(180);
+        Label sysPlaceholder = new Label("No variables");
+        sysPlaceholder.setStyle("-fx-text-fill: #6C7387; -fx-font-size: 12px;");
+        systemTable.setPlaceholder(sysPlaceholder);
 
-        VBox sysSection = new VBox(6, sysToolbar, systemTable);
+        VBox sysSection = new VBox(6, sysLabel, sysToolbar, systemTable);
         VBox.setVgrow(systemTable, Priority.ALWAYS);
+        VBox.setVgrow(sysSection, Priority.ALWAYS);
 
-        includeSystemCheck.selectedProperty().addListener((obs, old, sel) -> {
-            sysSection.setVisible(sel);
-            sysSection.setManaged(sel);
-        });
-
-        VBox centerBox = new VBox(12, userSection, includeSystemCheck, sysSection);
+        VBox centerBox = new VBox(14, userSection, sysSection);
         centerBox.setPadding(new Insets(14, 16, 12, 16));
 
-        // 4. Footer buttons
+        // 3. Footer buttons
         Button okBtn = new Button("OK");
         okBtn.getStyleClass().setAll("dialog-primary");
         okBtn.setPrefWidth(76);
         okBtn.setOnAction(e -> {
+            commitActiveEdit(userTable);
+            commitActiveEdit(systemTable);
+
             StringBuilder sb = new StringBuilder();
+            // User variables
             for (EnvVar v : userVariables) {
                 String nm = v.getName().trim();
                 if (!nm.isEmpty()) {
                     if (sb.length() > 0) sb.append(";");
                     sb.append(nm).append("=").append(v.getValue().trim());
+                }
+            }
+            // Include modified system variables as overrides
+            for (EnvVar v : systemVariables) {
+                String nm = v.getName().trim();
+                String origVal = initialSystemValues.get(nm);
+                if (origVal != null && !origVal.equals(v.getValue().trim())) {
+                    boolean alreadyInUser = userVariables.stream()
+                            .anyMatch(u -> u.getName().trim().equalsIgnoreCase(nm));
+                    if (!alreadyInUser && !nm.isEmpty()) {
+                        if (sb.length() > 0) sb.append(";");
+                        sb.append(nm).append("=").append(v.getValue().trim());
+                    }
                 }
             }
             onSave.accept(sb.toString());
@@ -212,61 +325,57 @@ public class EnvironmentVariablesDialog {
 
     private void loadSystemVariables() {
         systemVariables.clear();
+        initialSystemValues.clear();
         Map<String, String> env = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         env.putAll(System.getenv());
         for (Map.Entry<String, String> entry : env.entrySet()) {
             systemVariables.add(new EnvVar(entry.getKey(), entry.getValue()));
+            initialSystemValues.put(entry.getKey(), entry.getValue());
         }
     }
 
-    private void setupTable(TableView<EnvVar> table, boolean editable) {
-        table.setEditable(editable);
+    private void commitActiveEdit(TableView<EnvVar> table) {
+        TablePosition<EnvVar, ?> editingCell = table.getEditingCell();
+        if (editingCell != null) {
+            table.edit(-1, null);
+        }
+    }
+
+    private void setupTable(TableView<EnvVar> table, boolean isUserTable) {
+        table.setEditable(true);
         table.getStyleClass().setAll("table-view", "env-variables-table");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<EnvVar, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(data -> data.getValue().nameProperty());
-        nameCol.setMaxWidth(1f * Integer.MAX_VALUE * 40);
-        if (editable) {
-            nameCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        nameCol.setMinWidth(150);
+        nameCol.setPrefWidth(240);
+        nameCol.setEditable(isUserTable);
+        nameCol.setCellFactory(col -> new EnvTableCell(isUserTable));
+        if (isUserTable) {
             nameCol.setOnEditCommit(evt -> evt.getRowValue().setName(evt.getNewValue()));
-        } else {
-            nameCol.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setText(null);
-                    } else {
-                        setText(item);
-                        setTextFill(Color.web("#8C919D"));
-                    }
-                }
-            });
         }
 
         TableColumn<EnvVar, String> valCol = new TableColumn<>("Value");
         valCol.setCellValueFactory(data -> data.getValue().valueProperty());
-        valCol.setMaxWidth(1f * Integer.MAX_VALUE * 60);
-        if (editable) {
-            valCol.setCellFactory(TextFieldTableCell.forTableColumn());
-            valCol.setOnEditCommit(evt -> evt.getRowValue().setValue(evt.getNewValue()));
-        } else {
-            valCol.setCellFactory(col -> new TableCell<>() {
-                @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setText(null);
-                    } else {
-                        setText(item);
-                        setTextFill(Color.web("#DFE1E5"));
-                    }
-                }
-            });
-        }
+        valCol.setMinWidth(180);
+        valCol.setPrefWidth(330);
+        valCol.setEditable(true);
+        valCol.setCellFactory(col -> new EnvTableCell(true));
+        valCol.setOnEditCommit(evt -> evt.getRowValue().setValue(evt.getNewValue()));
 
         table.getColumns().setAll(nameCol, valCol);
+
+        // Enter or F2 on focused cell begins editing
+        table.setOnKeyPressed(evt -> {
+            if (evt.getCode() == KeyCode.ENTER || evt.getCode() == KeyCode.F2) {
+                TablePosition<EnvVar, ?> focusedCell = table.getFocusModel().getFocusedCell();
+                if (focusedCell != null && focusedCell.getTableColumn() != null && focusedCell.getTableColumn().isEditable()) {
+                    table.edit(focusedCell.getRow(), focusedCell.getTableColumn());
+                    evt.consume();
+                }
+            }
+        });
     }
 
     private Button createToolbarButton(String text, String tooltipText) {
@@ -289,9 +398,18 @@ public class EnvironmentVariablesDialog {
     }
 
     private void copyToClipboard(TableView<EnvVar> table) {
+        TablePosition<EnvVar, ?> focusedCell = table.getFocusModel().getFocusedCell();
         EnvVar sel = table.getSelectionModel().getSelectedItem();
         StringBuilder text = new StringBuilder();
-        if (sel != null) {
+        if (focusedCell != null && focusedCell.getTableColumn() != null && focusedCell.getRow() >= 0
+                && focusedCell.getRow() < table.getItems().size()) {
+            Object cellVal = focusedCell.getTableColumn().getCellData(focusedCell.getRow());
+            if (cellVal != null && !cellVal.toString().isEmpty()) {
+                text.append(cellVal);
+            } else if (sel != null) {
+                text.append(sel.getName()).append("=").append(sel.getValue());
+            }
+        } else if (sel != null) {
             text.append(sel.getName()).append("=").append(sel.getValue());
         } else {
             for (EnvVar v : table.getItems()) {
