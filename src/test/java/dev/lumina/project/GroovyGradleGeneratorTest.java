@@ -56,7 +56,7 @@ class GroovyGradleGeneratorTest {
         String build = Files.readString(buildPath);
         assertTrue(build.contains("id 'groovy'"));
         assertTrue(build.contains("id 'application'"));
-        assertTrue(build.contains("org.apache.groovy:groovy:4.0.24"));
+        assertTrue(build.contains("org.apache.groovy:groovy:5.1.1"));
         assertTrue(build.contains("JavaLanguageVersion.of(21)"));
         assertTrue(build.contains("mainClass = 'org.example.Main'"));
 
@@ -123,7 +123,7 @@ class GroovyGradleGeneratorTest {
         String appContent = Files.readString(appBuild);
         assertTrue(appContent.contains("groovy"));
         assertTrue(appContent.contains("application"));
-        assertTrue(appContent.contains("org.apache.groovy:groovy:4.0.24"));
+        assertTrue(appContent.contains("org.apache.groovy:groovy:5.1.1"));
 
         // Subproject sources
         Path mainGroovy = projectDir.resolve("app/src/main/groovy/org/example/Main.groovy");

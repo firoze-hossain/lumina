@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 
 import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.GradleMetadata;
+import dev.lumina.project.GroovyMetadata;
 import dev.lumina.project.JdkMetadata;
 import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.NodeMetadata;
@@ -393,7 +394,7 @@ public class NewProjectDialog {
     private final ComboBox<String> javaVersionBox =
             new ComboBox<>(FXCollections.observableArrayList("25", "21", "17"));
     private final ComboBox<String> groovySdkBox = new ComboBox<>(
-            FXCollections.observableArrayList("5.0.6", "4.0.29", "3.0.25"));
+            FXCollections.observableArrayList(GroovyMetadata.FALLBACK_VERSIONS));
     private final ComboBox<String> nodeRuntimeBox = new ComboBox<>(
             FXCollections.observableArrayList("node  /usr/bin/node                         22.23.1"));
     private final ComboBox<String> angularCliBox = new ComboBox<>(
@@ -1217,7 +1218,21 @@ public class NewProjectDialog {
             syncGradleVersionWithJdk();
         });
 
-        groovySdkBox.getSelectionModel().selectFirst();
+        groovySdkBox.getItems().setAll(GroovyMetadata.fetchVersions(false));
+        if (!groovySdkBox.getItems().isEmpty()) {
+            groovySdkBox.getSelectionModel().selectFirst();
+        }
+        GroovyMetadata.fetchVersionsAsync(versions -> {
+            if (versions != null && !versions.isEmpty()) {
+                String cur = groovySdkBox.getValue();
+                groovySdkBox.getItems().setAll(versions);
+                if (cur != null && versions.contains(cur)) {
+                    groovySdkBox.setValue(cur);
+                } else {
+                    groovySdkBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
 
         sampleCodeCheck.setSelected(true);
         Label kotlinPrefix = new Label("To create a Kotlin Multiplatform project,");
@@ -5640,7 +5655,8 @@ public class NewProjectDialog {
                 gradleDist,
                 gradleVer,
                 gradleHome,
-                (selected != null && selected.generator() == ProjectSpec.Generator.KOTLIN && isGradleSelected() && isKotlinDslSelected()) && multiModuleCheck.isSelected());
+                (selected != null && selected.generator() == ProjectSpec.Generator.KOTLIN && isGradleSelected() && isKotlinDslSelected()) && multiModuleCheck.isSelected(),
+                groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() ? groovySdkBox.getValue().trim() : "5.1.1");
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
