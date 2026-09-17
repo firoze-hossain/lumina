@@ -48,8 +48,41 @@ public record ProjectSpec(
         String ktorBuildSystem,
         String ktorVersion,
         String ktorConfigIn,
-        String ktorPlugins
+        String ktorPlugins,
+        String htmlProjectType,
+        String htmlVersion
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                "HTML5 Boilerplate", "v9.0.1");
+    }
+
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,

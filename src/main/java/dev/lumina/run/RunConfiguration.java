@@ -62,6 +62,16 @@ public record RunConfiguration(String label, List<List<String>> commands, Path w
                         List.of(gradleCmd(root, "run")), root));
             }
         }
+
+        Path indexHtml = root.resolve("index.html");
+        if (Files.isRegularFile(indexHtml) && !Files.isRegularFile(pom) && gradle == null) {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            String openCmd = os.contains("mac") ? "open" : (os.contains("win") ? "start" : "xdg-open");
+            configs.add(new RunConfiguration(
+                    "Open index.html \u2014 " + root.getFileName(),
+                    List.of(List.of(openCmd, indexHtml.toAbsolutePath().toString())), root));
+        }
+
         return configs;
     }
 
