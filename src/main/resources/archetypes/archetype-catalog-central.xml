@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<archetype-catalog xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-catalog/1.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-catalog/1.0.0 https://maven.apache.org/xsd/archetype-catalog-1.0.0.xsd">
+  <archetypes>
+    <archetype>
+      <groupId>ai.platon.pulsar</groupId>
+      <artifactId>browser4-plugin-archetype</artifactId>
+      <version>1.10.28</version>
+      <description>Browser4 plugin archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>ai.raics</groupId>
+      <artifactId>spark-scala-archetype_2.12</artifactId>
+      <version>1.0.0</version>
+      <description>Spark Scala archetype for Scala 2.12</description>
+    </archetype>
+    <archetype>
+      <groupId>ai.raics</groupId>
+      <artifactId>spark-scala-archetype_2.13</artifactId>
+      <version>1.0.0</version>
+      <description>Spark Scala archetype for Scala 2.13</description>
+    </archetype>
+    <archetype>
+      <groupId>ai.wanaku.sdk</groupId>
+      <artifactId>capabilities-archetypes-java-tool</artifactId>
+      <version>0.0.3</version>
+      <description>Wanaku capabilities archetype for Java tools</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>elm-spring-boot-blank-archetype</artifactId>
+      <version>0.2.0</version>
+      <description>Elm + Spring Boot blank project archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>graalvm-blank-archetype</artifactId>
+      <version>0.1.3</version>
+      <description>GraalVM native image blank archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>graalvm-springmvc-blank-archetype</artifactId>
+      <version>0.1.3</version>
+      <description>GraalVM Spring MVC blank archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>graalvm-springwebflux-blank-archetyp</artifactId>
+      <version>0.1.3</version>
+      <description>GraalVM Spring WebFlux blank archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>maven-reactjs-blank-archetype</artifactId>
+      <version>1.0.0</version>
+      <description>Maven + ReactJS blank archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>am.ik.archetype</groupId>
+      <artifactId>msgpack-rpc-jersey-blank-archetype</artifactId>
+      <version>0.2.2</version>
+      <description>MessagePack RPC Jersey blank archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>com.airhacks</groupId>
+      <artifactId>javaee8-essentials-archetype</artifactId>
+      <version>0.0.4</version>
+      <description>Java EE 8 Essentials Archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>com.airhacks</groupId>
+      <artifactId>jakartaee9-essentials-archetype</artifactId>
+      <version>0.0.1</version>
+      <description>Jakarta EE 9 Essentials Archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>com.github.ngeor</groupId>
+      <artifactId>archetype-quickstart</artifactId>
+      <version>3.0.0</version>
+      <description>Modern Java quickstart archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>io.github.openfeign</groupId>
+      <artifactId>feign-archetype</artifactId>
+      <version>1.0.0</version>
+      <description>OpenFeign client archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>io.micronaut.archetypes</groupId>
+      <artifactId>micronaut-quickstart</artifactId>
+      <version>4.3.0</version>
+      <description>Micronaut Quickstart Archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-archetype</artifactId>
+      <version>3.18.1</version>
+      <description>Quarkus application archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>net.alchim31.maven</groupId>
+      <artifactId>scala-archetype-simple</artifactId>
+      <version>1.8.0</version>
+      <description>Simple Scala Maven archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.camel.archetypes</groupId>
+      <artifactId>camel-archetype-java</artifactId>
+      <version>4.8.0</version>
+      <description>Apache Camel Java route archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.camel.archetypes</groupId>
+      <artifactId>camel-archetype-spring-boot</artifactId>
+      <version>4.8.0</version>
+      <description>Apache Camel Spring Boot archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-quickstart-java</artifactId>
+      <version>1.20.0</version>
+      <description>Apache Flink Java quickstart archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-quickstart-scala</artifactId>
+      <version>1.17.2</version>
+      <description>Apache Flink Scala quickstart archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-archetype</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a new archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-j2ee-simple</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a simplified J2EE application</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-plugin</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a sample Maven plugin</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-plugin-site</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a sample Maven plugin site</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-portlet</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a JSR-268 Portlet</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-profiles</artifactId>
+      <version>1.5</version>
+      <description>An archetype which demonstrates how to use profiles</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-quickstart</artifactId>
+      <version>1.4</version>
+      <description>An archetype which contains a sample Maven project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-site</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a sample Maven site</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-site-simple</artifactId>
+      <version>1.5</version>
+      <description>An archetype to generate a simple Maven site</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.maven.archetypes</groupId>
+      <artifactId>maven-archetype-webapp</artifactId>
+      <version>1.4</version>
+      <description>An archetype to generate a sample Maven Webapp</description>
+    </archetype>
+    <archetype>
+      <groupId>org.apache.wicket</groupId>
+      <artifactId>wicket-archetype-quickstart</artifactId>
+      <version>10.2.0</version>
+      <description>Apache Wicket quickstart archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-archetype-jvm</artifactId>
+      <version>2.1.10</version>
+      <description>Kotlin JVM archetype</description>
+    </archetype>
+    <archetype>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-sample-archetype</artifactId>
+      <version>3.4.1</version>
+      <description>Spring Boot sample application archetype</description>
+    </archetype>
+  </archetypes>
+</archetype-catalog>
