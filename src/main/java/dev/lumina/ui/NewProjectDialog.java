@@ -25,6 +25,7 @@ import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
 import dev.lumina.project.ScalaMetadata;
 import dev.lumina.project.VueMetadata;
+import dev.lumina.project.ViteMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -433,10 +434,6 @@ public class NewProjectDialog {
     private final Button cliMore = compactButton("…");
     private String lastValidAngularNodeInterpreter;
     private String lastValidAngularCli;
-    private final ComboBox<String> viteBox = new ComboBox<>(
-            FXCollections.observableArrayList("npx create-vite                                                    9.1.2"));
-    private final ComboBox<String> viteTemplateBox = new ComboBox<>(
-            FXCollections.observableArrayList("React", "Vue", "Vanilla", "Svelte"));
     private final TextField webParametersField = new TextField();
     private final ComboBox<String> gradleVersionBox = new ComboBox<>();
     private final CheckBox saveSettingsCheck = new CheckBox("Use these settings for future projects");
@@ -488,7 +485,6 @@ public class NewProjectDialog {
     private final VBox rustBox = new VBox(14);
     private final List<Node> standardOnlyNodes = new ArrayList<>();
     private final List<Node> webOnlyNodes = new ArrayList<>();
-    private final List<Node> viteOnlyNodes = new ArrayList<>();
     private final List<Node> angularOnlyNodes = new ArrayList<>();
     private final List<Node> sampleCodeNodes = new ArrayList<>();
     private final List<Node> groovyOnlyNodes = new ArrayList<>();
@@ -766,10 +762,6 @@ public class NewProjectDialog {
     private final Label webParametersLabel = formLabel("Additional parameters:");
     private final HBox nodeRow = new HBox(8);
     private final HBox cliRow = new HBox(8);
-    private final HBox viteRow = new HBox(8);
-    private final Label viteLabel = formLabel("Vite:");
-    private final Label viteTemplateLabel = formLabel("Template:");
-    private final CheckBox viteTypescriptCheck = new CheckBox("Use TypeScript template");
     private final Label ktorEngineLabel = formLabel("Engine:");
     private final Label packageLabel = formLabel("Package name:");
 
@@ -947,6 +939,18 @@ public class NewProjectDialog {
     private boolean vueInitialized = false;
     private String lastValidVueNodeInterpreter = "";
     private String lastValidVueCli = "";
+
+    // ---- Vite generator fields ----
+    private final ComboBox<String> viteNodeInterpreterBox = new ComboBox<>();
+    private final Button viteNodeBrowseBtn = compactButton("\u2026");
+    private final ComboBox<String> viteCliBox = new ComboBox<>();
+    private final Button viteCliBrowseBtn = compactButton("\u2026");
+    private final ComboBox<String> viteTemplateBox = new ComboBox<>(
+            FXCollections.observableArrayList(ViteMetadata.TEMPLATES));
+    private final CheckBox viteTypescriptCheck = new CheckBox("Use TypeScript template");
+    private boolean viteInitialized = false;
+    private String lastValidViteNodeInterpreter = "";
+    private String lastValidViteCli = "";
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -1323,13 +1327,8 @@ public class NewProjectDialog {
         jakartaServerRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(jakartaAppServerBox, Priority.ALWAYS);
 
-        viteBox.getSelectionModel().selectFirst();
-        viteTemplateBox.getSelectionModel().select("React");
         nodeRuntimeBox.setMaxWidth(Double.MAX_VALUE);
         angularCliBox.setMaxWidth(Double.MAX_VALUE);
-        viteBox.setMaxWidth(Double.MAX_VALUE);
-        viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
-        Button viteMore = compactButton("\u2026");
         nodeRow.getChildren().setAll(nodeRuntimeBox, nodeMore);
         nodeRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(nodeRuntimeBox, Priority.ALWAYS);
@@ -1337,9 +1336,6 @@ public class NewProjectDialog {
         cliRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(angularCliBox, Priority.ALWAYS);
         initAngularControls();
-        viteRow.getChildren().setAll(viteBox, viteMore);
-        viteRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(viteBox, Priority.ALWAYS);
 
         emptyDescription.getStyleClass().add("form-hint");
 
@@ -2100,7 +2096,7 @@ public class NewProjectDialog {
         boolean java = generator == ProjectSpec.Generator.JAVA;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case HTML, REACT, EXPRESS, VUE, VITE, NUXT -> true;
             default -> false;
         };
 
@@ -2344,17 +2340,6 @@ public class NewProjectDialog {
             formGrid.add(webParametersField, 1, row++);
             formGrid.add(angularStandaloneCheck, 1, row++);
             formGrid.add(angularDefaultsCheck, 1, row++);
-            return;
-        }
-
-        if (vite) {
-            formGrid.add(nodeLabel, 0, row);
-            formGrid.add(nodeRow, 1, row++);
-            formGrid.add(viteLabel, 0, row);
-            formGrid.add(viteRow, 1, row++);
-            formGrid.add(viteTemplateLabel, 0, row);
-            formGrid.add(viteTemplateBox, 1, row++);
-            formGrid.add(viteTypescriptCheck, 1, row++);
             return;
         }
 
@@ -5926,6 +5911,260 @@ public class NewProjectDialog {
         return VueMetadata.parseRunnerFromDisplay(vueCliBox.getValue());
     }
 
+    // ------------------------------------------------------------ vite logic
+
+    private void initViteControls() {
+        if (viteInitialized) return;
+        viteInitialized = true;
+
+        viteNodeInterpreterBox.getStyleClass().add("choice-box");
+        viteNodeInterpreterBox.setMaxWidth(Double.MAX_VALUE);
+        viteNodeInterpreterBox.setCellFactory(lv -> createNodeInterpreterListCell());
+        viteNodeInterpreterBox.setButtonCell(createNodeInterpreterButtonCell());
+
+        viteCliBox.getStyleClass().add("choice-box");
+        viteCliBox.setMaxWidth(Double.MAX_VALUE);
+        viteCliBox.setCellFactory(lv -> createViteCliListCell());
+        viteCliBox.setButtonCell(createViteCliButtonCell());
+
+        viteTemplateBox.getStyleClass().add("choice-box");
+        viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
+        viteTemplateBox.getSelectionModel().select(ViteMetadata.DEFAULT_TEMPLATE);
+
+        viteNodeBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        viteCliBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        Tooltip.install(viteNodeBrowseBtn, new Tooltip("Select Node.js interpreter executable"));
+        Tooltip.install(viteCliBrowseBtn, new Tooltip("Select Vite CLI package directory"));
+
+        viteNodeBrowseBtn.setOnAction(e -> pickViteNodeExecutable());
+        viteCliBrowseBtn.setOnAction(e -> pickViteCliPath());
+
+        viteNodeInterpreterBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickViteNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    viteNodeInterpreterBox.setValue(lastValidViteNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!viteNodeInterpreterBox.getItems().contains(display)) {
+                            viteNodeInterpreterBox.getItems().add(0, display);
+                        }
+                        viteNodeInterpreterBox.setValue(display);
+                        lastValidViteNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidViteNodeInterpreter = val;
+            }
+        });
+
+        viteCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (ViteMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickViteCliPath);
+            } else {
+                lastValidViteCli = val;
+            }
+        });
+
+        viteTypescriptCheck.setSelected(false);
+        refreshViteControls();
+    }
+
+    private void refreshViteControls() {
+        Thread.ofVirtual().start(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                String current = viteNodeInterpreterBox.getValue();
+                viteNodeInterpreterBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    viteNodeInterpreterBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    viteNodeInterpreterBox.getSelectionModel().selectFirst();
+                }
+                lastValidViteNodeInterpreter = viteNodeInterpreterBox.getValue();
+            });
+        });
+
+        Thread.ofVirtual().start(() -> {
+            var clis = ViteMetadata.getCliEntries();
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var cli : clis) {
+                    items.add(cli.formatDisplay());
+                }
+                String current = viteCliBox.getValue();
+                viteCliBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    viteCliBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    viteCliBox.getSelectionModel().selectFirst();
+                }
+                lastValidViteCli = viteCliBox.getValue();
+            });
+
+            ViteMetadata.fetchVersionsAsync(updatedEntries -> {
+                Platform.runLater(() -> {
+                    ObservableList<String> updatedItems = FXCollections.observableArrayList();
+                    for (var cli : updatedEntries) {
+                        updatedItems.add(cli.formatDisplay());
+                    }
+                    String current = viteCliBox.getValue();
+                    viteCliBox.setItems(updatedItems);
+                    if (current != null && updatedItems.contains(current)) {
+                        viteCliBox.setValue(current);
+                    } else if (!updatedItems.isEmpty()) {
+                        viteCliBox.getSelectionModel().selectFirst();
+                    }
+                    lastValidViteCli = viteCliBox.getValue();
+                });
+            });
+        });
+    }
+
+    private ListCell<String> createViteCliListCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                    return;
+                }
+                if (ViteMetadata.ACTION_SELECT.equals(item)) {
+                    setText(item);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
+            }
+        };
+    }
+
+    private ListCell<String> createViteCliButtonCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+            }
+        };
+    }
+
+    private void pickViteNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/bin");
+        if (!initial.exists()) initial = new File("/usr/local/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!viteNodeInterpreterBox.getItems().contains(display)) {
+                viteNodeInterpreterBox.getItems().add(0, display);
+            }
+            viteNodeInterpreterBox.setValue(display);
+            lastValidViteNodeInterpreter = display;
+        } else if (lastValidViteNodeInterpreter != null) {
+            viteNodeInterpreterBox.setValue(lastValidViteNodeInterpreter);
+        }
+    }
+
+    private void pickViteCliPath() {
+        javafx.stage.DirectoryChooser chooser = new javafx.stage.DirectoryChooser();
+        chooser.setTitle("Select Vite CLI Package Directory");
+        File initial = new File(System.getProperty("user.home"));
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showDialog(stage);
+        if (file != null && file.exists()) {
+            String path = file.getAbsolutePath();
+            String display = path;
+            if (!viteCliBox.getItems().contains(display)) {
+                int idx = Math.max(0, viteCliBox.getItems().size() - 1);
+                viteCliBox.getItems().add(idx, display);
+            }
+            viteCliBox.setValue(display);
+            lastValidViteCli = display;
+        } else if (lastValidViteCli != null && !lastValidViteCli.isBlank()) {
+            viteCliBox.setValue(lastValidViteCli);
+        }
+    }
+
+    private String getSelectedViteNodeInterpreter() {
+        String val = viteNodeInterpreterBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val)
+                || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return "/usr/bin/node";
+        }
+        String s = val.trim();
+        if (s.startsWith("node")) {
+            s = s.substring(4).trim();
+        }
+        String[] parts = s.split("\\s+");
+        if (parts.length > 0 && !parts[0].isBlank()) {
+            return parts[0].trim();
+        }
+        return "/usr/bin/node";
+    }
+
+    private String getSelectedViteCli() {
+        return ViteMetadata.parseRunnerFromDisplay(viteCliBox.getValue());
+    }
+
+    private String getSelectedViteTemplate() {
+        String val = viteTemplateBox.getValue();
+        return val != null && !val.isBlank() ? val.trim() : ViteMetadata.DEFAULT_TEMPLATE;
+    }
+
     // ---------------------------------------------------------------- Play Framework
 
     private void initPlayControls() {
@@ -6805,7 +7044,7 @@ public class NewProjectDialog {
         boolean java = generator == ProjectSpec.Generator.JAVA;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case HTML, REACT, EXPRESS, VUE, NUXT -> true;
+            case HTML, REACT, EXPRESS, VUE, VITE, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -6920,8 +7159,15 @@ public class NewProjectDialog {
             }
             refreshVueControls();
         }
-        gitCheck.setVisible(!web && !html && !react && !vue && !gem && !rails && !appEngine);
-        gitCheck.setManaged(!web && !html && !react && !vue && !gem && !rails && !appEngine);
+        if (vite) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshViteControls();
+        }
+        gitCheck.setVisible(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
+        gitCheck.setManaged(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -7197,6 +7443,25 @@ public class NewProjectDialog {
                 form.add(cliRow, 1, row++);
 
                 form.add(vueDefaultSetupCheck, 1, row++);
+            }
+            case VITE -> {
+                initViteControls();
+                refreshViteControls();
+
+                HBox nodeRow = wideRow(viteNodeInterpreterBox, viteNodeBrowseBtn);
+                nodeRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Node runtime:"), 0, row);
+                form.add(nodeRow, 1, row++);
+
+                HBox cliRow = wideRow(viteCliBox, viteCliBrowseBtn);
+                cliRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Vite:"), 0, row);
+                form.add(cliRow, 1, row++);
+
+                form.add(formLabel("Template:"), 0, row);
+                form.add(viteTemplateBox, 1, row++);
+
+                form.add(viteTypescriptCheck, 1, row++);
             }
             case NUXT -> {
                 add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
@@ -8858,9 +9123,10 @@ public class NewProjectDialog {
         boolean isGem = selected.generator() == ProjectSpec.Generator.GEM;
         boolean isRails = selected.generator() == ProjectSpec.Generator.RUBY_ON_RAILS;
         boolean isVue = selected.generator() == ProjectSpec.Generator.VUE;
+        boolean isVite = selected.generator() == ProjectSpec.Generator.VITE;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isVue || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
+            if (html || react || isVue || isVite || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -9125,7 +9391,11 @@ public class NewProjectDialog {
                 appEngineProjectFormatCombo.getValue() != null ? appEngineProjectFormatCombo.getValue() : AppEngineMetadata.DEFAULT_PROJECT_FORMAT,
                 getSelectedVueNodeInterpreter(),
                 getSelectedVueCli(),
-                vueDefaultSetupCheck.isSelected());
+                vueDefaultSetupCheck.isSelected(),
+                getSelectedViteNodeInterpreter(),
+                getSelectedViteCli(),
+                getSelectedViteTemplate(),
+                viteTypescriptCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
