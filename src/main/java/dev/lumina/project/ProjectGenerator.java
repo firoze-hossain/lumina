@@ -75,7 +75,7 @@ public final class ProjectGenerator {
             case VUE -> generateVue(spec, dir, log);
             case VITE -> generateVite(spec, dir, log);
             case SYMFONY -> generateSymfony(spec, dir, log);
-            case NUXT -> generateWebStarter(spec, dir, log);
+            case NUXT -> generateNuxt(spec, dir, log);
             case EXPRESS -> generateExpress(spec, dir, log);
             case REACT -> generateReact(spec, dir, log);
             case HTML -> generateHtml(spec, dir, log);
@@ -131,6 +131,13 @@ public final class ProjectGenerator {
     private static void generateSymfony(ProjectSpec spec, Path dir, Consumer<String> log)
             throws IOException {
         SymfonyMetadata.scaffoldProject(spec, dir, log);
+    }
+
+    // ---------------------------------------------------------------- nuxt
+
+    private static void generateNuxt(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        NuxtMetadata.scaffoldProject(spec, dir, log);
     }
 
     // ---------------------------------------------------------------- angular
