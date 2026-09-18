@@ -117,11 +117,11 @@ public class LuminaApp extends Application {
                 file -> { openFile(file); Platform.runLater(this::runCurrentTestClass); },
                 this::deleteFromTree);
         fileExplorer.setExtendedActions(
-                p -> renameSelectedFile(),
-                p -> newJavaClass(),
-                p -> newPackage(),
-                p -> newFile(),
-                p -> newDirectory(),
+                this::renameFile,
+                this::newJavaClass,
+                this::newPackage,
+                this::newFile,
+                this::newDirectory,
                 this::copyPathToClipboard,
                 p -> showComingSoon("Open Module Settings"),
                 this::showComingSoon);
@@ -3655,9 +3655,15 @@ public class LuminaApp extends Application {
     // ---------------------------------------------------- new class/pkg/file
 
     private final NewJavaClassPopup newJavaClassPopup = new NewJavaClassPopup();
+    private final NewPackagePopup newPackagePopup = new NewPackagePopup();
 
     private void newJavaClass() {
-        Path dir = targetDirectory();
+        newJavaClass(null);
+    }
+
+    private void newJavaClass(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
         if (dir == null) return;
         javafx.geometry.Point2D anchor = fileExplorer.localToScreen(40, 60);
         double x = anchor != null ? anchor.getX() : stage.getX() + 260;
@@ -3707,17 +3713,47 @@ public class LuminaApp extends Application {
         writeAndOpen(targetDir.resolve(simpleName + ".java"), body);
     }
 
-
     private void newPackage() {
-        Path dir = targetDirectory();
+        newPackage(null);
+    }
+
+    private void newPackage(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
         if (dir == null) return;
-        prompt("New Package", "Package name (dotted):", "com.example.util").ifPresent(raw -> {
+
+        String currentPkg = inferPackage(dir);
+        String initial = currentPkg.isEmpty() ? "" : currentPkg + ".";
+
+        newPackagePopup.show(fileExplorer, initial, raw -> {
             String pkg = raw.trim();
+            while (pkg.endsWith(".")) {
+                pkg = pkg.substring(0, pkg.length() - 1).trim();
+            }
             if (pkg.isEmpty()) return;
+
             try {
-                Path created = dir.resolve(pkg.replace('.', '/'));
+                Path sourceRoot = findSourceRoot(dir);
+                Path created;
+                if (sourceRoot != null) {
+                    if (!currentPkg.isEmpty() && pkg.startsWith(currentPkg + ".")) {
+                        created = sourceRoot.resolve(pkg.replace('.', '/'));
+                    } else if (!currentPkg.isEmpty() && pkg.equals(currentPkg)) {
+                        created = dir;
+                    } else if (pkg.contains(".")) {
+                        created = sourceRoot.resolve(pkg.replace('.', '/'));
+                    } else if (!currentPkg.isEmpty()) {
+                        created = dir.resolve(pkg.replace('.', '/'));
+                    } else {
+                        created = sourceRoot.resolve(pkg.replace('.', '/'));
+                    }
+                } else {
+                    created = dir.resolve(pkg.replace('.', '/'));
+                }
+
                 Files.createDirectories(created);
                 fileExplorer.refresh(created);
+                fileExplorer.selectFile(created);
             } catch (IOException ex) {
                 error("Could not create package", ex.getMessage());
             }
@@ -3725,11 +3761,16 @@ public class LuminaApp extends Application {
     }
 
     private void newFile() {
+        newFile(null);
+    }
+
+    private void newFile(Path target) {
         if (projectRoot == null && fileExplorer.getRootPath() == null) {
             addTab(new EditorTab("Untitled-" + untitledCounter++ + ".java", null));
             return;
         }
-        Path dir = targetDirectory();
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
         if (dir == null) return;
         prompt("New File", "File name:", "notes.md").ifPresent(raw -> {
             String name = raw.trim();
@@ -3739,7 +3780,12 @@ public class LuminaApp extends Application {
     }
 
     private void newDirectory() {
-        Path dir = targetDirectory();
+        newDirectory(null);
+    }
+
+    private void newDirectory(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
         if (dir == null) return;
         prompt("New Directory", "Directory name:", "folder").ifPresent(raw -> {
             String name = raw.trim();
@@ -3748,6 +3794,7 @@ public class LuminaApp extends Application {
                 Path created = dir.resolve(name);
                 Files.createDirectories(created);
                 fileExplorer.refresh(created);
+                fileExplorer.selectFile(created);
             } catch (IOException ex) {
                 error("Could not create directory", ex.getMessage());
             }
@@ -3978,7 +4025,11 @@ public class LuminaApp extends Application {
     }
 
     private void renameSelectedFile() {
-        Path selected = fileExplorer.getSelectedPath();
+        renameFile(null);
+    }
+
+    private void renameFile(Path target) {
+        Path selected = target != null ? target : fileExplorer.getSelectedPath();
         if (selected == null || !Files.isRegularFile(selected)) {
             error("Nothing selected", "Select a file in the project tree first.");
             return;
@@ -3987,12 +4038,12 @@ public class LuminaApp extends Application {
             String name = raw.trim();
             if (name.isEmpty()) return;
             try {
-                Path target = selected.resolveSibling(name);
-                Files.move(selected, target);
+                Path renamedTarget = selected.resolveSibling(name);
+                Files.move(selected, renamedTarget);
                 closeEditorTabsWhere(t ->
                         t instanceof EditorTab et && selected.equals(et.getPath()));
-                fileExplorer.refresh();
-                openFile(target);
+                fileExplorer.refresh(renamedTarget);
+                openFile(renamedTarget);
             } catch (IOException ex) {
                 error("Could not rename", ex.getMessage());
             }
@@ -4013,12 +4064,38 @@ public class LuminaApp extends Application {
         return root;
     }
 
-    private String inferPackage(Path dir) {
+    public static Path findSourceRoot(Path dir) {
+        if (dir == null) return null;
+        Path curr = dir.toAbsolutePath().normalize();
+        while (curr != null) {
+            String s = curr.toString().replace('\\', '/');
+            for (String marker : new String[]{
+                    "/src/main/java", "/src/test/java",
+                    "/src/main/kotlin", "/src/test/kotlin",
+                    "/src/main/groovy", "/src/test/groovy"
+            }) {
+                if (s.endsWith(marker)) {
+                    return curr;
+                }
+            }
+            curr = curr.getParent();
+        }
+        return null;
+    }
+
+    public static String inferPackageName(Path dir, Path rootFallback) {
+        if (dir == null) return "";
         Path abs = dir.toAbsolutePath().normalize();
-        Path base = fileExplorer.getRootPath();
-        if (base == null) return "";
-        for (String r : new String[]{"src/main/java", "src/test/java"}) {
-            Path marker = base.toAbsolutePath().normalize().resolve(r);
+        Path sourceRoot = findSourceRoot(abs);
+        if (sourceRoot != null) {
+            if (abs.equals(sourceRoot)) return "";
+            Path rel = sourceRoot.relativize(abs);
+            return rel.toString().isEmpty() ? "" : rel.toString()
+                    .replace(File.separatorChar, '.').replace('/', '.');
+        }
+        if (rootFallback == null) return "";
+        for (String r : new String[]{"src/main/java", "src/test/java", "src/main/kotlin", "src/test/kotlin"}) {
+            Path marker = rootFallback.toAbsolutePath().normalize().resolve(r);
             if (abs.startsWith(marker)) {
                 Path rel = marker.relativize(abs);
                 return rel.toString().isEmpty() ? "" : rel.toString()
@@ -4026,6 +4103,10 @@ public class LuminaApp extends Application {
             }
         }
         return "";
+    }
+
+    private String inferPackage(Path dir) {
+        return inferPackageName(dir, fileExplorer != null ? fileExplorer.getRootPath() : null);
     }
 
     private void writeAndOpen(Path file, String content) {
