@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import dev.lumina.project.AngularMetadata;
+import dev.lumina.project.AppEngineMetadata;
 import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.GradleMetadata;
 import dev.lumina.project.GroovyMetadata;
@@ -79,6 +80,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -398,6 +400,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Angular CLI", ProjectSpec.Generator.ANGULAR_CLI, true),
             new GeneratorEntry("Gem", ProjectSpec.Generator.GEM, true),
             new GeneratorEntry("Ruby on Rails", ProjectSpec.Generator.RUBY_ON_RAILS, true),
+            new GeneratorEntry("App Engine", ProjectSpec.Generator.APP_ENGINE, true),
             new GeneratorEntry("Vue.js", ProjectSpec.Generator.VUE, true),
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
             new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
@@ -709,6 +712,51 @@ public class NewProjectDialog {
     private final Label railsExtraOptionsLabel = formLabel("Extra options:");
     private final TextField railsExtraOptionsField = new TextField();
 
+    // App Engine controls
+    private final CheckBox appEngineIndexGopathCheck = new CheckBox("Index entire GOPATH");
+    private final Label appEngineIndexGopathHelp = new Label("?");
+    private final HBox appEngineIndexGopathRow = new HBox(4);
+    private final Label appEngineFrameworksHeaderLabel = formLabel("Additional Libraries and Frameworks:");
+    private final CheckBox appEnginePythonCheck = new CheckBox();
+    private final CheckBox appEngineSqlCheck = new CheckBox();
+    private final HBox appEnginePythonRow = new HBox(8);
+    private final HBox appEngineSqlRow = new HBox(8);
+    private final VBox appEngineFrameworksBox = new VBox();
+    private final Label appEnginePythonSdkLabel = formLabel("Python SDK:");
+    private final ComboBox<String> appEnginePythonSdkCombo = new ComboBox<>();
+    private final Button appEnginePythonBrowseBtn = new Button();
+    private final HBox appEnginePythonSdkRow = new HBox(8);
+    private final Label appEngineSqlDialectLabel = formLabel("Default Dialect:");
+    private final ComboBox<String> appEngineSqlDialectCombo = new ComboBox<>();
+    private final HBox appEngineSqlDialectRow = new HBox(8);
+    private final Separator appEngineFrameworkDetailSeparator = new Separator(Orientation.HORIZONTAL);
+    private String appEngineActiveFramework = "PYTHON";
+
+    // App Engine Page 2 controls
+    private BorderPane appEnginePage2;
+    private final TextField appEngineNameField = new TextField("untitled1");
+    private final TextField appEngineLocationField = new TextField();
+    private final Button appEngineLocationBrowseBtn = new Button();
+    private final HBox appEngineMoreSettingsToggle = new HBox(8);
+    private final Label appEngineMoreSettingsArrow = new Label("\u2228  More Settings");
+    private final GridPane appEngineMoreSettingsContent = new GridPane();
+    private final TextField appEngineModuleNameField = new TextField("untitled1");
+    private final TextField appEngineContentRootField = new TextField();
+    private final Button appEngineContentRootBrowseBtn = new Button();
+    private final TextField appEngineModuleFileLocationField = new TextField();
+    private final Button appEngineModuleFileLocationBrowseBtn = new Button();
+    private final ComboBox<String> appEngineProjectFormatCombo = new ComboBox<>(
+            FXCollections.observableArrayList(
+                    AppEngineMetadata.DEFAULT_PROJECT_FORMAT,
+                    AppEngineMetadata.PROJECT_FORMAT_FILE_BASED
+            )
+    );
+    private boolean onAppEnginePage2 = false;
+    private boolean isAppEngineMoreExpanded = true;
+    private boolean appEngineUserCustomizedLocation = false;
+    private boolean appEngineUserCustomizedContentRoot = false;
+    private boolean appEngineUserCustomizedModuleFileLoc = false;
+
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
     private final HBox jakartaServerRow = new HBox(8);
@@ -969,7 +1017,10 @@ public class NewProjectDialog {
         ktorPluginsPage = buildKtorPluginsPage();
         ktorPluginsPage.setVisible(false);
         ktorPluginsPage.setManaged(false);
-        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage, micronautFeaturesPage, ktorPluginsPage);
+        appEnginePage2 = buildAppEnginePage2();
+        appEnginePage2.setVisible(false);
+        appEnginePage2.setManaged(false);
+        centerStack = new StackPane(formScroll, springDepsPage, javafxDepsPage, quarkusDepsPage, jakartaDepsPage, micronautFeaturesPage, ktorPluginsPage, appEnginePage2);
         root.setCenter(centerStack);
         root.setBottom(buildButtons());
 
@@ -1950,6 +2001,7 @@ public class NewProjectDialog {
         buildMavenArchetypeForm();
         setupRustControls();
         setupGoControls();
+        setupAppEngineControls();
 
         javaVersionBox.getSelectionModel().select("21");
 
@@ -2028,6 +2080,7 @@ public class NewProjectDialog {
         boolean ruby = generator == ProjectSpec.Generator.RUBY;
         boolean gem = generator == ProjectSpec.Generator.GEM;
         boolean rails = generator == ProjectSpec.Generator.RUBY_ON_RAILS;
+        boolean appEngine = generator == ProjectSpec.Generator.APP_ENGINE;
         boolean go = generator == ProjectSpec.Generator.GO;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
@@ -2080,6 +2133,37 @@ public class NewProjectDialog {
             serverRow.setManaged(true);
             formGrid.add(serverLabel, 0, row);
             formGrid.add(serverRow, 1, row++);
+        }
+
+        if (appEngine) {
+            formCol0.setMinWidth(110);
+            formCol0.setPrefWidth(110);
+
+            detachFromParent(goRootLabel, goRootRow);
+            formGrid.add(goRootLabel, 0, row);
+            formGrid.add(goRootRow, 1, row++);
+
+            detachFromParent(appEngineIndexGopathRow);
+            formGrid.add(appEngineIndexGopathRow, 1, row++);
+
+            detachFromParent(appEngineFrameworksHeaderLabel, appEngineFrameworksBox);
+            formGrid.add(appEngineFrameworksHeaderLabel, 0, row++, 2, 1);
+            formGrid.add(appEngineFrameworksBox, 0, row++, 2, 1);
+
+            detachFromParent(appEngineFrameworkDetailSeparator);
+            formGrid.add(appEngineFrameworkDetailSeparator, 0, row++, 2, 1);
+            GridPane.setMargin(appEngineFrameworkDetailSeparator, new Insets(24, 0, 14, 0));
+
+            detachFromParent(appEnginePythonSdkLabel, appEnginePythonSdkRow);
+            formGrid.add(appEnginePythonSdkLabel, 0, row);
+            formGrid.add(appEnginePythonSdkRow, 1, row);
+
+            detachFromParent(appEngineSqlDialectLabel, appEngineSqlDialectRow);
+            formGrid.add(appEngineSqlDialectLabel, 0, row);
+            formGrid.add(appEngineSqlDialectRow, 1, row++);
+
+            setAppEngineActiveFramework(appEngineActiveFramework);
+            return;
         }
 
         // 2. Name
@@ -5699,6 +5783,8 @@ public class NewProjectDialog {
                     + "IntelliJ uses, with full access to starters and versions.");
         } else if (selected.generator() == ProjectSpec.Generator.GO) {
             alert.setContentText("Generates a Go project with Go modules, vendoring support, environment variables, and sample code matching IntelliJ IDEA / GoLand.");
+        } else if (selected.generator() == ProjectSpec.Generator.APP_ENGINE) {
+            alert.setContentText("Generates a Google App Engine Go project with standard app.yaml deployment descriptor, health checks, and optional Cloud SQL or Python companion support.");
         } else {
             alert.setContentText("Project configuration for " + selected.label());
         }
@@ -6432,6 +6518,11 @@ public class NewProjectDialog {
             ktorPluginsPage.setVisible(false);
             ktorPluginsPage.setManaged(false);
         }
+        if (appEnginePage2 != null) {
+            onAppEnginePage2 = false;
+            appEnginePage2.setVisible(false);
+            appEnginePage2.setManaged(false);
+        }
         if (sidebar != null) {
             sidebar.setVisible(true);
             sidebar.setManaged(true);
@@ -6452,6 +6543,7 @@ public class NewProjectDialog {
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean gem = generator == ProjectSpec.Generator.GEM;
         boolean rails = generator == ProjectSpec.Generator.RUBY_ON_RAILS;
+        boolean appEngine = generator == ProjectSpec.Generator.APP_ENGINE;
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
@@ -6546,10 +6638,26 @@ public class NewProjectDialog {
             }
             refreshRailsControls();
         }
+        if (appEngine) {
+            String curName = appEngineNameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                String baseDir = System.getProperty("user.home") + File.separator + "projects" + File.separator + "others";
+                String suggested = dev.lumina.project.EmptyProjectMetadata.suggestUniqueProjectName(Path.of(baseDir), "untitled1");
+                appEngineNameField.setText(suggested);
+                String loc = baseDir + File.separator + suggested;
+                appEngineLocationField.setText(loc);
+                appEngineModuleNameField.setText(suggested);
+                appEngineContentRootField.setText(loc);
+                appEngineModuleFileLocationField.setText(loc);
+            }
+            if (goRootBox.getItems().isEmpty()) {
+                setupGoControls();
+            }
+        }
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
-        gitCheck.setVisible(!web && !html && !react && !gem && !rails);
-        gitCheck.setManaged(!web && !html && !react && !gem && !rails);
+        gitCheck.setVisible(!web && !html && !react && !gem && !rails && !appEngine);
+        gitCheck.setManaged(!web && !html && !react && !gem && !rails && !appEngine);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -6594,6 +6702,9 @@ public class NewProjectDialog {
             } else if (jakarta) {
                 createButton.setText("Next");
                 createButton.setOnAction(e -> goToJakartaDepsPage());
+            } else if (appEngine) {
+                createButton.setText("Next");
+                createButton.setOnAction(e -> goToAppEngineProjectPage());
             } else {
                 createButton.setText(specific && generator != ProjectSpec.Generator.HTML
                         && generator != ProjectSpec.Generator.REACT && generator != ProjectSpec.Generator.EXPRESS
@@ -7706,6 +7817,416 @@ public class NewProjectDialog {
         return "Ruby on Rails";
     }
 
+    // ------------------------------------------------------------- App Engine
+
+    private void setupAppEngineControls() {
+        appEngineIndexGopathCheck.setSelected(false);
+        appEngineIndexGopathCheck.setStyle("-fx-font-size: 12px;");
+        appEngineIndexGopathHelp.setStyle("-fx-text-fill: #707890; -fx-font-size: 10px; -fx-cursor: hand; "
+                + "-fx-border-color: #707890; -fx-border-radius: 8; -fx-min-width: 14px; "
+                + "-fx-alignment: center; -fx-padding: 0 2 0 2;");
+        Tooltip.install(appEngineIndexGopathHelp, new Tooltip("Index GOPATH libraries outside of the module"));
+        appEngineIndexGopathRow.getChildren().setAll(appEngineIndexGopathCheck, appEngineIndexGopathHelp);
+        appEngineIndexGopathRow.setAlignment(Pos.CENTER_LEFT);
+        appEngineIndexGopathRow.setSpacing(4);
+
+        // Frameworks list matching IntelliJ IDEA
+        Label pythonLabel = new Label("Python");
+        pythonLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Node pythonIcon = dev.lumina.ui.GeneratorIcons.pythonIcon();
+        appEnginePythonRow.getChildren().setAll(appEnginePythonCheck, pythonIcon, pythonLabel);
+        appEnginePythonRow.setAlignment(Pos.CENTER_LEFT);
+        appEnginePythonRow.setPadding(new Insets(6, 10, 6, 10));
+        appEnginePythonRow.setStyle("-fx-cursor: hand; -fx-background-radius: 4;");
+
+        Label sqlLabel = new Label("SQL Support");
+        sqlLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Node sqlIcon = dev.lumina.ui.GeneratorIcons.sqlIcon();
+        appEngineSqlRow.getChildren().setAll(appEngineSqlCheck, sqlIcon, sqlLabel);
+        appEngineSqlRow.setAlignment(Pos.CENTER_LEFT);
+        appEngineSqlRow.setPadding(new Insets(6, 10, 6, 10));
+        appEngineSqlRow.setStyle("-fx-cursor: hand; -fx-background-radius: 4;");
+
+        appEnginePythonRow.setOnMouseClicked(e -> {
+            boolean clickedCheck = isDescendantOf((Node) e.getTarget(), appEnginePythonCheck);
+            if (!clickedCheck) {
+                appEnginePythonCheck.setSelected(!appEnginePythonCheck.isSelected());
+            }
+            setAppEngineActiveFramework("PYTHON");
+        });
+        appEnginePythonCheck.setOnAction(e -> setAppEngineActiveFramework("PYTHON"));
+
+        appEngineSqlRow.setOnMouseClicked(e -> {
+            boolean clickedCheck = isDescendantOf((Node) e.getTarget(), appEngineSqlCheck);
+            if (!clickedCheck) {
+                appEngineSqlCheck.setSelected(!appEngineSqlCheck.isSelected());
+            }
+            setAppEngineActiveFramework("SQL");
+        });
+        appEngineSqlCheck.setOnAction(e -> setAppEngineActiveFramework("SQL"));
+
+        appEngineFrameworksBox.getChildren().setAll(appEnginePythonRow, appEngineSqlRow);
+        appEngineFrameworksBox.setStyle("-fx-border-color: #393B40; -fx-border-width: 1px; -fx-border-radius: 4px; "
+                + "-fx-background-color: #2B2D30; -fx-background-radius: 4px;");
+        appEngineFrameworksBox.setMaxWidth(Double.MAX_VALUE);
+
+        // Framework detail separator
+        appEngineFrameworkDetailSeparator.setMaxWidth(Double.MAX_VALUE);
+        appEngineFrameworkDetailSeparator.setStyle("-fx-background-color: #393B40; -fx-padding: 0;");
+
+        // Python SDK row
+        appEnginePythonSdkCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(appEnginePythonSdkCombo, Priority.ALWAYS);
+        appEnginePythonBrowseBtn.setGraphic(createBrowseFolderIcon());
+        appEnginePythonBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        appEnginePythonBrowseBtn.setPrefSize(28, 28);
+        appEnginePythonBrowseBtn.setMinSize(28, 28);
+        appEnginePythonBrowseBtn.setMaxSize(28, 28);
+        appEnginePythonBrowseBtn.setTooltip(new Tooltip("Select Python Interpreter"));
+        appEnginePythonBrowseBtn.setOnAction(e -> pickCustomPythonForAppEngine());
+
+        appEnginePythonSdkRow.getChildren().setAll(appEnginePythonSdkCombo, appEnginePythonBrowseBtn);
+        appEnginePythonSdkRow.setAlignment(Pos.CENTER_LEFT);
+        populateAppEnginePythonSdks();
+
+        // SQL Dialect row
+        setupAppEngineSqlDialectCombo();
+        appEngineSqlDialectCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(appEngineSqlDialectCombo, Priority.ALWAYS);
+        appEngineSqlDialectRow.getChildren().setAll(appEngineSqlDialectCombo);
+        appEngineSqlDialectRow.setAlignment(Pos.CENTER_LEFT);
+
+        setAppEngineActiveFramework("PYTHON");
+    }
+
+    private void setupAppEngineSqlDialectCombo() {
+        if (!appEngineSqlDialectCombo.getItems().isEmpty()) return;
+        appEngineSqlDialectCombo.getItems().setAll(AppEngineMetadata.SQL_DIALECTS);
+        appEngineSqlDialectCombo.setValue(AppEngineMetadata.DEFAULT_SQL_DIALECT);
+
+        javafx.util.Callback<ListView<String>, ListCell<String>> dialectCellFactory = lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.sqlIcon();
+                    Label label = new Label(item);
+                    label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        };
+        appEngineSqlDialectCombo.setCellFactory(dialectCellFactory);
+        appEngineSqlDialectCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.sqlIcon();
+                    Label label = new Label(item);
+                    label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        });
+    }
+
+    private void setAppEngineActiveFramework(String framework) {
+        appEngineActiveFramework = framework;
+        boolean isPython = "PYTHON".equalsIgnoreCase(framework);
+        highlightFrameworkRow(isPython ? appEnginePythonRow : appEngineSqlRow,
+                              isPython ? appEngineSqlRow : appEnginePythonRow);
+
+        appEnginePythonSdkLabel.setVisible(isPython);
+        appEnginePythonSdkLabel.setManaged(isPython);
+        appEnginePythonSdkRow.setVisible(isPython);
+        appEnginePythonSdkRow.setManaged(isPython);
+
+        appEngineSqlDialectLabel.setVisible(!isPython);
+        appEngineSqlDialectLabel.setManaged(!isPython);
+        appEngineSqlDialectRow.setVisible(!isPython);
+        appEngineSqlDialectRow.setManaged(!isPython);
+    }
+
+    private boolean isDescendantOf(Node node, Node ancestor) {
+        Node cur = node;
+        while (cur != null) {
+            if (cur == ancestor) return true;
+            cur = cur.getParent();
+        }
+        return false;
+    }
+
+    private void highlightFrameworkRow(HBox selectedRow, HBox otherRow) {
+        selectedRow.setStyle("-fx-background-color: #2E436E; -fx-cursor: hand; -fx-background-radius: 4;");
+        otherRow.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-background-radius: 4;");
+    }
+
+    private void populateAppEnginePythonSdks() {
+        if (!appEnginePythonSdkCombo.getItems().isEmpty()) return;
+        appEnginePythonSdkCombo.getItems().add("<No interpreter>");
+        appEnginePythonSdkCombo.getSelectionModel().selectFirst();
+        dev.lumina.project.PythonMetadata.fetchPythonInstallationsAsync(installations -> {
+            for (dev.lumina.project.PythonMetadata.PythonInstallation inst : installations) {
+                String entry = inst.executable();
+                if (!appEnginePythonSdkCombo.getItems().contains(entry)) {
+                    appEnginePythonSdkCombo.getItems().add(entry);
+                }
+            }
+        });
+    }
+
+    private void pickCustomPythonForAppEngine() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Select Python Interpreter");
+        File file = chooser.showOpenDialog(stage);
+        if (file != null) {
+            String path = file.getAbsolutePath();
+            if (!appEnginePythonSdkCombo.getItems().contains(path)) {
+                appEnginePythonSdkCombo.getItems().add(1, path);
+            }
+            appEnginePythonSdkCombo.getSelectionModel().select(path);
+        }
+    }
+
+    private BorderPane buildAppEnginePage2() {
+        BorderPane page = new BorderPane();
+        page.setPadding(new Insets(20, 24, 20, 24));
+
+        GridPane topGrid = new GridPane();
+        topGrid.setHgap(12);
+        topGrid.setVgap(14);
+        ColumnConstraints col0 = new ColumnConstraints(140);
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setHgrow(Priority.ALWAYS);
+        topGrid.getColumnConstraints().addAll(col0, col1);
+
+        Label nameLbl = formLabel("Project name:");
+        HBox.setHgrow(appEngineNameField, Priority.ALWAYS);
+        topGrid.add(nameLbl, 0, 0);
+        topGrid.add(appEngineNameField, 1, 0);
+
+        Label locLbl = formLabel("Project location:");
+        appEngineLocationBrowseBtn.setGraphic(createBrowseFolderIcon());
+        appEngineLocationBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        appEngineLocationBrowseBtn.setPrefSize(28, 28);
+        appEngineLocationBrowseBtn.setMinSize(28, 28);
+        appEngineLocationBrowseBtn.setMaxSize(28, 28);
+        appEngineLocationBrowseBtn.setTooltip(new Tooltip("Select Project Location"));
+        appEngineLocationBrowseBtn.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Project Location");
+            File cur = new File(appEngineLocationField.getText().trim());
+            if (cur.isDirectory()) chooser.setInitialDirectory(cur);
+            File dir = chooser.showDialog(stage);
+            if (dir != null) {
+                appEngineLocationField.setText(dir.getAbsolutePath());
+                appEngineUserCustomizedLocation = true;
+            }
+        });
+        HBox locRow = new HBox(8, appEngineLocationField, appEngineLocationBrowseBtn);
+        HBox.setHgrow(appEngineLocationField, Priority.ALWAYS);
+        locRow.setAlignment(Pos.CENTER_LEFT);
+        topGrid.add(locLbl, 0, 1);
+        topGrid.add(locRow, 1, 1);
+
+        // More settings toggle
+        Region line = new Region();
+        line.setStyle("-fx-background-color: #393B40;");
+        line.setPrefHeight(1);
+        line.setMaxHeight(1);
+        HBox.setHgrow(line, Priority.ALWAYS);
+
+        appEngineMoreSettingsArrow.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-weight: bold;");
+        appEngineMoreSettingsToggle.getChildren().setAll(appEngineMoreSettingsArrow, line);
+        appEngineMoreSettingsToggle.setAlignment(Pos.CENTER_LEFT);
+        appEngineMoreSettingsToggle.setPadding(new Insets(16, 0, 6, 0));
+        appEngineMoreSettingsToggle.setStyle("-fx-cursor: hand;");
+
+        // More settings content grid
+        appEngineMoreSettingsContent.setHgap(12);
+        appEngineMoreSettingsContent.setVgap(14);
+        appEngineMoreSettingsContent.setPadding(new Insets(10, 0, 10, 0));
+        ColumnConstraints mCol0 = new ColumnConstraints(140);
+        ColumnConstraints mCol1 = new ColumnConstraints();
+        mCol1.setHgrow(Priority.ALWAYS);
+        appEngineMoreSettingsContent.getColumnConstraints().addAll(mCol0, mCol1);
+
+        Label modNameLbl = formLabel("Module name:");
+        HBox.setHgrow(appEngineModuleNameField, Priority.ALWAYS);
+        appEngineMoreSettingsContent.add(modNameLbl, 0, 0);
+        appEngineMoreSettingsContent.add(appEngineModuleNameField, 1, 0);
+
+        Label contentRootLbl = formLabel("Content root:");
+        appEngineContentRootBrowseBtn.setGraphic(createBrowseFolderIcon());
+        appEngineContentRootBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        appEngineContentRootBrowseBtn.setPrefSize(28, 28);
+        appEngineContentRootBrowseBtn.setMinSize(28, 28);
+        appEngineContentRootBrowseBtn.setMaxSize(28, 28);
+        appEngineContentRootBrowseBtn.setTooltip(new Tooltip("Select Content Root"));
+        appEngineContentRootBrowseBtn.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Content Root");
+            File cur = new File(appEngineContentRootField.getText().trim());
+            if (cur.isDirectory()) chooser.setInitialDirectory(cur);
+            File dir = chooser.showDialog(stage);
+            if (dir != null) {
+                appEngineContentRootField.setText(dir.getAbsolutePath());
+                appEngineUserCustomizedContentRoot = true;
+            }
+        });
+        HBox crRow = new HBox(8, appEngineContentRootField, appEngineContentRootBrowseBtn);
+        HBox.setHgrow(appEngineContentRootField, Priority.ALWAYS);
+        crRow.setAlignment(Pos.CENTER_LEFT);
+        appEngineMoreSettingsContent.add(contentRootLbl, 0, 1);
+        appEngineMoreSettingsContent.add(crRow, 1, 1);
+
+        Label modFileLocLbl = formLabel("Module file location:");
+        appEngineModuleFileLocationBrowseBtn.setGraphic(createBrowseFolderIcon());
+        appEngineModuleFileLocationBrowseBtn.getStyleClass().addAll("console-button", "browse-button");
+        appEngineModuleFileLocationBrowseBtn.setPrefSize(28, 28);
+        appEngineModuleFileLocationBrowseBtn.setMinSize(28, 28);
+        appEngineModuleFileLocationBrowseBtn.setMaxSize(28, 28);
+        appEngineModuleFileLocationBrowseBtn.setTooltip(new Tooltip("Select Module File Location"));
+        appEngineModuleFileLocationBrowseBtn.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Module File Location");
+            File cur = new File(appEngineModuleFileLocationField.getText().trim());
+            if (cur.isDirectory()) chooser.setInitialDirectory(cur);
+            File dir = chooser.showDialog(stage);
+            if (dir != null) {
+                appEngineModuleFileLocationField.setText(dir.getAbsolutePath());
+                appEngineUserCustomizedModuleFileLoc = true;
+            }
+        });
+        HBox mfRow = new HBox(8, appEngineModuleFileLocationField, appEngineModuleFileLocationBrowseBtn);
+        HBox.setHgrow(appEngineModuleFileLocationField, Priority.ALWAYS);
+        mfRow.setAlignment(Pos.CENTER_LEFT);
+        appEngineMoreSettingsContent.add(modFileLocLbl, 0, 2);
+        appEngineMoreSettingsContent.add(mfRow, 1, 2);
+
+        Label projFormatLbl = formLabel("Project format:");
+        appEngineProjectFormatCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(appEngineProjectFormatCombo, Priority.ALWAYS);
+        appEngineProjectFormatCombo.getSelectionModel().select(AppEngineMetadata.DEFAULT_PROJECT_FORMAT);
+        appEngineMoreSettingsContent.add(projFormatLbl, 0, 3);
+        appEngineMoreSettingsContent.add(appEngineProjectFormatCombo, 1, 3);
+
+        appEngineMoreSettingsToggle.setOnMouseClicked(e -> {
+            isAppEngineMoreExpanded = !isAppEngineMoreExpanded;
+            appEngineMoreSettingsArrow.setText((isAppEngineMoreExpanded ? "\u2228  " : "\u203A  ") + "More Settings");
+            appEngineMoreSettingsContent.setVisible(isAppEngineMoreExpanded);
+            appEngineMoreSettingsContent.setManaged(isAppEngineMoreExpanded);
+        });
+
+        // Dynamic synchronization between Name and location fields
+        appEngineNameField.textProperty().addListener((obs, oldV, newName) -> {
+            String trimmed = newName.trim();
+            if (!appEngineUserCustomizedLocation) {
+                String baseDir = System.getProperty("user.home") + File.separator + "projects" + File.separator + "others";
+                String newLoc = baseDir + File.separator + trimmed;
+                appEngineLocationField.setText(newLoc);
+                if (!appEngineUserCustomizedContentRoot) {
+                    appEngineContentRootField.setText(newLoc);
+                }
+                if (!appEngineUserCustomizedModuleFileLoc) {
+                    appEngineModuleFileLocationField.setText(newLoc);
+                }
+            }
+            appEngineModuleNameField.setText(trimmed);
+            nameField.setText(trimmed);
+        });
+
+        appEngineLocationField.textProperty().addListener((obs, oldV, newLoc) -> {
+            if (appEngineLocationField.isFocused()) {
+                appEngineUserCustomizedLocation = true;
+            }
+            if (!appEngineUserCustomizedContentRoot) {
+                appEngineContentRootField.setText(newLoc);
+            }
+            if (!appEngineUserCustomizedModuleFileLoc) {
+                appEngineModuleFileLocationField.setText(newLoc);
+            }
+            locationField.setText(newLoc);
+        });
+
+        appEngineContentRootField.textProperty().addListener((obs, oldV, newV) -> {
+            if (appEngineContentRootField.isFocused()) {
+                appEngineUserCustomizedContentRoot = true;
+            }
+        });
+
+        appEngineModuleFileLocationField.textProperty().addListener((obs, oldV, newV) -> {
+            if (appEngineModuleFileLocationField.isFocused()) {
+                appEngineUserCustomizedModuleFileLoc = true;
+            }
+        });
+
+        VBox contentBox = new VBox(topGrid, appEngineMoreSettingsToggle, appEngineMoreSettingsContent);
+        contentBox.setPadding(new Insets(10));
+        ScrollPane scroll = new ScrollPane(contentBox);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        page.setCenter(scroll);
+        return page;
+    }
+
+    private void goToAppEngineProjectPage() {
+        if (goRootBox.getValue() == null && !goRootBox.getItems().isEmpty()) {
+            goRootBox.getSelectionModel().selectFirst();
+        }
+        errorLabel.setText("");
+        onAppEnginePage2 = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
+        formScroll.setVisible(false);
+        formScroll.setManaged(false);
+        appEnginePage2.setVisible(true);
+        appEnginePage2.setManaged(true);
+        createButton.setText("Create");
+        createButton.setOnAction(e -> tryCreate());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(true);
+        previousButton.setManaged(true);
+        previousButton.setOnAction(e -> backToAppEngineForm());
+    }
+
+    private void backToAppEngineForm() {
+        onAppEnginePage2 = false;
+        appEnginePage2.setVisible(false);
+        appEnginePage2.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+        formScroll.setVisible(true);
+        formScroll.setManaged(true);
+        createButton.setText("Next");
+        createButton.setOnAction(e -> goToAppEngineProjectPage());
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
+        previousButton.setVisible(false);
+        previousButton.setManaged(false);
+    }
+
     private void showPluginManager() {
         try {
             PluginManagerDialog pm = new PluginManagerDialog(
@@ -8037,8 +8558,9 @@ public class NewProjectDialog {
             errorLabel.setText(selected.label() + " support arrives in a later phase.");
             return;
         }
-        String name = nameField.getText().trim();
-        String location = locationField.getText().trim();
+        boolean isAppEngine = selected.generator() == ProjectSpec.Generator.APP_ENGINE;
+        String name = isAppEngine ? appEngineNameField.getText().trim() : nameField.getText().trim();
+        String location = isAppEngine ? appEngineLocationField.getText().trim() : locationField.getText().trim();
         if (name.isEmpty()) {
             errorLabel.setText("Project name is required.");
             return;
@@ -8062,7 +8584,7 @@ public class NewProjectDialog {
         boolean isRails = selected.generator() == ProjectSpec.Generator.RUBY_ON_RAILS;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython || isPhp || isRuby || isGem || isRails) {
+            if (html || react || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -8089,12 +8611,15 @@ public class NewProjectDialog {
         else if (isPhp) language = ProjectSpec.Language.PHP;
         else if (isRuby || isGem || isRails) language = ProjectSpec.Language.RUBY;
         else if (rust) language = ProjectSpec.Language.RUST;
+        else if (isAppEngine || selected.generator() == ProjectSpec.Generator.GO) language = ProjectSpec.Language.GO;
 
         ProjectSpec.BuildSystem build;
         if (isPlay) {
             build = ProjectSpec.BuildSystem.SBT;
         } else if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
+        } else if (isAppEngine || selected.generator() == ProjectSpec.Generator.GO) {
+            build = ProjectSpec.BuildSystem.INTELLIJ;
         } else if (isPython || isPhp || isRuby || isGem || isRails) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (mavenArchetype || rust) {
@@ -8167,6 +8692,8 @@ public class NewProjectDialog {
             pkg = g.isBlank() ? "" : g;
         } else if (selected.generator() == ProjectSpec.Generator.JAVAFX || quarkus || jakarta || micronaut || ktor || html || react || selected.generator() == ProjectSpec.Generator.EXPRESS) {
             pkg = (sanitize(groupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
+        } else if (isAppEngine) {
+            pkg = sanitize(name);
         } else {
             pkg = packageField.getText().trim();
         }
@@ -8205,9 +8732,9 @@ public class NewProjectDialog {
                 selected.generator(),
                 name,
                 Path.of(location),
-                gitCheck.isSelected(),
-                selected.generator() == ProjectSpec.Generator.GO ? ProjectSpec.BuildSystem.INTELLIJ : build,
-                selected.generator() == ProjectSpec.Generator.GO ? ProjectSpec.Language.GO : language,
+                gitCheck.isSelected() && !isAppEngine,
+                (selected.generator() == ProjectSpec.Generator.GO || isAppEngine) ? ProjectSpec.BuildSystem.INTELLIJ : build,
+                (selected.generator() == ProjectSpec.Generator.GO || isAppEngine) ? ProjectSpec.Language.GO : language,
                 packaging,
                 configFormat,
                 (mavenArchetype ? mavenGroupField : groupField).getText().trim(),
@@ -8290,7 +8817,7 @@ public class NewProjectDialog {
                 phpAddComposerJsonCheck.isSelected(),
                 rubyInterpreterCombo.getValue() != null ? rubyInterpreterCombo.getValue().executable() : "",
                 rubyAddSampleCodeCheck.isSelected(),
-                selected.generator() == ProjectSpec.Generator.GO && goRootBox.getValue() != null ? goRootBox.getValue().path() : "",
+                (selected.generator() == ProjectSpec.Generator.GO || isAppEngine) && goRootBox.getValue() != null ? goRootBox.getValue().path() : "",
                 goVendoringCheck.isSelected(),
                 goEnvironmentField.getText().trim(),
                 getSelectedAngularNodeInterpreter(),
@@ -8309,7 +8836,17 @@ public class NewProjectDialog {
                 railsDatabaseCombo.getValue() != null ? railsDatabaseCombo.getValue() : "SQLite3",
                 railsJsCheck.isSelected(),
                 railsJsCombo.getValue() != null ? railsJsCombo.getValue() : "Importmap",
-                railsExtraOptionsField.getText().trim());
+                railsExtraOptionsField.getText().trim(),
+                isAppEngine && goRootBox.getValue() != null ? goRootBox.getValue().path() : "",
+                appEngineIndexGopathCheck.isSelected(),
+                appEnginePythonCheck.isSelected(),
+                appEnginePythonSdkCombo.getValue() != null ? appEnginePythonSdkCombo.getValue() : "",
+                appEngineSqlCheck.isSelected(),
+                appEngineSqlDialectCombo.getValue() != null ? appEngineSqlDialectCombo.getValue() : AppEngineMetadata.DEFAULT_SQL_DIALECT,
+                appEngineModuleNameField.getText().trim().isEmpty() ? name : appEngineModuleNameField.getText().trim(),
+                appEngineContentRootField.getText().trim().isEmpty() ? location : appEngineContentRootField.getText().trim(),
+                appEngineModuleFileLocationField.getText().trim().isEmpty() ? location : appEngineModuleFileLocationField.getText().trim(),
+                appEngineProjectFormatCombo.getValue() != null ? appEngineProjectFormatCombo.getValue() : AppEngineMetadata.DEFAULT_PROJECT_FORMAT);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE

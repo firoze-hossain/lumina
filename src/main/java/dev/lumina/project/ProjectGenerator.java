@@ -67,6 +67,7 @@ public final class ProjectGenerator {
             case RUBY -> generateRuby(spec, dir, log);
             case GEM -> generateGem(spec, dir, log);
             case RUBY_ON_RAILS -> generateRails(spec, dir, log);
+            case APP_ENGINE -> generateAppEngine(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
@@ -4336,6 +4337,41 @@ public final class ProjectGenerator {
         }
         Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
         log.accept("Configured Ruby on Rails project: " + projectName + " (" + railsType + ")");
+    }
+
+    private static void generateAppEngine(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Google App Engine Go project …");
+
+        Files.createDirectories(dir);
+
+        String projectName = spec.name();
+        String moduleName = spec.safeAppEngineModuleName();
+        boolean sqlSupport = spec.safeAppEngineSqlSupport();
+        String sqlDialect = spec.safeAppEngineSqlDialect();
+        boolean pythonSupport = spec.safeAppEnginePythonSupport();
+        String goRoot = spec.safeAppEngineGoRoot();
+        String goVersion = GoMetadata.detectGoVersion(goRoot);
+
+        // 1. Scaffold files via AppEngineMetadata
+        AppEngineMetadata.scaffoldProject(dir, projectName, goVersion, sqlSupport, sqlDialect, pythonSupport, log);
+
+        // 2. Generate .idea configuration for App Engine project
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), AppEngineMetadata.generateIdeaModulesXml(moduleName));
+        Files.writeString(ideaDir.resolve(moduleName + ".iml"), AppEngineMetadata.generateIdeaAppEngineIml(moduleName, pythonSupport, sqlSupport));
+
+        if (sqlSupport) {
+            String sqlXml = AppEngineMetadata.generateSqlDialectsXml(sqlDialect);
+            if (sqlXml != null) {
+                Files.writeString(ideaDir.resolve("sqldialects.xml"), sqlXml);
+            }
+        }
+
+        String sdkName = "Go " + (goVersion.startsWith("go") ? goVersion.substring(2) : goVersion);
+        Files.writeString(ideaDir.resolve("misc.xml"), AppEngineMetadata.generateIdeaMiscXml(sdkName));
+        log.accept("Configured App Engine project: " + projectName + " (Go runtime: " + AppEngineMetadata.resolveAppEngineRuntime(goVersion) + ")");
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {
