@@ -24,6 +24,7 @@ import dev.lumina.project.PlayMetadata;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
 import dev.lumina.project.ScalaMetadata;
+import dev.lumina.project.VueMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -936,6 +937,16 @@ public class NewProjectDialog {
     private final ComboBox<String> expressStylesheetEngineBox = new ComboBox<>();
     private boolean expressInitialized = false;
     private String lastValidExpressNodeInterpreter = "";
+
+    // ---- Vue generator fields ----
+    private final ComboBox<String> vueNodeInterpreterBox = new ComboBox<>();
+    private final Button vueNodeBrowseBtn = compactButton("\u2026");
+    private final ComboBox<String> vueCliBox = new ComboBox<>();
+    private final Button vueCliBrowseBtn = compactButton("\u2026");
+    private final CheckBox vueDefaultSetupCheck = new CheckBox("Use the default project setup");
+    private boolean vueInitialized = false;
+    private String lastValidVueNodeInterpreter = "";
+    private String lastValidVueCli = "";
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -5670,6 +5681,251 @@ public class NewProjectDialog {
         return AngularMetadata.parseVersionFromDisplay(angularCliBox.getValue());
     }
 
+    // ------------------------------------------------------------ vue logic
+
+    private void initVueControls() {
+        if (vueInitialized) return;
+        vueInitialized = true;
+
+        vueNodeInterpreterBox.getStyleClass().add("choice-box");
+        vueNodeInterpreterBox.setMaxWidth(Double.MAX_VALUE);
+        vueNodeInterpreterBox.setCellFactory(lv -> createNodeInterpreterListCell());
+        vueNodeInterpreterBox.setButtonCell(createNodeInterpreterButtonCell());
+
+        vueCliBox.getStyleClass().add("choice-box");
+        vueCliBox.setMaxWidth(Double.MAX_VALUE);
+        vueCliBox.setCellFactory(lv -> createVueCliListCell());
+        vueCliBox.setButtonCell(createVueCliButtonCell());
+
+        vueNodeBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        vueCliBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        Tooltip.install(vueNodeBrowseBtn, new Tooltip("Select Node.js interpreter executable"));
+        Tooltip.install(vueCliBrowseBtn, new Tooltip("Select Vue CLI package directory"));
+
+        vueNodeBrowseBtn.setOnAction(e -> pickVueNodeExecutable());
+        vueCliBrowseBtn.setOnAction(e -> pickVueCliPath());
+
+        vueNodeInterpreterBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickVueNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    vueNodeInterpreterBox.setValue(lastValidVueNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!vueNodeInterpreterBox.getItems().contains(display)) {
+                            vueNodeInterpreterBox.getItems().add(0, display);
+                        }
+                        vueNodeInterpreterBox.setValue(display);
+                        lastValidVueNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidVueNodeInterpreter = val;
+            }
+        });
+
+        vueCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (VueMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickVueCliPath);
+            } else {
+                lastValidVueCli = val;
+            }
+        });
+
+        vueDefaultSetupCheck.setSelected(true);
+        refreshVueControls();
+    }
+
+    private void refreshVueControls() {
+        Thread.ofVirtual().start(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                String current = vueNodeInterpreterBox.getValue();
+                vueNodeInterpreterBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    vueNodeInterpreterBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    vueNodeInterpreterBox.getSelectionModel().selectFirst();
+                }
+                lastValidVueNodeInterpreter = vueNodeInterpreterBox.getValue();
+            });
+        });
+
+        Thread.ofVirtual().start(() -> {
+            var clis = VueMetadata.getCliEntries();
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var cli : clis) {
+                    items.add(cli.formatDisplay());
+                }
+                String current = vueCliBox.getValue();
+                vueCliBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    vueCliBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    vueCliBox.getSelectionModel().selectFirst();
+                }
+                lastValidVueCli = vueCliBox.getValue();
+            });
+
+            VueMetadata.fetchVersionsAsync(updatedEntries -> {
+                Platform.runLater(() -> {
+                    ObservableList<String> updatedItems = FXCollections.observableArrayList();
+                    for (var cli : updatedEntries) {
+                        updatedItems.add(cli.formatDisplay());
+                    }
+                    String current = vueCliBox.getValue();
+                    vueCliBox.setItems(updatedItems);
+                    if (current != null && updatedItems.contains(current)) {
+                        vueCliBox.setValue(current);
+                    } else if (!updatedItems.isEmpty()) {
+                        vueCliBox.getSelectionModel().selectFirst();
+                    }
+                    lastValidVueCli = vueCliBox.getValue();
+                });
+            });
+        });
+    }
+
+    private ListCell<String> createVueCliListCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                    return;
+                }
+                if (VueMetadata.ACTION_SELECT.equals(item)) {
+                    setText(item);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
+            }
+        };
+    }
+
+    private ListCell<String> createVueCliButtonCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+            }
+        };
+    }
+
+    private void pickVueNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/bin");
+        if (!initial.exists()) initial = new File("/usr/local/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!vueNodeInterpreterBox.getItems().contains(display)) {
+                vueNodeInterpreterBox.getItems().add(0, display);
+            }
+            vueNodeInterpreterBox.setValue(display);
+            lastValidVueNodeInterpreter = display;
+        } else if (lastValidVueNodeInterpreter != null) {
+            vueNodeInterpreterBox.setValue(lastValidVueNodeInterpreter);
+        }
+    }
+
+    private void pickVueCliPath() {
+        javafx.stage.DirectoryChooser chooser = new javafx.stage.DirectoryChooser();
+        chooser.setTitle("Select Vue CLI Package Directory");
+        File initial = new File(System.getProperty("user.home"));
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showDialog(stage);
+        if (file != null && file.exists()) {
+            String path = file.getAbsolutePath();
+            String display = path;
+            if (!vueCliBox.getItems().contains(display)) {
+                int idx = Math.max(0, vueCliBox.getItems().size() - 1);
+                vueCliBox.getItems().add(idx, display);
+            }
+            vueCliBox.setValue(display);
+            lastValidVueCli = display;
+        } else if (lastValidVueCli != null && !lastValidVueCli.isBlank()) {
+            vueCliBox.setValue(lastValidVueCli);
+        }
+    }
+
+    private String getSelectedVueNodeInterpreter() {
+        String val = vueNodeInterpreterBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val)
+                || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return "/usr/bin/node";
+        }
+        String s = val.trim();
+        if (s.startsWith("node")) {
+            s = s.substring(4).trim();
+        }
+        String[] parts = s.split("\\s+");
+        if (parts.length > 0 && !parts[0].isBlank()) {
+            return parts[0].trim();
+        }
+        return "/usr/bin/node";
+    }
+
+    private String getSelectedVueCli() {
+        return VueMetadata.parseRunnerFromDisplay(vueCliBox.getValue());
+    }
+
     // ---------------------------------------------------------------- Play Framework
 
     private void initPlayControls() {
@@ -6656,8 +6912,16 @@ public class NewProjectDialog {
         }
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
-        gitCheck.setVisible(!web && !html && !react && !gem && !rails && !appEngine);
-        gitCheck.setManaged(!web && !html && !react && !gem && !rails && !appEngine);
+        boolean vue = generator == ProjectSpec.Generator.VUE;
+        if (vue) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshVueControls();
+        }
+        gitCheck.setVisible(!web && !html && !react && !vue && !gem && !rails && !appEngine);
+        gitCheck.setManaged(!web && !html && !react && !vue && !gem && !rails && !appEngine);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -6919,9 +7183,20 @@ public class NewProjectDialog {
                 form.add(expressStylesheetEngineBox, 1, row++);
             }
             case VUE -> {
-                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
-                add(form, row++, "Vue CLI:", runtime("npx create-vue                                                3.23.0"));
-                form.add(selectedCheck("Use the default project setup"), 1, row++);
+                initVueControls();
+                refreshVueControls();
+
+                HBox nodeRow = wideRow(vueNodeInterpreterBox, vueNodeBrowseBtn);
+                nodeRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Node runtime:"), 0, row);
+                form.add(nodeRow, 1, row++);
+
+                HBox cliRow = wideRow(vueCliBox, vueCliBrowseBtn);
+                cliRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Vue CLI:"), 0, row);
+                form.add(cliRow, 1, row++);
+
+                form.add(vueDefaultSetupCheck, 1, row++);
             }
             case NUXT -> {
                 add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
@@ -8582,9 +8857,10 @@ public class NewProjectDialog {
         boolean isRuby = selected.generator() == ProjectSpec.Generator.RUBY;
         boolean isGem = selected.generator() == ProjectSpec.Generator.GEM;
         boolean isRails = selected.generator() == ProjectSpec.Generator.RUBY_ON_RAILS;
+        boolean isVue = selected.generator() == ProjectSpec.Generator.VUE;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
+            if (html || react || isVue || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -8846,7 +9122,10 @@ public class NewProjectDialog {
                 appEngineModuleNameField.getText().trim().isEmpty() ? name : appEngineModuleNameField.getText().trim(),
                 appEngineContentRootField.getText().trim().isEmpty() ? location : appEngineContentRootField.getText().trim(),
                 appEngineModuleFileLocationField.getText().trim().isEmpty() ? location : appEngineModuleFileLocationField.getText().trim(),
-                appEngineProjectFormatCombo.getValue() != null ? appEngineProjectFormatCombo.getValue() : AppEngineMetadata.DEFAULT_PROJECT_FORMAT);
+                appEngineProjectFormatCombo.getValue() != null ? appEngineProjectFormatCombo.getValue() : AppEngineMetadata.DEFAULT_PROJECT_FORMAT,
+                getSelectedVueNodeInterpreter(),
+                getSelectedVueCli(),
+                vueDefaultSetupCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
