@@ -76,6 +76,7 @@ public final class ProjectGenerator {
             case QUARKUS -> generateQuarkus(spec, dir, log);
             case MICRONAUT -> generateMicronaut(spec, dir, log);
             case KTOR -> generateKtor(spec, dir, log);
+            case PLAY -> generatePlay(spec, dir, log);
             case JAKARTA_EE -> generateJakarta(spec, dir, log);
             case SPRING_BOOT -> generateSpringBoot(spec, dir, log);
             case MAVEN_ARCHETYPE -> generateMavenArchetype(spec, dir, log);
@@ -3695,6 +3696,270 @@ public final class ProjectGenerator {
 
         Files.writeString(dir.resolve("README.md"),
                 "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    // ---------------------------------------------------------------- play
+
+    private static void generatePlay(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Play project (" + spec.language() + ") in " + dir + " …");
+
+        String sbtVer = spec.safeSbtVersion();
+        String scalaVer = spec.safeScalaVersion();
+        String playVer = spec.safePlayVersion();
+        boolean isScala = spec.language() == ProjectSpec.Language.SCALA;
+        boolean optionalBraces = spec.safeScalaOptionalBraces();
+        String appName = sanitizeArtifact(spec.name());
+        if (appName.isBlank()) appName = "untitled1";
+
+        log.accept("sbt: " + sbtVer);
+        log.accept("Scala: " + scalaVer);
+        log.accept("Play: " + playVer);
+
+        // 1. Directory layout
+        Path projectMetaDir = dir.resolve("project");
+        Path appControllers = dir.resolve("app/controllers");
+        Path appViews = dir.resolve("app/views");
+        Path confDir = dir.resolve("conf");
+        Path publicStyles = dir.resolve("public/stylesheets");
+        Path publicJs = dir.resolve("public/javascripts");
+        Path testControllers = dir.resolve("test/controllers");
+
+        Files.createDirectories(projectMetaDir);
+        Files.createDirectories(appControllers);
+        Files.createDirectories(appViews);
+        Files.createDirectories(confDir);
+        Files.createDirectories(publicStyles);
+        Files.createDirectories(publicJs);
+        Files.createDirectories(testControllers);
+
+        // 2. project/build.properties
+        Files.writeString(projectMetaDir.resolve("build.properties"),
+                "sbt.version=" + sbtVer + "\n");
+
+        // 3. project/plugins.sbt
+        String pluginGroup = playVer.startsWith("2.") ? "com.typesafe.play" : "org.playframework";
+        Files.writeString(projectMetaDir.resolve("plugins.sbt"),
+                "addSbtPlugin(\"" + pluginGroup + "\" % \"sbt-plugin\" % \"" + playVer + "\")\n");
+
+        // 4. build.sbt
+        StringBuilder sbt = new StringBuilder();
+        sbt.append("name := \"").append(appName).append("\"\n");
+        sbt.append("organization := \"com.example\"\n\n");
+        sbt.append("version := \"1.0-SNAPSHOT\"\n\n");
+        if (isScala) {
+            sbt.append("lazy val root = (project in file(\".\")).enablePlugins(PlayScala)\n\n");
+            sbt.append("scalaVersion := \"").append(scalaVer).append("\"\n\n");
+            sbt.append("libraryDependencies ++= Seq(\n");
+            sbt.append("  guice,\n");
+            sbt.append("  \"org.scalatestplus.play\" %% \"scalatestplus-play\" % \"7.0.1\" % Test\n");
+            sbt.append(")\n");
+        } else {
+            sbt.append("lazy val root = (project in file(\".\")).enablePlugins(PlayJava)\n\n");
+            sbt.append("scalaVersion := \"").append(scalaVer).append("\"\n\n");
+            sbt.append("libraryDependencies ++= Seq(\n");
+            sbt.append("  guice\n");
+            sbt.append(")\n");
+        }
+        Files.writeString(dir.resolve("build.sbt"), sbt.toString());
+
+        // 5. conf/application.conf
+        Files.writeString(confDir.resolve("application.conf"), """
+                # https://www.playframework.com/documentation/latest/Configuration
+                play.http.secret.key = "changeme"
+                play.filters.hosts {
+                  allowed = ["."]
+                }
+                """);
+
+        // 6. conf/routes
+        Files.writeString(confDir.resolve("routes"), """
+                # Routes
+                # This file defines all application routes (Higher priority routes first)
+                # ~~~~
+
+                # An example controller showing a sample home page
+                GET     /                           controllers.HomeController.index()
+
+                # Map static resources from the /public folder to the /assets URL path
+                GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
+                """);
+
+        // 7. Controllers
+        if (isScala) {
+            String controllerCode;
+            if (optionalBraces) {
+                controllerCode = """
+                        package controllers
+
+                        import javax.inject._
+                        import play.api._
+                        import play.api.mvc._
+
+                        /**
+                         * This controller creates an `Action` to handle HTTP requests to the
+                         * application's home page.
+                         */
+                        @Singleton
+                        class HomeController @Inject()(val controllerComponents: ControllerComponents) extends BaseController:
+
+                          /**
+                           * Create an Action to render an HTML page.
+                           */
+                          def index() = Action:
+                            implicit request: Request[AnyContent] =>
+                              Ok(views.html.index())
+                        """;
+            } else {
+                controllerCode = """
+                        package controllers
+
+                        import javax.inject._
+                        import play.api._
+                        import play.api.mvc._
+
+                        /**
+                         * This controller creates an `Action` to handle HTTP requests to the
+                         * application's home page.
+                         */
+                        @Singleton
+                        class HomeController @Inject()(val controllerComponents: ControllerComponents) extends BaseController {
+
+                          /**
+                           * Create an Action to render an HTML page.
+                           */
+                          def index() = Action { implicit request: Request[AnyContent] =>
+                            Ok(views.html.index())
+                          }
+                        }
+                        """;
+            }
+            Files.writeString(appControllers.resolve("HomeController.scala"), controllerCode);
+        } else {
+            String javaController = """
+                    package controllers;
+
+                    import play.mvc.*;
+
+                    /**
+                     * This controller creates an Action to handle HTTP requests to the
+                     * application's home page.
+                     */
+                    public class HomeController extends Controller {
+
+                        /**
+                         * An action that renders an HTML page with a welcome message.
+                         */
+                        public Result index() {
+                            return ok(views.html.index.render());
+                        }
+
+                    }
+                    """;
+            Files.writeString(appControllers.resolve("HomeController.java"), javaController);
+        }
+
+        // 8. Views
+        Files.writeString(appViews.resolve("main.scala.html"), """
+                @(title: String)(content: Html)
+
+                <!DOCTYPE html>
+                <html lang="en">
+                    <head>
+                        <title>@title</title>
+                        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/main.css")">
+                        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+                        <script src="@routes.Assets.versioned("javascripts/main.js")" type="text/javascript"></script>
+                    </head>
+                    <body>
+                        @content
+                    </body>
+                </html>
+                """);
+
+        Files.writeString(appViews.resolve("index.scala.html"), """
+                @()
+
+                @main("Welcome to Play") {
+                  <div style="font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 50px;">
+                    <h1>Welcome to Play!</h1>
+                    <p>Your Play application is up and running.</p>
+                  </div>
+                }
+                """);
+
+        // 9. Assets
+        Files.writeString(publicStyles.resolve("main.css"), """
+                /* Main stylesheet for Play Application */
+                body {
+                  margin: 0;
+                  padding: 0;
+                  background-color: #1a1a1a;
+                  color: #e0e0e0;
+                }
+                """);
+
+        Files.writeString(publicJs.resolve("main.js"), """
+                /* Main JavaScript for Play Application */
+                console.log("Welcome to Play Application!");
+                """);
+
+        // 10. .gitignore
+        Files.writeString(dir.resolve(".gitignore"), """
+                target/
+                /run/
+                logs/
+                project/project/
+                project/target/
+                .idea/
+                .idea_modules/
+                *.iml
+                """);
+
+        // 11. IntelliJ IDEA project structure (.idea/sbt.xml, .idea/modules.xml, .iml)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("sbt.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="ScalaSbtSettings">
+                    <option name="customVMPath" />
+                    <option name="sbtVersion" value="%s" />
+                  </component>
+                </project>
+                """.formatted(sbtVer));
+
+        Files.writeString(ideaDir.resolve("modules.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="ProjectModuleManager">
+                    <modules>
+                      <module fileurl="file://$PROJECT_DIR$/.idea/%s.iml" filepath="$PROJECT_DIR$/.idea/%s.iml" />
+                    </modules>
+                  </component>
+                </project>
+                """.formatted(appName, appName));
+
+        Files.writeString(ideaDir.resolve(appName + ".iml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <module type="JAVA_MODULE" version="4">
+                  <component name="NewModuleRootManager" inherit-compiler-output="true">
+                    <exclude-output />
+                    <content url="file://$MODULE_DIR$/..">
+                      <sourceFolder url="file://$MODULE_DIR$/../app" isTestSource="false" />
+                      <sourceFolder url="file://$MODULE_DIR$/../conf" type="java-resource" />
+                      <sourceFolder url="file://$MODULE_DIR$/../public" type="java-resource" />
+                      <sourceFolder url="file://$MODULE_DIR$/../test" isTestSource="true" />
+                      <excludeFolder url="file://$MODULE_DIR$/../target" />
+                    </content>
+                    <orderEntry type="inheritedJdk" />
+                    <orderEntry type="sourceFolder" forTests="false" />
+                  </component>
+                </module>
+                """);
+
+        Files.writeString(dir.resolve("README.md"),
+                "# " + spec.name() + "\n\nCreated with Lumina IDE Play Framework.\n");
     }
 
     private static void generatePython(ProjectSpec spec, Path dir, Consumer<String> log)
