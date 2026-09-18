@@ -26,6 +26,7 @@ import dev.lumina.project.ReactMetadata;
 import dev.lumina.project.ScalaMetadata;
 import dev.lumina.project.VueMetadata;
 import dev.lumina.project.ViteMetadata;
+import dev.lumina.project.SymfonyMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -405,6 +406,7 @@ public class NewProjectDialog {
             new GeneratorEntry("App Engine", ProjectSpec.Generator.APP_ENGINE, true),
             new GeneratorEntry("Vue.js", ProjectSpec.Generator.VUE, true),
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
+            new GeneratorEntry("Symfony", ProjectSpec.Generator.SYMFONY, true),
             new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
 
     private final Stage stage = new Stage();
@@ -951,6 +953,12 @@ public class NewProjectDialog {
     private boolean viteInitialized = false;
     private String lastValidViteNodeInterpreter = "";
     private String lastValidViteCli = "";
+
+    // ---- Symfony generator fields ----
+    private final ToggleGroup symfonyProjectTypeGroup = new ToggleGroup();
+    private final ComboBox<String> symfonyVersionBox = new ComboBox<>(
+            FXCollections.observableArrayList(SymfonyMetadata.FALLBACK_SKELETON_VERSIONS));
+    private boolean symfonyInitialized = false;
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -2094,9 +2102,10 @@ public class NewProjectDialog {
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
+        boolean symfony = generator == ProjectSpec.Generator.SYMFONY;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case HTML, REACT, EXPRESS, VUE, VITE, NUXT -> true;
+            case HTML, REACT, EXPRESS, VUE, VITE, SYMFONY, NUXT -> true;
             default -> false;
         };
 
@@ -6165,6 +6174,84 @@ public class NewProjectDialog {
         return val != null && !val.isBlank() ? val.trim() : ViteMetadata.DEFAULT_TEMPLATE;
     }
 
+    // ---------------------------------------------------------------- Symfony
+
+    private void initSymfonyControls() {
+        if (symfonyInitialized) return;
+        symfonyInitialized = true;
+
+        symfonyVersionBox.getStyleClass().add("choice-box");
+        symfonyVersionBox.setMaxWidth(Double.MAX_VALUE);
+        symfonyVersionBox.setPrefWidth(398);
+
+        symfonyProjectTypeGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.SYMFONY) {
+                updateSymfonyVersionList();
+            }
+        });
+    }
+
+    private void refreshSymfonyControls() {
+        initSymfonyControls();
+        if (symfonyProjectTypeGroup.getSelectedToggle() == null) {
+            for (Toggle t : symfonyProjectTypeGroup.getToggles()) {
+                if (t instanceof ToggleButton b && SymfonyMetadata.TYPE_WEB.equalsIgnoreCase(b.getText())) {
+                    b.setSelected(true);
+                    break;
+                }
+            }
+        }
+        updateSymfonyVersionList();
+
+        SymfonyMetadata.fetchSkeletonVersionsAsync(versions -> {
+            Platform.runLater(() -> {
+                if (selected != null && selected.generator() == ProjectSpec.Generator.SYMFONY) {
+                    String type = getSelectedSymfonyProjectType();
+                    if (!SymfonyMetadata.TYPE_DEMO.equalsIgnoreCase(type)) {
+                        updateSymfonyVersionList();
+                    }
+                }
+            });
+        });
+
+        SymfonyMetadata.fetchDemoVersionsAsync(versions -> {
+            Platform.runLater(() -> {
+                if (selected != null && selected.generator() == ProjectSpec.Generator.SYMFONY) {
+                    String type = getSelectedSymfonyProjectType();
+                    if (SymfonyMetadata.TYPE_DEMO.equalsIgnoreCase(type)) {
+                        updateSymfonyVersionList();
+                    }
+                }
+            });
+        });
+    }
+
+    private void updateSymfonyVersionList() {
+        String type = getSelectedSymfonyProjectType();
+        List<String> versions = SymfonyMetadata.getVersionsForType(type);
+        String currentSelection = symfonyVersionBox.getValue();
+
+        symfonyVersionBox.getItems().setAll(versions);
+        if (currentSelection != null && versions.contains(currentSelection)) {
+            symfonyVersionBox.getSelectionModel().select(currentSelection);
+        } else {
+            symfonyVersionBox.getSelectionModel().select(SymfonyMetadata.DEFAULT_VERSION);
+        }
+    }
+
+    private String getSelectedSymfonyProjectType() {
+        Toggle t = symfonyProjectTypeGroup.getSelectedToggle();
+        if (t instanceof ToggleButton b && b.getText() != null) {
+            return b.getText().trim();
+        }
+        return SymfonyMetadata.TYPE_WEB;
+    }
+
+    private String getSelectedSymfonyVersion() {
+        String val = symfonyVersionBox.getValue();
+        return val != null && !val.isBlank() ? val.trim() : SymfonyMetadata.DEFAULT_VERSION;
+    }
+
     // ---------------------------------------------------------------- Play Framework
 
     private void initPlayControls() {
@@ -7042,9 +7129,10 @@ public class NewProjectDialog {
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
+        boolean symfony = generator == ProjectSpec.Generator.SYMFONY;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
-            case HTML, REACT, EXPRESS, VUE, VITE, NUXT -> true;
+            case HTML, REACT, EXPRESS, VUE, VITE, SYMFONY, NUXT -> true;
             default -> false;
         };
         if (dependenciesRow != null) {
@@ -7165,6 +7253,13 @@ public class NewProjectDialog {
                 nameField.setText("untitled1");
             }
             refreshViteControls();
+        }
+        if (symfony) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshSymfonyControls();
         }
         gitCheck.setVisible(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
         gitCheck.setManaged(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
@@ -7462,6 +7557,23 @@ public class NewProjectDialog {
                 form.add(viteTemplateBox, 1, row++);
 
                 form.add(viteTypescriptCheck, 1, row++);
+            }
+            case SYMFONY -> {
+                initSymfonyControls();
+                refreshSymfonyControls();
+
+                HBox typeSegments = segmented(symfonyProjectTypeGroup, false,
+                        SymfonyMetadata.TYPE_WEB, SymfonyMetadata.TYPE_CONSOLE, SymfonyMetadata.TYPE_DEMO);
+                form.add(formLabel("Project Type:"), 0, row);
+                form.add(typeSegments, 1, row++);
+
+                form.add(formLabel("Version:"), 0, row);
+                form.add(symfonyVersionBox, 1, row++);
+
+                detachFromParent(gitCheck);
+                gitCheck.setVisible(true);
+                gitCheck.setManaged(true);
+                form.add(gitCheck, 1, row++);
             }
             case NUXT -> {
                 add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
@@ -9124,9 +9236,10 @@ public class NewProjectDialog {
         boolean isRails = selected.generator() == ProjectSpec.Generator.RUBY_ON_RAILS;
         boolean isVue = selected.generator() == ProjectSpec.Generator.VUE;
         boolean isVite = selected.generator() == ProjectSpec.Generator.VITE;
+        boolean isSymfony = selected.generator() == ProjectSpec.Generator.SYMFONY;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isVue || isVite || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
+            if (html || react || isVue || isVite || isSymfony || isPython || isPhp || isRuby || isGem || isRails || isAppEngine) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -9150,7 +9263,7 @@ public class NewProjectDialog {
         else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
-        else if (isPhp) language = ProjectSpec.Language.PHP;
+        else if (isPhp || isSymfony) language = ProjectSpec.Language.PHP;
         else if (isRuby || isGem || isRails) language = ProjectSpec.Language.RUBY;
         else if (rust) language = ProjectSpec.Language.RUST;
         else if (isAppEngine || selected.generator() == ProjectSpec.Generator.GO) language = ProjectSpec.Language.GO;
@@ -9160,7 +9273,7 @@ public class NewProjectDialog {
             build = ProjectSpec.BuildSystem.SBT;
         } else if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
-        } else if (isAppEngine || selected.generator() == ProjectSpec.Generator.GO) {
+        } else if (isAppEngine || selected.generator() == ProjectSpec.Generator.GO || isSymfony) {
             build = ProjectSpec.BuildSystem.INTELLIJ;
         } else if (isPython || isPhp || isRuby || isGem || isRails) {
             build = ProjectSpec.BuildSystem.MAVEN;
@@ -9395,7 +9508,9 @@ public class NewProjectDialog {
                 getSelectedViteNodeInterpreter(),
                 getSelectedViteCli(),
                 getSelectedViteTemplate(),
-                viteTypescriptCheck.isSelected());
+                viteTypescriptCheck.isSelected(),
+                getSelectedSymfonyProjectType(),
+                getSelectedSymfonyVersion());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
