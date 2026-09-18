@@ -59,6 +59,7 @@ public final class GeneratorIcons {
             case "Angular CLI" -> angularIcon();
             case "Vue.js" -> vueIcon();
             case "Vite" -> viteIcon();
+            case "Symfony" -> symfonyIcon();
             case "Nuxt" -> nuxtIcon();
             default -> defaultIcon();
         };
@@ -666,6 +667,18 @@ public final class GeneratorIcons {
         db.setStroke(baseBlue);
         db.setStrokeWidth(1.2);
         return box(db);
+    }
+
+    /** Symfony: official dark circular badge with white italic "sf" script. */
+    public static Node symfonyIcon() {
+        Circle bg = new Circle(7.5, 7.5, 7.5);
+        bg.setFill(Color.web("#1A171B"));
+
+        Text text = new Text("sf");
+        text.setFill(Color.WHITE);
+        text.setFont(Font.font("Segoe UI", FontWeight.BOLD, FontPosture.ITALIC, 9.5));
+
+        return box(bg, text);
     }
 
     /** Default fallback bullet. */

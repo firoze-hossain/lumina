@@ -121,7 +121,9 @@ public record ProjectSpec(
         String viteNodeInterpreter,
         String viteCliPackage,
         String viteTemplate,
-        boolean viteTypeScript
+        boolean viteTypeScript,
+        String symfonyProjectType,
+        String symfonyVersion
 ) {
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
@@ -210,7 +212,103 @@ public record ProjectSpec(
                 appEngineModuleName, appEngineContentRoot, appEngineModuleFileLocation,
                 appEngineProjectFormat,
                 vueNodeInterpreter, vueCliPackage, vueDefaultSetup,
-                "", ViteMetadata.RUNNER_CREATE_VITE, ViteMetadata.DEFAULT_TEMPLATE, false);
+                "", ViteMetadata.RUNNER_CREATE_VITE, ViteMetadata.DEFAULT_TEMPLATE, false,
+                SymfonyMetadata.TYPE_WEB, SymfonyMetadata.DEFAULT_VERSION);
+    }
+
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins, String htmlProjectType,
+            String htmlVersion, String reactProjectType, String reactNodeInterpreter,
+            String reactCliVersion, boolean reactTypeScript,
+            String expressNodeInterpreter, String expressCliVersion,
+            String expressViewEngine, String expressStylesheetEngine,
+            GradleDsl gradleDsl, String gradleDistribution, String gradleVersion,
+            String gradleHome, boolean generateMultiModule, String groovyVersion,
+            String sbtVersion, String scalaVersion, boolean scalaDownloadSbtSources,
+            boolean scalaDownloadScalaSources, boolean scalaOptionalBraces,
+            String scalaPackagePrefix, String scalaModuleName,
+            PythonInterpreterType pythonInterpreterType,
+            String pythonPath, String pythonVersion, String uvPath,
+            String condaPath, boolean customEnvGenerateNew, String customEnvType,
+            String customEnvLocation, boolean customEnvInheritGlobal,
+            boolean customEnvMakeAvailable, boolean phpAddComposerJson,
+            String rubyInterpreterPath, boolean rubyAddSampleCode,
+            String goRoot, boolean goVendoring, String goEnvironment,
+            String angularNodeInterpreter, String angularCliVersion,
+            String angularAdditionalParameters, boolean angularStandalone,
+            boolean angularDefaults, String playVersion,
+            String gemTestingFramework, boolean gemCodeOfConduct, boolean gemMitLicense,
+            boolean gemBinaryExecutable, boolean gemCExtension,
+            String railsVersion, String railsType, String railsDatabase,
+            boolean railsJsFrameworkEnabled, String railsJsFramework,
+            String railsExtraOptions,
+            String appEngineGoRoot,
+            boolean appEngineIndexEntireGopath,
+            boolean appEnginePythonSupport,
+            String appEnginePythonSdk,
+            boolean appEngineSqlSupport,
+            String appEngineSqlDialect,
+            String appEngineModuleName,
+            String appEngineContentRoot,
+            String appEngineModuleFileLocation,
+            String appEngineProjectFormat,
+            String vueNodeInterpreter,
+            String vueCliPackage,
+            boolean vueDefaultSetup,
+            String viteNodeInterpreter,
+            String viteCliPackage,
+            String viteTemplate,
+            boolean viteTypeScript
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                htmlProjectType, htmlVersion, reactProjectType, reactNodeInterpreter,
+                reactCliVersion, reactTypeScript,
+                expressNodeInterpreter, expressCliVersion,
+                expressViewEngine, expressStylesheetEngine,
+                gradleDsl, gradleDistribution, gradleVersion, gradleHome, generateMultiModule,
+                groovyVersion, sbtVersion, scalaVersion, scalaDownloadSbtSources,
+                scalaDownloadScalaSources, scalaOptionalBraces, scalaPackagePrefix,
+                scalaModuleName, pythonInterpreterType, pythonPath, pythonVersion, uvPath,
+                condaPath, customEnvGenerateNew, customEnvType, customEnvLocation,
+                customEnvInheritGlobal, customEnvMakeAvailable, phpAddComposerJson,
+                rubyInterpreterPath, rubyAddSampleCode, goRoot, goVendoring, goEnvironment,
+                angularNodeInterpreter, angularCliVersion, angularAdditionalParameters,
+                angularStandalone, angularDefaults, playVersion,
+                gemTestingFramework, gemCodeOfConduct, gemMitLicense,
+                gemBinaryExecutable, gemCExtension,
+                railsVersion, railsType, railsDatabase, railsJsFrameworkEnabled,
+                railsJsFramework, railsExtraOptions,
+                appEngineGoRoot, appEngineIndexEntireGopath, appEnginePythonSupport,
+                appEnginePythonSdk, appEngineSqlSupport, appEngineSqlDialect,
+                appEngineModuleName, appEngineContentRoot, appEngineModuleFileLocation,
+                appEngineProjectFormat,
+                vueNodeInterpreter, vueCliPackage, vueDefaultSetup,
+                viteNodeInterpreter, viteCliPackage, viteTemplate, viteTypeScript,
+                SymfonyMetadata.TYPE_WEB, SymfonyMetadata.DEFAULT_VERSION);
     }
 
     public static ProjectSpec forVite(
@@ -254,9 +352,55 @@ public record ProjectSpec(
                 nodeInterpreter,
                 cliPackage,
                 template,
-                typeScript
+                typeScript,
+                SymfonyMetadata.TYPE_WEB,
+                SymfonyMetadata.DEFAULT_VERSION
         );
     }
+
+    public static ProjectSpec forSymfony(
+            String name,
+            Path location,
+            boolean initGit,
+            String projectType,
+            String version
+    ) {
+        return new ProjectSpec(
+                Generator.SYMFONY,
+                name,
+                location,
+                initGit,
+                BuildSystem.INTELLIJ,
+                Language.PHP,
+                Packaging.JAR,
+                ConfigFormat.PROPERTIES,
+                "com.example",
+                name,
+                "com.example." + name,
+                "25",
+                "", "", "", "", "", "1.0-SNAPSHOT", "",
+                "", "", "", "", "", "", "", "", false,
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", false, "", "", "", "", "", "",
+                "", "", "", false, "", "", "", "",
+                GradleDsl.GROOVY, "Wrapper", "9.2.0", "", false,
+                "5.1.1", "2.0.9", "3.9.0", false, false, false,
+                "", name, PythonInterpreterType.PROJECT_VENV,
+                "", "", "", "", false, "Virtualenv", "", false,
+                false, false, "", false, "", false, "", "", "",
+                "", false, false, "", "", false, false, false,
+                false, "", "", "", false, "", "", "", false,
+                false, "", false, "", name,
+                location.resolve(name).toString(),
+                location.resolve(name).toString(),
+                "Directory (.idea)",
+                "", "", false,
+                "", ViteMetadata.RUNNER_CREATE_VITE, ViteMetadata.DEFAULT_TEMPLATE, false,
+                projectType,
+                version
+        );
+    }
+
 
 
     public ProjectSpec(
@@ -1387,7 +1531,7 @@ public record ProjectSpec(
     public enum Generator {
         JAVA, KOTLIN, GROOVY, SCALA, PYTHON, PHP, RUBY, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
         JAVAFX, QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, PLAY, HTML, REACT, EXPRESS,
-        ANGULAR_CLI, GEM, RUBY_ON_RAILS, APP_ENGINE, VUE, VITE, NUXT, RUST, GO
+        ANGULAR_CLI, GEM, RUBY_ON_RAILS, APP_ENGINE, VUE, VITE, SYMFONY, NUXT, RUST, GO
     }
 
     public enum BuildSystem { INTELLIJ, MAVEN, GRADLE, SBT, SCALA_CLI }
@@ -1627,6 +1771,14 @@ public record ProjectSpec(
 
     public boolean safeViteTypeScript() {
         return viteTypeScript;
+    }
+
+    public String safeSymfonyProjectType() {
+        return symfonyProjectType != null && !symfonyProjectType.isBlank() ? symfonyProjectType.trim() : SymfonyMetadata.TYPE_WEB;
+    }
+
+    public String safeSymfonyVersion() {
+        return symfonyVersion != null && !symfonyVersion.isBlank() ? symfonyVersion.trim() : SymfonyMetadata.DEFAULT_VERSION;
     }
 
     public Path projectDir() {
