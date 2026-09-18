@@ -35,6 +35,8 @@ public final class GeneratorIcons {
             case "PHP" -> phpIcon();
             case "Ruby", "Gem" -> rubyIcon();
             case "Ruby on Rails", "Rails" -> railsIcon();
+            case "App Engine", "Google App Engine" -> appEngineIcon();
+            case "SQL Support", "SQL" -> sqlIcon();
             case "Conda" -> condaIcon();
             case "Pipenv" -> pipenvIcon();
             case "Poetry" -> poetryIcon();
@@ -646,6 +648,24 @@ public final class GeneratorIcons {
 
         Group g = new Group(bg, rails, ties);
         return box(g);
+    }
+
+    /** App Engine: official Go gopher emblem matching IntelliJ IDEA. */
+    public static Node appEngineIcon() {
+        return goIcon();
+    }
+
+    /** SQL Support: database cylinder / disk icon matching IntelliJ IDEA. */
+    public static Node sqlIcon() {
+        Color baseBlue = Color.web("#3574F0");
+        SVGPath db = new SVGPath();
+        db.setContent("M 2,4 C 2,2.5 4.5,1.5 8,1.5 C 11.5,1.5 14,2.5 14,4 L 14,11 C 14,12.5 11.5,13.5 8,13.5 C 4.5,13.5 2,12.5 2,11 Z "
+                + "M 14,7.5 C 14,9 11.5,10 8,10 C 4.5,10 2,9 2,7.5 "
+                + "M 2,4 C 2,5.5 4.5,6.5 8,6.5 C 11.5,6.5 14,5.5 14,4");
+        db.setFill(Color.TRANSPARENT);
+        db.setStroke(baseBlue);
+        db.setStrokeWidth(1.2);
+        return box(db);
     }
 
     /** Default fallback bullet. */
