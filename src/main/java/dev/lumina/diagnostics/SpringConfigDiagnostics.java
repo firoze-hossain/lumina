@@ -58,20 +58,66 @@ public final class SpringConfigDiagnostics {
     public static List<Diag> analyze(String text, boolean yaml,
                                      List<SpringConfigMetadata.Property> known,
                                      String classpath) {
+        return analyze(text, yaml, known, classpath, null);
+    }
+
+    public static List<Diag> analyze(String text, boolean yaml,
+                                     List<SpringConfigMetadata.Property> known,
+                                     String classpath,
+                                     String moduleName) {
         try {
             if (text == null || text.length() > MAX_LENGTH) return List.of();
             List<Entry> entries = yaml ? parseYaml(text) : parseProperties(text);
             List<Diag> out = new ArrayList<>();
             Names names = Names.from(known == null ? List.of() : known);
 
+            Map<String, SpringConfigMetadata.Property> propMap = new HashMap<>();
+            if (known != null) {
+                for (SpringConfigMetadata.Property p : known) {
+                    propMap.put(normalize(p.name()), p);
+                }
+            }
+
+            Map<String, Entry> seenLeaves = new HashMap<>();
+
             for (Entry e : entries) {
                 String norm = normalize(e.path());
-                if (!names.knows(norm)) {
-                    out.add(new Diag(Severity.WARNING, e.line(), e.keyStart(), e.keyEnd(),
-                            "Cannot resolve configuration property '" + e.path() + "'"));
+                if (e.leaf()) {
+                    if (seenLeaves.containsKey(norm)) {
+                        SpringConfigMetadata.Property prop = findProperty(norm, propMap);
+                        String propType = prop != null ? simpleTypeName(prop.type()) : "String";
+                        String desc = prop != null ? prop.description() : null;
+                        String origin = (prop != null && prop.sourceJar() != null)
+                                ? "Maven: " + prop.sourceJar()
+                                : "Maven: org.springframework.boot:spring-boot-4.1.1.jar";
+                        out.add(new Diag(
+                                Severity.ERROR,
+                                e.line(),
+                                e.keyStart(),
+                                e.keyEnd(),
+                                "Duplicate property key",
+                                "remove-property-line:" + e.line(),
+                                "Duplicate property key",
+                                propType,
+                                desc,
+                                e.path(),
+                                origin
+                        ));
+                    } else {
+                        seenLeaves.put(norm, e);
+                    }
                 }
+
+                boolean hasDriverIssue = false;
                 if (e.leaf() && norm.equals("spring.datasource.url")) {
-                    checkDriver(e, classpath, out);
+                    hasDriverIssue = checkDriver(e, classpath, moduleName, out);
+                }
+                if (!hasDriverIssue && !names.knows(norm)) {
+                    out.add(new Diag(Severity.WARNING, e.line(), e.keyStart(), e.keyEnd(),
+                            "Cannot resolve configuration property '" + e.path() + "'",
+                            null,
+                            "Cannot resolve configuration property '" + e.path() + "'",
+                            null, null, e.path(), null));
                 }
             }
             return out;
@@ -80,18 +126,37 @@ public final class SpringConfigDiagnostics {
         }
     }
 
-    private static void checkDriver(Entry e, String classpath, List<Diag> out) {
+    private static SpringConfigMetadata.Property findProperty(
+            String norm,
+            Map<String, SpringConfigMetadata.Property> propMap) {
+        SpringConfigMetadata.Property p = propMap.get(norm);
+        if (p != null) return p;
+        return SpringConfigMetadata.getBuiltinProperty(norm);
+    }
+
+    private static String simpleTypeName(String type) {
+        if (type == null || type.isBlank()) return "String";
+        if (type.startsWith("java.lang.")) return type.substring("java.lang.".length());
+        int dot = type.lastIndexOf('.');
+        return dot >= 0 ? type.substring(dot + 1) : type;
+    }
+
+    private static boolean checkDriver(Entry e, String classpath, String moduleName, List<Diag> out) {
         Matcher m = JDBC_URL.matcher(e.value());
-        if (!m.find()) return;
+        if (!m.find()) return false;
         String[] info = JDBC_VENDORS.get(m.group(1).toLowerCase());
-        if (info == null) return;
+        if (info == null) return false;
         String driverClass = info[0];
         String jarNeedle = info[1];
         String starterId = info[2];
-        if (classpathHasJar(classpath, jarNeedle)) return;
-        out.add(new Diag(Severity.WARNING, e.line(), e.valueStart(), e.valueEnd(),
-                "Driver class '" + driverClass + "' not found in dependencies",
-                starterId != null ? "add-dependency:" + starterId : null));
+        if (classpathHasJar(classpath, jarNeedle)) return false;
+        String title = "Driver class " + driverClass + " not found in dependencies";
+        String quickFix = starterId != null ? "add-dependency:" + starterId : null;
+        String context = e.path() + "=\"" + e.value() + "\"";
+        String origin = (moduleName != null && !moduleName.isBlank()) ? moduleName : "module";
+        out.add(new Diag(Severity.ERROR, e.line(), e.keyStart(), e.valueEnd(),
+                title, quickFix, title, null, null, context, origin));
+        return true;
     }
 
     private static boolean classpathHasJar(String classpath, String needle) {

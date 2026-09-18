@@ -55,6 +55,10 @@ public class EditorTab extends Tab {
         setText(name);
 
         codeArea.getStyleClass().add("code-area");
+        diagPopup.setAutoFix(true);
+        diagPopup.setAutoHide(true);
+        diagPopup.setHideOnEscape(false);
+        setOnClosed(e -> hideDiagPopup());
         refreshGutter();
 
         // Ctrl/Cmd + hover -> hand cursor, hinting go-to-declaration.
@@ -64,18 +68,41 @@ public class EditorTab extends Tab {
             boolean nav = e.isControlDown() || e.isMetaDown();
             codeArea.setCursor(nav ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.TEXT);
             if (nav) {
+                clearNavUnderline();
+                hideDiagPopup();
                 var hit = codeArea.hit(e.getX(), e.getY());
                 underlineWordAt(hit.getInsertionIndex());
             } else {
                 clearNavUnderline();
                 var hit = codeArea.hit(e.getX(), e.getY());
-                updateDiagTooltip(diagAt(hit.getInsertionIndex()));
+                dev.lumina.diagnostics.JavaDiagnostics.Diag hitDiag =
+                        diagAt(hit.getInsertionIndex());
+                if (hitDiag != null) {
+                    if (currentPopupDiag != hitDiag) {
+                        currentPopupDiag = hitDiag;
+                        diagHoverTimer.setOnFinished(ev -> showDiagPopup(hitDiag));
+                        diagHoverTimer.playFromStart();
+                    }
+                } else {
+                    diagHoverTimer.stop();
+                    if (!isMouseOverDiagPopup) {
+                        hideDiagPopup();
+                    }
+                }
             }
         });
         codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_EXITED,
                 e -> {
                     clearNavUnderline();
-                    updateDiagTooltip(null);
+                    diagHoverTimer.stop();
+                    javafx.animation.PauseTransition exitGrace =
+                            new javafx.animation.PauseTransition(javafx.util.Duration.millis(120));
+                    exitGrace.setOnFinished(ev -> {
+                        if (!isMouseOverDiagPopup) {
+                            hideDiagPopup();
+                        }
+                    });
+                    exitGrace.play();
                 });
         // Dropping the modifier key removes the underline.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, e -> {
@@ -120,6 +147,13 @@ public class EditorTab extends Tab {
                     default -> { }
                 }
             }
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                if (diagPopup.isShowing()) {
+                    hideDiagPopup();
+                    e.consume();
+                    return;
+                }
+            }
             if (e.getCode() == javafx.scene.input.KeyCode.SPACE && e.isControlDown()) {
                 e.consume();
                 triggerCompletion();
@@ -129,7 +163,11 @@ public class EditorTab extends Tab {
                 e.consume();
                 dev.lumina.diagnostics.JavaDiagnostics.Diag diag =
                         diagAt(codeArea.getCaretPosition());
+                if (diag == null) {
+                    diag = diagAtLine(codeArea.getCurrentParagraph() + 1);
+                }
                 if (diag != null && diag.quickFix() != null) {
+                    hideDiagPopup();
                     runQuickFix(diag.quickFix());
                 }
                 return;
@@ -172,10 +210,15 @@ public class EditorTab extends Tab {
                 }
             }
         });
-        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED,
-                e -> completionPopup.hide());
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
+            completionPopup.hide();
+            hideDiagPopup();
+        });
         codeArea.focusedProperty().addListener((obs, was, focused) -> {
-            if (!focused) completionPopup.hide();
+            if (!focused) {
+                completionPopup.hide();
+                if (!isMouseOverDiagPopup) hideDiagPopup();
+            }
         });
 
         // Ctrl/Cmd+Click on an identifier -> go to its declaration.
@@ -201,8 +244,14 @@ public class EditorTab extends Tab {
         javafx.scene.layout.StackPane.setMargin(mavenSyncBanner,
                 new javafx.geometry.Insets(10, 18, 0, 0));
         // Recompute inline author positions on scroll / resize / edits.
-        codeArea.estimatedScrollYProperty().addListener((o, a, b) -> refreshInlineHints());
-        codeArea.estimatedScrollXProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.estimatedScrollYProperty().addListener((o, a, b) -> {
+            refreshInlineHints();
+            hideDiagPopup();
+        });
+        codeArea.estimatedScrollXProperty().addListener((o, a, b) -> {
+            refreshInlineHints();
+            hideDiagPopup();
+        });
         codeArea.widthProperty().addListener((o, a, b) -> refreshInlineHints());
         codeArea.heightProperty().addListener((o, a, b) -> refreshInlineHints());
         codeArea.multiPlainChanges()
@@ -285,17 +334,32 @@ public class EditorTab extends Tab {
         java.util.function.IntFunction<javafx.scene.Node> lineNo =
                 LineNumberFactory.get(codeArea);
         codeArea.setParagraphGraphicFactory(i -> {
-            // breakpoint dot (click to toggle) — IntelliJ's red circle
+            final int line = i + 1;
+            dev.lumina.diagnostics.JavaDiagnostics.Diag diagOnLine = diagAtLine(line);
+            javafx.scene.control.Label bulb = null;
+            if (diagOnLine != null && diagOnLine.quickFix() != null && !breakpoints.contains(line)) {
+                boolean isErr = diagOnLine.severity()
+                        == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR;
+                bulb = new javafx.scene.control.Label("\uD83D\uDCA1");
+                bulb.getStyleClass().add(isErr ? "gutter-fix-error" : "gutter-fix-warning");
+                bulb.setCursor(javafx.scene.Cursor.HAND);
+                final dev.lumina.diagnostics.JavaDiagnostics.Diag d = diagOnLine;
+                bulb.setOnMouseClicked(e -> {
+                    e.consume();
+                    showDiagPopupAtLine(line, d);
+                });
+            }
+
             javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4.5);
             dot.getStyleClass().add("breakpoint-dot");
-            dot.setVisible(breakpoints.contains(i + 1));
+            dot.setVisible(breakpoints.contains(line));
             javafx.scene.layout.StackPane dotBox =
-                    new javafx.scene.layout.StackPane(dot);
+                    bulb != null ? new javafx.scene.layout.StackPane(dot, bulb)
+                                 : new javafx.scene.layout.StackPane(dot);
             dotBox.setPrefWidth(14);
             dotBox.setMinWidth(14);
             dotBox.getStyleClass().add("breakpoint-box");
             dotBox.setCursor(javafx.scene.Cursor.DEFAULT);
-            final int line = i + 1;
             dotBox.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
 
             javafx.scene.Node num = lineNo.apply(i);
@@ -754,36 +818,70 @@ public class EditorTab extends Tab {
     private java.util.function.Consumer<java.util.List<
             dev.lumina.diagnostics.JavaDiagnostics.Diag>> diagnosticsListener;
     private volatile int editGeneration;
-    private javafx.scene.control.Tooltip diagTooltip;
-    private String diagTooltipKey;
+    private final javafx.stage.Popup diagPopup = new javafx.stage.Popup();
+    private dev.lumina.diagnostics.JavaDiagnostics.Diag currentPopupDiag;
+    private final javafx.animation.PauseTransition diagHoverTimer =
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(250));
+    private boolean isMouseOverDiagPopup = false;
     private Runnable paramInfoTrigger;
     private java.util.function.Consumer<String> onQuickFix;
 
     /** Called with a diagnostic's {@code quickFix} id (e.g.
-     *  "add-dependency:mysql") when the user clicks the tooltip's fix link
-     *  or presses Alt+Enter on a squiggle that has one. */
+     *  "add-dependency:mysql" or "remove-property-line:3") when the user clicks
+     *  the action link or presses Alt+Shift+Enter / Alt+Enter on a squiggle. */
     public void setOnQuickFix(java.util.function.Consumer<String> handler) {
         this.onQuickFix = handler;
     }
 
     private void runQuickFix(String id) {
-        if (onQuickFix != null) onQuickFix.accept(id);
-        updateDiagTooltip(null);
+        if (id == null) return;
+        if (id.startsWith("remove-property-line:")) {
+            try {
+                int lineNum = Integer.parseInt(id.substring("remove-property-line:".length()));
+                int lineIdx = lineNum - 1;
+                if (lineIdx >= 0 && lineIdx < codeArea.getParagraphs().size()) {
+                    int start = codeArea.getAbsolutePosition(lineIdx, 0);
+                    int end;
+                    if (lineIdx + 1 < codeArea.getParagraphs().size()) {
+                        end = codeArea.getAbsolutePosition(lineIdx + 1, 0);
+                    } else {
+                        end = codeArea.getLength();
+                        if (lineIdx > 0) {
+                            start = codeArea.getAbsolutePosition(lineIdx - 1,
+                                    codeArea.getParagraph(lineIdx - 1).length());
+                        }
+                    }
+                    codeArea.replaceText(start, end, "");
+                    applyHighlighting();
+                    scheduleDiagnostics();
+                }
+            } catch (Exception ignored) {
+            }
+        } else if (onQuickFix != null) {
+            onQuickFix.accept(id);
+        }
+        hideDiagPopup();
     }
 
-    private static String quickFixLabel(String id) {
+    private static String quickFixActionLabel(String id) {
+        if (id == null) return "Apply fix";
+        if (id.startsWith("remove-property-line:")) {
+            return "Remove property";
+        }
         if (id.startsWith("add-dependency:")) {
             String dep = id.substring("add-dependency:".length());
-            String pretty = switch (dep) {
+            String pretty = switch (dep.toLowerCase()) {
                 case "mysql" -> "MySQL";
                 case "postgresql" -> "PostgreSQL";
                 case "mariadb" -> "MariaDB";
                 case "h2" -> "H2";
+                case "oracle" -> "Oracle";
+                case "sqlserver" -> "Microsoft SQL Server";
                 default -> dep;
             };
-            return "Add dependency on " + pretty + "  \u2014 Alt+Enter";
+            return "Add dependency on " + pretty;
         }
-        return "Fix\u2026  Alt+Enter";
+        return "Apply fix";
     }
 
     /**
@@ -846,6 +944,7 @@ public class EditorTab extends Tab {
             java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> diags) {
         this.diagnostics = diags == null ? java.util.List.of() : diags;
         applyHighlighting();
+        refreshGutter();
         if (diagnosticsListener != null) {
             diagnosticsListener.accept(this.diagnostics);
         }
@@ -856,8 +955,9 @@ public class EditorTab extends Tab {
         java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> sorted =
                 diagnostics.stream()
                         .filter(d -> d.start() < length)
-                        .sorted(java.util.Comparator.comparingInt(
-                                dev.lumina.diagnostics.JavaDiagnostics.Diag::start))
+                        .sorted(java.util.Comparator
+                                .comparingInt(dev.lumina.diagnostics.JavaDiagnostics.Diag::start)
+                                .thenComparingInt(d -> d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR ? 0 : 1))
                         .toList();
         var builder = new org.fxmisc.richtext.model.StyleSpansBuilder<
                 java.util.Collection<String>>();
@@ -881,69 +981,271 @@ public class EditorTab extends Tab {
     }
 
     private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAt(int offset) {
+        dev.lumina.diagnostics.JavaDiagnostics.Diag best = null;
         for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
-            if (offset >= d.start() && offset <= d.end()) return d;
+            if (offset >= d.start() && offset <= d.end()) {
+                if (best == null) {
+                    best = d;
+                } else if (best.severity() != dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR
+                        && d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR) {
+                    best = d;
+                } else if (best.quickFix() == null && d.quickFix() != null) {
+                    best = d;
+                }
+            }
         }
-        return null;
+        return best;
+    }
+
+    private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAtLine(int line1Based) {
+        dev.lumina.diagnostics.JavaDiagnostics.Diag best = null;
+        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
+            if (d.line() == line1Based) {
+                if (best == null) {
+                    best = d;
+                } else if (best.severity() != dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR
+                        && d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR) {
+                    best = d;
+                } else if (best.quickFix() == null && d.quickFix() != null) {
+                    best = d;
+                }
+            }
+        }
+        return best;
+    }
+
+    private void showDiagPopupAtLine(int line, dev.lumina.diagnostics.JavaDiagnostics.Diag diag) {
+        if (diag == null) return;
+        currentPopupDiag = diag;
+        showDiagPopup(diag);
+    }
+
+    private void showDiagPopup(dev.lumina.diagnostics.JavaDiagnostics.Diag diag) {
+        if (diag == null || codeArea.getScene() == null || codeArea.getScene().getWindow() == null) {
+            return;
+        }
+        javafx.scene.layout.VBox card = buildDiagCard(diag);
+        diagPopup.getContent().setAll(card);
+
+        int start = Math.min(Math.max(0, diag.start()), codeArea.getLength());
+        int end = Math.min(Math.max(start + 1, diag.end()), codeArea.getLength());
+        java.util.Optional<javafx.geometry.Bounds> b = codeArea.getCharacterBoundsOnScreen(start, end);
+        double x, y;
+        if (b.isPresent()) {
+            x = b.get().getMinX();
+            y = b.get().getMaxY() + 4;
+        } else {
+            int lineIdx = Math.max(0, diag.line() - 1);
+            if (lineIdx < codeArea.getParagraphs().size()) {
+                int lineStart = codeArea.getAbsolutePosition(lineIdx, 0);
+                var lb = codeArea.getCharacterBoundsOnScreen(lineStart, lineStart + 1);
+                if (lb.isPresent()) {
+                    x = lb.get().getMinX() + 20;
+                    y = lb.get().getMaxY() + 4;
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        if (!diagPopup.isShowing()) {
+            diagPopup.show(codeArea.getScene().getWindow(), x, y);
+        } else {
+            diagPopup.setX(x);
+            diagPopup.setY(y);
+        }
+    }
+
+    private void hideDiagPopup() {
+        diagHoverTimer.stop();
+        if (diagPopup.isShowing()) {
+            diagPopup.hide();
+        }
+        currentPopupDiag = null;
+        isMouseOverDiagPopup = false;
     }
 
     /**
-     * IntelliJ-style diagnostic popup: a severity dot ahead of the message,
-     * a border colored red for errors / amber for warnings, and the same
-     * "More actions... Alt+Enter" hint IntelliJ shows under every inspection
-     * tooltip \u2014 instead of a single-color plain-text tooltip.
+     * Build IntelliJ IDEA 3-section inspection card:
+     * Header (title, quick-fix action link, Alt+Shift+Enter, More actions Alt+Enter),
+     * Body (property / context, type, description, [file]),
+     * Footer (archive/folder icon, origin jar/module, link, menu).
      */
-    private void updateDiagTooltip(
+    private javafx.scene.layout.VBox buildDiagCard(
             dev.lumina.diagnostics.JavaDiagnostics.Diag diag) {
-        if (diag == null) {
-            if (diagTooltip != null) {
-                javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
-                diagTooltip = null;
-                diagTooltipKey = null;
-            }
-            return;
-        }
-        boolean isError = diag.severity()
-                == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR;
-        String key = diag.severity() + "|" + diag.message();
-        if (diagTooltip != null && key.equals(diagTooltipKey)) {
-            return;
-        }
-        if (diagTooltip != null) {
-            javafx.scene.control.Tooltip.uninstall(codeArea, diagTooltip);
-        }
+        javafx.scene.layout.VBox card = new javafx.scene.layout.VBox();
+        card.getStyleClass().add("diag-card");
+        card.setPrefWidth(460);
+        card.setMaxWidth(520);
+        card.setEffect(new javafx.scene.effect.DropShadow(14, 0, 4,
+                javafx.scene.paint.Color.rgb(0, 0, 0, 0.45)));
 
-        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4);
-        dot.setFill(javafx.scene.paint.Color.web(isError ? "#E5534B" : "#D8A657"));
-        javafx.scene.control.Label message = new javafx.scene.control.Label(diag.message());
-        message.setWrapText(true);
-        message.setMaxWidth(480);
-        message.getStyleClass().add("diag-tooltip-message");
-        javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(6, dot, message);
-        row.setAlignment(javafx.geometry.Pos.TOP_LEFT);
-        javafx.scene.layout.HBox.setMargin(dot, new javafx.geometry.Insets(3, 0, 0, 0));
+        card.setOnMouseEntered(e -> isMouseOverDiagPopup = true);
+        card.setOnMouseExited(e -> {
+            isMouseOverDiagPopup = false;
+            hideDiagPopup();
+        });
 
-        javafx.scene.control.Label hint;
+        // 1. Header
+        javafx.scene.layout.VBox header = new javafx.scene.layout.VBox(6);
+        header.getStyleClass().add("diag-header");
+        header.setPadding(new javafx.geometry.Insets(10, 14, 8, 14));
+
+        javafx.scene.layout.HBox titleRow = new javafx.scene.layout.HBox(8);
+        titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        String titleStr = diag.title() != null && !diag.title().isBlank()
+                ? diag.title() : diag.message();
+        javafx.scene.control.Label titleLabel = new javafx.scene.control.Label(titleStr);
+        titleLabel.getStyleClass().add("diag-title");
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(Double.MAX_VALUE);
+        javafx.scene.layout.HBox.setHgrow(titleLabel, javafx.scene.layout.Priority.ALWAYS);
+
+        javafx.scene.control.Label titleMenu = new javafx.scene.control.Label("\u22EE");
+        titleMenu.getStyleClass().add("diag-menu-btn");
+        titleRow.getChildren().addAll(titleLabel, titleMenu);
+
+        javafx.scene.layout.HBox actionRow = new javafx.scene.layout.HBox(10);
+        actionRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
         if (diag.quickFix() != null) {
-            String fixId = diag.quickFix();
-            hint = new javafx.scene.control.Label(quickFixLabel(fixId));
-            hint.getStyleClass().add("diag-quickfix");
-            hint.setCursor(javafx.scene.Cursor.HAND);
-            hint.setOnMouseClicked(e -> runQuickFix(fixId));
+            String fixLabel = quickFixActionLabel(diag.quickFix());
+            javafx.scene.control.Label fixLink = new javafx.scene.control.Label(fixLabel);
+            fixLink.getStyleClass().add("diag-action-link");
+            fixLink.setCursor(javafx.scene.Cursor.HAND);
+            final String fixId = diag.quickFix();
+            fixLink.setOnMouseClicked(e -> {
+                e.consume();
+                hideDiagPopup();
+                runQuickFix(fixId);
+            });
+
+            javafx.scene.control.Label shortcut = new javafx.scene.control.Label("Alt+Shift+Enter");
+            shortcut.getStyleClass().add("diag-shortcut-hint");
+
+            javafx.scene.layout.HBox fixBox = new javafx.scene.layout.HBox(6, fixLink, shortcut);
+            fixBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            fixBox.setMaxWidth(Double.MAX_VALUE);
+            javafx.scene.layout.HBox.setHgrow(fixBox, javafx.scene.layout.Priority.ALWAYS);
+            actionRow.getChildren().add(fixBox);
         } else {
-            hint = new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
-            hint.getStyleClass().add("diag-tooltip-hint");
+            javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+            spacer.setMaxWidth(Double.MAX_VALUE);
+            javafx.scene.layout.HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+            actionRow.getChildren().add(spacer);
         }
 
-        javafx.scene.layout.VBox box = new javafx.scene.layout.VBox(5, row, hint);
+        javafx.scene.control.Label moreActions = new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
+        moreActions.getStyleClass().add("diag-more-actions");
+        moreActions.setCursor(javafx.scene.Cursor.HAND);
+        if (diag.quickFix() != null) {
+            final String fixId = diag.quickFix();
+            moreActions.setOnMouseClicked(e -> {
+                e.consume();
+                hideDiagPopup();
+                runQuickFix(fixId);
+            });
+        }
+        actionRow.getChildren().add(moreActions);
 
-        diagTooltip = new javafx.scene.control.Tooltip();
-        diagTooltip.setGraphic(box);
-        diagTooltip.setShowDelay(javafx.util.Duration.millis(250));
-        diagTooltip.getStyleClass().setAll("diag-tooltip",
-                isError ? "diag-tooltip-error" : "diag-tooltip-warning");
-        javafx.scene.control.Tooltip.install(codeArea, diagTooltip);
-        diagTooltipKey = key;
+        header.getChildren().addAll(titleRow, actionRow);
+        card.getChildren().add(header);
+
+        // Divider 1
+        javafx.scene.layout.Region div1 = new javafx.scene.layout.Region();
+        div1.getStyleClass().add("diag-divider");
+        div1.setPrefHeight(1);
+        div1.setMinHeight(1);
+        div1.setMaxHeight(1);
+        card.getChildren().add(div1);
+
+        // 2. Body
+        javafx.scene.layout.VBox body = new javafx.scene.layout.VBox(4);
+        body.getStyleClass().add("diag-body");
+        body.setPadding(new javafx.geometry.Insets(10, 14, 10, 14));
+
+        boolean hasTypeOrDesc = (diag.propertyType() != null && !diag.propertyType().isBlank())
+                || (diag.description() != null && !diag.description().isBlank());
+
+        if (hasTypeOrDesc) {
+            String propName = diag.context() != null ? diag.context() : "Property";
+            javafx.scene.control.Label nameLabel = new javafx.scene.control.Label(propName);
+            nameLabel.getStyleClass().add("diag-prop-name");
+            body.getChildren().add(nameLabel);
+
+            if (diag.propertyType() != null && !diag.propertyType().isBlank()) {
+                javafx.scene.control.Label typeLabel = new javafx.scene.control.Label(diag.propertyType());
+                typeLabel.getStyleClass().add("diag-type-label");
+                body.getChildren().add(typeLabel);
+            }
+
+            if (diag.description() != null && !diag.description().isBlank()) {
+                javafx.scene.control.Label descLabel = new javafx.scene.control.Label(diag.description());
+                descLabel.getStyleClass().add("diag-desc-label");
+                descLabel.setWrapText(true);
+                descLabel.setMaxWidth(480);
+                javafx.scene.layout.VBox.setMargin(descLabel, new javafx.geometry.Insets(6, 0, 0, 0));
+                body.getChildren().add(descLabel);
+            }
+        } else if (diag.context() != null && !diag.context().isBlank()) {
+            javafx.scene.control.Label ctxLabel = new javafx.scene.control.Label(diag.context());
+            ctxLabel.getStyleClass().add("diag-context-label");
+            ctxLabel.setWrapText(true);
+            ctxLabel.setMaxWidth(480);
+
+            String fileName = path != null ? path.getFileName().toString() : "application.properties";
+            javafx.scene.control.Label fileLabel = new javafx.scene.control.Label("[" + fileName + "]");
+            fileLabel.getStyleClass().add("diag-file-context");
+
+            body.getChildren().addAll(ctxLabel, fileLabel);
+        } else {
+            javafx.scene.control.Label msgLabel = new javafx.scene.control.Label(diag.message());
+            msgLabel.getStyleClass().add("diag-desc-label");
+            msgLabel.setWrapText(true);
+            body.getChildren().add(msgLabel);
+        }
+        card.getChildren().add(body);
+
+        // 3. Footer (if origin is present)
+        String originText = diag.origin();
+        if (originText != null && !originText.isBlank()) {
+            javafx.scene.layout.Region div2 = new javafx.scene.layout.Region();
+            div2.getStyleClass().add("diag-divider");
+            div2.setPrefHeight(1);
+            div2.setMinHeight(1);
+            div2.setMaxHeight(1);
+            card.getChildren().add(div2);
+
+            javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(8);
+            footer.getStyleClass().add("diag-footer");
+            footer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            footer.setPadding(new javafx.geometry.Insets(8, 14, 8, 14));
+
+            boolean isJar = originText.startsWith("Maven:") || originText.contains(".jar");
+            javafx.scene.control.Label iconLabel = new javafx.scene.control.Label(
+                    isJar ? "\uD83D\uDCE6" : "\uD83D\uDCC1");
+            iconLabel.getStyleClass().add("diag-footer-icon");
+
+            javafx.scene.control.Label origLabel = new javafx.scene.control.Label(originText);
+            origLabel.getStyleClass().add("diag-footer-origin");
+            origLabel.setMaxWidth(Double.MAX_VALUE);
+            origLabel.setTextOverrun(javafx.scene.control.OverrunStyle.CENTER_ELLIPSIS);
+            javafx.scene.layout.HBox.setHgrow(origLabel, javafx.scene.layout.Priority.ALWAYS);
+
+            javafx.scene.control.Label linkBtn = new javafx.scene.control.Label("\uD83D\uDD17");
+            linkBtn.getStyleClass().add("diag-footer-link");
+            linkBtn.setCursor(javafx.scene.Cursor.HAND);
+
+            javafx.scene.control.Label footerMenu = new javafx.scene.control.Label("\u22EE");
+            footerMenu.getStyleClass().add("diag-menu-btn");
+
+            footer.getChildren().addAll(iconLabel, origLabel, linkBtn, footerMenu);
+            card.getChildren().add(footer);
+        }
+
+        return card;
     }
 
     // ------------------------------------------------------------ docs (M4)

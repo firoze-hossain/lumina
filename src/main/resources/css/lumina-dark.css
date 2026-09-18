@@ -1327,14 +1327,16 @@
    ============================================================ */
 
 .code-area .diag-error {
-    -rtfx-underline-color: #E5534B;
-    -rtfx-underline-width: 1.8;
-    -rtfx-underline-dash-array: 2.5 2.5;
+    -rtfx-underline-color: #FF5261;
+    -rtfx-underline-width: 1.2;
+    -rtfx-underline-wave-radius: 2.0;
+    -rtfx-underline-cap: round;
 }
 .code-area .diag-warning {
     -rtfx-underline-color: #D8A657;
-    -rtfx-underline-width: 1.6;
-    -rtfx-underline-dash-array: 2.5 2.5;
+    -rtfx-underline-width: 1.2;
+    -rtfx-underline-wave-radius: 2.0;
+    -rtfx-underline-cap: round;
 }
 .diag-tooltip {
     -fx-background-color: #1F2230;
@@ -1360,6 +1362,130 @@
     -fx-padding: 3 0 0 10;
 }
 .diag-quickfix:hover { -fx-text-fill: #82C4FF; }
+
+/* IntelliJ IDEA-style Inspection Diagnostic Popup Card */
+.diag-card {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 8;
+    -fx-border-color: #393B40;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+}
+
+.diag-header {
+    -fx-background-color: transparent;
+}
+
+.diag-title {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+}
+
+.diag-menu-btn {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-padding: 0 2 0 2;
+}
+.diag-menu-btn:hover {
+    -fx-text-fill: #DFE1E5;
+}
+
+.diag-action-link {
+    -fx-text-fill: #589DF6;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.diag-action-link:hover {
+    -fx-text-fill: #73AFF8;
+    -fx-underline: true;
+}
+
+.diag-shortcut-hint {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11px;
+}
+
+.diag-more-actions {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+.diag-more-actions:hover {
+    -fx-text-fill: #DFE1E5;
+}
+
+.diag-divider {
+    -fx-background-color: #393B40;
+}
+
+.diag-body {
+    -fx-background-color: transparent;
+}
+
+.diag-prop-name {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.diag-type-label {
+    -fx-text-fill: #589DF6;
+    -fx-font-size: 12px;
+}
+
+.diag-desc-label {
+    -fx-text-fill: #BCBEC4;
+    -fx-font-size: 12px;
+    -fx-line-spacing: 2px;
+}
+
+.diag-context-label {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+    -fx-font-weight: bold;
+}
+
+.diag-file-context {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11.5px;
+}
+
+.diag-footer {
+    -fx-background-color: transparent;
+}
+
+.diag-footer-icon {
+    -fx-font-size: 12px;
+}
+
+.diag-footer-origin {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11.5px;
+}
+
+.diag-footer-link {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11.5px;
+    -fx-cursor: hand;
+}
+.diag-footer-link:hover {
+    -fx-text-fill: #589DF6;
+}
+
+/* Gutter fix lightbulb indicators */
+.gutter-fix-error {
+    -fx-text-fill: #E5534B;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+.gutter-fix-warning {
+    -fx-text-fill: #E5A83B;
+    -fx-font-size: 11px;
+}
 
 .problems-panel { -fx-background-color: #14161F; }
 .problems-bar {

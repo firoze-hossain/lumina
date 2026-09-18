@@ -4173,7 +4173,8 @@ public class LuminaApp extends Application {
                 if (!isSpringConfigFile(file)) return List.of();
                 boolean yaml = fname.endsWith(".yml") || fname.endsWith(".yaml");
                 return dev.lumina.diagnostics.SpringConfigDiagnostics.analyze(
-                        text, yaml, springProperties, ensureClasspath());
+                        text, yaml, springProperties, ensureClasspath(),
+                        projectRoot != null ? projectRoot.getFileName().toString() : null);
             }
             String cp = ensureClasspath();
             String classes = projectRoot.resolve("target/classes").toString();
