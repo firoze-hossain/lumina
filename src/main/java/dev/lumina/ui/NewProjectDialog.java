@@ -397,6 +397,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Express", ProjectSpec.Generator.EXPRESS, true),
             new GeneratorEntry("Angular CLI", ProjectSpec.Generator.ANGULAR_CLI, true),
             new GeneratorEntry("Gem", ProjectSpec.Generator.GEM, true),
+            new GeneratorEntry("Ruby on Rails", ProjectSpec.Generator.RUBY_ON_RAILS, true),
             new GeneratorEntry("Vue.js", ProjectSpec.Generator.VUE, true),
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
             new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
@@ -690,6 +691,23 @@ public class NewProjectDialog {
     private final CheckBox gemBinaryExecutableCheck = new CheckBox("Binary executable");
     private final CheckBox gemCExtensionCheck = new CheckBox("C extension boilerplate");
     private boolean isGemOptionsExpanded = true;
+
+    // Ruby on Rails controls
+    private final Label railsInterpreterLabel = formLabel("Interpreter:");
+    private final Label railsVersionLabel = formLabel("Rails version:");
+    private final ComboBox<String> railsVersionCombo = new ComboBox<>();
+    private final Button railsAddVersionBtn = new Button();
+    private final Button railsInfoBtn = new Button();
+    private final StackPane railsVersionPane = new StackPane();
+    private final Label railsTypeLabel = formLabel("Type:");
+    private final ToggleGroup railsTypeGroup = new ToggleGroup();
+    private HBox railsTypeBox;
+    private final Label railsDatabaseLabel = formLabel("Database:");
+    private final ComboBox<String> railsDatabaseCombo = new ComboBox<>();
+    private final CheckBox railsJsCheck = new CheckBox("JavaScript framework:");
+    private final ComboBox<String> railsJsCombo = new ComboBox<>();
+    private final Label railsExtraOptionsLabel = formLabel("Extra options:");
+    private final TextField railsExtraOptionsField = new TextField();
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1978,6 +1996,7 @@ public class NewProjectDialog {
 
         setupRubyControls();
         setupGemControls();
+        setupRailsControls();
         rebuildFormGrid();
 
         ScrollPane scroll = new ScrollPane(formGrid);
@@ -2008,6 +2027,7 @@ public class NewProjectDialog {
         boolean php = generator == ProjectSpec.Generator.PHP;
         boolean ruby = generator == ProjectSpec.Generator.RUBY;
         boolean gem = generator == ProjectSpec.Generator.GEM;
+        boolean rails = generator == ProjectSpec.Generator.RUBY_ON_RAILS;
         boolean go = generator == ProjectSpec.Generator.GO;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
@@ -2084,7 +2104,7 @@ public class NewProjectDialog {
         locationHint.setVisible(true);
         locationHint.setManaged(true);
         locationSub.getChildren().add(locationHint);
-        boolean showGit = !web && !specific && !gem;
+        boolean showGit = !web && !specific && !gem && !rails;
         if (showGit) {
             gitCheck.setVisible(true);
             gitCheck.setManaged(true);
@@ -2127,6 +2147,24 @@ public class NewProjectDialog {
             formGrid.add(gemTestFrameworkBox, 1, row++);
             formGrid.add(gemOptionsToggle, 0, row++, 2, 1);
             formGrid.add(gemOptionsBox, 0, row++, 2, 1);
+            return;
+        }
+
+        if (rails) {
+            formCol0.setMinWidth(170);
+            formCol0.setPrefWidth(170);
+            formGrid.add(railsInterpreterLabel, 0, row);
+            formGrid.add(rubyInterpreterPane, 1, row++);
+            formGrid.add(railsVersionLabel, 0, row);
+            formGrid.add(railsVersionPane, 1, row++);
+            formGrid.add(railsTypeLabel, 0, row);
+            formGrid.add(railsTypeBox, 1, row++);
+            formGrid.add(railsDatabaseLabel, 0, row);
+            formGrid.add(railsDatabaseCombo, 1, row++);
+            formGrid.add(railsJsCheck, 0, row);
+            formGrid.add(railsJsCombo, 1, row++);
+            formGrid.add(railsExtraOptionsLabel, 0, row);
+            formGrid.add(railsExtraOptionsField, 1, row++);
             return;
         }
 
@@ -6413,6 +6451,7 @@ public class NewProjectDialog {
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
         boolean gem = generator == ProjectSpec.Generator.GEM;
+        boolean rails = generator == ProjectSpec.Generator.RUBY_ON_RAILS;
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
@@ -6500,10 +6539,17 @@ public class NewProjectDialog {
             }
             refreshGemControls();
         }
+        if (rails) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshRailsControls();
+        }
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
-        gitCheck.setVisible(!web && !html && !react && !gem);
-        gitCheck.setManaged(!web && !html && !react && !gem);
+        gitCheck.setVisible(!web && !html && !react && !gem && !rails);
+        gitCheck.setManaged(!web && !html && !react && !gem && !rails);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -7466,6 +7512,200 @@ public class NewProjectDialog {
         }
     }
 
+    private void setupRailsControls() {
+        railsVersionCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(railsVersionCombo, Priority.ALWAYS);
+
+        railsVersionCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    HBox box = new HBox(8);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    Node icon = dev.lumina.ui.GeneratorIcons.railsIcon();
+                    Label nameLabel = new Label(item);
+                    nameLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, nameLabel);
+                    setGraphic(box);
+                    setText(null);
+                }
+            }
+        });
+
+        railsVersionCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                HBox box = new HBox(8);
+                box.setAlignment(Pos.CENTER_LEFT);
+                box.setPadding(new Insets(0, 48, 0, 0));
+                Node icon = dev.lumina.ui.GeneratorIcons.railsIcon();
+                if (item == null || item.isBlank() || dev.lumina.project.RailsMetadata.NO_VERSION_LABEL.equals(item)) {
+                    Label label = new Label(dev.lumina.project.RailsMetadata.NO_VERSION_LABEL);
+                    label.setStyle("-fx-text-fill: #E06C75; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                } else {
+                    Label label = new Label(item);
+                    label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    box.getChildren().addAll(icon, label);
+                }
+                setGraphic(box);
+                setText(null);
+            }
+        });
+
+        railsAddVersionBtn.setGraphic(createPlusIcon());
+        railsAddVersionBtn.setText(null);
+        railsAddVersionBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 6 3 6; -fx-min-width: 22px; -fx-min-height: 22px;");
+        railsAddVersionBtn.setTooltip(new Tooltip("Install or specify Rails version"));
+        railsAddVersionBtn.setOnAction(e -> promptAddRailsVersion());
+        railsAddVersionBtn.setOnMouseEntered(e -> {
+            Node g = railsAddVersionBtn.getGraphic();
+            if (g instanceof SVGPath p) p.setStroke(Color.web("#DFE1E5"));
+        });
+        railsAddVersionBtn.setOnMouseExited(e -> {
+            Node g = railsAddVersionBtn.getGraphic();
+            if (g instanceof SVGPath p) p.setStroke(Color.web("#8C919D"));
+        });
+
+        railsInfoBtn.setGraphic(createRubyInfoIcon());
+        railsInfoBtn.setText(null);
+        railsInfoBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 3 3 3; -fx-min-width: 20px; -fx-min-height: 20px;");
+        railsInfoBtn.setTooltip(new Tooltip("Rails version is not specified"));
+        railsInfoBtn.setVisible(true);
+        railsInfoBtn.setManaged(true);
+
+        railsVersionCombo.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean noSel = (newV == null || newV.isBlank() || dev.lumina.project.RailsMetadata.NO_VERSION_LABEL.equals(newV));
+            railsInfoBtn.setVisible(noSel);
+            railsInfoBtn.setManaged(noSel);
+        });
+
+        Region divider = new Region();
+        divider.setPrefWidth(1);
+        divider.setMinWidth(1);
+        divider.setMaxWidth(1);
+        divider.setPrefHeight(14);
+        divider.setMaxHeight(14);
+        divider.setStyle("-fx-background-color: #393B40;");
+
+        Region arrowSpacer = new Region();
+        arrowSpacer.setPrefWidth(22);
+        arrowSpacer.setMinWidth(22);
+        arrowSpacer.setMaxWidth(22);
+        arrowSpacer.setMouseTransparent(true);
+
+        HBox rightControls = new HBox(4);
+        rightControls.setAlignment(Pos.CENTER_RIGHT);
+        rightControls.setPickOnBounds(false);
+        rightControls.getChildren().addAll(railsInfoBtn, railsAddVersionBtn, divider, arrowSpacer);
+
+        railsVersionPane.getChildren().setAll(railsVersionCombo, rightControls);
+        HBox.setHgrow(railsVersionPane, Priority.ALWAYS);
+        railsVersionPane.setMaxWidth(Double.MAX_VALUE);
+
+        // Type segmented toggle
+        railsTypeBox = segmented(railsTypeGroup, true, "Ruby on Rails", "Rails API", "Mountable Engine");
+        railsTypeGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            String type = getSelectedRailsType();
+            if ("Ruby on Rails".equalsIgnoreCase(type)) {
+                railsJsCheck.setDisable(false);
+                railsJsCheck.setSelected(true);
+                railsJsCombo.setDisable(false);
+            } else {
+                railsJsCheck.setSelected(false);
+                railsJsCheck.setDisable(true);
+                railsJsCombo.setDisable(true);
+            }
+        });
+
+        // Database
+        railsDatabaseCombo.getItems().setAll(dev.lumina.project.RailsMetadata.databaseDisplayNames());
+        railsDatabaseCombo.getSelectionModel().select(dev.lumina.project.RailsMetadata.DATABASE_OPTIONS.getFirst().displayName());
+        railsDatabaseCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(railsDatabaseCombo, Priority.ALWAYS);
+
+        // JS framework
+        railsJsCheck.setSelected(true);
+        railsJsCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        railsJsCombo.getItems().setAll(dev.lumina.project.RailsMetadata.JS_FRAMEWORKS);
+        railsJsCombo.getSelectionModel().select("Importmap");
+        railsJsCombo.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(railsJsCombo, Priority.ALWAYS);
+        railsJsCheck.setOnAction(e -> {
+            if (!railsJsCheck.isDisable()) {
+                railsJsCombo.setDisable(!railsJsCheck.isSelected());
+            }
+        });
+
+        // Extra options
+        railsExtraOptionsField.setPromptText("");
+        railsExtraOptionsField.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(railsExtraOptionsField, Priority.ALWAYS);
+    }
+
+    private void refreshRailsControls() {
+        refreshGemControls();
+        var selectedRuby = rubyInterpreterCombo.getValue();
+        String rubyExec = selectedRuby != null ? selectedRuby.executable() : null;
+        List<String> installed = dev.lumina.project.RailsMetadata.discoverInstalledRails(rubyExec);
+        if (!installed.isEmpty()) {
+            railsVersionCombo.getItems().setAll(installed);
+            if (railsVersionCombo.getValue() == null || !installed.contains(railsVersionCombo.getValue())) {
+                railsVersionCombo.getSelectionModel().selectFirst();
+            }
+            railsInfoBtn.setVisible(false);
+            railsInfoBtn.setManaged(false);
+        } else {
+            if (selectedRuby == null) {
+                railsVersionCombo.getItems().clear();
+                railsVersionCombo.setValue(null);
+                railsInfoBtn.setVisible(true);
+                railsInfoBtn.setManaged(true);
+            } else {
+                dev.lumina.project.RailsMetadata.fetchKnownRailsVersionsAsync().thenAccept(versions -> {
+                    Platform.runLater(() -> {
+                        if (railsVersionCombo.getItems().isEmpty()) {
+                            railsVersionCombo.getItems().setAll(versions);
+                            if (!versions.isEmpty() && railsVersionCombo.getValue() == null) {
+                                railsVersionCombo.getSelectionModel().selectFirst();
+                            }
+                        }
+                    });
+                });
+            }
+        }
+    }
+
+    private void promptAddRailsVersion() {
+        TextInputDialog dialog = new TextInputDialog("8.0.1");
+        dialog.initOwner(stage);
+        dialog.setTitle("Install or Specify Rails Version");
+        dialog.setHeaderText("Specify Rails Gem Version");
+        dialog.setContentText("Rails version:");
+        dialog.showAndWait().ifPresent(v -> {
+            String ver = v.trim();
+            if (!ver.isEmpty()) {
+                if (!railsVersionCombo.getItems().contains(ver)) {
+                    railsVersionCombo.getItems().add(0, ver);
+                }
+                railsVersionCombo.setValue(ver);
+            }
+        });
+    }
+
+    private String getSelectedRailsType() {
+        Toggle sel = railsTypeGroup.getSelectedToggle();
+        if (sel instanceof ToggleButton tb) {
+            return tb.getText();
+        }
+        return "Ruby on Rails";
+    }
+
     private void showPluginManager() {
         try {
             PluginManagerDialog pm = new PluginManagerDialog(
@@ -7819,9 +8059,10 @@ public class NewProjectDialog {
         boolean isPhp = selected.generator() == ProjectSpec.Generator.PHP;
         boolean isRuby = selected.generator() == ProjectSpec.Generator.RUBY;
         boolean isGem = selected.generator() == ProjectSpec.Generator.GEM;
+        boolean isRails = selected.generator() == ProjectSpec.Generator.RUBY_ON_RAILS;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython || isPhp || isRuby || isGem) {
+            if (html || react || isPython || isPhp || isRuby || isGem || isRails) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -7846,7 +8087,7 @@ public class NewProjectDialog {
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
         else if (isPhp) language = ProjectSpec.Language.PHP;
-        else if (isRuby || isGem) language = ProjectSpec.Language.RUBY;
+        else if (isRuby || isGem || isRails) language = ProjectSpec.Language.RUBY;
         else if (rust) language = ProjectSpec.Language.RUST;
 
         ProjectSpec.BuildSystem build;
@@ -7854,7 +8095,7 @@ public class NewProjectDialog {
             build = ProjectSpec.BuildSystem.SBT;
         } else if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
-        } else if (isPython || isPhp || isRuby) {
+        } else if (isPython || isPhp || isRuby || isGem || isRails) {
             build = ProjectSpec.BuildSystem.MAVEN;
         } else if (mavenArchetype || rust) {
             build = ProjectSpec.BuildSystem.MAVEN;
@@ -8062,7 +8303,13 @@ public class NewProjectDialog {
                 gemCodeOfConductCheck.isSelected(),
                 gemMitLicenseCheck.isSelected(),
                 gemBinaryExecutableCheck.isSelected(),
-                gemCExtensionCheck.isSelected());
+                gemCExtensionCheck.isSelected(),
+                railsVersionCombo.getValue() != null ? railsVersionCombo.getValue() : "",
+                getSelectedRailsType(),
+                railsDatabaseCombo.getValue() != null ? railsDatabaseCombo.getValue() : "SQLite3",
+                railsJsCheck.isSelected(),
+                railsJsCombo.getValue() != null ? railsJsCombo.getValue() : "Importmap",
+                railsExtraOptionsField.getText().trim());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
