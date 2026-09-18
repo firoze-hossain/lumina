@@ -117,7 +117,16 @@ public class NewProjectDialog {
     }
 
     /** One selectable Spring Initializr dependency. */
-    private record SpringDep(String id, String label, String description) {
+    private record SpringDep(String id, String label, String description, String versionRange) {
+        public SpringDep(String id, String label, String description) {
+            this(id, label, description, null);
+        }
+
+        public boolean isCompatibleWith(String bootVersion) {
+            if (versionRange == null || versionRange.isBlank()) return true;
+            if (bootVersion == null || bootVersion.isBlank()) return true;
+            return dev.lumina.project.SpringInitializrMetadata.isVersionCompatible(bootVersion.trim(), versionRange.trim());
+        }
     }
 
     /** A collapsible category in the dependency tree, e.g. "Web", "SQL". */
@@ -1158,11 +1167,23 @@ public class NewProjectDialog {
         formCol1.setHgrow(Priority.ALWAYS);
         formGrid.getColumnConstraints().setAll(formCol0, formCol1);
 
-        serverUrlLabel.getStyleClass().add("form-static");
+        serverUrlLabel.setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-font-size: 13px;");
+        serverUrlLabel.setOnMouseEntered(e -> serverUrlLabel.setUnderline(true));
+        serverUrlLabel.setOnMouseExited(e -> serverUrlLabel.setUnderline(false));
+        serverUrlLabel.setOnMouseClicked(e -> showServerSettings());
+        Tooltip.install(serverUrlLabel, new Tooltip("Edit Service URL"));
+
         serverSettingsButton.getStyleClass().add("console-button");
+        serverSettingsButton.setTooltip(new Tooltip("Configure Service URL"));
         serverSettingsButton.setOnAction(e -> showServerSettings());
         serverRow.getChildren().setAll(serverUrlLabel, serverSettingsButton);
         serverRow.setAlignment(Pos.CENTER_LEFT);
+
+        groupField.setMaxWidth(Double.MAX_VALUE);
+        artifactField.setMaxWidth(Double.MAX_VALUE);
+        packageField.setMaxWidth(Double.MAX_VALUE);
+        jdkCombo.setMaxWidth(Double.MAX_VALUE);
+        javaVersionBox.setMaxWidth(Double.MAX_VALUE);
 
         browseLocationButton.setGraphic(createBrowseFolderIcon());
         browseLocationButton.setText(null);
@@ -1228,6 +1249,15 @@ public class NewProjectDialog {
         langJava.setSelected(true);
         languageRow.getChildren().setAll(langJava, langKotlin, langGroovy);
         languageRow.getStyleClass().add("segmented");
+        languageGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+                if (langKotlin.isSelected() && typeGradleGroovy.isSelected()) {
+                    typeGradleKotlin.setSelected(true);
+                } else if (langGroovy.isSelected() && typeGradleKotlin.isSelected()) {
+                    typeGradleGroovy.setSelected(true);
+                }
+            }
+        });
 
         typeGroup.getToggles().addAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeGradleGroovy.setToggleGroup(typeGroup);
@@ -1242,7 +1272,7 @@ public class NewProjectDialog {
                 "Generate a Gradle project descriptor written in the Kotlin DSL."));
         javafx.scene.control.Tooltip.install(typeMaven, new javafx.scene.control.Tooltip(
                 "Generate a Maven archive."));
-        typeMaven.setSelected(true);
+        typeGradleGroovy.setSelected(true);
         typeRow.getChildren().setAll(typeGradleGroovy, typeGradleKotlin, typeMaven);
         typeRow.getStyleClass().add("segmented");
         typeLabel = formLabel("Type:");
@@ -1370,6 +1400,7 @@ public class NewProjectDialog {
             }
             selectedJdk = entry;
             syncGradleVersionWithJdk();
+            syncJavaVersionWithJdk();
         });
 
         groovySdkBox.getItems().setAll(GroovyMetadata.fetchVersions(false));
@@ -1914,6 +1945,7 @@ public class NewProjectDialog {
         });
         groupField.textProperty().addListener((obs, old, v) -> updateHints());
         artifactField.textProperty().addListener((obs, old, v) -> updateHints());
+        artifactField.setOnKeyTyped(e -> artifactEdited = true);
         mavenArtifactField.textProperty().addListener((obs, old, v) -> updateHints());
         packageField.setOnKeyTyped(e -> packageEdited = true);
         updateHints();
@@ -1991,7 +2023,7 @@ public class NewProjectDialog {
             } else if (quarkus) {
                 serverUrlLabel.setText(quarkusServerUrl.replaceFirst("^https?://", ""));
             } else {
-                serverUrlLabel.setText("start.spring.io");
+                serverUrlLabel.setText(dev.lumina.project.SpringInitializrMetadata.getServerUrl().replaceFirst("^https?://", ""));
             }
             serverLabel.setVisible(true);
             serverLabel.setManaged(true);
@@ -2171,15 +2203,40 @@ public class NewProjectDialog {
         if (spring) {
             formGrid.add(languageLabel, 0, row);
             formGrid.add(languageRow, 1, row++);
+
             typeLabel.setText("Type:");
             formGrid.add(typeLabel, 0, row);
             formGrid.add(typeRow, 1, row++);
+
+            detachFromParent(groupField, artifactField, packageField);
+            groupField.setVisible(true);
+            groupField.setManaged(true);
+            artifactField.setVisible(true);
+            artifactField.setManaged(true);
+            packageField.setVisible(true);
+            packageField.setManaged(true);
+
+            Node groupHelp = formLabelWithHelp("Group:", "The group ID uniquely identifies your project across all projects (e.g., org.example).");
+            formGrid.add(groupHelp, 0, row);
+            formGrid.add(groupField, 1, row++);
+
+            Node artifactHelp = formLabelWithHelp("Artifact:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
+            formGrid.add(artifactHelp, 0, row);
+            formGrid.add(artifactField, 1, row++);
+
+            Label packageLabel = formLabel("Package name:");
+            formGrid.add(packageLabel, 0, row);
+            formGrid.add(packageField, 1, row++);
+
             formGrid.add(jdkLabel, 0, row);
             formGrid.add(jdkCombo, 1, row++);
+
             formGrid.add(javaLabel, 0, row);
             formGrid.add(javaVersionBox, 1, row++);
+
             formGrid.add(packagingLabel, 0, row);
             formGrid.add(packagingRow, 1, row++);
+
             formGrid.add(configLabel, 0, row);
             formGrid.add(configRow, 1, row++);
             return;
@@ -2424,6 +2481,8 @@ public class NewProjectDialog {
     private BorderPane buildSpringDependencyPage() {
         springBootVersionBox.getSelectionModel().select(0);
         springBootVersionBox.setPrefWidth(160);
+        springBootVersionBox.valueProperty().addListener((obs, old, val) ->
+                rebuildDepTree(depSearchField.getText() == null ? "" : depSearchField.getText().trim()));
         HBox versionRow = new HBox(10, formLabel("Spring Boot:"), springBootVersionBox);
         versionRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -2498,9 +2557,9 @@ public class NewProjectDialog {
             applyMetadata(cachedMetadata);
             return;
         }
+        String host = dev.lumina.project.SpringInitializrMetadata.getServerUrl().replaceFirst("^https?://", "");
         if (metadataFetchFailed) {
-            catalogStatus.setText("Showing offline defaults \u2014 "
-                    + "couldn't reach start.spring.io.");
+            catalogStatus.setText("Showing offline defaults \u2014 couldn't reach " + host + ".");
             return;
         }
         if (metadataFetchStarted) {
@@ -2517,7 +2576,7 @@ public class NewProjectDialog {
                 metadataFetchFailed = true;
                 Platform.runLater(() -> catalogStatus.setText(
                         "Showing offline defaults \u2014 couldn't reach "
-                                + "start.spring.io (" + ex.getClass().getSimpleName()
+                                + host + " (" + ex.getClass().getSimpleName()
                                 + ")."));
             }
         }, "lumina-spring-initializr-metadata");
@@ -2529,14 +2588,71 @@ public class NewProjectDialog {
     private void applyMetadata(
             dev.lumina.project.SpringInitializrMetadata.Metadata metadata) {
         String previousVersion = springBootVersionBox.getValue();
-        springBootVersionBox.setItems(
-                FXCollections.observableArrayList(metadata.bootVersions()));
-        String toSelect = !metadata.defaultBootVersion().isBlank()
-                ? metadata.defaultBootVersion() : metadata.bootVersions().get(0);
-        springBootVersionBox.getSelectionModel().select(toSelect);
-        if (previousVersion != null
-                && metadata.bootVersions().contains(previousVersion)) {
-            springBootVersionBox.getSelectionModel().select(previousVersion);
+        if (metadata.bootVersions() != null && !metadata.bootVersions().isEmpty()) {
+            springBootVersionBox.setItems(
+                    FXCollections.observableArrayList(metadata.bootVersions()));
+            String toSelect = (metadata.defaultBootVersion() != null && !metadata.defaultBootVersion().isBlank())
+                    ? metadata.defaultBootVersion() : metadata.bootVersions().get(0);
+            springBootVersionBox.getSelectionModel().select(toSelect);
+            if (previousVersion != null
+                    && metadata.bootVersions().contains(previousVersion)) {
+                springBootVersionBox.getSelectionModel().select(previousVersion);
+            }
+        }
+
+        if (metadata.javaVersions() != null && !metadata.javaVersions().isEmpty()) {
+            String prevJava = javaVersionBox.getValue();
+            javaVersionBox.setItems(FXCollections.observableArrayList(metadata.javaVersions()));
+            if (metadata.javaVersions().contains("17")) {
+                javaVersionBox.getSelectionModel().select("17");
+            } else if (prevJava != null && metadata.javaVersions().contains(prevJava)) {
+                javaVersionBox.getSelectionModel().select(prevJava);
+            } else if (metadata.defaultJavaVersion() != null && metadata.javaVersions().contains(metadata.defaultJavaVersion())) {
+                javaVersionBox.getSelectionModel().select(metadata.defaultJavaVersion());
+            } else {
+                syncJavaVersionWithJdk();
+            }
+        }
+
+        if (metadata.defaultType() != null) {
+            if ("gradle-project".equalsIgnoreCase(metadata.defaultType())) {
+                typeGradleGroovy.setSelected(true);
+            } else if ("gradle-project-kotlin".equalsIgnoreCase(metadata.defaultType())) {
+                typeGradleKotlin.setSelected(true);
+            } else if ("maven-project".equalsIgnoreCase(metadata.defaultType())) {
+                typeMaven.setSelected(true);
+            }
+        }
+        if (metadata.defaultPackaging() != null) {
+            if ("war".equalsIgnoreCase(metadata.defaultPackaging())) {
+                packagingWar.setSelected(true);
+            } else {
+                packagingJar.setSelected(true);
+            }
+        }
+        if (metadata.defaultLanguage() != null) {
+            if ("kotlin".equalsIgnoreCase(metadata.defaultLanguage())) {
+                langKotlin.setSelected(true);
+            } else if ("groovy".equalsIgnoreCase(metadata.defaultLanguage())) {
+                langGroovy.setSelected(true);
+            } else {
+                langJava.setSelected(true);
+            }
+        }
+
+        if (!artifactEdited && metadata.defaultArtifactId() != null && !metadata.defaultArtifactId().isBlank()) {
+            artifactField.setText(metadata.defaultArtifactId());
+            if (nameField.getText().trim().isEmpty() || "untitled".equals(nameField.getText().trim()) || "demo".equals(nameField.getText().trim())) {
+                nameField.setText(metadata.defaultArtifactId());
+            }
+        }
+        if (metadata.defaultGroupId() != null && !metadata.defaultGroupId().isBlank()) {
+            if (groupField.getText().trim().isEmpty() || "com.example".equals(groupField.getText().trim())) {
+                groupField.setText(metadata.defaultGroupId());
+            }
+        }
+        if (!packageEdited && metadata.defaultPackageName() != null && !metadata.defaultPackageName().isBlank()) {
+            packageField.setText(metadata.defaultPackageName());
         }
 
         List<SpringDepCategory> live = new ArrayList<>();
@@ -2545,7 +2661,7 @@ public class NewProjectDialog {
             List<SpringDep> deps = new ArrayList<>();
             for (dev.lumina.project.SpringInitializrMetadata.Dependency dep
                     : category.dependencies()) {
-                deps.add(new SpringDep(dep.id(), dep.name(), dep.description()));
+                deps.add(new SpringDep(dep.id(), dep.name(), dep.description(), dep.versionRange()));
             }
             live.add(new SpringDepCategory(category.name(), deps));
         }
@@ -2564,18 +2680,34 @@ public class NewProjectDialog {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                    setDisable(false);
                     return;
                 }
                 if (item instanceof String categoryName) {
                     setText(categoryName);
                     setGraphic(null);
+                    setDisable(false);
                     getStyleClass().add("dep-category-cell");
                     return;
                 }
                 SpringDep dep = (SpringDep) item;
+                String currentBootVer = springBootVersionBox.getValue();
+                boolean compatible = dep.isCompatibleWith(currentBootVer);
+
                 CheckBox box = new CheckBox(dep.label());
                 box.getStyleClass().add("dep-checkbox");
                 box.setSelected(selectedDepIds.contains(dep.id()));
+
+                if (!compatible) {
+                    box.setDisable(true);
+                    box.setStyle("-fx-opacity: 0.45;");
+                    String tipText = "Requires Spring Boot version: " + (dep.versionRange() != null ? dep.versionRange() : "different version");
+                    Tooltip.install(box, new Tooltip(tipText));
+                } else {
+                    box.setDisable(false);
+                    box.setStyle("");
+                }
+
                 box.selectedProperty().addListener((obs, was, isNow) -> {
                     if (isNow) selectedDepIds.add(dep.id());
                     else selectedDepIds.remove(dep.id());
@@ -2614,7 +2746,11 @@ public class NewProjectDialog {
 
     private void showDepDescription(SpringDep dep) {
         depDescriptionTitle.setText(dep.label());
-        depDescriptionBody.setText(dep.description());
+        String body = dep.description() != null ? dep.description() : "";
+        if (dep.versionRange() != null && !dep.versionRange().isBlank()) {
+            body += "\n\nRequires Spring Boot: " + dep.versionRange();
+        }
+        depDescriptionBody.setText(body);
     }
 
     /** Keeps the legacy comma-separated field in sync so tryCreate() needs
@@ -2678,14 +2814,18 @@ public class NewProjectDialog {
         }
         errorLabel.setText("");
         onSpringDepsPage = true;
+        if (sidebar != null) {
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        }
         formScroll.setVisible(false);
         formScroll.setManaged(false);
         springDepsPage.setVisible(true);
         springDepsPage.setManaged(true);
         createButton.setText("Create");
         createButton.setOnAction(e -> tryCreate());
-        cancelButton.setVisible(false);
-        cancelButton.setManaged(false);
+        cancelButton.setVisible(true);
+        cancelButton.setManaged(true);
         previousButton.setVisible(true);
         previousButton.setManaged(true);
         previousButton.setOnAction(e -> backToSpringForm());
@@ -2696,6 +2836,10 @@ public class NewProjectDialog {
         onSpringDepsPage = false;
         springDepsPage.setVisible(false);
         springDepsPage.setManaged(false);
+        if (sidebar != null) {
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
         formScroll.setVisible(true);
         formScroll.setManaged(true);
         createButton.setText("Next");
@@ -5064,8 +5208,8 @@ public class NewProjectDialog {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox box = new HBox(10, helpButton, cancelButton, errorLabel, spacer,
-                previousButton, createButton);
+        HBox box = new HBox(10, helpButton, errorLabel, spacer,
+                previousButton, createButton, cancelButton);
         box.setAlignment(Pos.CENTER_RIGHT);
         box.setPadding(new Insets(12, 20, 14, 20));
         box.getStyleClass().add("dialog-footer");
@@ -5855,7 +5999,33 @@ public class NewProjectDialog {
         } else if (quarkus) {
             serverUrlLabel.setText(quarkusServerUrl.replaceFirst("^https?://", ""));
         } else if (spring) {
-            serverUrlLabel.setText("start.spring.io");
+            serverUrlLabel.setText(dev.lumina.project.SpringInitializrMetadata.getServerUrl().replaceFirst("^https?://", ""));
+            if (nameField.getText().trim().isEmpty() || "untitled".equals(nameField.getText().trim()) || nameField.getText().trim().matches("untitled\\d*")) {
+                nameField.setText("demo");
+            }
+            if (groupField.getText().trim().isEmpty() || "com.example".equals(groupField.getText().trim())) {
+                groupField.setText("org.example");
+            }
+            if (artifactField.getText().trim().isEmpty() || "untitled".equals(artifactField.getText().trim())) {
+                artifactField.setText("demo");
+            }
+            if (packageField.getText().trim().isEmpty() || "org.example.untitled".equals(packageField.getText().trim())) {
+                packageField.setText("com.example.demo");
+            }
+            if (languageGroup.getSelectedToggle() == null) {
+                langJava.setSelected(true);
+            }
+            if (typeGroup.getSelectedToggle() == null) {
+                typeGradleGroovy.setSelected(true);
+            }
+            if (packagingGroup.getSelectedToggle() == null) {
+                packagingJar.setSelected(true);
+            }
+            if (configGroup.getSelectedToggle() == null) {
+                configProperties.setSelected(true);
+            }
+            syncJavaVersionWithJdk();
+            ensureLiveCatalog();
         }
         langGroovy.setVisible(!quarkus);
         langGroovy.setManaged(!quarkus);
@@ -5960,7 +6130,15 @@ public class NewProjectDialog {
             gitCheck.setSelected(false);
         }
 
-        if (!mavenArchetype && !rust) javaVersionBox.getSelectionModel().select((spring || quarkus || jakarta) ? "21" : "25");
+        if (spring) {
+            if (javaVersionBox.getItems().contains("17")) {
+                javaVersionBox.getSelectionModel().select("17");
+            } else {
+                javaVersionBox.getSelectionModel().select("21");
+            }
+        } else if (!mavenArchetype && !rust) {
+            javaVersionBox.getSelectionModel().select((quarkus || jakarta) ? "21" : "25");
+        }
         errorLabel.setText(selected.enabled() ? ""
                 : selected.label() + " support arrives in a later phase.");
 
@@ -6200,9 +6378,16 @@ public class NewProjectDialog {
         javaAdvGrid.getChildren().clear();
         javaAdvGrid.getRowConstraints().clear();
 
-        if (selected != null && selected.generator() == ProjectSpec.Generator.SCALA) {
+        if (selected == null) return;
+        if (selected.generator() == ProjectSpec.Generator.SCALA) {
             javaAdvGrid.add(formLabel("Module name:"), 0, 0);
             javaAdvGrid.add(scalaModuleNameField, 1, 0);
+            return;
+        }
+        if (selected.generator() != ProjectSpec.Generator.JAVA
+                && selected.generator() != ProjectSpec.Generator.KOTLIN
+                && selected.generator() != ProjectSpec.Generator.GROOVY
+                && selected.generator() != ProjectSpec.Generator.JAVAFX) {
             return;
         }
 
@@ -6235,12 +6420,21 @@ public class NewProjectDialog {
         }
 
         // GroupId & ArtifactId
+        detachFromParent(groupField, artifactField, packageField);
         Node groupLabelWithHelp = formLabelWithHelp("GroupId:", "The group ID uniquely identifies your project across all projects (e.g., com.example).");
         Node artifactLabelWithHelp = formLabelWithHelp("ArtifactId:", "The artifact ID is the name of the jar or build artifact (e.g., demo).");
         javaAdvGrid.add(groupLabelWithHelp, 0, row);
         javaAdvGrid.add(groupField, 1, row++);
         javaAdvGrid.add(artifactLabelWithHelp, 0, row);
         javaAdvGrid.add(artifactField, 1, row++);
+    }
+
+    private void syncJavaVersionWithJdk() {
+        int jdkMajor = getSelectedJdkMajorVersion();
+        String majorStr = String.valueOf(jdkMajor);
+        if (javaVersionBox.getItems().contains(majorStr)) {
+            javaVersionBox.getSelectionModel().select(majorStr);
+        }
     }
 
     private void syncGradleVersionWithJdk() {
@@ -6772,9 +6966,15 @@ public class NewProjectDialog {
             }
         } catch (Exception ignored) {}
         if (!packageEdited) {
-            String pkg = (sanitize(groupField.getText()) + "." + sanitize(artifactField.getText()))
-                    .replaceAll("^\\.|\\.$", "");
-            packageField.setText(pkg);
+            if (selected != null && selected.generator() == ProjectSpec.Generator.SPRING_BOOT
+                    && "org.example".equals(groupField.getText().trim())
+                    && "demo".equals(artifactField.getText().trim())) {
+                packageField.setText("com.example.demo");
+            } else {
+                String pkg = (sanitize(groupField.getText()) + "." + sanitize(artifactField.getText()))
+                        .replaceAll("^\\.|\\.$", "");
+                packageField.setText(pkg);
+            }
         }
     }
 
@@ -7012,11 +7212,33 @@ public class NewProjectDialog {
             });
             return;
         }
+        if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+            TextInputDialog dialog = new TextInputDialog(dev.lumina.project.SpringInitializrMetadata.getServerUrl());
+            dialog.initOwner(stage);
+            dialog.setTitle("Spring Initializr Server URL");
+            dialog.setHeaderText("Specify custom start.spring.io server URL");
+            dialog.setContentText("Server URL:");
+            dialog.getDialogPane().getStylesheets().add(
+                    getClass().getResource("/css/lumina-dark.css").toExternalForm());
+            dialog.showAndWait().ifPresent(url -> {
+                if (!url.isBlank()) {
+                    dev.lumina.project.SpringInitializrMetadata.setServerUrl(url);
+                    String display = dev.lumina.project.SpringInitializrMetadata.getServerUrl().replaceFirst("^https?://", "");
+                    serverUrlLabel.setText(display);
+                    cachedMetadata = null;
+                    metadataFetchFailed = false;
+                    metadataFetchStarted = false;
+                    catalogStatus.setText("Loading metadata from " + display + "\u2026");
+                    ensureLiveCatalog();
+                }
+            });
+            return;
+        }
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.initOwner(stage);
-        alert.setTitle("Spring Initializr Server");
-        alert.setHeaderText("Spring Initializr server settings");
-        alert.setContentText("Server settings are not configurable yet.");
+        alert.setTitle("Server Settings");
+        alert.setHeaderText("Server settings");
+        alert.setContentText("Server settings are not configurable for " + selected.label() + ".");
         alert.getDialogPane().getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         alert.showAndWait();
@@ -7153,9 +7375,16 @@ public class NewProjectDialog {
             pkg = packageField.getText().trim();
         }
 
-        ProjectSpec.GradleDsl gradleDsl = isKotlinDslSelected()
-                ? ProjectSpec.GradleDsl.KOTLIN
-                : ProjectSpec.GradleDsl.GROOVY;
+        ProjectSpec.GradleDsl gradleDsl;
+        if (selected.generator() == ProjectSpec.Generator.SPRING_BOOT) {
+            gradleDsl = typeGradleKotlin.isSelected()
+                    ? ProjectSpec.GradleDsl.KOTLIN
+                    : ProjectSpec.GradleDsl.GROOVY;
+        } else {
+            gradleDsl = isKotlinDslSelected()
+                    ? ProjectSpec.GradleDsl.KOTLIN
+                    : ProjectSpec.GradleDsl.GROOVY;
+        }
         String gradleDist = gradleDistributionBox.getValue() != null
                 ? gradleDistributionBox.getValue() : "Wrapper";
         String gradleVer = gradleVersionBox.getValue() != null && !gradleVersionBox.getValue().isBlank()
@@ -7316,6 +7545,14 @@ public class NewProjectDialog {
         folder.setStroke(Color.web("#8C919D"));
         folder.setStrokeWidth(1.2);
         return folder;
+    }
+
+    private static void detachFromParent(Node... nodes) {
+        for (Node node : nodes) {
+            if (node != null && node.getParent() instanceof javafx.scene.layout.Pane parent) {
+                parent.getChildren().remove(node);
+            }
+        }
     }
 
     private Node formLabelWithHelp(String text, String helpText) {
