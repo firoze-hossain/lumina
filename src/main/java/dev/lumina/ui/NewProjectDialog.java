@@ -396,6 +396,7 @@ public class NewProjectDialog {
             new GeneratorEntry("React", ProjectSpec.Generator.REACT, true),
             new GeneratorEntry("Express", ProjectSpec.Generator.EXPRESS, true),
             new GeneratorEntry("Angular CLI", ProjectSpec.Generator.ANGULAR_CLI, true),
+            new GeneratorEntry("Gem", ProjectSpec.Generator.GEM, true),
             new GeneratorEntry("Vue.js", ProjectSpec.Generator.VUE, true),
             new GeneratorEntry("Vite", ProjectSpec.Generator.VITE, true),
             new GeneratorEntry("Nuxt", ProjectSpec.Generator.NUXT, true));
@@ -672,8 +673,23 @@ public class NewProjectDialog {
     private final Label rubyInterpreterLabel = formLabel("Ruby Interpreter:");
     private final ComboBox<dev.lumina.project.RubyMetadata.RubyInstallation> rubyInterpreterCombo = new ComboBox<>();
     private final Button rubyAddInterpreterBtn = new Button();
+    private final Button rubyInfoBtn = new Button();
     private final StackPane rubyInterpreterPane = new StackPane();
     private final CheckBox rubyAddSampleCodeCheck = new CheckBox("Add sample code");
+
+    // Gem controls
+    private final Label gemInterpreterLabel = formLabel("Interpreter:");
+    private final Label gemTestFrameworkLabel = formLabel("Testing framework:");
+    private final ToggleGroup gemTestGroup = new ToggleGroup();
+    private HBox gemTestFrameworkBox;
+    private final HBox gemOptionsToggle = new HBox(8);
+    private final Label gemOptionsArrow = new Label("\u2228  Generate: 2 options");
+    private final VBox gemOptionsBox = new VBox(8);
+    private final CheckBox gemCodeOfConductCheck = new CheckBox("Code of conduct");
+    private final CheckBox gemMitLicenseCheck = new CheckBox("MIT license");
+    private final CheckBox gemBinaryExecutableCheck = new CheckBox("Binary executable");
+    private final CheckBox gemCExtensionCheck = new CheckBox("C extension boilerplate");
+    private boolean isGemOptionsExpanded = true;
 
     private final Label jakartaTemplateLabel = formLabel("Template:");
     private final Label jakartaServerLabel = formLabel("Application server:");
@@ -1961,6 +1977,7 @@ public class NewProjectDialog {
         updateHints();
 
         setupRubyControls();
+        setupGemControls();
         rebuildFormGrid();
 
         ScrollPane scroll = new ScrollPane(formGrid);
@@ -1990,6 +2007,7 @@ public class NewProjectDialog {
         boolean python = generator == ProjectSpec.Generator.PYTHON;
         boolean php = generator == ProjectSpec.Generator.PHP;
         boolean ruby = generator == ProjectSpec.Generator.RUBY;
+        boolean gem = generator == ProjectSpec.Generator.GEM;
         boolean go = generator == ProjectSpec.Generator.GO;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
@@ -2066,7 +2084,7 @@ public class NewProjectDialog {
         locationHint.setVisible(true);
         locationHint.setManaged(true);
         locationSub.getChildren().add(locationHint);
-        boolean showGit = !web && !specific;
+        boolean showGit = !web && !specific && !gem;
         if (showGit) {
             gitCheck.setVisible(true);
             gitCheck.setManaged(true);
@@ -2099,6 +2117,16 @@ public class NewProjectDialog {
             formGrid.add(rubyInterpreterLabel, 0, row);
             formGrid.add(rubyInterpreterPane, 1, row++);
             formGrid.add(rubyAddSampleCodeCheck, 1, row++);
+            return;
+        }
+
+        if (gem) {
+            formGrid.add(gemInterpreterLabel, 0, row);
+            formGrid.add(rubyInterpreterPane, 1, row++);
+            formGrid.add(gemTestFrameworkLabel, 0, row);
+            formGrid.add(gemTestFrameworkBox, 1, row++);
+            formGrid.add(gemOptionsToggle, 0, row++, 2, 1);
+            formGrid.add(gemOptionsBox, 0, row++, 2, 1);
             return;
         }
 
@@ -6384,6 +6412,7 @@ public class NewProjectDialog {
         boolean scala = generator == ProjectSpec.Generator.SCALA;
         boolean empty = generator == ProjectSpec.Generator.EMPTY_PROJECT;
         boolean angular = generator == ProjectSpec.Generator.ANGULAR_CLI;
+        boolean gem = generator == ProjectSpec.Generator.GEM;
         boolean vite = generator == ProjectSpec.Generator.VITE;
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
@@ -6464,10 +6493,17 @@ public class NewProjectDialog {
             }
             refreshAngularControls();
         }
+        if (gem) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshGemControls();
+        }
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
-        gitCheck.setVisible(!web && !html && !react);
-        gitCheck.setManaged(!web && !html && !react);
+        gitCheck.setVisible(!web && !html && !react && !gem);
+        gitCheck.setManaged(!web && !html && !react && !gem);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -7291,6 +7327,19 @@ public class NewProjectDialog {
             if (g instanceof SVGPath p) p.setStroke(Color.web("#8C919D"));
         });
 
+        rubyInfoBtn.setGraphic(createRubyInfoIcon());
+        rubyInfoBtn.setText(null);
+        rubyInfoBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 3 3 3; -fx-min-width: 20px; -fx-min-height: 20px;");
+        rubyInfoBtn.setTooltip(new Tooltip("Project Ruby SDK is not specified"));
+        rubyInfoBtn.setVisible(rubies.isEmpty());
+        rubyInfoBtn.setManaged(rubies.isEmpty());
+
+        rubyInterpreterCombo.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean noSel = (newV == null);
+            rubyInfoBtn.setVisible(noSel);
+            rubyInfoBtn.setManaged(noSel);
+        });
+
         Region divider = new Region();
         divider.setPrefWidth(1);
         divider.setMinWidth(1);
@@ -7308,11 +7357,92 @@ public class NewProjectDialog {
         HBox rightControls = new HBox(4);
         rightControls.setAlignment(Pos.CENTER_RIGHT);
         rightControls.setPickOnBounds(false);
-        rightControls.getChildren().addAll(rubyAddInterpreterBtn, divider, arrowSpacer);
+        rightControls.getChildren().addAll(rubyInfoBtn, rubyAddInterpreterBtn, divider, arrowSpacer);
 
         rubyInterpreterPane.getChildren().setAll(rubyInterpreterCombo, rightControls);
         HBox.setHgrow(rubyInterpreterPane, Priority.ALWAYS);
         rubyInterpreterPane.setMaxWidth(Double.MAX_VALUE);
+    }
+
+    private static Node createRubyInfoIcon() {
+        SVGPath circle = new SVGPath();
+        circle.setContent("M 7,0 A 7,7 0 1,0 7,14 A 7,7 0 1,0 7,0 Z");
+        circle.setFill(Color.web("#3574F0"));
+
+        SVGPath i = new SVGPath();
+        i.setContent("M 6.3,3.8 A 0.9,0.9 0 1,1 7.7,3.8 A 0.9,0.9 0 1,1 6.3,3.8 Z M 6.3,5.8 L 7.7,5.8 L 7.7,10.2 L 6.3,10.2 Z");
+        i.setFill(Color.WHITE);
+
+        Group g = new Group(circle, i);
+        StackPane sp = new StackPane(g);
+        sp.setMinSize(16, 16);
+        sp.setPrefSize(16, 16);
+        sp.setMaxSize(16, 16);
+        sp.setAlignment(Pos.CENTER);
+        return sp;
+    }
+
+    private void setupGemControls() {
+        gemTestFrameworkBox = segmented(gemTestGroup, true, "Minitest", "RSpec");
+
+        gemCodeOfConductCheck.setSelected(true);
+        gemMitLicenseCheck.setSelected(true);
+        gemBinaryExecutableCheck.setSelected(false);
+        gemCExtensionCheck.setSelected(false);
+
+        gemCodeOfConductCheck.setOnAction(e -> updateGemOptionsCount());
+        gemMitLicenseCheck.setOnAction(e -> updateGemOptionsCount());
+        gemBinaryExecutableCheck.setOnAction(e -> updateGemOptionsCount());
+        gemCExtensionCheck.setOnAction(e -> updateGemOptionsCount());
+
+        gemOptionsArrow.setStyle("-fx-text-fill: #DFE1E5; -fx-cursor: hand; -fx-font-size: 13px;");
+        Region gemOptionsLine = new Region();
+        gemOptionsLine.setStyle("-fx-background-color: #393B40;");
+        gemOptionsLine.setPrefHeight(1);
+        gemOptionsLine.setMaxHeight(1);
+        HBox.setHgrow(gemOptionsLine, Priority.ALWAYS);
+
+        gemOptionsToggle.getChildren().setAll(gemOptionsArrow, gemOptionsLine);
+        gemOptionsToggle.setAlignment(Pos.CENTER_LEFT);
+        gemOptionsToggle.setPadding(new Insets(10, 0, 4, 0));
+        gemOptionsToggle.setStyle("-fx-cursor: hand;");
+
+        gemOptionsBox.setPadding(new Insets(4, 0, 4, 18));
+        gemOptionsBox.getChildren().setAll(
+                gemCodeOfConductCheck,
+                gemMitLicenseCheck,
+                gemBinaryExecutableCheck,
+                gemCExtensionCheck
+        );
+
+        gemOptionsToggle.setOnMouseClicked(e -> {
+            isGemOptionsExpanded = !isGemOptionsExpanded;
+            updateGemOptionsCount();
+            gemOptionsBox.setVisible(isGemOptionsExpanded);
+            gemOptionsBox.setManaged(isGemOptionsExpanded);
+        });
+
+        updateGemOptionsCount();
+    }
+
+    private void updateGemOptionsCount() {
+        int count = (gemCodeOfConductCheck.isSelected() ? 1 : 0)
+                + (gemMitLicenseCheck.isSelected() ? 1 : 0)
+                + (gemBinaryExecutableCheck.isSelected() ? 1 : 0)
+                + (gemCExtensionCheck.isSelected() ? 1 : 0);
+        String labelText = "Generate: " + count + (count == 1 ? " option" : " options");
+        gemOptionsArrow.setText((isGemOptionsExpanded ? "\u2228  " : "\u203A  ") + labelText);
+    }
+
+    private void refreshGemControls() {
+        List<dev.lumina.project.RubyMetadata.RubyInstallation> rubies = dev.lumina.project.RubyMetadata.fetchRubyInstallations(false);
+        rubyInterpreterCombo.getItems().setAll(rubies);
+        if (!rubies.isEmpty() && rubyInterpreterCombo.getValue() == null) {
+            rubyInterpreterCombo.getSelectionModel().selectFirst();
+        }
+        boolean noSel = (rubyInterpreterCombo.getValue() == null);
+        rubyInfoBtn.setVisible(noSel);
+        rubyInfoBtn.setManaged(noSel);
     }
 
     private void pickRubyInterpreter() {
@@ -7688,9 +7818,10 @@ public class NewProjectDialog {
         boolean isPython = selected.generator() == ProjectSpec.Generator.PYTHON;
         boolean isPhp = selected.generator() == ProjectSpec.Generator.PHP;
         boolean isRuby = selected.generator() == ProjectSpec.Generator.RUBY;
+        boolean isGem = selected.generator() == ProjectSpec.Generator.GEM;
         String artifact = (mavenArchetype ? mavenArtifactField : artifactField).getText().trim();
         if (artifact.isEmpty()) {
-            if (html || react || isPython || isPhp || isRuby) {
+            if (html || react || isPython || isPhp || isRuby || isGem) {
                 artifact = sanitize(name);
                 if (artifact.isEmpty()) artifact = "untitled1";
             } else {
@@ -7715,7 +7846,7 @@ public class NewProjectDialog {
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
         else if (isPhp) language = ProjectSpec.Language.PHP;
-        else if (isRuby) language = ProjectSpec.Language.RUBY;
+        else if (isRuby || isGem) language = ProjectSpec.Language.RUBY;
         else if (rust) language = ProjectSpec.Language.RUST;
 
         ProjectSpec.BuildSystem build;
@@ -7926,7 +8057,12 @@ public class NewProjectDialog {
                 webParametersField.getText().trim(),
                 angularStandaloneCheck.isSelected(),
                 angularDefaultsCheck.isSelected(),
-                playVersionBox.getValue() != null && !playVersionBox.getValue().isBlank() ? playVersionBox.getValue().trim() : PlayMetadata.DEFAULT_PLAY_VERSION);
+                playVersionBox.getValue() != null && !playVersionBox.getValue().isBlank() ? playVersionBox.getValue().trim() : PlayMetadata.DEFAULT_PLAY_VERSION,
+                getSelectedGemTestingFramework(),
+                gemCodeOfConductCheck.isSelected(),
+                gemMitLicenseCheck.isSelected(),
+                gemBinaryExecutableCheck.isSelected(),
+                gemCExtensionCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
@@ -7952,6 +8088,14 @@ public class NewProjectDialog {
 
         stage.close();
         onCreate.accept(spec);
+    }
+
+    private String getSelectedGemTestingFramework() {
+        Toggle t = gemTestGroup.getSelectedToggle();
+        if (t instanceof ToggleButton tb) {
+            return tb.getText().toLowerCase().trim();
+        }
+        return "minitest";
     }
 
     // -------------------------------------------------------------- helpers
