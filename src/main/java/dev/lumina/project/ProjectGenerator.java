@@ -4200,10 +4200,22 @@ public final class ProjectGenerator {
 
     private static void generateSpringBoot(ProjectSpec spec, Path dir, Consumer<String> log)
             throws IOException {
-        String type = spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN
-                ? "maven-project" : "gradle-project";
+        String type;
+        if (spec.buildSystem() == ProjectSpec.BuildSystem.MAVEN) {
+            type = "maven-project";
+        } else if (spec.gradleDsl() == ProjectSpec.GradleDsl.KOTLIN) {
+            type = "gradle-project-kotlin";
+        } else {
+            type = "gradle-project";
+        }
 
-        StringBuilder url = new StringBuilder("https://start.spring.io/starter.zip")
+        String baseServer = SpringInitializrMetadata.getServerUrl();
+        if (baseServer == null || baseServer.isBlank()) {
+            baseServer = "https://start.spring.io";
+        }
+        baseServer = baseServer.replaceAll("/+$", "");
+
+        StringBuilder url = new StringBuilder(baseServer).append("/starter.zip")
                 .append("?type=").append(type)
                 .append("&language=").append(enc(spec.language().name().toLowerCase()))
                 .append("&packaging=").append(enc(spec.packaging().name().toLowerCase()))
@@ -4222,7 +4234,8 @@ public final class ProjectGenerator {
             url.append("&bootVersion=").append(enc(bootVersion));
         }
 
-        log.accept("Requesting project from start.spring.io \u2026");
+        String host = baseServer.replaceFirst("^https?://", "");
+        log.accept("Requesting project from " + host + " \u2026");
 
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
@@ -4242,12 +4255,34 @@ public final class ProjectGenerator {
         }
         if (response.statusCode() != 200) {
             String body = new String(response.body(), StandardCharsets.UTF_8);
-            throw new IOException("start.spring.io returned HTTP " + response.statusCode()
+            throw new IOException(host + " returned HTTP " + response.statusCode()
                     + (body.isBlank() ? "" : "\n" + shorten(body)));
         }
 
         log.accept("Unpacking " + (response.body().length / 1024) + " KB \u2026");
         unzip(response.body(), dir);
+
+        // Configuration: YAML support
+        if (spec.configFormat() == ProjectSpec.ConfigFormat.YAML) {
+            Path props = dir.resolve("src/main/resources/application.properties");
+            if (Files.exists(props)) {
+                try {
+                    Path yml = dir.resolve("src/main/resources/application.yaml");
+                    Files.move(props, yml);
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // Generate IntelliJ IDEA metadata
+        try {
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("modules.xml"), MavenArchetypeMetadata.generateIdeaModulesXml(spec.name()));
+            Files.writeString(ideaDir.resolve("misc.xml"), MavenArchetypeMetadata.generateIdeaMiscXml(spec.javaVersion()));
+            if (spec.initGit()) {
+                Files.writeString(ideaDir.resolve("vcs.xml"), MavenArchetypeMetadata.generateIdeaVcsXml());
+            }
+        } catch (Exception ignored) {}
 
         // ZipInputStream drops Unix permissions: restore the wrappers' exec bit.
         for (String wrapper : new String[]{"mvnw", "gradlew"}) {
