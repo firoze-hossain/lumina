@@ -119,13 +119,34 @@ public class FileExplorer extends BorderPane {
         return NodeKind.DIRECTORY;
     }
 
-    /** A java/kotlin source root: .../src/main/java, .../src/test/java, etc. */
+    /** A java/kotlin/groovy source root: .../src/main/java, .../src/test/java, etc. */
     private static boolean isSourceRoot(Path p) {
         String s = p.toString().replace('\\', '/');
-        for (String lang : new String[]{"java", "kotlin"}) {
+        for (String lang : new String[]{"java", "kotlin", "groovy"}) {
             if (s.endsWith("/src/main/" + lang) || s.endsWith("/src/test/" + lang)) return true;
         }
         return false;
+    }
+
+    private static boolean isMainSourceRoot(Path p) {
+        String s = p.toString().replace('\\', '/');
+        for (String lang : new String[]{"java", "kotlin", "groovy"}) {
+            if (s.endsWith("/src/main/" + lang)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isTestSourceRoot(Path p) {
+        String s = p.toString().replace('\\', '/');
+        for (String lang : new String[]{"java", "kotlin", "groovy"}) {
+            if (s.endsWith("/src/test/" + lang)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isResourceRoot(Path p) {
+        String s = p.toString().replace('\\', '/');
+        return s.endsWith("/src/main/resources") || s.endsWith("/src/test/resources");
     }
 
     private javafx.scene.control.MenuItem disabledItem(String label) {
@@ -260,14 +281,14 @@ public class FileExplorer extends BorderPane {
         boolean packageNode = kind == NodeKind.PACKAGE;
 
         if (sourceRoot || packageNode) {
-            menu.getItems().add(action("Java Class", () -> run(onNewJavaClass, dir)));
+            menu.getItems().add(action("Java Class", kindCircle("C", "#3592C4", 7.5), () -> run(onNewJavaClass, dir)));
             if (sourceRoot) {
                 menu.getItems().add(action("Java Compact File",
                         () -> ph("Java Compact File")));
             }
-            menu.getItems().add(action("Kotlin Class/File", () -> ph("Kotlin Class/File")));
-            menu.getItems().add(action("File", () -> run(onNewFile, dir)));
-            menu.getItems().add(action("Package", () -> run(onNewPackage, dir)));
+            menu.getItems().add(action("Kotlin Class/File", kindCircle("K", "#8A65D6", 7.5), () -> ph("Kotlin Class/File")));
+            menu.getItems().add(action("File", letterBadge("\u25A2", "#BCBEC4", 8), () -> run(onNewFile, dir)));
+            menu.getItems().add(action("Package", packageShape("#5A8FC2"), () -> run(onNewPackage, dir)));
             menu.getItems().add(action("FXML File", () -> ph("FXML File")));
             menu.getItems().add(action("JavaFX Application", () -> ph("JavaFX Application")));
             menu.getItems().add(action("package-info.java", () -> ph("package-info.java")));
@@ -282,10 +303,10 @@ public class FileExplorer extends BorderPane {
         }
 
         menu.getItems().addAll(
-                action("Java Class", () -> run(onNewJavaClass, dir)),
-                action("Package", () -> run(onNewPackage, dir)),
-                action("Directory", () -> run(onNewDirectory, dir)),
-                action("File", () -> run(onNewFile, dir)),
+                action("Java Class", kindCircle("C", "#3592C4", 7.5), () -> run(onNewJavaClass, dir)),
+                action("Package", packageShape("#5A8FC2"), () -> run(onNewPackage, dir)),
+                action("Directory", folderShape("#DCB67A"), () -> run(onNewDirectory, dir)),
+                action("File", letterBadge("\u25A2", "#BCBEC4", 8), () -> run(onNewFile, dir)),
                 action("Scratch File", () -> ph("Scratch File")),
                 new javafx.scene.control.SeparatorMenuItem(),
                 action("Kotlin Script", () -> ph("Kotlin Script")),
@@ -315,7 +336,11 @@ public class FileExplorer extends BorderPane {
     }
 
     private javafx.scene.control.MenuItem action(String label, Runnable action) {
-        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
+        return action(label, null, action);
+    }
+
+    private javafx.scene.control.MenuItem action(String label, Node graphic, Runnable action) {
+        javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label, graphic);
         item.setOnAction(e -> action.run());
         return item;
     }
@@ -500,6 +525,14 @@ public class FileExplorer extends BorderPane {
     // ------------------------------------------------------------ tree cell
 
     private class PathCell extends TreeCell<Path> {
+        PathCell() {
+            setOnMousePressed(e -> {
+                if (e.isSecondaryButtonDown() && !isEmpty() && getTreeItem() != null) {
+                    getTreeView().getSelectionModel().select(getTreeItem());
+                }
+            });
+        }
+
         @Override
         protected void updateItem(Path item, boolean empty) {
             super.updateItem(item, empty);
@@ -530,7 +563,17 @@ public class FileExplorer extends BorderPane {
         private Node iconFor(Path p, LazyPathItem node) {
             String kind;
             if (Files.isDirectory(p)) {
-                kind = node != null && node.isPackage ? "package" : "folder";
+                if (node != null && node.isPackage) {
+                    kind = "package";
+                } else if (isMainSourceRoot(p)) {
+                    kind = "source-root";
+                } else if (isTestSourceRoot(p)) {
+                    kind = "test-source-root";
+                } else if (isResourceRoot(p)) {
+                    kind = "resource-root";
+                } else {
+                    kind = "folder";
+                }
             } else {
                 String n = p.getFileName().toString().toLowerCase();
                 if (n.endsWith(".java")) {
@@ -589,7 +632,10 @@ public class FileExplorer extends BorderPane {
     private static Node buildIcon(String kind) {
         return switch (kind) {
             case "folder" -> folderShape("#DCB67A");
-            case "package" -> folderShape("#5A8FC2");
+            case "source-root" -> sourceFolderShape("#4A88C7");
+            case "test-source-root" -> sourceFolderShape("#57965C");
+            case "resource-root" -> resourceFolderShape("#C29E5A");
+            case "package" -> packageShape("#5A8FC2");
             case "interface" -> kindCircle("I", "#22A783");
             case "enum" -> kindCircle("E", "#D9A03D");
             case "record" -> kindCircle("R", "#8A65D6");
@@ -602,6 +648,41 @@ public class FileExplorer extends BorderPane {
             case "file" -> letterBadge("\u2731", "#697089", 9);
             default -> kindCircle("C", "#3592C4");   // class
         };
+    }
+
+    private static Node packageShape(String colorHex) {
+        javafx.scene.shape.Rectangle box = new javafx.scene.shape.Rectangle(12, 10);
+        box.setArcWidth(2.5);
+        box.setArcHeight(2.5);
+        box.setFill(javafx.scene.paint.Color.web(colorHex));
+
+        javafx.scene.shape.Line seam = new javafx.scene.shape.Line(2, 4, 10, 4);
+        seam.setStroke(javafx.scene.paint.Color.web("#14161E"));
+        seam.setStrokeWidth(1.1);
+
+        javafx.scene.shape.Line tape = new javafx.scene.shape.Line(6, 4, 6, 9.5);
+        tape.setStroke(javafx.scene.paint.Color.web("#14161E"));
+        tape.setStrokeWidth(1.1);
+
+        return sized(new javafx.scene.layout.StackPane(box, seam, tape));
+    }
+
+    private static Node sourceFolderShape(String colorHex) {
+        Node folder = folderShape(colorHex);
+        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(2.0);
+        dot.setFill(javafx.scene.paint.Color.web("#DFE1E5"));
+        javafx.scene.layout.StackPane sp = new javafx.scene.layout.StackPane(folder, dot);
+        javafx.scene.layout.StackPane.setAlignment(dot, javafx.geometry.Pos.CENTER);
+        return sized(sp);
+    }
+
+    private static Node resourceFolderShape(String colorHex) {
+        Node folder = folderShape(colorHex);
+        javafx.scene.shape.Rectangle badge = new javafx.scene.shape.Rectangle(4, 4);
+        badge.setFill(javafx.scene.paint.Color.web("#E8B450"));
+        javafx.scene.layout.StackPane sp = new javafx.scene.layout.StackPane(folder, badge);
+        javafx.scene.layout.StackPane.setAlignment(badge, javafx.geometry.Pos.BOTTOM_RIGHT);
+        return sized(sp);
     }
 
     private static Node sized(javafx.scene.Node n) {
@@ -707,7 +788,9 @@ public class FileExplorer extends BorderPane {
 
         private static boolean underJavaRoot(Path p) {
             String s = p.toAbsolutePath().toString().replace('\\', '/');
-            return s.contains("/src/main/java/") || s.contains("/src/test/java/");
+            return s.contains("/src/main/java/") || s.contains("/src/test/java/")
+                    || s.contains("/src/main/kotlin/") || s.contains("/src/test/kotlin/")
+                    || s.contains("/src/main/groovy/") || s.contains("/src/test/groovy/");
         }
 
         private static List<Path> listSorted(Path dir) {
