@@ -33,7 +33,7 @@ public final class GeneratorIcons {
             case "Scala" -> scalaIcon();
             case "Python", "Virtualenv" -> pythonIcon();
             case "PHP" -> phpIcon();
-            case "Ruby" -> rubyIcon();
+            case "Ruby", "Gem" -> rubyIcon();
             case "Conda" -> condaIcon();
             case "Pipenv" -> pipenvIcon();
             case "Poetry" -> poetryIcon();

@@ -65,6 +65,7 @@ public final class ProjectGenerator {
             case PYTHON -> generatePython(spec, dir, log);
             case PHP -> generatePhp(spec, dir, log);
             case RUBY -> generateRuby(spec, dir, log);
+            case GEM -> generateGem(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
@@ -4197,6 +4198,107 @@ public final class ProjectGenerator {
         }
         Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
         log.accept("Configured Ruby SDK: " + sdkName);
+    }
+
+    private static void generateGem(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Ruby Gem project …");
+
+        Files.createDirectories(dir);
+
+        String gemName = spec.name();
+        String moduleName = GemMetadata.toRubyModuleName(gemName);
+        String flatModuleName = GemMetadata.toFlatModuleName(gemName);
+        String testFramework = spec.safeGemTestingFramework();
+        boolean hasCExtension = spec.safeGemCExtension();
+        boolean hasExecutable = spec.safeGemBinaryExecutable();
+
+        // 1. Core Gem structure: lib/ and lib/<name>/
+        Path libDir = dir.resolve("lib");
+        Path gemLibDir = libDir.resolve(gemName);
+        Files.createDirectories(gemLibDir);
+
+        Files.writeString(libDir.resolve(gemName + ".rb"), GemMetadata.generateLibFile(gemName, moduleName));
+        Files.writeString(gemLibDir.resolve("version.rb"), GemMetadata.generateVersionFile(moduleName));
+        log.accept("Created lib/" + gemName + ".rb and version.rb");
+
+        // 2. gemspec, Gemfile, Rakefile
+        Files.writeString(dir.resolve(gemName + ".gemspec"),
+                GemMetadata.generateGemspec(gemName, moduleName, null, null, hasCExtension));
+        Files.writeString(dir.resolve("Gemfile"), GemMetadata.generateGemfile(gemName, testFramework));
+        Files.writeString(dir.resolve("Rakefile"), GemMetadata.generateRakefile(testFramework, hasCExtension));
+        log.accept("Created " + gemName + ".gemspec, Gemfile, and Rakefile");
+
+        // 3. Test framework
+        if ("rspec".equalsIgnoreCase(testFramework)) {
+            Path specDir = dir.resolve("spec");
+            Files.createDirectories(specDir);
+            Files.writeString(dir.resolve(".rspec"), GemMetadata.generateRspecDotFile());
+            Files.writeString(specDir.resolve("spec_helper.rb"), GemMetadata.generateRspecHelper(gemName));
+            Files.writeString(specDir.resolve(gemName + "_spec.rb"), GemMetadata.generateRspecSpec(moduleName));
+            log.accept("Configured RSpec test suite");
+        } else {
+            Path testDir = dir.resolve("test");
+            Files.createDirectories(testDir);
+            Files.writeString(testDir.resolve("test_helper.rb"), GemMetadata.generateMinitestHelper(gemName));
+            Files.writeString(testDir.resolve("test_" + gemName + ".rb"), GemMetadata.generateMinitestTest(gemName, moduleName));
+            log.accept("Configured Minitest test suite");
+        }
+
+        // 4. Optional checkboxes: Code of conduct, MIT license, Binary executable, C extension
+        if (spec.safeGemCodeOfConduct()) {
+            Files.writeString(dir.resolve("CODE_OF_CONDUCT.md"), GemMetadata.generateCodeOfConduct(null));
+            log.accept("Created CODE_OF_CONDUCT.md");
+        }
+
+        if (spec.safeGemMitLicense()) {
+            Files.writeString(dir.resolve("LICENSE.txt"), GemMetadata.generateMitLicense(null));
+            log.accept("Created LICENSE.txt");
+        }
+
+        if (hasExecutable) {
+            Path exeDir = dir.resolve("exe");
+            Files.createDirectories(exeDir);
+            Path exeFile = exeDir.resolve(gemName);
+            Files.writeString(exeFile, GemMetadata.generateExecutable(gemName));
+            File f = exeFile.toFile();
+            if (f.exists()) {
+                f.setExecutable(true, false);
+            }
+            log.accept("Created executable exe/" + gemName);
+        }
+
+        if (hasCExtension) {
+            Path extDir = dir.resolve("ext").resolve(gemName);
+            Files.createDirectories(extDir);
+            Files.writeString(extDir.resolve("extconf.rb"), GemMetadata.generateExtconfRb(gemName));
+            Files.writeString(extDir.resolve(gemName + ".h"), GemMetadata.generateCExtensionHeader(gemName));
+            Files.writeString(extDir.resolve(gemName + ".c"), GemMetadata.generateCExtensionSource(gemName, flatModuleName));
+            log.accept("Created C extension boilerplate in ext/" + gemName);
+        }
+
+        // 5. README.md & .gitignore
+        Files.writeString(dir.resolve("README.md"), GemMetadata.generateReadme(gemName, moduleName, testFramework));
+        Files.writeString(dir.resolve(".gitignore"), GemMetadata.generateGitignore());
+
+        // 6. IntelliJ IDEA metadata (.idea)
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), RubyMetadata.generateIdeaModulesXml(gemName));
+        Files.writeString(ideaDir.resolve(gemName + ".iml"), RubyMetadata.generateIdeaIml());
+
+        String rubyPath = spec.safeRubyInterpreterPath();
+        String sdkName = "Ruby";
+        if (!rubyPath.isBlank()) {
+            String ver = RubyMetadata.probeRubyVersion(rubyPath);
+            if (ver != null && !ver.isBlank()) {
+                sdkName = "ruby-" + ver;
+            } else {
+                sdkName = "ruby (" + rubyPath + ")";
+            }
+        }
+        Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
+        log.accept("Configured Ruby SDK for Gem: " + sdkName);
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {
