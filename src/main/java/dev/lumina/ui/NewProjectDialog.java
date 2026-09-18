@@ -27,6 +27,7 @@ import dev.lumina.project.ScalaMetadata;
 import dev.lumina.project.VueMetadata;
 import dev.lumina.project.ViteMetadata;
 import dev.lumina.project.SymfonyMetadata;
+import dev.lumina.project.NuxtMetadata;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -959,6 +960,15 @@ public class NewProjectDialog {
     private final ComboBox<String> symfonyVersionBox = new ComboBox<>(
             FXCollections.observableArrayList(SymfonyMetadata.FALLBACK_SKELETON_VERSIONS));
     private boolean symfonyInitialized = false;
+
+    // ---- Nuxt generator fields ----
+    private final ComboBox<String> nuxtNodeInterpreterBox = new ComboBox<>();
+    private final Button nuxtNodeBrowseBtn = compactButton("\u2026");
+    private final ComboBox<String> nuxtCliBox = new ComboBox<>();
+    private final Button nuxtCliBrowseBtn = compactButton("\u2026");
+    private boolean nuxtInitialized = false;
+    private String lastValidNuxtNodeInterpreter = "";
+    private String lastValidNuxtCli = "";
 
     // ---- Spring Boot dependency-picker page (page 2 of the wizard) ----
     private final ComboBox<String> springBootVersionBox = new ComboBox<>(
@@ -2103,6 +2113,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
         boolean symfony = generator == ProjectSpec.Generator.SYMFONY;
+        boolean nuxt = generator == ProjectSpec.Generator.NUXT;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
             case HTML, REACT, EXPRESS, VUE, VITE, SYMFONY, NUXT -> true;
@@ -6252,6 +6263,245 @@ public class NewProjectDialog {
         return val != null && !val.isBlank() ? val.trim() : SymfonyMetadata.DEFAULT_VERSION;
     }
 
+    // ---------------------------------------------------------------- Nuxt
+
+    private void initNuxtControls() {
+        if (nuxtInitialized) return;
+        nuxtInitialized = true;
+
+        nuxtNodeInterpreterBox.getStyleClass().add("choice-box");
+        nuxtNodeInterpreterBox.setMaxWidth(Double.MAX_VALUE);
+        nuxtNodeInterpreterBox.setCellFactory(lv -> createNodeInterpreterListCell());
+        nuxtNodeInterpreterBox.setButtonCell(createNodeInterpreterButtonCell());
+
+        nuxtCliBox.getStyleClass().add("choice-box");
+        nuxtCliBox.setMaxWidth(Double.MAX_VALUE);
+        nuxtCliBox.setCellFactory(lv -> createNuxtCliListCell());
+        nuxtCliBox.setButtonCell(createNuxtCliButtonCell());
+
+        nuxtNodeBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        nuxtCliBrowseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        Tooltip.install(nuxtNodeBrowseBtn, new Tooltip("Select Node.js interpreter executable"));
+        Tooltip.install(nuxtCliBrowseBtn, new Tooltip("Select Nuxt CLI package directory"));
+
+        nuxtNodeBrowseBtn.setOnAction(e -> pickNuxtNodeExecutable());
+        nuxtCliBrowseBtn.setOnAction(e -> pickNuxtCliPath());
+
+        nuxtNodeInterpreterBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickNuxtNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    nuxtNodeInterpreterBox.setValue(lastValidNuxtNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!nuxtNodeInterpreterBox.getItems().contains(display)) {
+                            nuxtNodeInterpreterBox.getItems().add(0, display);
+                        }
+                        nuxtNodeInterpreterBox.setValue(display);
+                        lastValidNuxtNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidNuxtNodeInterpreter = val;
+            }
+        });
+
+        nuxtCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NuxtMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickNuxtCliPath);
+            } else {
+                lastValidNuxtCli = val;
+            }
+        });
+
+        refreshNuxtControls();
+    }
+
+    private void refreshNuxtControls() {
+        Thread.ofVirtual().start(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                String current = nuxtNodeInterpreterBox.getValue();
+                nuxtNodeInterpreterBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    nuxtNodeInterpreterBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    nuxtNodeInterpreterBox.getSelectionModel().selectFirst();
+                }
+                lastValidNuxtNodeInterpreter = nuxtNodeInterpreterBox.getValue();
+            });
+        });
+
+        Thread.ofVirtual().start(() -> {
+            var clis = NuxtMetadata.getCliEntries();
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var cli : clis) {
+                    items.add(cli.formatDisplay());
+                }
+                String current = nuxtCliBox.getValue();
+                nuxtCliBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    nuxtCliBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    nuxtCliBox.getSelectionModel().selectFirst();
+                }
+                lastValidNuxtCli = nuxtCliBox.getValue();
+            });
+
+            NuxtMetadata.fetchVersionsAsync(updatedEntries -> {
+                Platform.runLater(() -> {
+                    ObservableList<String> updatedItems = FXCollections.observableArrayList();
+                    for (var cli : updatedEntries) {
+                        updatedItems.add(cli.formatDisplay());
+                    }
+                    String current = nuxtCliBox.getValue();
+                    nuxtCliBox.setItems(updatedItems);
+                    if (current != null && updatedItems.contains(current)) {
+                        nuxtCliBox.setValue(current);
+                    } else if (!updatedItems.isEmpty()) {
+                        nuxtCliBox.getSelectionModel().selectFirst();
+                    }
+                    lastValidNuxtCli = nuxtCliBox.getValue();
+                });
+            });
+        });
+    }
+
+    private ListCell<String> createNuxtCliListCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                    return;
+                }
+                if (NuxtMetadata.ACTION_SELECT.equals(item)) {
+                    setText(item);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
+            }
+        };
+    }
+
+    private ListCell<String> createNuxtCliButtonCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+            }
+        };
+    }
+
+    private void pickNuxtNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/bin");
+        if (!initial.exists()) initial = new File("/usr/local/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!nuxtNodeInterpreterBox.getItems().contains(display)) {
+                nuxtNodeInterpreterBox.getItems().add(0, display);
+            }
+            nuxtNodeInterpreterBox.setValue(display);
+            lastValidNuxtNodeInterpreter = display;
+        } else if (lastValidNuxtNodeInterpreter != null) {
+            nuxtNodeInterpreterBox.setValue(lastValidNuxtNodeInterpreter);
+        }
+    }
+
+    private void pickNuxtCliPath() {
+        javafx.stage.DirectoryChooser chooser = new javafx.stage.DirectoryChooser();
+        chooser.setTitle("Select Nuxt CLI Package Directory");
+        File initial = new File(System.getProperty("user.home"));
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showDialog(stage);
+        if (file != null && file.exists()) {
+            String path = file.getAbsolutePath();
+            String display = path;
+            if (!nuxtCliBox.getItems().contains(display)) {
+                int idx = Math.max(0, nuxtCliBox.getItems().size() - 1);
+                nuxtCliBox.getItems().add(idx, display);
+            }
+            nuxtCliBox.setValue(display);
+            lastValidNuxtCli = display;
+        } else if (lastValidNuxtCli != null && !lastValidNuxtCli.isBlank()) {
+            nuxtCliBox.setValue(lastValidNuxtCli);
+        }
+    }
+
+    private String getSelectedNuxtNodeInterpreter() {
+        String val = nuxtNodeInterpreterBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val) || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return lastValidNuxtNodeInterpreter != null ? lastValidNuxtNodeInterpreter : "";
+        }
+        return val;
+    }
+
+    private String getSelectedNuxtCli() {
+        String val = nuxtCliBox.getValue();
+        if (val == null || val.isBlank() || NuxtMetadata.ACTION_SELECT.equals(val)) {
+            return lastValidNuxtCli != null ? lastValidNuxtCli : NuxtMetadata.RUNNER_NUXI_LATEST;
+        }
+        return val;
+    }
+
     // ---------------------------------------------------------------- Play Framework
 
     private void initPlayControls() {
@@ -7130,6 +7380,7 @@ public class NewProjectDialog {
         boolean javafx = generator == ProjectSpec.Generator.JAVAFX;
         boolean java = generator == ProjectSpec.Generator.JAVA;
         boolean symfony = generator == ProjectSpec.Generator.SYMFONY;
+        boolean nuxt = generator == ProjectSpec.Generator.NUXT;
         boolean web = angular || vite;
         boolean specific = switch (generator) {
             case HTML, REACT, EXPRESS, VUE, VITE, SYMFONY, NUXT -> true;
@@ -7261,8 +7512,15 @@ public class NewProjectDialog {
             }
             refreshSymfonyControls();
         }
-        gitCheck.setVisible(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
-        gitCheck.setManaged(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine);
+        if (nuxt) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshNuxtControls();
+        }
+        gitCheck.setVisible(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine && !nuxt);
+        gitCheck.setManaged(!web && !html && !react && !vue && !vite && !gem && !rails && !appEngine && !nuxt);
         generatorSpecificBox.setVisible(specific);
         generatorSpecificBox.setManaged(specific);
         if (specific) buildSpecificForm(generator);
@@ -7576,8 +7834,18 @@ public class NewProjectDialog {
                 form.add(gitCheck, 1, row++);
             }
             case NUXT -> {
-                add(form, row++, "Node runtime:", runtime("node  /usr/bin/node                         22.23.1"));
-                add(form, row++, "Nuxt CLI:", runtime("npx nuxi@latest                                               3.37.0"));
+                initNuxtControls();
+                refreshNuxtControls();
+
+                HBox nodeRow = wideRow(nuxtNodeInterpreterBox, nuxtNodeBrowseBtn);
+                nodeRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Node runtime:"), 0, row);
+                form.add(nodeRow, 1, row++);
+
+                HBox cliRow = wideRow(nuxtCliBox, nuxtCliBrowseBtn);
+                cliRow.setAlignment(Pos.CENTER_LEFT);
+                form.add(formLabel("Nuxt CLI:"), 0, row);
+                form.add(cliRow, 1, row++);
             }
             default -> { }
         }
@@ -9510,7 +9778,9 @@ public class NewProjectDialog {
                 getSelectedViteTemplate(),
                 viteTypescriptCheck.isSelected(),
                 getSelectedSymfonyProjectType(),
-                getSelectedSymfonyVersion());
+                getSelectedSymfonyVersion(),
+                getSelectedNuxtNodeInterpreter(),
+                getSelectedNuxtCli());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
