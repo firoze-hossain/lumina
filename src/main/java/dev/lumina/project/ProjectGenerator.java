@@ -73,7 +73,8 @@ public final class ProjectGenerator {
             case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
             case ANGULAR_CLI -> generateAngular(spec, dir, log);
             case VUE -> generateVue(spec, dir, log);
-            case VITE, NUXT -> generateWebStarter(spec, dir, log);
+            case VITE -> generateVite(spec, dir, log);
+            case NUXT -> generateWebStarter(spec, dir, log);
             case EXPRESS -> generateExpress(spec, dir, log);
             case REACT -> generateReact(spec, dir, log);
             case HTML -> generateHtml(spec, dir, log);
@@ -115,6 +116,13 @@ public final class ProjectGenerator {
     private static void generateVue(ProjectSpec spec, Path dir, Consumer<String> log)
             throws IOException {
         VueMetadata.scaffoldProject(spec, dir, log);
+    }
+
+    // ---------------------------------------------------------------- vite
+
+    private static void generateVite(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        ViteMetadata.scaffoldProject(spec, dir, log);
     }
 
     // ---------------------------------------------------------------- angular
