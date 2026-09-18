@@ -21,14 +21,62 @@ import java.util.zip.ZipFile;
 public final class SpringConfigMetadata {
 
     public record Property(String name, String type, String description,
-                           String defaultValue) {
+                           String defaultValue, String sourceJar) {
+        public Property(String name, String type, String description, String defaultValue) {
+            this(name, type, description, defaultValue, null);
+        }
+    }
+
+    private static final java.util.Map<String, Property> BUILTIN_PROPERTIES = new java.util.HashMap<>();
+    static {
+        BUILTIN_PROPERTIES.put("spring.application.name", new Property(
+                "spring.application.name", "java.lang.String",
+                "Application name. Typically used with logging to help identify the application.",
+                "", "org.springframework.boot:spring-boot-4.1.1.jar"));
+        BUILTIN_PROPERTIES.put("spring.datasource.url", new Property(
+                "spring.datasource.url", "java.lang.String",
+                "JDBC URL of the database.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.datasource.username", new Property(
+                "spring.datasource.username", "java.lang.String",
+                "Login username of the database.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.datasource.password", new Property(
+                "spring.datasource.password", "java.lang.String",
+                "Login password of the database.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.jpa.hibernate.ddl-auto", new Property(
+                "spring.jpa.hibernate.ddl-auto", "java.lang.String",
+                "DDL mode. This is actually a shortcut for the 'hibernate.hbm2ddl.auto' property.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.jpa.properties.hibernate.format_sql", new Property(
+                "spring.jpa.properties.hibernate.format_sql", "java.lang.Boolean",
+                "Whether to format SQL output.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.thymeleaf.cache", new Property(
+                "spring.thymeleaf.cache", "java.lang.Boolean",
+                "Whether to enable template caching.",
+                "", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.servlet.multipart.max-file-size", new Property(
+                "spring.servlet.multipart.max-file-size", "org.springframework.util.unit.DataSize",
+                "Max file size.",
+                "-1", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+        BUILTIN_PROPERTIES.put("spring.servlet.multipart.max-request-size", new Property(
+                "spring.servlet.multipart.max-request-size", "org.springframework.util.unit.DataSize",
+                "Max request size.",
+                "-1", "org.springframework.boot:spring-boot-autoconfigure.jar"));
+    }
+
+    public static Property getBuiltinProperty(String name) {
+        if (name == null) return null;
+        return BUILTIN_PROPERTIES.get(name.trim());
     }
 
     private SpringConfigMetadata() {
     }
 
     /** Scans every .jar on the given classpath string; safe to call from a
-     *  background thread, never throws \u2014 a missing or unreadable jar is
+     *  background thread, never throws — a missing or unreadable jar is
      *  just skipped. */
     public static List<Property> scan(String classpath) {
         List<Property> out = new ArrayList<>();
@@ -40,7 +88,8 @@ public final class SpringConfigMetadata {
                 if (entry == null) continue;
                 String json = new String(zip.getInputStream(entry).readAllBytes(),
                         StandardCharsets.UTF_8);
-                out.addAll(parse(json));
+                String jarName = new File(part).getName();
+                out.addAll(parse(json, jarName));
             } catch (Exception ignored) {
                 // unreadable jar or malformed metadata: just skip it
             }
@@ -50,6 +99,10 @@ public final class SpringConfigMetadata {
 
     /** Pure parsing, safe to unit-test without touching a jar file. */
     public static List<Property> parse(String json) {
+        return parse(json, null);
+    }
+
+    public static List<Property> parse(String json, String sourceJar) {
         List<Property> out = new ArrayList<>();
         try {
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
@@ -64,7 +117,7 @@ public final class SpringConfigMetadata {
                         ? p.get("description").getAsString() : "";
                 String defaultValue = p.has("defaultValue") && !p.get("defaultValue").isJsonNull()
                         ? String.valueOf(p.get("defaultValue")) : "";
-                out.add(new Property(name, type, description, defaultValue));
+                out.add(new Property(name, type, description, defaultValue, sourceJar));
             }
         } catch (Exception ignored) {
             // malformed metadata: return whatever was parsed so far (empty)

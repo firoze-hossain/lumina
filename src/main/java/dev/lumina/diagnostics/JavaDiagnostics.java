@@ -32,10 +32,25 @@ public final class JavaDiagnostics {
      * the editor shows a real, clickable one-click fix in the hover popup
      * and on Alt+Enter, exactly like IntelliJ's inspection quick-fixes.
      */
-    public record Diag(Severity severity, int line, int start, int end,
-                       String message, String quickFix) {
+    public record Diag(
+            Severity severity,
+            int line,
+            int start,
+            int end,
+            String message,
+            String quickFix,
+            String title,
+            String propertyType,
+            String description,
+            String context,
+            String origin
+    ) {
         public Diag(Severity severity, int line, int start, int end, String message) {
-            this(severity, line, start, end, message, null);
+            this(severity, line, start, end, message, null, message, null, null, null, null);
+        }
+
+        public Diag(Severity severity, int line, int start, int end, String message, String quickFix) {
+            this(severity, line, start, end, message, quickFix, message, null, null, null, null);
         }
     }
 
