@@ -49,6 +49,7 @@ public final class GeneratorIcons {
             case "Micronaut" -> micronautIcon();
             case "Jakarta EE" -> jakartaIcon();
             case "Ktor" -> ktorIcon();
+            case "Play" -> playIcon();
             case "HTML" -> htmlIcon();
             case "React" -> reactIcon();
             case "Express" -> expressIcon();
@@ -406,6 +407,14 @@ public final class GeneratorIcons {
 
         Group nuxt = new Group(m1, m2);
         return box(nuxt);
+    }
+
+    /** Play Framework: vibrant green right-pointing play triangle matching IntelliJ IDEA. */
+    private static Node playIcon() {
+        SVGPath arrow = new SVGPath();
+        arrow.setContent("M 5,3.5 L 14,9 L 5,14.5 Z");
+        arrow.setFill(Color.web("#3EB872"));
+        return box(arrow);
     }
 
     /** Scala: red spiral staircase logo matching IntelliJ IDEA. */

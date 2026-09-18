@@ -92,8 +92,71 @@ public record ProjectSpec(
         String angularCliVersion,
         String angularAdditionalParameters,
         boolean angularStandalone,
-        boolean angularDefaults
+        boolean angularDefaults,
+        String playVersion
 ) {
+    public ProjectSpec(
+            Generator generator, String name, Path location, boolean initGit,
+            BuildSystem buildSystem, Language language, Packaging packaging,
+            ConfigFormat configFormat, String group, String artifact,
+            String packageName, String javaVersion, String springDependencies,
+            String springBootVersion, String archetypeCatalog, String archetypeId,
+            String archetypeVersion, String projectVersion, String additionalProperties,
+            String rustToolchainPath, String rustTemplate, String rustEnvironment,
+            String javafxDependencies, String quarkusServerUrl, String quarkusStream,
+            String quarkusExtensions, String quarkusBuildTool, boolean addSampleCode,
+            String jakartaVersion, String jakartaTemplate, String jakartaDependencies,
+            String jakartaAppServer, String micronautServerUrl, String micronautVersion,
+            String micronautTestFramework, String micronautAppType, String micronautFeatures,
+            String micronautBuild, String ktorServerUrl, String ktorEngine,
+            boolean ktorAddSampleCode, String ktorBuildSystem, String ktorVersion,
+            String ktorConfigIn, String ktorPlugins, String htmlProjectType,
+            String htmlVersion, String reactProjectType, String reactNodeInterpreter,
+            String reactCliVersion, boolean reactTypeScript,
+            String expressNodeInterpreter, String expressCliVersion,
+            String expressViewEngine, String expressStylesheetEngine,
+            GradleDsl gradleDsl, String gradleDistribution, String gradleVersion,
+            String gradleHome, boolean generateMultiModule, String groovyVersion,
+            String sbtVersion, String scalaVersion, boolean scalaDownloadSbtSources,
+            boolean scalaDownloadScalaSources, boolean scalaOptionalBraces,
+            String scalaPackagePrefix, String scalaModuleName,
+            PythonInterpreterType pythonInterpreterType,
+            String pythonPath, String pythonVersion, String uvPath,
+            String condaPath, boolean customEnvGenerateNew, String customEnvType,
+            String customEnvLocation, boolean customEnvInheritGlobal,
+            boolean customEnvMakeAvailable, boolean phpAddComposerJson,
+            String rubyInterpreterPath, boolean rubyAddSampleCode,
+            String goRoot, boolean goVendoring, String goEnvironment,
+            String angularNodeInterpreter, String angularCliVersion,
+            String angularAdditionalParameters, boolean angularStandalone,
+            boolean angularDefaults
+    ) {
+        this(generator, name, location, initGit, buildSystem, language, packaging,
+                configFormat, group, artifact, packageName, javaVersion,
+                springDependencies, springBootVersion, archetypeCatalog, archetypeId,
+                archetypeVersion, projectVersion, additionalProperties,
+                rustToolchainPath, rustTemplate, rustEnvironment, javafxDependencies,
+                quarkusServerUrl, quarkusStream, quarkusExtensions, quarkusBuildTool,
+                addSampleCode, jakartaVersion, jakartaTemplate, jakartaDependencies,
+                jakartaAppServer, micronautServerUrl, micronautVersion,
+                micronautTestFramework, micronautAppType, micronautFeatures,
+                micronautBuild, ktorServerUrl, ktorEngine, ktorAddSampleCode,
+                ktorBuildSystem, ktorVersion, ktorConfigIn, ktorPlugins,
+                htmlProjectType, htmlVersion, reactProjectType, reactNodeInterpreter,
+                reactCliVersion, reactTypeScript,
+                expressNodeInterpreter, expressCliVersion,
+                expressViewEngine, expressStylesheetEngine,
+                gradleDsl, gradleDistribution, gradleVersion, gradleHome, generateMultiModule,
+                groovyVersion, sbtVersion, scalaVersion, scalaDownloadSbtSources,
+                scalaDownloadScalaSources, scalaOptionalBraces, scalaPackagePrefix,
+                scalaModuleName, pythonInterpreterType, pythonPath, pythonVersion, uvPath,
+                condaPath, customEnvGenerateNew, customEnvType, customEnvLocation,
+                customEnvInheritGlobal, customEnvMakeAvailable, phpAddComposerJson,
+                rubyInterpreterPath, rubyAddSampleCode, goRoot, goVendoring, goEnvironment,
+                angularNodeInterpreter, angularCliVersion, angularAdditionalParameters,
+                angularStandalone, angularDefaults, "");
+    }
+
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
             BuildSystem buildSystem, Language language, Packaging packaging,
@@ -149,7 +212,7 @@ public record ProjectSpec(
                 condaPath, customEnvGenerateNew, customEnvType, customEnvLocation,
                 customEnvInheritGlobal, customEnvMakeAvailable, phpAddComposerJson,
                 rubyInterpreterPath, rubyAddSampleCode, goRoot, goVendoring, goEnvironment,
-                "", "", "", true, true);
+                "", "", "", true, true, "");
     }
     public ProjectSpec(
             Generator generator, String name, Path location, boolean initGit,
@@ -784,7 +847,7 @@ public record ProjectSpec(
 
     public enum Generator {
         JAVA, KOTLIN, GROOVY, SCALA, PYTHON, PHP, RUBY, EMPTY_PROJECT, SPRING_BOOT, MAVEN_ARCHETYPE,
-        JAVAFX, QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, HTML, REACT, EXPRESS,
+        JAVAFX, QUARKUS, MICRONAUT, JAKARTA_EE, KTOR, PLAY, HTML, REACT, EXPRESS,
         ANGULAR_CLI, VUE, VITE, NUXT, RUST, GO
     }
 
@@ -909,6 +972,10 @@ public record ProjectSpec(
 
     public boolean safeRubyAddSampleCode() {
         return rubyAddSampleCode;
+    }
+
+    public String safePlayVersion() {
+        return playVersion != null && !playVersion.isBlank() ? playVersion.trim() : PlayMetadata.DEFAULT_PLAY_VERSION;
     }
 
     public Path projectDir() {

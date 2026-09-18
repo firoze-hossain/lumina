@@ -19,6 +19,7 @@ import dev.lumina.project.JdkMetadata.JdkInstallation;
 import dev.lumina.project.MavenArchetypeMetadata;
 import dev.lumina.project.MavenArchetypeMetadata.CatalogEntry;
 import dev.lumina.project.NodeMetadata;
+import dev.lumina.project.PlayMetadata;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.ReactMetadata;
 import dev.lumina.project.ScalaMetadata;
@@ -390,6 +391,7 @@ public class NewProjectDialog {
             new GeneratorEntry("Micronaut", ProjectSpec.Generator.MICRONAUT, true),
             new GeneratorEntry("Jakarta EE", ProjectSpec.Generator.JAKARTA_EE, true),
             new GeneratorEntry("Ktor", ProjectSpec.Generator.KTOR, true),
+            new GeneratorEntry("Play", ProjectSpec.Generator.PLAY, true),
             new GeneratorEntry("HTML", ProjectSpec.Generator.HTML, true),
             new GeneratorEntry("React", ProjectSpec.Generator.REACT, true),
             new GeneratorEntry("Express", ProjectSpec.Generator.EXPRESS, true),
@@ -589,6 +591,12 @@ public class NewProjectDialog {
     private final Label scalaPackagePrefixLabel = formLabel("Package prefix:");
     private final TextField scalaPackagePrefixField = new TextField();
     private final TextField scalaModuleNameField = new TextField();
+
+    // Play controls
+    private final Label playLabel = formLabel("Play:");
+    private final ComboBox<String> playVersionBox = new ComboBox<>();
+    private final ToggleGroup playLanguageGroup = new ToggleGroup();
+    private final HBox playLanguageRow = new HBox(8);
 
     // Python controls
     private final Label interpreterTypeLabel = formLabel("Interpreter type:");
@@ -1506,6 +1514,8 @@ public class NewProjectDialog {
             }
         });
 
+        initPlayControls();
+
         // Python controls setup
         pythonInterpreterRow.getChildren().setAll(segmented(pythonInterpreterGroup, false, "Project venv", "uv", "Base conda", "Custom environment"));
         for (Toggle t : pythonInterpreterGroup.getToggles()) {
@@ -1971,6 +1981,7 @@ public class NewProjectDialog {
         boolean micronaut = generator == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
         boolean ktor = generator == ProjectSpec.Generator.KTOR;
+        boolean play = generator == ProjectSpec.Generator.PLAY;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
@@ -2127,6 +2138,39 @@ public class NewProjectDialog {
             formGrid.add(envCol, 1, row++);
 
             formGrid.add(goSampleCodeCheck, 1, row++);
+            return;
+        }
+
+        if (play) {
+            detachFromParent(playLanguageRow);
+            formGrid.add(languageLabel, 0, row);
+            formGrid.add(playLanguageRow, 1, row++);
+
+            detachFromParent(jdkCombo);
+            formGrid.add(jdkLabel, 0, row);
+            formGrid.add(jdkCombo, 1, row++);
+
+            detachFromParent(sbtVersionBox, sbtDownloadSourcesCheck, sbtRow);
+            sbtRow.setAlignment(Pos.CENTER_LEFT);
+            sbtRow.getChildren().setAll(sbtVersionBox, sbtDownloadSourcesCheck);
+            formGrid.add(sbtLabel, 0, row);
+            formGrid.add(sbtRow, 1, row++);
+
+            boolean isScalaLang = isPlayScalaSelected();
+            detachFromParent(scalaVersionBox, scalaDownloadSourcesCheck, scalaVersionRow);
+            scalaVersionRow.setAlignment(Pos.CENTER_LEFT);
+            scalaVersionRow.getChildren().setAll(scalaVersionBox, scalaDownloadSourcesCheck);
+            formGrid.add(scalaVersionLabel, 0, row);
+            formGrid.add(scalaVersionRow, 1, row++);
+
+            if (isScalaLang) {
+                detachFromParent(scalaOptionalBracesCheck);
+                formGrid.add(scalaOptionalBracesCheck, 1, row++);
+            }
+
+            detachFromParent(playVersionBox);
+            formGrid.add(playLabel, 0, row);
+            formGrid.add(playVersionBox, 1, row++);
             return;
         }
 
@@ -5476,6 +5520,73 @@ public class NewProjectDialog {
         return AngularMetadata.parseVersionFromDisplay(angularCliBox.getValue());
     }
 
+    // ---------------------------------------------------------------- Play Framework
+
+    private void initPlayControls() {
+        playLanguageRow.getChildren().setAll(segmented(playLanguageGroup, true, "Scala", "Java"));
+        playLanguageGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (selected != null && selected.generator() == ProjectSpec.Generator.PLAY) {
+                rebuildFormGrid();
+            }
+        });
+
+        playVersionBox.getItems().setAll(PlayMetadata.fetchPlayVersions(false));
+        if (!playVersionBox.getItems().isEmpty()) {
+            playVersionBox.getSelectionModel().selectFirst();
+        }
+        PlayMetadata.fetchPlayVersionsAsync(versions -> {
+            if (versions != null && !versions.isEmpty()) {
+                String cur = playVersionBox.getValue();
+                playVersionBox.getItems().setAll(versions);
+                if (cur != null && versions.contains(cur)) {
+                    playVersionBox.setValue(cur);
+                } else {
+                    playVersionBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
+    }
+
+    private boolean isPlayScalaSelected() {
+        Toggle t = playLanguageGroup.getSelectedToggle();
+        if (t instanceof ToggleButton tb) {
+            return "Scala".equalsIgnoreCase(tb.getText());
+        }
+        return true;
+    }
+
+    private void refreshPlayControls() {
+        if (playVersionBox.getItems().isEmpty()) {
+            playVersionBox.getItems().setAll(PlayMetadata.fetchPlayVersions(false));
+            if (!playVersionBox.getItems().isEmpty()) {
+                playVersionBox.getSelectionModel().selectFirst();
+            }
+        }
+        PlayMetadata.fetchPlayVersionsAsync(versions -> {
+            if (versions != null && !versions.isEmpty()) {
+                String cur = playVersionBox.getValue();
+                playVersionBox.getItems().setAll(versions);
+                if (cur != null && versions.contains(cur)) {
+                    playVersionBox.setValue(cur);
+                } else {
+                    playVersionBox.getSelectionModel().selectFirst();
+                }
+            }
+        });
+        if (sbtVersionBox.getItems().isEmpty()) {
+            sbtVersionBox.getItems().setAll(ScalaMetadata.fetchSbtVersions(false));
+            if (!sbtVersionBox.getItems().isEmpty()) {
+                sbtVersionBox.getSelectionModel().selectFirst();
+            }
+        }
+        if (scalaVersionBox.getItems().isEmpty()) {
+            scalaVersionBox.getItems().setAll(ScalaMetadata.fetchScalaVersions(false));
+            if (!scalaVersionBox.getItems().isEmpty()) {
+                scalaVersionBox.getSelectionModel().selectFirst();
+            }
+        }
+    }
+
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
 
@@ -6265,6 +6376,7 @@ public class NewProjectDialog {
         boolean micronaut = generator == ProjectSpec.Generator.MICRONAUT;
         boolean jakarta = generator == ProjectSpec.Generator.JAKARTA_EE;
         boolean ktor = generator == ProjectSpec.Generator.KTOR;
+        boolean play = generator == ProjectSpec.Generator.PLAY;
         boolean mavenArchetype = generator == ProjectSpec.Generator.MAVEN_ARCHETYPE;
         boolean rust = generator == ProjectSpec.Generator.RUST;
         boolean kotlin = generator == ProjectSpec.Generator.KOTLIN;
@@ -6337,6 +6449,13 @@ public class NewProjectDialog {
             if (artifactField.getText().trim().isEmpty() || "demo".equals(artifactField.getText().trim())) {
                 artifactField.setText("com.example.ktor-sample");
             }
+        }
+        if (play) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName) || "untitled".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshPlayControls();
         }
         if (angular) {
             String curName = nameField.getText().trim();
@@ -7588,8 +7707,10 @@ public class NewProjectDialog {
             }
         }
 
+        boolean isPlay = selected.generator() == ProjectSpec.Generator.PLAY;
         ProjectSpec.Language language = ProjectSpec.Language.JAVA;
-        if (selected.generator() == ProjectSpec.Generator.KOTLIN || ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
+        if (isPlay) language = isPlayScalaSelected() ? ProjectSpec.Language.SCALA : ProjectSpec.Language.JAVA;
+        else if (selected.generator() == ProjectSpec.Generator.KOTLIN || ktor || langKotlin.isSelected()) language = ProjectSpec.Language.KOTLIN;
         else if (selected.generator() == ProjectSpec.Generator.GROOVY || langGroovy.isSelected()) language = ProjectSpec.Language.GROOVY;
         else if (selected.generator() == ProjectSpec.Generator.SCALA) language = ProjectSpec.Language.SCALA;
         else if (isPython) language = ProjectSpec.Language.PYTHON;
@@ -7598,7 +7719,9 @@ public class NewProjectDialog {
         else if (rust) language = ProjectSpec.Language.RUST;
 
         ProjectSpec.BuildSystem build;
-        if (selected.generator() == ProjectSpec.Generator.SCALA) {
+        if (isPlay) {
+            build = ProjectSpec.BuildSystem.SBT;
+        } else if (selected.generator() == ProjectSpec.Generator.SCALA) {
             build = isSbtSelected() ? ProjectSpec.BuildSystem.SBT : ProjectSpec.BuildSystem.SCALA_CLI;
         } else if (isPython || isPhp || isRuby) {
             build = ProjectSpec.BuildSystem.MAVEN;
@@ -7649,9 +7772,9 @@ public class NewProjectDialog {
         boolean isScala = selected.generator() == ProjectSpec.Generator.SCALA;
         String javaVer;
         if (selectedJdk != null && selectedJdk.installation() != null &&
-            (isJava || isKotlin || isGroovy || isScala)) {
+            (isJava || isKotlin || isGroovy || isScala || isPlay)) {
             javaVer = String.valueOf(selectedJdk.installation().majorVersion());
-        } else if (selectedJdk != null && !selectedJdk.label().isBlank() && (isJava || isKotlin || isGroovy || isScala)) {
+        } else if (selectedJdk != null && !selectedJdk.label().isBlank() && (isJava || isKotlin || isGroovy || isScala || isPlay)) {
             int parsed = JdkMetadata.parseMajorVersion(selectedJdk.label());
             javaVer = parsed > 0 ? String.valueOf(parsed) : "25";
         } else if (javaVersionBox.getValue() != null && !javaVersionBox.getValue().isBlank()) {
@@ -7661,7 +7784,9 @@ public class NewProjectDialog {
         }
 
         String pkg;
-        if (isScala) {
+        if (isPlay) {
+            pkg = "com.example";
+        } else if (isScala) {
             pkg = isSbtSelected() ? scalaPackagePrefixField.getText().trim() : "";
         } else if (mavenArchetype) {
             pkg = (sanitize(mavenGroupField.getText()) + "." + sanitize(artifact)).replaceAll("^\\.|\\.$", "");
@@ -7775,8 +7900,8 @@ public class NewProjectDialog {
                 groovySdkBox.getValue() != null && !groovySdkBox.getValue().isBlank() && !GroovyMetadata.SPECIFY_HOME_OPTION.equals(groovySdkBox.getValue().trim()) ? groovySdkBox.getValue().trim() : "5.1.1",
                 sbtVersionBox.getValue() != null && !sbtVersionBox.getValue().isBlank() ? sbtVersionBox.getValue().trim() : "2.0.9",
                 scalaVersionBox.getValue() != null && !scalaVersionBox.getValue().isBlank() ? scalaVersionBox.getValue().trim() : "3.9.0",
-                isSbtSelected() && sbtDownloadSourcesCheck.isSelected(),
-                isSbtSelected() && scalaDownloadSourcesCheck.isSelected(),
+                (isSbtSelected() || isPlay) && sbtDownloadSourcesCheck.isSelected(),
+                (isSbtSelected() || isPlay) && scalaDownloadSourcesCheck.isSelected(),
                 scalaOptionalBracesCheck.isSelected(),
                 isSbtSelected() && scalaPackagePrefixField.getText() != null ? scalaPackagePrefixField.getText().trim() : "",
                 isSbtSelected() && scalaModuleNameField.getText() != null && !scalaModuleNameField.getText().isBlank() ? scalaModuleNameField.getText().trim() : name,
@@ -7800,7 +7925,8 @@ public class NewProjectDialog {
                 getSelectedAngularCliVersion(),
                 webParametersField.getText().trim(),
                 angularStandaloneCheck.isSelected(),
-                angularDefaultsCheck.isSelected());
+                angularDefaultsCheck.isSelected(),
+                playVersionBox.getValue() != null && !playVersionBox.getValue().isBlank() ? playVersionBox.getValue().trim() : PlayMetadata.DEFAULT_PLAY_VERSION);
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
