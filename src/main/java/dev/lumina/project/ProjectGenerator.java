@@ -68,7 +68,8 @@ public final class ProjectGenerator {
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
-            case ANGULAR_CLI, VITE, VUE, NUXT -> generateWebStarter(spec, dir, log);
+            case ANGULAR_CLI -> generateAngular(spec, dir, log);
+            case VITE, VUE, NUXT -> generateWebStarter(spec, dir, log);
             case EXPRESS -> generateExpress(spec, dir, log);
             case REACT -> generateReact(spec, dir, log);
             case HTML -> generateHtml(spec, dir, log);
@@ -102,6 +103,401 @@ public final class ProjectGenerator {
                 }
                 """.formatted(spec.artifact()));
         Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nCreated with Lumina IDE.\n");
+    }
+
+    // ---------------------------------------------------------------- angular
+
+    private static void generateAngular(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        String cliVer = spec.angularCliVersion() != null && !spec.angularCliVersion().isBlank()
+                ? spec.angularCliVersion().trim() : AngularMetadata.DEFAULT_VERSION;
+        String nodePath = spec.angularNodeInterpreter();
+        log.accept("Generating Angular CLI application in " + dir + " …");
+        if (nodePath != null && !nodePath.isBlank()) {
+            log.accept("Node runtime: " + nodePath);
+        }
+        log.accept("Angular CLI: " + cliVer);
+        log.accept("Standalone components: " + spec.angularStandalone());
+        log.accept("Default project setup: " + spec.angularDefaults());
+
+        String appName = sanitizeArtifact(spec.name());
+        if (appName.isBlank()) appName = "angular-app";
+
+        Files.createDirectories(dir.resolve("src/app"));
+        Files.createDirectories(dir.resolve("public"));
+
+        // 1. package.json
+        Files.writeString(dir.resolve("package.json"), """
+                {
+                  "name": "%s",
+                  "version": "0.0.0",
+                  "scripts": {
+                    "ng": "ng",
+                    "start": "ng serve",
+                    "build": "ng build",
+                    "watch": "ng build --watch --configuration development",
+                    "test": "ng test"
+                  },
+                  "private": true,
+                  "dependencies": {
+                    "@angular/animations": "^%s",
+                    "@angular/common": "^%s",
+                    "@angular/compiler": "^%s",
+                    "@angular/core": "^%s",
+                    "@angular/forms": "^%s",
+                    "@angular/platform-browser": "^%s",
+                    "@angular/platform-browser-dynamic": "^%s",
+                    "@angular/router": "^%s",
+                    "rxjs": "~7.8.0",
+                    "tslib": "^2.3.0",
+                    "zone.js": "~0.15.0"
+                  },
+                  "devDependencies": {
+                    "@angular-devkit/build-angular": "^%s",
+                    "@angular/cli": "^%s",
+                    "@angular/compiler-cli": "^%s",
+                    "@types/jasmine": "~5.1.0",
+                    "jasmine-core": "~5.1.0",
+                    "karma": "~6.4.0",
+                    "karma-chrome-launcher": "~3.2.0",
+                    "karma-coverage": "~2.2.0",
+                    "karma-jasmine": "~5.1.0",
+                    "karma-jasmine-html-reporter": "~2.1.0",
+                    "typescript": "~5.5.2"
+                  }
+                }
+                """.formatted(
+                        appName,
+                        cliVer, cliVer, cliVer, cliVer, cliVer, cliVer, cliVer, cliVer,
+                        cliVer, cliVer, cliVer
+                ));
+
+        // 2. angular.json
+        Files.writeString(dir.resolve("angular.json"), """
+                {
+                  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+                  "version": 1,
+                  "newProjectRoot": "projects",
+                  "projects": {
+                    "%s": {
+                      "projectType": "application",
+                      "schematics": {},
+                      "root": "",
+                      "sourceRoot": "src",
+                      "prefix": "app",
+                      "architect": {
+                        "build": {
+                          "builder": "@angular-devkit/build-angular:application",
+                          "options": {
+                            "outputPath": "dist/%s",
+                            "index": "src/index.html",
+                            "browser": "src/main.ts",
+                            "polyfills": [
+                              "zone.js"
+                            ],
+                            "tsConfig": "tsconfig.app.json",
+                            "assets": [
+                              {
+                                "glob": "**/*",
+                                "input": "public"
+                              }
+                            ],
+                            "styles": [
+                              "src/styles.css"
+                            ],
+                            "scripts": []
+                          },
+                          "configurations": {
+                            "production": {
+                              "budgets": [
+                                {
+                                  "type": "initial",
+                                  "maximumWarning": "500kB",
+                                  "maximumError": "1MB"
+                                },
+                                {
+                                  "type": "anyComponentStyle",
+                                  "maximumWarning": "4kB",
+                                  "maximumError": "8kB"
+                                }
+                              ],
+                              "outputHashing": "all"
+                            },
+                            "development": {
+                              "optimization": false,
+                              "extractLicenses": false,
+                              "sourceMap": true
+                            }
+                          },
+                          "defaultConfiguration": "production"
+                        },
+                        "serve": {
+                          "builder": "@angular-devkit/build-angular:dev-server",
+                          "configurations": {
+                            "production": {
+                              "buildTarget": "%s:build:production"
+                            },
+                            "development": {
+                              "buildTarget": "%s:build:development"
+                            }
+                          },
+                          "defaultConfiguration": "development"
+                        },
+                        "extract-i18n": {
+                          "builder": "@angular-devkit/build-angular:extract-i18n"
+                        },
+                        "test": {
+                          "builder": "@angular-devkit/build-angular:karma",
+                          "options": {
+                            "polyfills": [
+                              "zone.js",
+                              "zone.js/testing"
+                            ],
+                            "tsConfig": "tsconfig.spec.json",
+                            "assets": [
+                              {
+                                "glob": "**/*",
+                                "input": "public"
+                              }
+                            ],
+                            "styles": [
+                              "src/styles.css"
+                            ],
+                            "scripts": []
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """.formatted(appName, appName, appName, appName));
+
+        // 3. tsconfig.json
+        Files.writeString(dir.resolve("tsconfig.json"), """
+                {
+                  "compileOnSave": false,
+                  "compilerOptions": {
+                    "outDir": "./dist/out-tsc",
+                    "strict": true,
+                    "noImplicitOverride": true,
+                    "noPropertyAccessFromIndexSignature": true,
+                    "noImplicitReturns": true,
+                    "noFallthroughCasesInSwitch": true,
+                    "skipLibCheck": true,
+                    "isolatedModules": true,
+                    "esModuleInterop": true,
+                    "experimentalDecorators": true,
+                    "moduleResolution": "bundler",
+                    "importHelpers": true,
+                    "target": "ES2022",
+                    "module": "ES2022"
+                  },
+                  "angularCompilerOptions": {
+                    "enableI18nLegacyMessageIdFormat": false,
+                    "strictInjectionParameters": true,
+                    "strictInputAccessModifiers": true,
+                    "strictTemplates": true
+                  }
+                }
+                """);
+
+        // 4. tsconfig.app.json
+        Files.writeString(dir.resolve("tsconfig.app.json"), """
+                {
+                  "extends": "./tsconfig.json",
+                  "compilerOptions": {
+                    "outDir": "./out-tsc/app",
+                    "types": []
+                  },
+                  "files": [
+                    "src/main.ts"
+                  ],
+                  "include": [
+                    "src/**/*.d.ts"
+                  ]
+                }
+                """);
+
+        // 5. tsconfig.spec.json
+        Files.writeString(dir.resolve("tsconfig.spec.json"), """
+                {
+                  "extends": "./tsconfig.json",
+                  "compilerOptions": {
+                    "outDir": "./out-tsc/spec",
+                    "types": [
+                      "jasmine"
+                    ]
+                  },
+                  "include": [
+                    "src/**/*.spec.ts",
+                    "src/**/*.d.ts"
+                  ]
+                }
+                """);
+
+        // 6. src/index.html
+        Files.writeString(dir.resolve("src/index.html"), """
+                <!doctype html>
+                <html lang="en">
+                <head>
+                  <meta charset="utf-8">
+                  <title>%s</title>
+                  <base href="/">
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <link rel="icon" type="image/x-icon" href="favicon.ico">
+                </head>
+                <body>
+                  <app-root></app-root>
+                </body>
+                </html>
+                """.formatted(spec.name()));
+
+        // 7. src/styles.css
+        Files.writeString(dir.resolve("src/styles.css"), """
+                /* Application global styles */
+                body {
+                  margin: 0;
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                }
+                """);
+
+        // 8. src/main.ts
+        Files.writeString(dir.resolve("src/main.ts"), """
+                import { bootstrapApplication } from '@angular/platform-browser';
+                import { appConfig } from './app/app.config';
+                import { AppComponent } from './app/app.component';
+
+                bootstrapApplication(AppComponent, appConfig)
+                  .catch((err) => console.error(err));
+                """);
+
+        // 9. src/app/app.config.ts
+        Files.writeString(dir.resolve("src/app/app.config.ts"), """
+                import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+                import { provideRouter } from '@angular/router';
+
+                import { routes } from './app.routes';
+
+                export const appConfig: ApplicationConfig = {
+                  providers: [
+                    provideZoneChangeDetection({ eventCoalescing: true }),
+                    provideRouter(routes)
+                  ]
+                };
+                """);
+
+        // 10. src/app/app.routes.ts
+        Files.writeString(dir.resolve("src/app/app.routes.ts"), """
+                import { Routes } from '@angular/router';
+
+                export const routes: Routes = [];
+                """);
+
+        // 11. src/app/app.component.ts
+        Files.writeString(dir.resolve("src/app/app.component.ts"), """
+                import { Component } from '@angular/core';
+                import { RouterOutlet } from '@angular/router';
+
+                @Component({
+                  selector: 'app-root',
+                  standalone: true,
+                  imports: [RouterOutlet],
+                  templateUrl: './app.component.html',
+                  styleUrl: './app.component.css'
+                })
+                export class AppComponent {
+                  title = '%s';
+                }
+                """.formatted(spec.name()));
+
+        // 12. src/app/app.component.html
+        Files.writeString(dir.resolve("src/app/app.component.html"), """
+                <main style="display: flex; justify-content: center; align-items: center; min-height: 80vh; flex-direction: column;">
+                  <h1>Hello, {{ title }}</h1>
+                  <p>Congratulations! Your Angular app is running.</p>
+                </main>
+                <router-outlet></router-outlet>
+                """);
+
+        // 13. src/app/app.component.css
+        Files.writeString(dir.resolve("src/app/app.component.css"), "");
+
+        // 14. src/app/app.component.spec.ts
+        Files.writeString(dir.resolve("src/app/app.component.spec.ts"), """
+                import { TestBed } from '@angular/core/testing';
+                import { AppComponent } from './app.component';
+
+                describe('AppComponent', () => {
+                  beforeEach(async () => {
+                    await TestBed.configureTestingModule({
+                      imports: [AppComponent],
+                    }).compileComponents();
+                  });
+
+                  it('should create the app', () => {
+                    const fixture = TestBed.createComponent(AppComponent);
+                    const app = fixture.componentInstance;
+                    expect(app).toBeTruthy();
+                  });
+
+                  it(`should have the '%s' title`, () => {
+                    const fixture = TestBed.createComponent(AppComponent);
+                    const app = fixture.componentInstance;
+                    expect(app.title).toEqual('%s');
+                  });
+                });
+                """.formatted(spec.name(), spec.name()));
+
+        // 15. README.md & .gitignore
+        Files.writeString(dir.resolve("README.md"), "# " + spec.name() + "\n\nGenerated with Lumina IDE Angular CLI.\n");
+        Files.writeString(dir.resolve(".gitignore"), """
+                /dist
+                /tmp
+                /out-tsc
+                /bazel-out
+                /node_modules
+                npm-debug.log
+                yarn-error.log
+                .idea/
+                .vscode/
+                .angular/cache
+                """);
+
+        // 16. IntelliJ .idea files
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="ProjectModuleManager">
+                    <modules>
+                      <module fileurl="file://$PROJECT_DIR$/.idea/%s.iml" filepath="$PROJECT_DIR$/.idea/%s.iml" />
+                    </modules>
+                  </component>
+                </project>
+                """.formatted(appName, appName));
+        Files.writeString(ideaDir.resolve(appName + ".iml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <module type="WEB_MODULE" version="4">
+                  <component name="NewModuleRootManager" inherit-compiler-output="true">
+                    <exclude-output />
+                    <content url="file://$MODULE_DIR$/..">
+                      <excludeFolder url="file://$MODULE_DIR$/../dist" />
+                      <excludeFolder url="file://$MODULE_DIR$/../tmp" />
+                    </content>
+                    <orderEntry type="inheritedJdk" />
+                    <orderEntry type="sourceFolder" forTests="false" />
+                  </component>
+                </module>
+                """);
+        Files.writeString(ideaDir.resolve("vcs.xml"), """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project version="4">
+                  <component name="VcsDirectoryMappings">
+                    <mapping directory="" vcs="Git" />
+                  </component>
+                </project>
+                """);
     }
 
     // ---------------------------------------------------------------- express

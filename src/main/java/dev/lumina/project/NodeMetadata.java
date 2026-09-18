@@ -114,6 +114,7 @@ public final class NodeMetadata {
             }
         } else {
             // Linux / Unix
+            checkAdd(paths, "/bin/node");
             checkAdd(paths, "/usr/bin/node");
             checkAdd(paths, "/usr/local/bin/node");
             checkAdd(paths, "/snap/bin/node");

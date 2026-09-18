@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import dev.lumina.project.AngularMetadata;
 import dev.lumina.project.ExpressMetadata;
 import dev.lumina.project.GradleMetadata;
 import dev.lumina.project.GroovyMetadata;
@@ -418,10 +419,12 @@ public class NewProjectDialog {
             new ComboBox<>(FXCollections.observableArrayList("25", "21", "17"));
     private final ComboBox<String> groovySdkBox = new ComboBox<>(
             FXCollections.observableArrayList(GroovyMetadata.FALLBACK_VERSIONS));
-    private final ComboBox<String> nodeRuntimeBox = new ComboBox<>(
-            FXCollections.observableArrayList("node  /usr/bin/node                         22.23.1"));
-    private final ComboBox<String> angularCliBox = new ComboBox<>(
-            FXCollections.observableArrayList("npx --package @angular/cli ng                         22.1.1"));
+    private final ComboBox<String> nodeRuntimeBox = new ComboBox<>();
+    private final ComboBox<String> angularCliBox = new ComboBox<>();
+    private final Button nodeMore = compactButton("…");
+    private final Button cliMore = compactButton("…");
+    private String lastValidAngularNodeInterpreter;
+    private String lastValidAngularCli;
     private final ComboBox<String> viteBox = new ComboBox<>(
             FXCollections.observableArrayList("npx create-vite                                                    9.1.2"));
     private final ComboBox<String> viteTemplateBox = new ComboBox<>(
@@ -1216,16 +1219,12 @@ public class NewProjectDialog {
         jakartaServerRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(jakartaAppServerBox, Priority.ALWAYS);
 
-        nodeRuntimeBox.getSelectionModel().selectFirst();
-        angularCliBox.getSelectionModel().selectFirst();
         viteBox.getSelectionModel().selectFirst();
         viteTemplateBox.getSelectionModel().select("React");
         nodeRuntimeBox.setMaxWidth(Double.MAX_VALUE);
         angularCliBox.setMaxWidth(Double.MAX_VALUE);
         viteBox.setMaxWidth(Double.MAX_VALUE);
         viteTemplateBox.setMaxWidth(Double.MAX_VALUE);
-        Button nodeMore = compactButton("\u2026");
-        Button cliMore = compactButton("\u2026");
         Button viteMore = compactButton("\u2026");
         nodeRow.getChildren().setAll(nodeRuntimeBox, nodeMore);
         nodeRow.setAlignment(Pos.CENTER_LEFT);
@@ -1233,6 +1232,7 @@ public class NewProjectDialog {
         cliRow.getChildren().setAll(angularCliBox, cliMore);
         cliRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(angularCliBox, Priority.ALWAYS);
+        initAngularControls();
         viteRow.getChildren().setAll(viteBox, viteMore);
         viteRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(viteBox, Priority.ALWAYS);
@@ -5184,6 +5184,298 @@ public class NewProjectDialog {
         return val != null && !val.isBlank() ? val : ExpressMetadata.getDefaultStylesheetEngine().name();
     }
 
+    // ---------------------------------------------------------------- Angular CLI
+
+    private void initAngularControls() {
+        angularStandaloneCheck.setSelected(true);
+        angularDefaultsCheck.setSelected(true);
+
+        nodeRuntimeBox.setCellFactory(lv -> createNodeInterpreterListCell());
+        nodeRuntimeBox.setButtonCell(createNodeInterpreterButtonCell());
+
+        angularCliBox.setCellFactory(lv -> createAngularCliListCell());
+        angularCliBox.setButtonCell(createAngularCliButtonCell());
+
+        nodeRuntimeBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (NodeMetadata.ACTION_ADD.equals(val)) {
+                Platform.runLater(this::pickAngularNodeExecutable);
+            } else if (NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+                Platform.runLater(() -> {
+                    nodeRuntimeBox.setValue(lastValidAngularNodeInterpreter);
+                    new DownloadNodeDialog(stage, installed -> {
+                        String display = installed.formatDisplay();
+                        if (!nodeRuntimeBox.getItems().contains(display)) {
+                            nodeRuntimeBox.getItems().add(0, display);
+                        }
+                        nodeRuntimeBox.setValue(display);
+                        lastValidAngularNodeInterpreter = display;
+                    }).show();
+                });
+            } else {
+                lastValidAngularNodeInterpreter = val;
+            }
+        });
+
+        angularCliBox.valueProperty().addListener((obs, old, val) -> {
+            if (val == null) return;
+            if (AngularMetadata.ACTION_SELECT.equals(val)) {
+                Platform.runLater(this::pickAngularCliVersion);
+            } else {
+                lastValidAngularCli = val;
+            }
+        });
+
+        nodeMore.setOnAction(e -> pickAngularNodeExecutable());
+        cliMore.setOnAction(e -> pickAngularCliVersion());
+
+        refreshAngularControls();
+    }
+
+    private ListCell<String> createNodeInterpreterListCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                    return;
+                }
+                if (NodeMetadata.ACTION_ADD.equals(item) || NodeMetadata.ACTION_DOWNLOAD.equals(item)) {
+                    setText(item);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
+            }
+        };
+    }
+
+    private ListCell<String> createNodeInterpreterButtonCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+            }
+        };
+    }
+
+    private ListCell<String> createAngularCliListCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                    return;
+                }
+                if (AngularMetadata.ACTION_SELECT.equals(item)) {
+                    setText(item);
+                    setGraphic(null);
+                    setStyle("-fx-text-fill: #589DF6; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+                setStyle("-fx-padding: 3 8 3 8;");
+            }
+        };
+    }
+
+    private ListCell<String> createAngularCliButtonCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                String text = item.trim();
+                String[] parts = text.split("\\s{2,}");
+                String prefix = parts.length > 0 ? parts[0] : text;
+                String ver = parts.length > 1 ? parts[parts.length - 1] : "";
+
+                HBox cellBox = new HBox(8);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                Label label = new Label(prefix);
+                label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                Label detail = new Label(ver);
+                detail.setStyle("-fx-text-fill: #8C92A4; -fx-font-size: 11px;");
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.getChildren().addAll(label, spacer, detail);
+                setText(null);
+                setGraphic(cellBox);
+            }
+        };
+    }
+
+    private void refreshAngularControls() {
+        Thread.ofVirtual().start(() -> {
+            var interpreters = NodeMetadata.detectInterpreters(false);
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var interp : interpreters) {
+                    items.add(interp.formatDisplay());
+                }
+                items.add(NodeMetadata.ACTION_ADD);
+                items.add(NodeMetadata.ACTION_DOWNLOAD);
+                String current = nodeRuntimeBox.getValue();
+                nodeRuntimeBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    nodeRuntimeBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    nodeRuntimeBox.getSelectionModel().selectFirst();
+                }
+                lastValidAngularNodeInterpreter = nodeRuntimeBox.getValue();
+            });
+        });
+
+        Thread.ofVirtual().start(() -> {
+            var clis = AngularMetadata.detectAngularClis();
+            Platform.runLater(() -> {
+                ObservableList<String> items = FXCollections.observableArrayList();
+                for (var cli : clis) {
+                    items.add(cli.formatDisplay());
+                }
+                String current = angularCliBox.getValue();
+                angularCliBox.setItems(items);
+                if (current != null && items.contains(current)) {
+                    angularCliBox.setValue(current);
+                } else if (!items.isEmpty()) {
+                    angularCliBox.getSelectionModel().selectFirst();
+                }
+                lastValidAngularCli = angularCliBox.getValue();
+            });
+
+            String latest = AngularMetadata.fetchLatestVersion(false);
+            if (latest != null && !latest.isBlank()) {
+                Platform.runLater(() -> {
+                    String formatted = AngularMetadata.formatCliDisplay(latest);
+                    if (!angularCliBox.getItems().isEmpty() && !angularCliBox.getItems().contains(formatted)) {
+                        angularCliBox.getItems().add(0, formatted);
+                        if (angularCliBox.getValue() == null || angularCliBox.getValue().startsWith(AngularMetadata.CLI_PREFIX)) {
+                            angularCliBox.setValue(formatted);
+                            lastValidAngularCli = formatted;
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void pickAngularNodeExecutable() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Node.js Interpreter");
+        File initial = new File("/usr/bin");
+        if (!initial.exists()) initial = new File("/usr/local/bin");
+        if (initial.exists()) chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(stage);
+        if (file != null && file.canExecute()) {
+            String ver = NodeMetadata.probeVersion(file.getAbsolutePath());
+            var interp = new NodeMetadata.NodeInterpreter(file.getName(), file.getAbsolutePath(), ver != null ? ver : "custom", false);
+            String display = interp.formatDisplay();
+            if (!nodeRuntimeBox.getItems().contains(display)) {
+                nodeRuntimeBox.getItems().add(0, display);
+            }
+            nodeRuntimeBox.setValue(display);
+            lastValidAngularNodeInterpreter = display;
+        } else if (lastValidAngularNodeInterpreter != null) {
+            nodeRuntimeBox.setValue(lastValidAngularNodeInterpreter);
+        }
+    }
+
+    private void pickAngularCliVersion() {
+        String currentVer = AngularMetadata.parseVersionFromDisplay(angularCliBox.getValue());
+        new SelectCliVersionDialog(stage, AngularMetadata.TYPE_ANGULAR, currentVer, selectedVer -> {
+            String formatted = AngularMetadata.formatCliDisplay(selectedVer);
+            if (!angularCliBox.getItems().contains(formatted)) {
+                angularCliBox.getItems().add(0, formatted);
+            }
+            angularCliBox.setValue(formatted);
+            lastValidAngularCli = formatted;
+        }).show();
+    }
+
+    private String getSelectedAngularNodeInterpreter() {
+        String val = nodeRuntimeBox.getValue();
+        if (val == null || val.isBlank() || NodeMetadata.ACTION_ADD.equals(val)
+                || NodeMetadata.ACTION_DOWNLOAD.equals(val)) {
+            return "/usr/bin/node";
+        }
+        String s = val.trim();
+        if (s.startsWith("node")) {
+            s = s.substring(4).trim();
+        }
+        String[] parts = s.split("\\s+");
+        if (parts.length > 0 && !parts[0].isBlank()) {
+            return parts[0].trim();
+        }
+        return "/usr/bin/node";
+    }
+
+    private String getSelectedAngularCliVersion() {
+        return AngularMetadata.parseVersionFromDisplay(angularCliBox.getValue());
+    }
+
     private HBox buildButtons() {
         errorLabel.getStyleClass().add("form-error");
 
@@ -6045,6 +6337,13 @@ public class NewProjectDialog {
             if (artifactField.getText().trim().isEmpty() || "demo".equals(artifactField.getText().trim())) {
                 artifactField.setText("com.example.ktor-sample");
             }
+        }
+        if (angular) {
+            String curName = nameField.getText().trim();
+            if (curName.isEmpty() || "demo".equals(curName)) {
+                nameField.setText("untitled1");
+            }
+            refreshAngularControls();
         }
         boolean html = generator == ProjectSpec.Generator.HTML;
         boolean react = generator == ProjectSpec.Generator.REACT;
@@ -7496,7 +7795,12 @@ public class NewProjectDialog {
                 rubyAddSampleCodeCheck.isSelected(),
                 selected.generator() == ProjectSpec.Generator.GO && goRootBox.getValue() != null ? goRootBox.getValue().path() : "",
                 goVendoringCheck.isSelected(),
-                goEnvironmentField.getText().trim());
+                goEnvironmentField.getText().trim(),
+                getSelectedAngularNodeInterpreter(),
+                getSelectedAngularCliVersion(),
+                webParametersField.getText().trim(),
+                angularStandaloneCheck.isSelected(),
+                angularDefaultsCheck.isSelected());
 
         Path targetDir = spec.projectDir();
         boolean requiresEmptySlot = selected.generator() == ProjectSpec.Generator.MAVEN_ARCHETYPE
