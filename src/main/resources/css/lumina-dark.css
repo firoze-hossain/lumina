@@ -561,50 +561,53 @@
 
 .maven-link {
     -fx-background-color: transparent;
-    -fx-text-fill: #56A8F5;
-    -fx-padding: 4 0 4 0;
+    -fx-text-fill: #589DF6;
+    -fx-padding: 0;
     -fx-cursor: hand;
+    -fx-font-size: 13px;
 }
-.maven-link:hover { -fx-text-fill: #87C5FF; -fx-underline: true; }
+.maven-link:hover { -fx-text-fill: #73B1FF; -fx-underline: true; }
 .maven-section-title {
-    -fx-text-fill: #C9CDDC;
-    -fx-font-size: 12px;
-    -fx-padding: 8 0 5 0;
-    -fx-border-color: transparent transparent #2C3042 transparent;
-    -fx-border-width: 0 0 1 0;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 13px;
+    -fx-padding: 6 0 4 0;
 }
 .property-toolbar {
-    -fx-background-color: #191C26;
-    -fx-border-color: #2C3042 #2C3042 transparent #2C3042;
+    -fx-background-color: #1E1F22;
+    -fx-border-color: #393B40 #393B40 transparent #393B40;
     -fx-border-width: 1 1 0 1;
-    -fx-padding: 3 7 3 7;
+    -fx-border-radius: 4 4 0 0;
+    -fx-background-radius: 4 4 0 0;
+    -fx-padding: 2 6 2 6;
 }
 .property-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #C9CDDC;
-    -fx-font-size: 17px;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 15px;
     -fx-padding: 0 4 0 4;
     -fx-cursor: hand;
 }
-.property-button:hover { -fx-text-fill: -lumen; }
+.property-button:hover { -fx-text-fill: #589DF6; }
 .maven-properties-table {
-    -fx-background-color: #191C26;
-    -fx-border-color: #2C3042;
+    -fx-background-color: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 0 0 4 4;
+    -fx-background-radius: 0 0 4 4;
 }
 .maven-properties-table .column-header-background,
 .maven-properties-table .column-header {
-    -fx-background-color: #14161E;
+    -fx-background-color: #2B2D30;
 }
 .maven-properties-table .column-header .label {
-    -fx-text-fill: #848BA3;
+    -fx-text-fill: #8C919D;
     -fx-font-size: 11px;
 }
 .maven-properties-table .table-row-cell {
-    -fx-background-color: #191C26;
-    -fx-border-color: transparent transparent #242837 transparent;
+    -fx-background-color: #1E1F22;
+    -fx-border-color: transparent transparent #2B2D30 transparent;
 }
-.maven-properties-table .table-cell { -fx-text-fill: #C9CDDC; }
-.maven-properties-table .placeholder .label { -fx-text-fill: #565D75; }
+.maven-properties-table .table-cell { -fx-text-fill: #DFE1E5; }
+.maven-properties-table .placeholder .label { -fx-text-fill: #707890; }
 
 .rust-template-list {
     -fx-background-color: #1E1F22;

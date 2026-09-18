@@ -5553,10 +5553,12 @@ public final class ProjectGenerator {
         String archetypeId = separator > 0 ? archetype.substring(separator + 1) : archetype;
         String archetypeVersion = required(spec.archetypeVersion(), "1.4");
         String projectVersion = required(spec.projectVersion(), "1.0-SNAPSHOT");
-        String catalog = switch (required(spec.archetypeCatalog(), "Internal")) {
+        String rawCatalog = required(spec.archetypeCatalog(), "Internal");
+        String catalog = switch (rawCatalog) {
             case "Default Local" -> "local";
             case "Maven Central" -> "remote";
-            default -> "internal";
+            case "Internal" -> "internal";
+            default -> !rawCatalog.isBlank() ? rawCatalog : "internal";
         };
 
         log.accept("Generating Maven project from " + archetypeId + " …");
@@ -5573,6 +5575,18 @@ public final class ProjectGenerator {
                 .directory(spec.location().toFile())
                 .redirectErrorStream(true);
         addAdditionalProperties(builder, spec.additionalProperties());
+
+        if (spec.javaVersion() != null && !spec.javaVersion().isBlank()) {
+            try {
+                for (JdkMetadata.JdkInstallation jdk : JdkMetadata.detectInstallations(false)) {
+                    if (String.valueOf(jdk.majorVersion()).equals(spec.javaVersion())
+                            || jdk.name().contains(spec.javaVersion())) {
+                        builder.environment().put("JAVA_HOME", jdk.homePath());
+                        break;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
 
         Process process = builder.start();
         try (BufferedReader output = new BufferedReader(new InputStreamReader(
@@ -5595,6 +5609,17 @@ public final class ProjectGenerator {
         if (!Files.isDirectory(dir)) {
             throw new IOException("Maven did not create the expected project directory: " + dir);
         }
+
+        // Generate IntelliJ IDEA metadata for the generated Maven project
+        try {
+            Path ideaDir = dir.resolve(".idea");
+            Files.createDirectories(ideaDir);
+            Files.writeString(ideaDir.resolve("modules.xml"), MavenArchetypeMetadata.generateIdeaModulesXml(spec.name()));
+            Files.writeString(ideaDir.resolve("misc.xml"), MavenArchetypeMetadata.generateIdeaMiscXml(spec.javaVersion()));
+            if (spec.initGit()) {
+                Files.writeString(ideaDir.resolve("vcs.xml"), MavenArchetypeMetadata.generateIdeaVcsXml());
+            }
+        } catch (Exception ignored) {}
     }
 
     private static void addAdditionalProperties(ProcessBuilder builder, String properties) {
