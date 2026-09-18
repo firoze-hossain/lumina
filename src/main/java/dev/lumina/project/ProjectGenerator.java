@@ -66,6 +66,7 @@ public final class ProjectGenerator {
             case PHP -> generatePhp(spec, dir, log);
             case RUBY -> generateRuby(spec, dir, log);
             case GEM -> generateGem(spec, dir, log);
+            case RUBY_ON_RAILS -> generateRails(spec, dir, log);
             case KOTLIN -> generateKotlin(spec, dir, log);
             case JAVAFX -> generateJavaFX(spec, dir, log);
             case EMPTY_PROJECT -> generateEmptyProject(spec, dir, log);
@@ -4299,6 +4300,42 @@ public final class ProjectGenerator {
         }
         Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
         log.accept("Configured Ruby SDK for Gem: " + sdkName);
+    }
+
+    private static void generateRails(ProjectSpec spec, Path dir, Consumer<String> log)
+            throws IOException {
+        log.accept("Generating Ruby on Rails project …");
+
+        Files.createDirectories(dir);
+
+        String projectName = spec.name();
+        String railsType = spec.safeRailsType();
+        String railsVer = spec.safeRailsVersion();
+        String db = spec.safeRailsDatabase();
+        boolean jsEnabled = spec.safeRailsJsFrameworkEnabled();
+        String jsFramework = spec.safeRailsJsFramework();
+
+        // 1. Scaffold files via RailsMetadata
+        RailsMetadata.scaffoldProject(dir, projectName, railsType, railsVer, db, jsEnabled, jsFramework, log);
+
+        // 2. Generate .idea configuration for Ruby on Rails project
+        Path ideaDir = dir.resolve(".idea");
+        Files.createDirectories(ideaDir);
+        Files.writeString(ideaDir.resolve("modules.xml"), RubyMetadata.generateIdeaModulesXml(projectName));
+        Files.writeString(ideaDir.resolve(projectName + ".iml"), RailsMetadata.generateIdeaRailsIml(projectName));
+
+        String rubyPath = spec.safeRubyInterpreterPath();
+        String sdkName = "Ruby";
+        if (!rubyPath.isBlank()) {
+            String ver = RubyMetadata.probeRubyVersion(rubyPath);
+            if (ver != null && !ver.isBlank()) {
+                sdkName = "ruby-" + ver;
+            } else {
+                sdkName = "ruby (" + rubyPath + ")";
+            }
+        }
+        Files.writeString(ideaDir.resolve("misc.xml"), RubyMetadata.generateIdeaMiscXml(sdkName));
+        log.accept("Configured Ruby on Rails project: " + projectName + " (" + railsType + ")");
     }
 
     public static void writeIdeaGradleXml(Path dir, String distributionType, String gradleHome) throws IOException {

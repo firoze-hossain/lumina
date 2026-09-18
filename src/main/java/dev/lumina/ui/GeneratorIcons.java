@@ -34,6 +34,7 @@ public final class GeneratorIcons {
             case "Python", "Virtualenv" -> pythonIcon();
             case "PHP" -> phpIcon();
             case "Ruby", "Gem" -> rubyIcon();
+            case "Ruby on Rails", "Rails" -> railsIcon();
             case "Conda" -> condaIcon();
             case "Pipenv" -> pipenvIcon();
             case "Poetry" -> poetryIcon();
@@ -621,6 +622,29 @@ public final class GeneratorIcons {
                 leftPupil, rightPupil,
                 leftHighlight, rightHighlight
         );
+        return box(g);
+    }
+
+    /** Ruby on Rails: official crimson red badge with railway tracks/sleepers emblem. */
+    public static Node railsIcon() {
+        Rectangle bg = new Rectangle(15, 15);
+        bg.setArcWidth(4);
+        bg.setArcHeight(4);
+        bg.setFill(Color.web("#CC0000"));
+
+        // Railway tracks (slanted parallel rails)
+        SVGPath rails = new SVGPath();
+        rails.setContent("M 4,3 L 7.5,13 M 8,3 L 11.5,13");
+        rails.setStroke(Color.WHITE);
+        rails.setStrokeWidth(1.2);
+
+        // Ties (horizontal sleepers across the rails)
+        SVGPath ties = new SVGPath();
+        ties.setContent("M 3.2,5 L 9.2,5 M 4.4,8 L 10.4,8 M 5.8,11 L 11.8,11");
+        ties.setStroke(Color.WHITE);
+        ties.setStrokeWidth(1.0);
+
+        Group g = new Group(bg, rails, ties);
         return box(g);
     }
 
