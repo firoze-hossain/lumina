@@ -1428,24 +1428,60 @@ public class LuminaApp extends Application {
     /** Right-click menu inside the code editor (IntelliJ-style). */
     private ContextMenu buildEditorContextMenu() {
         ContextMenu menu = new ContextMenu();
+
+        MenuItem showContext = item("\uD83D\uDCA1  Show Context Actions", "Alt+Enter", e -> {
+            EditorTab t = currentEditor();
+            if (t != null) t.openContextActions();
+        });
+
+        Menu aiActions = new Menu("@ AI Actions");
+        MenuItem explainCode = item("Explain Code", null, e -> {});
+        aiActions.getItems().add(explainCode);
+
+        MenuItem paste = item("Paste", "Ctrl+V", e -> withEditor(EditorTab::paste));
+        Menu copyPasteSpecial = new Menu("Copy / Paste Special");
+        MenuItem copyRef = item("Copy Reference", "Ctrl+Alt+Shift+C", e -> {});
+        copyPasteSpecial.getItems().add(copyRef);
+        MenuItem columnSelection = item("Column Selection Mode", "Alt+Shift+Insert", e -> {});
+
+        Menu goTo = new Menu("Go To");
+        MenuItem gotoDecl = item("Declaration or Usages", "Shortcut+B", e -> {
+            EditorTab t = currentEditor();
+            if (t != null) goToDeclaration(t.wordAtCaret());
+        });
+        MenuItem gotoImpl = item("Implementation(s)", "Shortcut+Alt+B", e -> {});
+        MenuItem superMethod = item("Super Method", "Shortcut+U", e -> {});
+        MenuItem gotoTest = item("Test", "Shortcut+Shift+T", e -> generateTest());
+        goTo.getItems().addAll(gotoDecl, gotoImpl, superMethod, gotoTest);
+
+        Menu folding = new Menu("Folding");
+        Menu analyze = new Menu("Analyze");
+
+        MenuItem rename = item("Rename\u2026", "Shift+F6", e -> {});
+        Menu refactor = new Menu("Refactor");
+        MenuItem generate = item("Generate\u2026", "Alt+Insert", e -> {
+            EditorTab t = currentEditor();
+            if (t != null) t.openGeneratePopup();
+        });
+
         MenuItem runTest = item("\u25B6  Run Test", null, e -> {
             EditorTab t = currentEditor();
             runTestMethod(t != null ? t.testMethodAtCaret() : null);
         });
         MenuItem run = item("\u25B6  Run", null, e -> runCurrentFile());
         MenuItem debug = item("\uD83D\uDC1E  Debug", null, e -> debugSelectedConfig());
-        MenuItem gotoDecl = item("Go to Declaration", "Shortcut+B", e -> {
-            EditorTab t = currentEditor();
-            if (t != null) goToDeclaration(t.wordAtCaret());
-        });
-        MenuItem usages = item("Find Usages", "Alt+F7", e -> {
-            EditorTab t = currentEditor();
-            if (t != null) showUsages(t.wordAtCaret());
-        });
-        MenuItem genTest = item("Generate Test\u2026", null, e -> generateTest());
-        MenuItem cut = item("Cut", null, e -> withEditor(EditorTab::cut));
-        MenuItem copy = item("Copy", null, e -> withEditor(EditorTab::copy));
-        MenuItem paste = item("Paste", null, e -> withEditor(EditorTab::paste));
+
+        Menu openIn = new Menu("Open In");
+        Menu localHistory = new Menu("Local History");
+
+        MenuItem compareClipboard = item("Compare with Clipboard", null, e -> {});
+        Menu diagrams = new Menu("Diagrams");
+        MenuItem createGist = item("Create Gist\u2026", null, e -> {});
+
+        MenuItem addFileToChat = item("Add file to Chat", null, e -> {});
+        MenuItem inlineChat = item("Open Inline Chat", "Shortcut+Shift+G", e -> {});
+        Menu githubCopilot = new Menu("GitHub Copilot");
+        MenuItem upgradeJava = item("Upgrade Java Runtime and Frameworks", null, e -> {});
 
         menu.setOnShowing(e -> {
             EditorTab t = currentEditor();
@@ -1459,11 +1495,25 @@ public class LuminaApp extends Application {
             runTest.setVisible(isTest);
             run.setVisible(isMain);
             debug.setVisible(isMain);
-            genTest.setVisible(isMain);
         });
-        menu.getItems().addAll(runTest, run, debug,
-                new SeparatorMenuItem(), gotoDecl, usages, genTest,
-                new SeparatorMenuItem(), cut, copy, paste);
+
+        menu.getItems().addAll(
+                showContext, aiActions,
+                new SeparatorMenuItem(),
+                paste, copyPasteSpecial, columnSelection,
+                new SeparatorMenuItem(),
+                goTo, folding, analyze,
+                new SeparatorMenuItem(),
+                rename, refactor, generate,
+                new SeparatorMenuItem(),
+                runTest, run, debug,
+                new SeparatorMenuItem(),
+                openIn, localHistory,
+                new SeparatorMenuItem(),
+                compareClipboard, diagrams, createGist,
+                new SeparatorMenuItem(),
+                addFileToChat, inlineChat, githubCopilot, upgradeJava
+        );
         return menu;
     }
 
@@ -4294,6 +4344,7 @@ public class LuminaApp extends Application {
                             file, text, full, roots));
             String mod = projectRoot != null ? projectRoot.getFileName().toString() : null;
             results.addAll(dev.lumina.diagnostics.JpaDiagnostics.checkPersistentEntities(file, text, mod));
+            results.addAll(dev.lumina.diagnostics.FieldDiagnostics.checkUnusedFields(file, text, mod));
             return results;
         });
         tab.setDiagnosticsListener(diags -> {
@@ -4303,6 +4354,7 @@ public class LuminaApp extends Application {
             }
         });
         tab.setOnQuickFix(this::applySpringConfigQuickFix);
+        tab.setOnGenerateTest(this::generateTest);
         tab.setTypeResolver(sym -> {
             dev.lumina.semantics.SemanticEngine eng = semantics;
             return eng != null ? eng.resolveFqcn(sym) : null;

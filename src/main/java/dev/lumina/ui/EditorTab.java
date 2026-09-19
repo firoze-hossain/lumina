@@ -67,6 +67,8 @@ public class EditorTab extends Tab {
         setOnClosed(e -> {
             hideDiagPopup();
             hideGhostSuggestion();
+            contextActionsPopup.hide();
+            generatePopup.hide();
         });
         diagHideTimer.setOnFinished(ev -> {
             if (!isMouseOverDiagPopup) {
@@ -178,13 +180,23 @@ public class EditorTab extends Tab {
                     e.consume();
                     return;
                 }
+                if (contextActionsPopup.isShowing()) {
+                    contextActionsPopup.hide();
+                    e.consume();
+                    return;
+                }
+                if (generatePopup.isShowing()) {
+                    generatePopup.hide();
+                    e.consume();
+                    return;
+                }
             }
             if (e.getCode() == javafx.scene.input.KeyCode.SPACE && e.isControlDown()) {
                 e.consume();
                 triggerCompletion();
                 return;
             }
-            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && e.isAltDown()) {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && e.isAltDown() && e.isShiftDown()) {
                 e.consume();
                 dev.lumina.diagnostics.JavaDiagnostics.Diag diag =
                         diagAt(codeArea.getCaretPosition());
@@ -195,6 +207,17 @@ public class EditorTab extends Tab {
                     hideDiagPopup();
                     runQuickFix(diag.quickFix());
                 }
+                return;
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && e.isAltDown()) {
+                e.consume();
+                hideDiagPopup();
+                openContextActions();
+                return;
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.INSERT && e.isAltDown()) {
+                e.consume();
+                openGeneratePopup();
                 return;
             }
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
@@ -544,6 +567,27 @@ public class EditorTab extends Tab {
     private void refreshInlineHints() {
         if (hintOverlay == null) return;
         hintOverlay.getChildren().clear();
+
+        // Unused field inlay hints ("no usages")
+        if (diagnostics != null && !diagnostics.isEmpty()) {
+            for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
+                if (d.quickFix() != null && d.quickFix().startsWith("unused-field:")) {
+                    int lineIdx = Math.max(0, d.line() - 1);
+                    if (lineIdx < codeArea.getParagraphs().size()) {
+                        lineBoundsAt(lineIdx).ifPresent(b -> {
+                            javafx.scene.control.Label noUsages =
+                                    new javafx.scene.control.Label("no usages");
+                            noUsages.getStyleClass().add("inlay-no-usages");
+                            noUsages.applyCss();
+                            noUsages.layout();
+                            noUsages.setLayoutX(b.getMaxX() + 10);
+                            noUsages.setLayoutY(b.getMinY() + (b.getHeight() - 14) / 2);
+                            hintOverlay.getChildren().add(noUsages);
+                        });
+                    }
+                }
+            }
+        }
 
         if (addStartersLine >= 0 && addStartersLine < codeArea.getParagraphs().size()) {
             lineBoundsAt(addStartersLine).ifPresent(b -> {
@@ -967,6 +1011,15 @@ public class EditorTab extends Tab {
             } else if (onQuickFix != null) {
                 onQuickFix.accept(id);
             }
+        } else if (id.startsWith("unused-field:")) {
+            String fieldName = id.substring("unused-field:".length()).trim();
+            String full = codeArea.getText();
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(full, fieldName);
+            if (!updated.equals(full)) {
+                codeArea.replaceText(0, full.length(), updated);
+                applyHighlighting();
+                scheduleDiagnostics();
+            }
         } else if (onQuickFix != null) {
             onQuickFix.accept(id);
         }
@@ -975,6 +1028,9 @@ public class EditorTab extends Tab {
 
     private static String quickFixActionLabel(String id) {
         if (id == null) return "Apply fix";
+        if (id.startsWith("unused-field:")) {
+            return "Add constructor parameter";
+        }
         if (id.startsWith("remove-property-line:")) {
             return "Remove property";
         }
@@ -1061,6 +1117,7 @@ public class EditorTab extends Tab {
         this.diagnostics = diags == null ? java.util.List.of() : diags;
         applyHighlighting();
         refreshGutter();
+        Platform.runLater(this::refreshInlineHints);
         if (diagnosticsListener != null) {
             diagnosticsListener.accept(this.diagnostics);
         }
@@ -1085,9 +1142,17 @@ public class EditorTab extends Tab {
             if (start > last) {
                 builder.add(java.util.List.of(), start - last);
             }
-            builder.add(java.util.List.of(d.severity()
-                    == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR
-                    ? "diag-error" : "diag-warning"), end - start);
+            boolean isUnusedField = d.quickFix() != null && d.quickFix().startsWith("unused-field:");
+            java.util.List<String> classes = new java.util.ArrayList<>();
+            if (isUnusedField) {
+                classes.add("unused-field");
+                classes.add("diag-warning");
+            } else if (d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR) {
+                classes.add("diag-error");
+            } else {
+                classes.add("diag-warning");
+            }
+            builder.add(classes, end - start);
             last = end;
         }
         if (length > last) {
@@ -1261,14 +1326,11 @@ public class EditorTab extends Tab {
         javafx.scene.control.Label moreActions = new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
         moreActions.getStyleClass().add("diag-more-actions");
         moreActions.setCursor(javafx.scene.Cursor.HAND);
-        if (diag.quickFix() != null) {
-            final String fixId = diag.quickFix();
-            moreActions.setOnMouseClicked(e -> {
-                e.consume();
-                hideDiagPopup();
-                runQuickFix(fixId);
-            });
-        }
+        moreActions.setOnMouseClicked(e -> {
+            e.consume();
+            hideDiagPopup();
+            openContextActions();
+        });
         actionRow.getChildren().add(moreActions);
 
         header.getChildren().addAll(titleRow, actionRow);
@@ -1287,10 +1349,27 @@ public class EditorTab extends Tab {
         body.getStyleClass().add("diag-body");
         body.setPadding(new javafx.geometry.Insets(10, 14, 10, 14));
 
+        boolean isUnusedField = diag.quickFix() != null && diag.quickFix().startsWith("unused-field:");
         boolean hasTypeOrDesc = (diag.propertyType() != null && !diag.propertyType().isBlank())
                 || (diag.description() != null && !diag.description().isBlank());
 
-        if (hasTypeOrDesc) {
+        if (isUnusedField) {
+            if (diag.context() != null && !diag.context().isBlank()) {
+                javafx.scene.layout.HBox ctxRow = new javafx.scene.layout.HBox(6);
+                ctxRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                javafx.scene.control.Label cIcon = new javafx.scene.control.Label("\u24B8");
+                cIcon.getStyleClass().add("diag-class-icon");
+                javafx.scene.control.Label ctxLabel = new javafx.scene.control.Label(diag.context());
+                ctxLabel.getStyleClass().add("diag-context-label");
+                ctxRow.getChildren().addAll(cIcon, ctxLabel);
+                body.getChildren().add(ctxRow);
+            }
+            if (diag.description() != null && !diag.description().isBlank()) {
+                javafx.scene.control.Label codeLabel = new javafx.scene.control.Label(diag.description());
+                codeLabel.getStyleClass().add("diag-code-snippet");
+                body.getChildren().add(codeLabel);
+            }
+        } else if (hasTypeOrDesc) {
             String propName = diag.context() != null ? diag.context() : "Property";
             javafx.scene.control.Label nameLabel = new javafx.scene.control.Label(propName);
             nameLabel.getStyleClass().add("diag-prop-name");
@@ -1355,7 +1434,8 @@ public class EditorTab extends Tab {
             origLabel.setTextOverrun(javafx.scene.control.OverrunStyle.CENTER_ELLIPSIS);
             javafx.scene.layout.HBox.setHgrow(origLabel, javafx.scene.layout.Priority.ALWAYS);
 
-            javafx.scene.control.Label linkBtn = new javafx.scene.control.Label("\uD83D\uDD17");
+            boolean isFieldDiag = diag.quickFix() != null && diag.quickFix().startsWith("unused-field:");
+            javafx.scene.control.Label linkBtn = new javafx.scene.control.Label(isFieldDiag ? "\u270F" : "\uD83D\uDD17");
             linkBtn.getStyleClass().add("diag-footer-link");
             linkBtn.setCursor(javafx.scene.Cursor.HAND);
 
@@ -1420,6 +1500,188 @@ public class EditorTab extends Tab {
 
     private final CompletionPopup completionPopup =
             new CompletionPopup(this::acceptCompletion);
+    private final ContextActionsPopup contextActionsPopup = new ContextActionsPopup();
+    private final GeneratePopup generatePopup = new GeneratePopup();
+    private Runnable onGenerateTest;
+
+    public void setOnGenerateTest(Runnable handler) {
+        this.onGenerateTest = handler;
+    }
+
+    public void openContextActions() {
+        hideDiagPopup();
+        dev.lumina.diagnostics.JavaDiagnostics.Diag diag = diagAt(codeArea.getCaretPosition());
+        if (diag == null) {
+            diag = diagAtLine(codeArea.getCurrentParagraph() + 1);
+        }
+
+        javafx.geometry.Bounds anchor = codeArea.getCaretBounds().orElse(null);
+        if (anchor == null) {
+            int pos = codeArea.getCaretPosition();
+            var b = codeArea.getCharacterBoundsOnScreen(pos, Math.min(pos + 1, codeArea.getLength()));
+            if (b.isPresent()) anchor = b.get();
+        }
+        if (anchor == null) {
+            anchor = new javafx.geometry.BoundingBox(100, 100, 10, 10);
+        }
+
+        java.util.List<ContextActionsPopup.ActionItem> items = new java.util.ArrayList<>();
+        String full = codeArea.getText();
+
+        if (diag != null && diag.quickFix() != null && diag.quickFix().startsWith("unused-field:")) {
+            String fieldName = diag.quickFix().substring("unused-field:".length()).trim();
+            var pCtor = dev.lumina.codegen.JavaCodeGenerator.previewAddConstructorParam(full, fieldName);
+            items.add(ContextActionsPopup.ActionItem.fix("add-ctor-param",
+                    "Add constructor parameter", pCtor, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(codeArea.getText(), fieldName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+
+            var pGs = dev.lumina.codegen.JavaCodeGenerator.previewGettersAndSetters(full, fieldName);
+            items.add(ContextActionsPopup.ActionItem.fix("create-getter-setter",
+                    "Create getter and setter for '" + fieldName + "'", pGs, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText(), fieldName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+
+            var pG = dev.lumina.codegen.JavaCodeGenerator.previewGetter(full, fieldName);
+            items.add(ContextActionsPopup.ActionItem.fix("create-getter",
+                    "Create getter for '" + fieldName + "'", pG, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText(), fieldName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+
+            var pS = dev.lumina.codegen.JavaCodeGenerator.previewSetter(full, fieldName);
+            items.add(ContextActionsPopup.ActionItem.fix("create-setter",
+                    "Create setter for '" + fieldName + "'", pS, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText(), fieldName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+
+            var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveField(full, fieldName);
+            items.add(ContextActionsPopup.ActionItem.fix("remove-field",
+                    "Remove field '" + fieldName + "'", pRem, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeField(codeArea.getText(), fieldName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {
+                int line = codeArea.getCurrentParagraph();
+                int lineStart = codeArea.getAbsolutePosition(line, 0);
+                codeArea.insertText(lineStart, "    /** Field " + fieldName + " */\n");
+                applyHighlighting();
+                scheduleDiagnostics();
+            }));
+            items.add(ContextActionsPopup.ActionItem.item("thread-local", "Convert to 'ThreadLocal'", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("atomic", "Convert to atomic", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+
+        } else if (diag != null && diag.quickFix() != null) {
+            String label = quickFixActionLabel(diag.quickFix());
+            final String fixId = diag.quickFix();
+            items.add(ContextActionsPopup.ActionItem.fix("quickfix", label, null, () -> runQuickFix(fixId)));
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+
+        } else {
+            // General context actions matching IntelliJ
+            items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+        }
+
+        contextActionsPopup.show(codeArea, anchor, items);
+    }
+
+    public void openGeneratePopup() {
+        javafx.geometry.Bounds anchor = codeArea.getCaretBounds().orElse(null);
+        if (anchor == null) {
+            int pos = codeArea.getCaretPosition();
+            var b = codeArea.getCharacterBoundsOnScreen(pos, Math.min(pos + 1, codeArea.getLength()));
+            if (b.isPresent()) anchor = b.get();
+        }
+        if (anchor == null) {
+            anchor = new javafx.geometry.BoundingBox(100, 100, 10, 10);
+        }
+
+        java.util.List<GeneratePopup.GenerateItem> items = new java.util.ArrayList<>();
+        items.add(GeneratePopup.GenerateItem.of("spring-comp", "Spring Component\u2026", null, "\uD83C\uDF3F", () -> {}));
+        items.add(GeneratePopup.GenerateItem.of("constructor", "Constructor", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateConstructor(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("logger", "Logger", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateLogger(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("getter", "Getter", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("setter", "Setter", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("getter-setter", "Getter and Setter", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("equals-hashcode", "equals() and hashCode()", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateEqualsAndHashCode(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("tostring", "toString()", null, null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("override", "Override Methods\u2026", "Ctrl+O", null, () -> {
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(codeArea.getText());
+            codeArea.replaceText(0, codeArea.getLength(), updated);
+            applyHighlighting();
+            scheduleDiagnostics();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("delegate", "Delegate Methods\u2026", null, null, () -> {}));
+        items.add(GeneratePopup.GenerateItem.of("test", "Test\u2026", null, null, () -> {
+            if (onGenerateTest != null) onGenerateTest.run();
+        }));
+        items.add(GeneratePopup.GenerateItem.of("copyright", "Copyright", null, null, () -> {}));
+
+        generatePopup.show(codeArea, anchor, items);
+    }
     private final javafx.stage.Popup ghostPopup = new javafx.stage.Popup();
     private final javafx.scene.control.Label ghostLabel = new javafx.scene.control.Label();
     private String currentGhostSuggestion = null;
