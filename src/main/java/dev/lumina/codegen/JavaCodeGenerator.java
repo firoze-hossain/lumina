@@ -93,6 +93,50 @@ public final class JavaCodeGenerator {
         return new Preview(Math.max(1, line), "// field '" + fieldName + "' removed");
     }
 
+    public static Preview previewThreadLocal(String source, String fieldName) {
+        ClassModel model = parseModel(source);
+        FieldInfo field = model.findField(fieldName);
+        String type = field != null ? field.type() : "String";
+        int line = model.fieldLine(fieldName);
+        String code = "private ThreadLocal<" + type + "> " + fieldName + " = new ThreadLocal<>();";
+        return new Preview(Math.max(1, line), code);
+    }
+
+    public static Preview previewAtomic(String source, String fieldName) {
+        ClassModel model = parseModel(source);
+        FieldInfo field = model.findField(fieldName);
+        String type = field != null ? field.type() : "String";
+        int line = model.fieldLine(fieldName);
+        String code = "private java.util.concurrent.atomic.AtomicReference<" + type + "> " + fieldName + " = new java.util.concurrent.atomic.AtomicReference<>();";
+        return new Preview(Math.max(1, line), code);
+    }
+
+    public static String convertToThreadLocal(String source, String fieldName) {
+        ClassModel model = parseModel(source);
+        FieldInfo field = model.findField(fieldName);
+        String type = field != null ? field.type() : "String";
+        Pattern pat = Pattern.compile("^[ \\t]*private\\s+[^;]*?\\b" + Pattern.quote(fieldName) + "\\s*(?:=[^;]+)?;[ \\t]*", Pattern.MULTILINE);
+        Matcher m = pat.matcher(source);
+        if (m.find()) {
+            String repl = "    private ThreadLocal<" + type + "> " + fieldName + " = new ThreadLocal<>();";
+            return source.substring(0, m.start()) + repl + source.substring(m.end());
+        }
+        return source;
+    }
+
+    public static String convertToAtomic(String source, String fieldName) {
+        ClassModel model = parseModel(source);
+        FieldInfo field = model.findField(fieldName);
+        String type = field != null ? field.type() : "String";
+        Pattern pat = Pattern.compile("^[ \\t]*private\\s+[^;]*?\\b" + Pattern.quote(fieldName) + "\\s*(?:=[^;]+)?;[ \\t]*", Pattern.MULTILINE);
+        Matcher m = pat.matcher(source);
+        if (m.find()) {
+            String repl = "    private java.util.concurrent.atomic.AtomicReference<" + type + "> " + fieldName + " = new java.util.concurrent.atomic.AtomicReference<>();";
+            return source.substring(0, m.start()) + repl + source.substring(m.end());
+        }
+        return source;
+    }
+
     public static String generateGettersAndSetters(String source, String... targetFields) {
         ClassModel model = parseModel(source);
         List<String> toGen = targetFields != null && targetFields.length > 0

@@ -97,4 +97,19 @@ class JavaCodeGeneratorTest {
         assertFalse(updated.contains("private String firstName;"));
         assertTrue(updated.contains("private String lastName;"));
     }
+
+    @Test
+    void testThreadLocalAndAtomic() {
+        var pThread = JavaCodeGenerator.previewThreadLocal(studentCode, "firstName");
+        assertTrue(pThread.code().contains("ThreadLocal<String> firstName"));
+
+        String threadUpdated = JavaCodeGenerator.convertToThreadLocal(studentCode, "firstName");
+        assertTrue(threadUpdated.contains("private ThreadLocal<String> firstName = new ThreadLocal<>();"));
+
+        var pAtomic = JavaCodeGenerator.previewAtomic(studentCode, "lastName");
+        assertTrue(pAtomic.code().contains("AtomicReference<String> lastName"));
+
+        String atomicUpdated = JavaCodeGenerator.convertToAtomic(studentCode, "lastName");
+        assertTrue(atomicUpdated.contains("private java.util.concurrent.atomic.AtomicReference<String> lastName = new java.util.concurrent.atomic.AtomicReference<>();"));
+    }
 }

@@ -3480,8 +3480,17 @@
 .context-item-bulb {
     -fx-font-size: 12px;
 }
+.context-item-glyph {
+    -fx-font-size: 12px;
+    -fx-text-fill: #BCBEC4;
+}
 .context-item-label {
     -fx-font-size: 12px;
+}
+.context-item-dots {
+    -fx-text-fill: #7A7E85;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 .context-item-arrow {
     -fx-text-fill: #7A7E85;
