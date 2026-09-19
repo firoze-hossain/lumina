@@ -39,23 +39,41 @@ public class ContextActionsPopup {
             boolean isFix,
             boolean isSeparator,
             boolean hasSubmenu,
+            boolean hasDotsMenu,
+            String iconGlyph,
             JavaCodeGenerator.Preview preview,
             Runnable action
     ) {
         public static ActionItem fix(String id, String label, JavaCodeGenerator.Preview preview, Runnable action) {
-            return new ActionItem(id, label, true, false, false, preview, action);
+            return new ActionItem(id, label, true, false, false, false, null, preview, action);
+        }
+
+        public static ActionItem fixWithDots(String id, String label, JavaCodeGenerator.Preview preview, Runnable action) {
+            return new ActionItem(id, label, true, false, false, true, null, preview, action);
         }
 
         public static ActionItem item(String id, String label, Runnable action) {
-            return new ActionItem(id, label, false, false, false, null, action);
+            return new ActionItem(id, label, false, false, false, false, null, null, action);
         }
 
         public static ActionItem itemWithMenu(String id, String label, Runnable action) {
-            return new ActionItem(id, label, false, false, true, null, action);
+            return new ActionItem(id, label, false, false, true, false, null, null, action);
+        }
+
+        public static ActionItem itemWithPreview(String id, String label, JavaCodeGenerator.Preview preview, Runnable action) {
+            return new ActionItem(id, label, false, false, false, false, null, preview, action);
+        }
+
+        public static ActionItem itemWithIcon(String id, String label, String icon, Runnable action) {
+            return new ActionItem(id, label, false, false, false, false, icon, null, action);
+        }
+
+        public static ActionItem itemWithMenuAndIcon(String id, String label, String icon, Runnable action) {
+            return new ActionItem(id, label, false, false, true, false, icon, null, action);
         }
 
         public static ActionItem separator() {
-            return new ActionItem(null, null, false, true, false, null, null);
+            return new ActionItem(null, null, false, true, false, false, null, null, null);
         }
     }
 
@@ -65,6 +83,8 @@ public class ContextActionsPopup {
     private final VBox previewBox = new VBox(4);
     private boolean showPreview = true;
     private Node ownerNode;
+    private double lastScreenX;
+    private double lastScreenY;
 
     public ContextActionsPopup() {
         popup.setAutoHide(true);
@@ -141,6 +161,8 @@ public class ContextActionsPopup {
 
         double screenX = anchor.getMinX();
         double screenY = anchor.getMaxY() + 4;
+        this.lastScreenX = screenX;
+        this.lastScreenY = screenY;
         popup.show(owner, screenX, screenY);
 
         Platform.runLater(() -> {
@@ -183,8 +205,8 @@ public class ContextActionsPopup {
             previewBox.getChildren().add(lineBox);
         }
 
-        double menuX = popup.getX();
-        double menuY = popup.getY();
+        double menuX = popup.getX() > 0 ? popup.getX() : lastScreenX;
+        double menuY = popup.getY() > 0 ? popup.getY() : lastScreenY;
         double previewWidth = 330;
         double previewX = Math.max(10, menuX - previewWidth - 8);
 
@@ -250,6 +272,13 @@ public class ContextActionsPopup {
                 Label bulb = new Label("\uD83D\uDCA1"); // 💡
                 bulb.getStyleClass().add("context-item-bulb");
                 box.getChildren().add(bulb);
+            } else if (item.iconGlyph() != null && !item.iconGlyph().isEmpty()) {
+                Label ic = new Label(item.iconGlyph());
+                ic.getStyleClass().add("context-item-glyph");
+                if ("@".equals(item.iconGlyph())) {
+                    ic.setStyle("-fx-text-fill: #589DF6; -fx-font-weight: bold; -fx-font-size: 13px;");
+                }
+                box.getChildren().add(ic);
             } else {
                 Region spacer = new Region();
                 spacer.setPrefWidth(16);
@@ -262,7 +291,11 @@ public class ContextActionsPopup {
             HBox.setHgrow(lbl, Priority.ALWAYS);
             box.getChildren().add(lbl);
 
-            if (item.hasSubmenu()) {
+            if (item.hasDotsMenu()) {
+                Label dots = new Label("\u22EE");
+                dots.getStyleClass().add("context-item-dots");
+                box.getChildren().add(dots);
+            } else if (item.hasSubmenu()) {
                 Label arrow = new Label(">");
                 arrow.getStyleClass().add("context-item-arrow");
                 box.getChildren().add(arrow);

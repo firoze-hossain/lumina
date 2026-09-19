@@ -911,7 +911,7 @@ public class EditorTab extends Tab {
     private final javafx.animation.PauseTransition diagHoverTimer =
             new javafx.animation.PauseTransition(javafx.util.Duration.millis(250));
     private final javafx.animation.PauseTransition diagHideTimer =
-            new javafx.animation.PauseTransition(javafx.util.Duration.millis(350));
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(650));
     private boolean isMouseOverDiagPopup = false;
     private Runnable paramInfoTrigger;
     private java.util.function.Consumer<String> onQuickFix;
@@ -1323,15 +1323,23 @@ public class EditorTab extends Tab {
             actionRow.getChildren().add(spacer);
         }
 
-        javafx.scene.control.Label moreActions = new javafx.scene.control.Label("More actions\u2026  Alt+Enter");
-        moreActions.getStyleClass().add("diag-more-actions");
-        moreActions.setCursor(javafx.scene.Cursor.HAND);
-        moreActions.setOnMouseClicked(e -> {
+        javafx.scene.control.Label moreLink = new javafx.scene.control.Label("More actions\u2026");
+        moreLink.getStyleClass().add("diag-action-link");
+        moreLink.setCursor(javafx.scene.Cursor.HAND);
+
+        javafx.scene.control.Label moreShortcut = new javafx.scene.control.Label("Alt+Enter");
+        moreShortcut.getStyleClass().add("diag-shortcut-hint");
+
+        javafx.scene.layout.HBox moreBox = new javafx.scene.layout.HBox(6, moreLink, moreShortcut);
+        moreBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        moreBox.setCursor(javafx.scene.Cursor.HAND);
+        final dev.lumina.diagnostics.JavaDiagnostics.Diag currentDiag = diag;
+        moreBox.setOnMouseClicked(e -> {
             e.consume();
             hideDiagPopup();
-            openContextActions();
+            openContextActions(currentDiag);
         });
-        actionRow.getChildren().add(moreActions);
+        actionRow.getChildren().add(moreBox);
 
         header.getChildren().addAll(titleRow, actionRow);
         card.getChildren().add(header);
@@ -1509,13 +1517,36 @@ public class EditorTab extends Tab {
     }
 
     public void openContextActions() {
+        openContextActions(null);
+    }
+
+    public void openContextActions(dev.lumina.diagnostics.JavaDiagnostics.Diag targetDiag) {
         hideDiagPopup();
-        dev.lumina.diagnostics.JavaDiagnostics.Diag diag = diagAt(codeArea.getCaretPosition());
-        if (diag == null) {
-            diag = diagAtLine(codeArea.getCurrentParagraph() + 1);
+
+        dev.lumina.diagnostics.JavaDiagnostics.Diag diag = targetDiag;
+        if (diag != null) {
+            if (diag.start() >= 0 && diag.start() <= codeArea.getLength()) {
+                codeArea.moveTo(diag.start());
+            }
+        } else {
+            diag = diagAt(codeArea.getCaretPosition());
+            if (diag == null) {
+                diag = diagAtLine(codeArea.getCurrentParagraph() + 1);
+            }
         }
 
-        javafx.geometry.Bounds anchor = codeArea.getCaretBounds().orElse(null);
+        javafx.geometry.Bounds anchor = null;
+        if (diag != null && diag.start() >= 0 && diag.start() <= codeArea.getLength()) {
+            int endPos = diag.end() > diag.start() && diag.end() <= codeArea.getLength()
+                    ? diag.end() : Math.min(diag.start() + 1, codeArea.getLength());
+            var b = codeArea.getCharacterBoundsOnScreen(diag.start(), endPos);
+            if (b.isPresent()) {
+                anchor = b.get();
+            }
+        }
+        if (anchor == null) {
+            anchor = codeArea.getCaretBounds().orElse(null);
+        }
         if (anchor == null) {
             int pos = codeArea.getCaretPosition();
             var b = codeArea.getCharacterBoundsOnScreen(pos, Math.min(pos + 1, codeArea.getLength()));
@@ -1528,48 +1559,71 @@ public class EditorTab extends Tab {
         java.util.List<ContextActionsPopup.ActionItem> items = new java.util.ArrayList<>();
         String full = codeArea.getText();
 
+        // Detect field name dynamically from diagnostic or current line
+        String fieldName = null;
         if (diag != null && diag.quickFix() != null && diag.quickFix().startsWith("unused-field:")) {
-            String fieldName = diag.quickFix().substring("unused-field:".length()).trim();
-            var pCtor = dev.lumina.codegen.JavaCodeGenerator.previewAddConstructorParam(full, fieldName);
-            items.add(ContextActionsPopup.ActionItem.fix("add-ctor-param",
+            fieldName = diag.quickFix().substring("unused-field:".length()).trim();
+        } else if (diag != null && diag.description() != null && diag.description().startsWith("private ")) {
+            String[] parts = diag.description().trim().split("\\s+");
+            if (parts.length >= 3) {
+                fieldName = parts[parts.length - 1].replace(";", "").trim();
+            }
+        }
+        if (fieldName == null) {
+            int lineIdx = diag != null && diag.line() > 0 ? diag.line() - 1 : codeArea.getCurrentParagraph();
+            if (lineIdx >= 0 && lineIdx < codeArea.getParagraphs().size()) {
+                String lineText = codeArea.getParagraph(lineIdx).getText();
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                        "\\b(?:private|protected|public)\\s+(?:final\\s+)?(?:static\\s+)?([A-Za-z0-9_<>\\[\\],\\s]+?)\\s+([a-z][A-Za-z0-9_]*)\\s*(?:=\\s*[^;]+)?;")
+                        .matcher(lineText);
+                if (m.find()) {
+                    fieldName = m.group(2);
+                }
+            }
+        }
+
+        if (fieldName != null) {
+            final String targetField = fieldName;
+            var pCtor = dev.lumina.codegen.JavaCodeGenerator.previewAddConstructorParam(full, targetField);
+            items.add(ContextActionsPopup.ActionItem.fixWithDots("add-ctor-param",
                     "Add constructor parameter", pCtor, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(codeArea.getText(), fieldName);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(codeArea.getText(), targetField);
                         codeArea.replaceText(0, codeArea.getLength(), updated);
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
 
-            var pGs = dev.lumina.codegen.JavaCodeGenerator.previewGettersAndSetters(full, fieldName);
+            var pGs = dev.lumina.codegen.JavaCodeGenerator.previewGettersAndSetters(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-getter-setter",
-                    "Create getter and setter for '" + fieldName + "'", pGs, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText(), fieldName);
+                    "Create getter and setter for '" + targetField + "'", pGs, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText(), targetField);
                         codeArea.replaceText(0, codeArea.getLength(), updated);
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
 
-            var pG = dev.lumina.codegen.JavaCodeGenerator.previewGetter(full, fieldName);
+            var pG = dev.lumina.codegen.JavaCodeGenerator.previewGetter(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-getter",
-                    "Create getter for '" + fieldName + "'", pG, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText(), fieldName);
+                    "Create getter for '" + targetField + "'", pG, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText(), targetField);
                         codeArea.replaceText(0, codeArea.getLength(), updated);
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
 
-            var pS = dev.lumina.codegen.JavaCodeGenerator.previewSetter(full, fieldName);
+            var pS = dev.lumina.codegen.JavaCodeGenerator.previewSetter(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-setter",
-                    "Create setter for '" + fieldName + "'", pS, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText(), fieldName);
+                    "Create setter for '" + targetField + "'", pS, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText(), targetField);
                         codeArea.replaceText(0, codeArea.getLength(), updated);
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
 
-            var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveField(full, fieldName);
+            var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveField(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("remove-field",
-                    "Remove field '" + fieldName + "'", pRem, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeField(codeArea.getText(), fieldName);
+                    "Remove field '" + targetField + "'", pRem, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeField(codeArea.getText(), targetField);
                         codeArea.replaceText(0, codeArea.getLength(), updated);
                         applyHighlighting();
                         scheduleDiagnostics();
@@ -1577,18 +1631,33 @@ public class EditorTab extends Tab {
 
             items.add(ContextActionsPopup.ActionItem.separator());
             items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
-            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("copilot-chat", "Open GitHub Copilot Inline Chat", "\uD83D\uDCAC", () -> {}));
             items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {
                 int line = codeArea.getCurrentParagraph();
                 int lineStart = codeArea.getAbsolutePosition(line, 0);
-                codeArea.insertText(lineStart, "    /** Field " + fieldName + " */\n");
+                codeArea.insertText(lineStart, "    /** Field " + targetField + " */\n");
                 applyHighlighting();
                 scheduleDiagnostics();
             }));
-            items.add(ContextActionsPopup.ActionItem.item("thread-local", "Convert to 'ThreadLocal'", () -> {}));
-            items.add(ContextActionsPopup.ActionItem.item("atomic", "Convert to atomic", () -> {}));
+
+            var pThread = dev.lumina.codegen.JavaCodeGenerator.previewThreadLocal(full, targetField);
+            items.add(ContextActionsPopup.ActionItem.itemWithPreview("thread-local", "Convert to 'ThreadLocal'", pThread, () -> {
+                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToThreadLocal(codeArea.getText(), targetField);
+                codeArea.replaceText(0, codeArea.getLength(), updated);
+                applyHighlighting();
+                scheduleDiagnostics();
+            }));
+
+            var pAtomic = dev.lumina.codegen.JavaCodeGenerator.previewAtomic(full, targetField);
+            items.add(ContextActionsPopup.ActionItem.itemWithPreview("atomic", "Convert to atomic", pAtomic, () -> {
+                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToAtomic(codeArea.getText(), targetField);
+                codeArea.replaceText(0, codeArea.getLength(), updated);
+                applyHighlighting();
+                scheduleDiagnostics();
+            }));
+
             items.add(ContextActionsPopup.ActionItem.separator());
-            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("ai-actions", "AI Actions...", "@", () -> {}));
 
         } else if (diag != null && diag.quickFix() != null) {
             String label = quickFixActionLabel(diag.quickFix());
@@ -1596,18 +1665,18 @@ public class EditorTab extends Tab {
             items.add(ContextActionsPopup.ActionItem.fix("quickfix", label, null, () -> runQuickFix(fixId)));
             items.add(ContextActionsPopup.ActionItem.separator());
             items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
-            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("copilot-chat", "Open GitHub Copilot Inline Chat", "\uD83D\uDCAC", () -> {}));
             items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {}));
             items.add(ContextActionsPopup.ActionItem.separator());
-            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("ai-actions", "AI Actions...", "@", () -> {}));
 
         } else {
             // General context actions matching IntelliJ
             items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
-            items.add(ContextActionsPopup.ActionItem.item("copilot-chat", "Open GitHub Copilot Inline Chat", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("copilot-chat", "Open GitHub Copilot Inline Chat", "\uD83D\uDCAC", () -> {}));
             items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {}));
             items.add(ContextActionsPopup.ActionItem.separator());
-            items.add(ContextActionsPopup.ActionItem.itemWithMenu("ai-actions", "@ AI Actions...", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("ai-actions", "AI Actions...", "@", () -> {}));
         }
 
         contextActionsPopup.show(codeArea, anchor, items);
