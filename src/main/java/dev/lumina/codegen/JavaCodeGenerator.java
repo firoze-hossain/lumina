@@ -342,6 +342,70 @@ public final class JavaCodeGenerator {
         return source;
     }
 
+    public static Preview previewRemoveMethod(String source, String methodName) {
+        return previewRemoveMethod(source, methodName, -1);
+    }
+
+    public static Preview previewRemoveMethod(String source, String methodName, int paramCount) {
+        try {
+            JavaParser parser = new JavaParser();
+            ParseResult<CompilationUnit> pr = parser.parse(source);
+            if (pr.getResult().isPresent()) {
+                for (MethodDeclaration md : pr.getResult().get().findAll(MethodDeclaration.class)) {
+                    if (md.getNameAsString().equals(methodName)
+                            && (paramCount < 0 || md.getParameters().size() == paramCount)) {
+                        int beginLine = md.getComment().flatMap(com.github.javaparser.ast.comments.Comment::getRange)
+                                .map(r -> r.begin.line)
+                                .orElseGet(() -> md.getRange().map(r -> r.begin.line).orElse(1));
+                        return new Preview(beginLine, "");
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return new Preview(1, "");
+    }
+
+    public static String removeMethod(String source, String methodName) {
+        return removeMethod(source, methodName, -1);
+    }
+
+    public static String removeMethod(String source, String methodName, int paramCount) {
+        try {
+            JavaParser parser = new JavaParser();
+            ParseResult<CompilationUnit> pr = parser.parse(source);
+            if (pr.getResult().isPresent()) {
+                for (MethodDeclaration md : pr.getResult().get().findAll(MethodDeclaration.class)) {
+                    if (md.getNameAsString().equals(methodName)
+                            && (paramCount < 0 || md.getParameters().size() == paramCount)) {
+                        int beginLine = md.getComment().flatMap(com.github.javaparser.ast.comments.Comment::getRange)
+                                .map(r -> r.begin.line)
+                                .orElseGet(() -> md.getRange().map(r -> r.begin.line).orElse(1));
+                        int endLine = md.getRange().map(r -> r.end.line).orElse(beginLine);
+
+                        int startPos = offsetOf(source, beginLine, 1);
+                        // Find end of endLine plus newline
+                        int endPos = offsetOf(source, endLine + 1, 1);
+                        if (endPos <= startPos) {
+                            endPos = source.length();
+                        }
+                        return source.substring(0, startPos) + source.substring(endPos);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        // Fallback regex removal
+        Pattern pat = Pattern.compile("^[ \\t]*(?:@[A-Za-z0-9_]+(?:\\([^)]*\\))?\\s+)*(?:public|protected|private)?\\s+[A-Za-z0-9_<>\\[\\]]+\\s+\\b"
+                + Pattern.quote(methodName) + "\\s*\\([^)]*\\)\\s*(?:;|(?:\\{[^{}]*\\}))[ \\t]*\\r?\\n?", Pattern.MULTILINE);
+        Matcher m = pat.matcher(source);
+        if (m.find()) {
+            return source.substring(0, m.start()) + source.substring(m.end());
+        }
+        return source;
+    }
+
     // ---------------------------------------------------------------- Internal Helpers
 
     private static String buildGetterAndSetterCode(ClassModel model, String fieldName) {
