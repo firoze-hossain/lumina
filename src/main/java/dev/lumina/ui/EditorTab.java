@@ -58,7 +58,21 @@ public class EditorTab extends Tab {
         diagPopup.setAutoFix(true);
         diagPopup.setAutoHide(true);
         diagPopup.setHideOnEscape(false);
-        setOnClosed(e -> hideDiagPopup());
+        ghostPopup.setAutoFix(false);
+        ghostPopup.setAutoHide(false);
+        ghostPopup.setHideOnEscape(false);
+        ghostLabel.getStyleClass().add("editor-ghost-suggestion");
+        ghostLabel.setMouseTransparent(true);
+        ghostPopup.getContent().add(ghostLabel);
+        setOnClosed(e -> {
+            hideDiagPopup();
+            hideGhostSuggestion();
+        });
+        diagHideTimer.setOnFinished(ev -> {
+            if (!isMouseOverDiagPopup) {
+                hideDiagPopup();
+            }
+        });
         refreshGutter();
 
         // Ctrl/Cmd + hover -> hand cursor, hinting go-to-declaration.
@@ -78,6 +92,7 @@ public class EditorTab extends Tab {
                 dev.lumina.diagnostics.JavaDiagnostics.Diag hitDiag =
                         diagAt(hit.getInsertionIndex());
                 if (hitDiag != null) {
+                    diagHideTimer.stop();
                     if (currentPopupDiag != hitDiag) {
                         currentPopupDiag = hitDiag;
                         diagHoverTimer.setOnFinished(ev -> showDiagPopup(hitDiag));
@@ -85,25 +100,19 @@ public class EditorTab extends Tab {
                     }
                 } else {
                     diagHoverTimer.stop();
-                    if (!isMouseOverDiagPopup) {
-                        hideDiagPopup();
+                    if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
+                        diagHideTimer.playFromStart();
                     }
                 }
             }
         });
-        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_EXITED,
-                e -> {
-                    clearNavUnderline();
-                    diagHoverTimer.stop();
-                    javafx.animation.PauseTransition exitGrace =
-                            new javafx.animation.PauseTransition(javafx.util.Duration.millis(120));
-                    exitGrace.setOnFinished(ev -> {
-                        if (!isMouseOverDiagPopup) {
-                            hideDiagPopup();
-                        }
-                    });
-                    exitGrace.play();
-                });
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_EXITED, e -> {
+            clearNavUnderline();
+            diagHoverTimer.stop();
+            if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
+                diagHideTimer.playFromStart();
+            }
+        });
         // Dropping the modifier key removes the underline.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_RELEASED, e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.CONTROL
@@ -139,12 +148,28 @@ public class EditorTab extends Tab {
                 switch (e.getCode()) {
                     case DOWN -> { completionPopup.moveSelection(1); e.consume(); return; }
                     case UP -> { completionPopup.moveSelection(-1); e.consume(); return; }
-                    case ENTER, TAB -> { completionPopup.acceptSelected(); e.consume(); return; }
-                    case ESCAPE -> { completionPopup.hide(); e.consume(); return; }
+                    case ENTER, TAB -> { completionPopup.acceptSelected(); hideGhostSuggestion(); e.consume(); return; }
+                    case ESCAPE -> { completionPopup.hide(); hideGhostSuggestion(); e.consume(); return; }
                     case BACK_SPACE -> Platform.runLater(this::refilterCompletion);
-                    case LEFT, RIGHT, HOME, END, PAGE_UP, PAGE_DOWN ->
-                            completionPopup.hide();
+                    case LEFT, RIGHT, HOME, END, PAGE_UP, PAGE_DOWN -> {
+                        completionPopup.hide();
+                        hideGhostSuggestion();
+                    }
                     default -> { }
+                }
+            } else if (ghostPopup.isShowing() && currentGhostSuggestion != null) {
+                if (e.getCode() == javafx.scene.input.KeyCode.TAB || e.getCode() == javafx.scene.input.KeyCode.RIGHT) {
+                    e.consume();
+                    String toInsert = currentGhostSuggestion;
+                    hideGhostSuggestion();
+                    codeArea.insertText(codeArea.getCaretPosition(), toInsert);
+                    applyHighlighting();
+                    scheduleDiagnostics();
+                    return;
+                } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                    hideGhostSuggestion();
+                    e.consume();
+                    return;
                 }
             }
             if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
@@ -191,15 +216,18 @@ public class EditorTab extends Tab {
             boolean configFile = isSpringConfigFile();
             if (c == '.' && !configFile) {
                 Platform.runLater(this::triggerCompletion);
+            } else if (c == '@' && !configFile) {
+                Platform.runLater(this::triggerCompletion);
             } else if (c == '(') {
                 completionPopup.hide();
+                hideGhostSuggestion();
                 if (paramInfoTrigger != null) {
                     Platform.runLater(paramInfoTrigger);
                 }
             } else if (configFile && (Character.isLetterOrDigit(c)
                     || c == '.' || c == '-' || c == '_')) {
                 // application.properties / .yml: continuous key completion,
-                // not just after a dot \u2014 IntelliJ completes these live.
+                // not just after a dot — IntelliJ completes these live.
                 Platform.runLater(completionPopup.isShowing()
                         ? this::refilterCompletion : this::triggerCompletion);
             } else if (completionPopup.isShowing()) {
@@ -207,16 +235,32 @@ public class EditorTab extends Tab {
                     Platform.runLater(this::refilterCompletion);
                 } else {
                     completionPopup.hide();
+                    hideGhostSuggestion();
                 }
+            } else if (c == ' ') {
+                int pos = codeArea.getCaretPosition();
+                String text = codeArea.getText();
+                if (pos >= 8 && text.substring(0, pos).endsWith("extends ")) {
+                    Platform.runLater(this::triggerCompletion);
+                } else {
+                    hideGhostSuggestion();
+                }
+            } else if (Character.isLetter(c) || c == '_') {
+                Platform.runLater(completionPopup.isShowing()
+                        ? this::refilterCompletion : this::triggerCompletion);
+            } else {
+                hideGhostSuggestion();
             }
         });
         codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
             completionPopup.hide();
             hideDiagPopup();
+            hideGhostSuggestion();
         });
         codeArea.focusedProperty().addListener((obs, was, focused) -> {
             if (!focused) {
                 completionPopup.hide();
+                hideGhostSuggestion();
                 if (!isMouseOverDiagPopup) hideDiagPopup();
             }
         });
@@ -822,9 +866,16 @@ public class EditorTab extends Tab {
     private dev.lumina.diagnostics.JavaDiagnostics.Diag currentPopupDiag;
     private final javafx.animation.PauseTransition diagHoverTimer =
             new javafx.animation.PauseTransition(javafx.util.Duration.millis(250));
+    private final javafx.animation.PauseTransition diagHideTimer =
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(350));
     private boolean isMouseOverDiagPopup = false;
     private Runnable paramInfoTrigger;
     private java.util.function.Consumer<String> onQuickFix;
+    private java.util.function.Function<String, String> typeResolver;
+
+    public void setTypeResolver(java.util.function.Function<String, String> resolver) {
+        this.typeResolver = resolver;
+    }
 
     /** Called with a diagnostic's {@code quickFix} id (e.g.
      *  "add-dependency:mysql" or "remove-property-line:3") when the user clicks
@@ -857,6 +908,65 @@ public class EditorTab extends Tab {
                 }
             } catch (Exception ignored) {
             }
+        } else if (id.startsWith("import-class:")) {
+            String sym = id.substring("import-class:".length()).trim();
+            String fqcn = typeResolver != null ? typeResolver.apply(sym) : null;
+            if (fqcn != null) {
+                String full = codeArea.getText();
+                if (dev.lumina.semantics.Completion.needsImport(full, fqcn)) {
+                    int offset = dev.lumina.semantics.Completion.importInsertOffset(full);
+                    codeArea.insertText(offset, "import " + fqcn + ";\n");
+                    applyHighlighting();
+                    scheduleDiagnostics();
+                }
+            } else if (onQuickFix != null) {
+                onQuickFix.accept(id);
+            }
+        } else if (id.startsWith("add-id-attribute:")) {
+            String className = id.substring("add-id-attribute:".length()).trim();
+            String full = codeArea.getText();
+
+            boolean useJakarta = full.contains("jakarta.persistence")
+                    || (path != null && !full.contains("javax.persistence"));
+            String jpaPkg = useJakarta ? "jakarta.persistence" : "javax.persistence";
+
+            int offset = dev.lumina.semantics.Completion.importInsertOffset(full);
+            StringBuilder importBuf = new StringBuilder();
+            if (dev.lumina.semantics.Completion.needsImport(full, jpaPkg + ".Id")) {
+                importBuf.append("import ").append(jpaPkg).append(".Id;\n");
+            }
+            if (dev.lumina.semantics.Completion.needsImport(full, jpaPkg + ".GeneratedValue")) {
+                importBuf.append("import ").append(jpaPkg).append(".GeneratedValue;\n");
+            }
+            if (dev.lumina.semantics.Completion.needsImport(full, jpaPkg + ".GenerationType")) {
+                importBuf.append("import ").append(jpaPkg).append(".GenerationType;\n");
+            }
+
+            if (importBuf.length() > 0) {
+                codeArea.insertText(offset, importBuf.toString());
+                full = codeArea.getText();
+            }
+
+            java.util.regex.Pattern classPat = java.util.regex.Pattern.compile(
+                    "(?:public\\s+)?class\\s+" + java.util.regex.Pattern.quote(className) + "[^{]*\\{");
+            java.util.regex.Matcher matcher = classPat.matcher(full);
+            if (matcher.find()) {
+                int insertPos = matcher.end();
+                String snippet = "\n\n    @Id\n"
+                        + "    @GeneratedValue(strategy = GenerationType.IDENTITY)\n"
+                        + "    private Long id;\n\n"
+                        + "    public Long getId() {\n"
+                        + "        return id;\n"
+                        + "    }\n\n"
+                        + "    public void setId(Long id) {\n"
+                        + "        this.id = id;\n"
+                        + "    }\n";
+                codeArea.insertText(insertPos, snippet);
+                applyHighlighting();
+                scheduleDiagnostics();
+            } else if (onQuickFix != null) {
+                onQuickFix.accept(id);
+            }
         } else if (onQuickFix != null) {
             onQuickFix.accept(id);
         }
@@ -867,6 +977,12 @@ public class EditorTab extends Tab {
         if (id == null) return "Apply fix";
         if (id.startsWith("remove-property-line:")) {
             return "Remove property";
+        }
+        if (id.startsWith("import-class:")) {
+            return "Import class";
+        }
+        if (id.startsWith("add-id-attribute:")) {
+            return "Add Id attribute";
         }
         if (id.startsWith("add-dependency:")) {
             String dep = id.substring("add-dependency:".length());
@@ -1024,6 +1140,7 @@ public class EditorTab extends Tab {
         if (diag == null || codeArea.getScene() == null || codeArea.getScene().getWindow() == null) {
             return;
         }
+        diagHideTimer.stop();
         javafx.scene.layout.VBox card = buildDiagCard(diag);
         diagPopup.getContent().setAll(card);
 
@@ -1059,6 +1176,7 @@ public class EditorTab extends Tab {
 
     private void hideDiagPopup() {
         diagHoverTimer.stop();
+        diagHideTimer.stop();
         if (diagPopup.isShowing()) {
             diagPopup.hide();
         }
@@ -1081,10 +1199,13 @@ public class EditorTab extends Tab {
         card.setEffect(new javafx.scene.effect.DropShadow(14, 0, 4,
                 javafx.scene.paint.Color.rgb(0, 0, 0, 0.45)));
 
-        card.setOnMouseEntered(e -> isMouseOverDiagPopup = true);
+        card.setOnMouseEntered(e -> {
+            isMouseOverDiagPopup = true;
+            diagHideTimer.stop();
+        });
         card.setOnMouseExited(e -> {
             isMouseOverDiagPopup = false;
-            hideDiagPopup();
+            diagHideTimer.playFromStart();
         });
 
         // 1. Header
@@ -1299,10 +1420,36 @@ public class EditorTab extends Tab {
 
     private final CompletionPopup completionPopup =
             new CompletionPopup(this::acceptCompletion);
+    private final javafx.stage.Popup ghostPopup = new javafx.stage.Popup();
+    private final javafx.scene.control.Label ghostLabel = new javafx.scene.control.Label();
+    private String currentGhostSuggestion = null;
     private CompletionProvider completionProvider;
     private dev.lumina.semantics.Completion.Context completionCtx;
     private java.util.List<dev.lumina.semantics.Completion.Item> completionBase =
             java.util.List.of();
+
+    private void showGhostSuggestion(String text, javafx.geometry.Bounds caretBounds) {
+        if (text == null || text.isBlank() || caretBounds == null) {
+            hideGhostSuggestion();
+            return;
+        }
+        currentGhostSuggestion = text;
+        ghostLabel.setText(text);
+        if (codeArea.getScene() == null || codeArea.getScene().getWindow() == null) return;
+        if (!ghostPopup.isShowing()) {
+            ghostPopup.show(codeArea.getScene().getWindow(), caretBounds.getMaxX(), caretBounds.getMinY());
+        } else {
+            ghostPopup.setX(caretBounds.getMaxX());
+            ghostPopup.setY(caretBounds.getMinY());
+        }
+    }
+
+    private void hideGhostSuggestion() {
+        currentGhostSuggestion = null;
+        if (ghostPopup.isShowing()) {
+            ghostPopup.hide();
+        }
+    }
 
     public void setCompletionProvider(CompletionProvider provider) {
         this.completionProvider = provider;
@@ -1332,6 +1479,7 @@ public class EditorTab extends Tab {
                         : dev.lumina.semantics.Completion.contextAt(text, caret);
         if (ctx == null) {
             completionPopup.hide();
+            hideGhostSuggestion();
             return;
         }
         int caretLine = getCaretLine();
@@ -1346,6 +1494,7 @@ public class EditorTab extends Tab {
             Platform.runLater(() -> {
                 if (found.isEmpty()) {
                     completionPopup.hide();
+                    hideGhostSuggestion();
                 } else {
                     completionCtx = ctx;
                     completionBase = found;
@@ -1364,6 +1513,7 @@ public class EditorTab extends Tab {
         int start = completionCtx.prefixStart();
         if (caret < start || caret > codeArea.getLength()) {
             completionPopup.hide();
+            hideGhostSuggestion();
             return;
         }
         String prefix = codeArea.getText(start, caret);
@@ -1374,6 +1524,7 @@ public class EditorTab extends Tab {
                     || (configFile && (c == '.' || c == '-'));
             if (!allowed) {
                 completionPopup.hide();
+                hideGhostSuggestion();
                 return;
             }
         }
@@ -1381,14 +1532,65 @@ public class EditorTab extends Tab {
                 completionBase.stream()
                         .filter(item -> dev.lumina.semantics.Completion
                                 .matches(prefix, item.name()))
+                        .sorted((a, b) -> {
+                            if (completionCtx.annotation()) {
+                                int rA = prefixRank(prefix, a.name());
+                                int rB = prefixRank(prefix, b.name());
+                                if (rA != rB) return Integer.compare(rA, rB);
+                                if (rA == 1) {
+                                    int l = Integer.compare(a.name().length(), b.name().length());
+                                    if (l != 0) return l;
+                                }
+                            } else if (completionCtx.extendsInterface() != null) {
+                                boolean aRepo = a.insert().contains("<");
+                                boolean bRepo = b.insert().contains("<");
+                                if (aRepo != bRepo) return aRepo ? -1 : 1;
+                                int rA = prefixRank(prefix, a.name());
+                                int rB = prefixRank(prefix, b.name());
+                                if (rA != rB) return Integer.compare(rA, rB);
+                            }
+                            return a.name().compareToIgnoreCase(b.name());
+                        })
                         .limit(80)
                         .toList();
         var bounds = codeArea.getCaretBounds();
         if (filtered.isEmpty() || bounds.isEmpty()) {
             completionPopup.hide();
+            hideGhostSuggestion();
             return;
         }
         completionPopup.show(codeArea, filtered, bounds.get());
+
+        if (completionCtx.extendsInterface() != null && !filtered.isEmpty()) {
+            dev.lumina.semantics.Completion.Item top = filtered.get(0);
+            if (top.insert().contains("<")) {
+                String full = top.insert();
+                String ghost;
+                if (prefix.isEmpty()) {
+                    ghost = full;
+                } else if (full.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                    ghost = full.substring(prefix.length());
+                } else {
+                    ghost = null;
+                }
+                if (ghost != null && !ghost.isEmpty()) {
+                    showGhostSuggestion(ghost, bounds.get());
+                } else {
+                    hideGhostSuggestion();
+                }
+            } else {
+                hideGhostSuggestion();
+            }
+        } else {
+            hideGhostSuggestion();
+        }
+    }
+
+    private static int prefixRank(String prefix, String name) {
+        if (name.equalsIgnoreCase(prefix)) return 0;
+        if (name.regionMatches(true, 0, prefix, 0, prefix.length())) return 1;
+        if (dev.lumina.semantics.Completion.matches(prefix, name)) return 2;
+        return 3;
     }
 
     /** Insert the chosen item, add its import, and place the caret. */
@@ -1397,6 +1599,7 @@ public class EditorTab extends Tab {
         int caret = codeArea.getCaretPosition();
         int start = completionCtx.prefixStart();
         completionCtx = null;
+        hideGhostSuggestion();
         if (caret < start) return;
 
         int shift = 0;

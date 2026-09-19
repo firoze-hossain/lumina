@@ -4223,6 +4223,29 @@ public class LuminaApp extends Application {
                         ? springYamlCompletions(ctx.prefix())
                         : springPropertyCompletions(ctx.prefix());
             }
+            if (ctx.annotation()) {
+                dev.lumina.semantics.SemanticEngine engine = semantics;
+                if (engine != null) {
+                    return engine.annotationCompletions(ctx.prefix());
+                }
+                return dev.lumina.semantics.SemanticEngine.fallbackAnnotationCompletions(ctx.prefix());
+            }
+            if (ctx.extendsInterface() != null) {
+                dev.lumina.semantics.SemanticEngine engine = semantics;
+                List<dev.lumina.semantics.Completion.Item> items = new java.util.ArrayList<>();
+                if (engine != null) {
+                    items.addAll(engine.repositoryExtendsCompletions(ctx.extendsInterface(), ctx.prefix()));
+                } else {
+                    items.addAll(dev.lumina.semantics.SemanticEngine.fallbackRepositoryCompletions(ctx.extendsInterface(), ctx.prefix()));
+                }
+                if (engine != null && file != null) {
+                    try {
+                        items.addAll(engine.scopeCompletions(file, text, caretLine, ctx.prefix()));
+                    } catch (Throwable ignored) {
+                    }
+                }
+                return items;
+            }
             List<dev.lumina.semantics.Completion.Item> items =
                     new java.util.ArrayList<>();
             dev.lumina.semantics.SemanticEngine engine = semantics;
@@ -4266,8 +4289,12 @@ public class LuminaApp extends Application {
                 Path root = projectRoot.resolve(rel);
                 if (Files.isDirectory(root)) roots.add(root);
             }
-            return dev.lumina.diagnostics.JavaDiagnostics.compile(
-                    file, text, full, roots);
+            List<dev.lumina.diagnostics.JavaDiagnostics.Diag> results =
+                    new java.util.ArrayList<>(dev.lumina.diagnostics.JavaDiagnostics.compile(
+                            file, text, full, roots));
+            String mod = projectRoot != null ? projectRoot.getFileName().toString() : null;
+            results.addAll(dev.lumina.diagnostics.JpaDiagnostics.checkPersistentEntities(file, text, mod));
+            return results;
         });
         tab.setDiagnosticsListener(diags -> {
             if (currentEditor() == tab) {
@@ -4276,6 +4303,10 @@ public class LuminaApp extends Application {
             }
         });
         tab.setOnQuickFix(this::applySpringConfigQuickFix);
+        tab.setTypeResolver(sym -> {
+            dev.lumina.semantics.SemanticEngine eng = semantics;
+            return eng != null ? eng.resolveFqcn(sym) : null;
+        });
         // M4: '(' opens parameter info.
         tab.setParamInfoTrigger(this::showParameterInfo);
         loadAuthorHints(tab);

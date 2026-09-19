@@ -139,8 +139,21 @@ public final class JavaDiagnostics {
                     if (end == start) end = Math.min(start + 1, text.length());
                 }
                 end = Math.min(end, text.length());
-                result.add(new Diag(severity, line, start, end,
-                        d.getMessage(null)));
+                String rawMsg = d.getMessage(null);
+                String title = rawMsg;
+                String quickFix = null;
+                String code = d.getCode();
+                if (severity == Severity.ERROR && ((code != null && code.contains("cant.resolve"))
+                        || (rawMsg != null && (rawMsg.contains("cannot find symbol") || rawMsg.contains("cant.resolve"))))) {
+                    String sym = text.substring(start, end).trim();
+                    if (!sym.isEmpty() && Character.isJavaIdentifierStart(sym.charAt(0))) {
+                        title = "Cannot resolve symbol '" + sym + "'";
+                        rawMsg = "Cannot resolve symbol '" + sym + "'";
+                        quickFix = "import-class:" + sym;
+                    }
+                }
+                result.add(new Diag(severity, line, start, end, rawMsg, quickFix,
+                        title, null, null, null, null));
             }
             return result;
         } catch (Throwable t) {

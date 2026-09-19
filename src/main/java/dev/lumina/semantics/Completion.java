@@ -10,7 +10,7 @@ import java.util.List;
  */
 public final class Completion {
 
-    public enum Kind { VARIABLE, FIELD, METHOD, CLASS, KEYWORD, TEMPLATE }
+    public enum Kind { VARIABLE, FIELD, METHOD, CLASS, INTERFACE, KEYWORD, TEMPLATE, ANNOTATION }
 
     /**
      * One completion row. name is what matching runs against; label is what
@@ -24,10 +24,19 @@ public final class Completion {
 
     /**
      * Where completion was invoked. member=true means "receiver.prefix|";
+     * annotation=true means "@prefix|"; extendsInterface is set when after
+     * "interface <Name> extends ";
      * prefixStart is the document offset where the typed prefix begins.
      */
-    public record Context(boolean member, String receiver, String prefix,
-                          int prefixStart) {
+    public record Context(boolean member, boolean annotation, String receiver, String prefix,
+                          int prefixStart, String extendsInterface) {
+        public Context(boolean member, boolean annotation, String receiver, String prefix,
+                       int prefixStart) {
+            this(member, annotation, receiver, prefix, prefixStart, null);
+        }
+        public Context(boolean member, String receiver, String prefix, int prefixStart) {
+            this(member, false, receiver, prefix, prefixStart, null);
+        }
     }
 
     private Completion() {
@@ -36,9 +45,9 @@ public final class Completion {
     // -------------------------------------------------------------- context
 
     /**
-     * Inspect the text before the caret. Returns a member context after
-     * "receiver.", a scope context otherwise, or null when completion makes
-     * no sense here (e.g. after "). " chains M2 doesn't support).
+     * Inspect the text before the caret. Returns an annotation context after
+     * "@", a member context after "receiver.", an extends context after "interface X extends ",
+     * a scope context otherwise, or null when completion makes no sense here.
      */
     public static Context contextAt(String text, int caret) {
         if (caret < 0 || caret > text.length()) return null;
@@ -47,6 +56,9 @@ public final class Completion {
             prefixStart--;
         }
         String prefix = text.substring(prefixStart, caret);
+        if (prefixStart > 0 && text.charAt(prefixStart - 1) == '@') {
+            return new Context(false, true, "", prefix, prefixStart, null);
+        }
         if (prefixStart > 0 && text.charAt(prefixStart - 1) == '.') {
             int dot = prefixStart - 1;
             int receiverStart = dot;
@@ -57,9 +69,38 @@ public final class Completion {
             if (receiver.isEmpty()) return null;   // "foo()." or "]." — not yet
             // number literal like "3." is not a member access
             if (Character.isDigit(receiver.charAt(0))) return null;
-            return new Context(true, receiver, prefix, prefixStart);
+            return new Context(true, false, receiver, prefix, prefixStart, null);
         }
-        return new Context(false, "", prefix, prefixStart);
+        String extendsInterface = detectExtendsInterface(text, prefixStart);
+        return new Context(false, false, "", prefix, prefixStart, extendsInterface);
+    }
+
+    private static String detectExtendsInterface(String text, int offset) {
+        int p = skipWhitespaceBackward(text, offset);
+        if (p < 7 || !text.regionMatches(p - 7, "extends", 0, 7)) return null;
+        if (p > 7 && isIdentChar(text.charAt(p - 8))) return null;
+
+        int nameEnd = skipWhitespaceBackward(text, p - 7);
+        int nameStart = nameEnd;
+        while (nameStart > 0 && isIdentChar(text.charAt(nameStart - 1))) {
+            nameStart--;
+        }
+        if (nameStart >= nameEnd) return null;
+        String interfaceName = text.substring(nameStart, nameEnd);
+
+        int intfEnd = skipWhitespaceBackward(text, nameStart);
+        if (intfEnd < 9 || !text.regionMatches(intfEnd - 9, "interface", 0, 9)) return null;
+        if (intfEnd > 9 && isIdentChar(text.charAt(intfEnd - 10))) return null;
+
+        return interfaceName;
+    }
+
+    private static int skipWhitespaceBackward(String text, int from) {
+        int p = from;
+        while (p > 0 && Character.isWhitespace(text.charAt(p - 1))) {
+            p--;
+        }
+        return p;
     }
 
     private static boolean isIdentChar(char c) {
