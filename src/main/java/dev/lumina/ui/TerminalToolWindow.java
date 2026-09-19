@@ -64,11 +64,15 @@ public final class TerminalToolWindow extends BorderPane {
         tabs.getStyleClass().addAll("tool-tabs", "terminal-tabs");
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
-            if (sel == null || !sel.getStyleClass().contains("new-tab-sentinel")) return;
-            if (everHadSession && tabs.getTabs().size() == 1) {
-                handleAllSessionsClosed();
-            } else {
-                addSessionTab(null);
+            if (sel == null) return;
+            if (sel.getStyleClass().contains("new-tab-sentinel")) {
+                if (everHadSession && tabs.getTabs().size() == 1) {
+                    handleAllSessionsClosed();
+                } else {
+                    addSessionTab(null);
+                }
+            } else if (sel.getContent() instanceof TerminalPane tp) {
+                tp.focusInput();
             }
         });
         // No session tab yet \u2014 the caller drives the first one via start(),
