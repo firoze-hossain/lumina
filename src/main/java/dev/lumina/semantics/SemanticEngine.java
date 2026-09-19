@@ -733,14 +733,40 @@ public final class SemanticEngine {
         try {
             // methods: usage or declaration
             if (parent instanceof MethodCallExpr call && call.getName() == target) {
-                ResolvedMethodDeclaration m = call.resolve();
-                return methodUsages(m.declaringType().getQualifiedName(),
-                        m.getName(), m.getNumberOfParams());
+                try {
+                    ResolvedMethodDeclaration m = call.resolve();
+                    return methodUsages(m.declaringType().getQualifiedName(),
+                            m.getName(), m.getNumberOfParams());
+                } catch (Throwable unresolved) {
+                    String receiverType = null;
+                    if (call.getScope().isPresent()) {
+                        com.github.javaparser.ast.expr.Expression scope = call.getScope().get();
+                        if (scope.isNameExpr()) {
+                            String recName = scope.asNameExpr().getNameAsString();
+                            if (Character.isUpperCase(recName.charAt(0))) {
+                                receiverType = resolveTypeName(recName, text);
+                            } else {
+                                String dt = declaredTypeOf(file, text, line, recName);
+                                if (dt != null) receiverType = dt.contains(".") ? dt : resolveTypeName(dt, text);
+                            }
+                        }
+                    } else {
+                        receiverType = fqcnForFile(file);
+                    }
+                    if (receiverType != null) {
+                        return methodUsages(receiverType, target.getIdentifier(), call.getArguments().size());
+                    }
+                }
             }
             if (parent instanceof MethodDeclaration md && md.getName() == target) {
-                ResolvedMethodDeclaration m = md.resolve();
-                return methodUsages(m.declaringType().getQualifiedName(),
-                        m.getName(), m.getNumberOfParams());
+                try {
+                    ResolvedMethodDeclaration m = md.resolve();
+                    return methodUsages(m.declaringType().getQualifiedName(),
+                            m.getName(), m.getNumberOfParams());
+                } catch (Throwable unresolved) {
+                    String typeQn = fqcnForFile(file);
+                    return methodUsages(typeQn, md.getNameAsString(), md.getParameters().size());
+                }
             }
             // types
             if (parent instanceof ClassOrInterfaceType type && type.getName() == target) {
@@ -789,13 +815,43 @@ public final class SemanticEngine {
         scanProject(method, (path, unit, lines) -> {
             for (MethodCallExpr call : unit.findAll(MethodCallExpr.class)) {
                 if (!call.getNameAsString().equals(method)) continue;
+                boolean matched = false;
                 try {
                     ResolvedMethodDeclaration m = call.resolve();
                     if (m.declaringType().getQualifiedName().equals(typeQn)
-                            && m.getNumberOfParams() == paramCount) {
-                        addHit(hits, path, call.getName().getRange(), lines, false);
+                            && (paramCount < 0 || m.getNumberOfParams() == paramCount)) {
+                        matched = true;
                     }
-                } catch (Throwable ignored) {
+                } catch (Throwable unresolved) {
+                    String simpleType = typeQn.substring(typeQn.lastIndexOf('.') + 1);
+                    if (call.getScope().isPresent()) {
+                        com.github.javaparser.ast.expr.Expression scope = call.getScope().get();
+                        if (scope.isNameExpr()) {
+                            String recName = scope.asNameExpr().getNameAsString();
+                            if (recName.equalsIgnoreCase(simpleType)
+                                    || recName.toLowerCase().endsWith(simpleType.toLowerCase())) {
+                                matched = true;
+                            } else {
+                                int callLine = call.getBegin().map(p -> p.line).orElse(1);
+                                String dt = declaredTypeOf(path, String.join("\n", lines), callLine, recName);
+                                if (dt != null && (dt.equals(simpleType) || dt.equals(typeQn))) {
+                                    matched = true;
+                                }
+                            }
+                        } else if (scope.isFieldAccessExpr()) {
+                            String fieldName = scope.asFieldAccessExpr().getNameAsString();
+                            if (fieldName.equalsIgnoreCase(simpleType)) {
+                                matched = true;
+                            }
+                        }
+                    } else {
+                        if (fqcnForFile(path).equals(typeQn)) {
+                            matched = true;
+                        }
+                    }
+                }
+                if (matched) {
+                    addHit(hits, path, call.getName().getRange(), lines, false);
                 }
             }
         });
@@ -1923,6 +1979,11 @@ public final class SemanticEngine {
         return dot < 0 ? "" : fqcn.substring(0, dot);
     }
 
+    private static String cleanType(String type) {
+        if (type == null) return null;
+        return type.replaceAll("\\b[a-z0-9_.]+\\.([A-Z][a-zA-Z0-9_]*)", "$1");
+    }
+
     private static String simpleType(String type) {
         String stripped = type.replaceAll("<.*>", "");
         int dot = stripped.lastIndexOf('.');
@@ -2040,6 +2101,191 @@ public final class SemanticEngine {
             }
         } catch (Throwable unresolved) {
             return null;
+        }
+        return null;
+    }
+
+    /**
+     * Resolves rich symbol documentation for hover quick info and quick doc popup,
+     * including container type, clean formatted signature, parameters, and module info.
+     */
+    public Docs.SymbolDoc symbolDocAt(Path file, String text, int line, int column) {
+        CompilationUnit cu = parse(file, text);
+        if (cu == null) return null;
+        SimpleName target = nameAt(cu, line, column);
+        if (target == null) return null;
+        Node parent = target.getParentNode().orElse(null);
+        if (parent == null) return null;
+
+        String moduleName = projectRoot != null ? projectRoot.getFileName().toString() : "";
+
+        try {
+            // Case 1: Method Declaration in current file
+            if (parent instanceof MethodDeclaration md && md.getName() == target) {
+                String containerFqcn = fqcnForFile(file);
+                String kind = "method";
+                Node p = md.getParentNode().orElse(null);
+                if (p instanceof ClassOrInterfaceDeclaration cd) {
+                    kind = cd.isInterface() ? "interface" : "class";
+                }
+                List<String> params = new ArrayList<>();
+                for (Parameter param : md.getParameters()) {
+                    params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                }
+                String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(md));
+                return new Docs.SymbolDoc(kind, containerFqcn, cleanType(md.getType().asString()),
+                        md.getNameAsString(), params, moduleName, javadoc, file, beginLine(md));
+            }
+
+            // Case 2: Class/Interface/Record/Enum Declaration in current file
+            if (parent instanceof ClassOrInterfaceDeclaration cd && cd.getName() == target) {
+                String containerFqcn = fqcnForFile(file);
+                String kind = cd.isInterface() ? "interface" : "class";
+                String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(cd));
+                return new Docs.SymbolDoc(kind, containerFqcn, null, cd.getNameAsString(),
+                        null, moduleName, javadoc, file, beginLine(cd));
+            }
+            if (parent instanceof EnumDeclaration ed && ed.getName() == target) {
+                String containerFqcn = fqcnForFile(file);
+                String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(ed));
+                return new Docs.SymbolDoc("enum", containerFqcn, null, ed.getNameAsString(),
+                        null, moduleName, javadoc, file, beginLine(ed));
+            }
+            if (parent instanceof RecordDeclaration rd && rd.getName() == target) {
+                String containerFqcn = fqcnForFile(file);
+                String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(rd));
+                return new Docs.SymbolDoc("record", containerFqcn, null, rd.getNameAsString(),
+                        null, moduleName, javadoc, file, beginLine(rd));
+            }
+
+            // Case 3: Method Call at usage / call site
+            if (parent instanceof MethodCallExpr call && call.getName() == target) {
+                String memberName = target.getIdentifier();
+                // 3a: Try JavaParser resolve()
+                try {
+                    ResolvedMethodDeclaration m = call.resolve();
+                    String declaringFqcn = m.declaringType().getQualifiedName();
+                    Path declPath = sourceFileFor(declaringFqcn);
+                    if (declPath != null) {
+                        CompilationUnit targetCu = parse(declPath, null);
+                        if (targetCu != null) {
+                            for (MethodDeclaration md : targetCu.findAll(MethodDeclaration.class)) {
+                                if (md.getNameAsString().equals(memberName)
+                                        && (m.getNumberOfParams() < 0 || md.getParameters().size() == m.getNumberOfParams())) {
+                                    String kind = "class";
+                                    Node p = md.getParentNode().orElse(null);
+                                    if (p instanceof ClassOrInterfaceDeclaration cd) {
+                                        kind = cd.isInterface() ? "interface" : "class";
+                                    }
+                                    List<String> params = new ArrayList<>();
+                                    for (Parameter param : md.getParameters()) {
+                                        params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                                    }
+                                    List<String> srcLines = Files.readAllLines(declPath);
+                                    String javadoc = Docs.javadocAbove(srcLines, beginLine(md));
+                                    return new Docs.SymbolDoc(kind, declaringFqcn, cleanType(md.getType().asString()),
+                                            memberName, params, moduleName, javadoc, declPath, beginLine(md));
+                                }
+                            }
+                        }
+                    }
+                    // Library / reflection fallback
+                    List<String> params = new ArrayList<>();
+                    for (int i = 0; i < m.getNumberOfParams(); i++) {
+                        params.add(m.getParam(i).getType().describe() + " " + m.getParam(i).getName());
+                    }
+                    return new Docs.SymbolDoc("method", declaringFqcn, m.getReturnType().describe(),
+                            memberName, params, moduleName, null, null, -1);
+                } catch (Throwable unresolved) {
+                    // 3b: Fallback for Spring Data repositories, Lombok, etc.
+                    String receiverType = null;
+                    if (call.getScope().isPresent()) {
+                        com.github.javaparser.ast.expr.Expression scope = call.getScope().get();
+                        if (scope.isNameExpr()) {
+                            String recName = scope.asNameExpr().getNameAsString();
+                            if (Character.isUpperCase(recName.charAt(0))) {
+                                receiverType = resolveTypeName(recName, text);
+                            } else {
+                                String dt = declaredTypeOf(file, text, line, recName);
+                                if (dt != null) {
+                                    receiverType = dt.contains(".") ? dt : resolveTypeName(dt, text);
+                                }
+                            }
+                        }
+                    } else {
+                        receiverType = fqcnForFile(file);
+                    }
+                    if (receiverType != null) {
+                        Path declPath = sourceFileFor(receiverType);
+                        if (declPath != null) {
+                            CompilationUnit targetCu = parse(declPath, null);
+                            if (targetCu != null) {
+                                for (MethodDeclaration md : targetCu.findAll(MethodDeclaration.class)) {
+                                    if (md.getNameAsString().equals(memberName)) {
+                                        String kind = "interface";
+                                        Node p = md.getParentNode().orElse(null);
+                                        if (p instanceof ClassOrInterfaceDeclaration cd) {
+                                            kind = cd.isInterface() ? "interface" : "class";
+                                        }
+                                        List<String> params = new ArrayList<>();
+                                        for (Parameter param : md.getParameters()) {
+                                            params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                                        }
+                                        List<String> srcLines = Files.readAllLines(declPath);
+                                        String javadoc = Docs.javadocAbove(srcLines, beginLine(md));
+                                        return new Docs.SymbolDoc(kind, receiverType, cleanType(md.getType().asString()),
+                                                memberName, params, moduleName, javadoc, declPath, beginLine(md));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Case 4: ClassOrInterfaceType
+            if (parent instanceof ClassOrInterfaceType type && type.getName() == target) {
+                try {
+                    ResolvedType rt = type.resolve();
+                    if (rt.isReferenceType()) {
+                        String fqcn = rt.asReferenceType().getQualifiedName();
+                        Path src = sourceFileFor(fqcn);
+                        String kind = isInterface(target.getIdentifier()) ? "interface" : "class";
+                        String javadoc = null;
+                        int declLine = -1;
+                        if (src != null) {
+                            List<String> srcLines = Files.readAllLines(src);
+                            declLine = 1;
+                            javadoc = Docs.javadocAbove(srcLines, declLine);
+                        }
+                        return new Docs.SymbolDoc(kind, fqcn, null, target.getIdentifier(),
+                                null, moduleName, javadoc, src, declLine);
+                    }
+                } catch (Throwable ignored) {
+                    String simple = target.getIdentifier();
+                    String fqcn = resolveTypeName(simple, text);
+                    if (fqcn != null) {
+                        Path src = sourceFileFor(fqcn);
+                        return new Docs.SymbolDoc("class", fqcn, null, simple,
+                                null, moduleName, null, src, src != null ? 1 : -1);
+                    }
+                }
+            }
+
+            // Case 5: Field or Variable
+            if (parent instanceof VariableDeclarator vd && vd.getName() == target) {
+                String typeName = simpleType(vd.getType().asString());
+                String containerFqcn = fqcnForFile(file);
+                return new Docs.SymbolDoc("field", containerFqcn, typeName, vd.getNameAsString(),
+                        null, moduleName, null, file, beginLine(vd));
+            }
+            if (parent instanceof NameExpr name && name.getName() == target) {
+                String typeName = declaredTypeOf(file, text, line, target.getIdentifier());
+                String containerFqcn = fqcnForFile(file);
+                return new Docs.SymbolDoc("variable", containerFqcn, typeName != null ? typeName : "",
+                        target.getIdentifier(), null, moduleName, null, file, line);
+            }
+        } catch (Throwable ignored) {
         }
         return null;
     }

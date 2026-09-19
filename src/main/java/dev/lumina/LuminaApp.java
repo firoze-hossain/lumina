@@ -5,6 +5,7 @@ import dev.lumina.git.GitService;
 import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.run.RunConfiguration;
+import dev.lumina.semantics.Docs;
 import dev.lumina.ui.*;
 import dev.lumina.util.Settings;
 import javafx.application.Application;
@@ -81,6 +82,7 @@ public class LuminaApp extends Application {
     private final ProblemsPanel problemsPanel = new ProblemsPanel();
     private final DocPopup docPopup = new DocPopup();
     private final ParamInfoPopup paramPopup = new ParamInfoPopup();
+    private UsagesPopup usagesPopup;
     private Label statusProblems;
     private HBox breadcrumbBar;
     private Label statusCaret;
@@ -1249,13 +1251,113 @@ public class LuminaApp extends Application {
         return p.matcher(line).find();
     }
 
+    private void handleNavigationOrUsages(EditorTab tab, String word, int line, int col, javafx.geometry.Bounds screenBounds) {
+        if (word == null || word.isBlank()) return;
+        boolean isDecl = false;
+        if (semantics != null && tab.getPath() != null) {
+            try {
+                var res = semantics.resolveAt(tab.getPath(), tab.getEditorText(), line, col);
+                if (res.kind() == dev.lumina.semantics.SemanticEngine.Kind.DECLARATION) {
+                    isDecl = true;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (!isDecl) {
+            isDecl = isDeclarationLine(tab.currentLineText(), word);
+        }
+
+        if (isDecl) {
+            showUsagesPopup(tab, word, line, col, screenBounds);
+        } else {
+            goToDeclaration(word);
+        }
+    }
+
+    private void showUsagesPopup(EditorTab editor, String word, int line, int column, javafx.geometry.Bounds screenBounds) {
+        if (word == null || word.isBlank() || projectRoot == null) return;
+        if (editor == null || editor.getPath() == null) return;
+
+        if (usagesPopup == null) {
+            usagesPopup = new UsagesPopup((path, ln) -> openFileAtLineAndSymbol(path, ln, word, true));
+            usagesPopup.setOnPopout(() -> showUsages(word));
+        }
+
+        final Path file = editor.getPath();
+        final String text = editor.getEditorText();
+        dev.lumina.semantics.SemanticEngine engine = semantics;
+
+        Thread t = new Thread(() -> {
+            List<dev.lumina.semantics.SemanticEngine.Usage> hits = List.of();
+            Docs.SymbolDoc doc = null;
+            if (engine != null) {
+                try {
+                    hits = engine.findUsages(file, text, line, column);
+                    doc = engine.symbolDocAt(file, text, line, column);
+                } catch (Throwable ignored) {
+                }
+            }
+
+            final List<dev.lumina.semantics.SemanticEngine.Usage> resolvedHits = hits;
+            final Docs.SymbolDoc resolvedDoc = doc;
+
+            Platform.runLater(() -> {
+                if (resolvedHits.isEmpty()) {
+                    showUsages(word);
+                    return;
+                }
+
+                StringBuilder headerBuilder = new StringBuilder();
+                if (resolvedDoc != null) {
+                    String kindStr = "interface".equalsIgnoreCase(resolvedDoc.kind())
+                            ? "Abstract method "
+                            : ("class".equalsIgnoreCase(resolvedDoc.kind()) ? "Method " : (resolvedDoc.kind() + " "));
+                    headerBuilder.append(kindStr).append(resolvedDoc.name());
+                    if (resolvedDoc.params() != null) {
+                        headerBuilder.append("(");
+                        for (int i = 0; i < resolvedDoc.params().size(); i++) {
+                            String p = resolvedDoc.params().get(i);
+                            int spaceIdx = p.indexOf(' ');
+                            headerBuilder.append(spaceIdx > 0 ? p.substring(0, spaceIdx) : p);
+                            if (i < resolvedDoc.params().size() - 1) headerBuilder.append(", ");
+                        }
+                        headerBuilder.append(")");
+                    }
+                    if (resolvedDoc.containerFqcn() != null && !resolvedDoc.containerFqcn().isBlank()) {
+                        headerBuilder.append(" of ").append(resolvedDoc.containerFqcn());
+                    }
+                } else {
+                    headerBuilder.append("Usages of ").append(word);
+                }
+
+                List<UsagesPopup.UsageItem> items = resolvedHits.stream()
+                        .map(u -> {
+                            String rel = projectRoot != null && u.file().startsWith(projectRoot)
+                                    ? projectRoot.relativize(u.file()).toString()
+                                    : u.file().toString();
+                            return new UsagesPopup.UsageItem(u.file(), u.line(), u.preview(), u.declaration(), rel);
+                        })
+                        .toList();
+
+                javafx.geometry.Bounds bounds = screenBounds != null ? screenBounds : editor.getWordBoundsOnScreen(editor.getCodeArea().getCaretPosition());
+                if (bounds != null) {
+                    usagesPopup.show(editor.getCodeArea(), projectRoot, word, headerBuilder.toString(), items, bounds);
+                } else {
+                    showUsages(word);
+                }
+            });
+        }, "lumina-usages-popup");
+        t.setDaemon(true);
+        t.start();
+    }
+
     private void showUsages(String word) {
         if (word == null || word.isBlank()) return;
         if (!requireProject()) return;
         EditorTab editor = currentEditor();
         dev.lumina.semantics.SemanticEngine engine = semantics;
         if (engine == null || editor == null || editor.getPath() == null) {
-            new UsagesDialog(stage, projectRoot, word, this::openFileAtLine).show();
+            new UsagesDialog(stage, projectRoot, word, (p, ln) -> openFileAtLineAndSymbol(p, ln, word, true)).show();
             return;
         }
         final Path file = editor.getPath();
@@ -1273,7 +1375,7 @@ public class LuminaApp extends Application {
                 if (resolved.isEmpty()) {
                     // unresolved symbol: keep the old text scan as safety net
                     new UsagesDialog(stage, projectRoot, word,
-                            this::openFileAtLine).show();
+                            (p, ln) -> openFileAtLineAndSymbol(p, ln, word, true)).show();
                 } else {
                     List<UsagesDialog.Hit> rows = resolved.stream()
                             .map(u -> new UsagesDialog.Hit(
@@ -1281,7 +1383,7 @@ public class LuminaApp extends Application {
                                     u.declaration()))
                             .toList();
                     new UsagesDialog(stage, projectRoot, word, rows,
-                            this::openFileAtLine).show();
+                            (p, ln) -> openFileAtLineAndSymbol(p, ln, word, true)).show();
                 }
             });
         }, "lumina-semantic-usages");
@@ -2526,7 +2628,7 @@ public class LuminaApp extends Application {
                         case PROJECT -> {
                             var loc = res.location();
                             Platform.runLater(() ->
-                                    openFileAtLine(loc.file(), loc.line()));
+                                    openFileAtLineAndSymbol(loc.file(), loc.line(), word, true));
                             return;
                         }
                         case LIBRARY -> {
@@ -2535,7 +2637,7 @@ public class LuminaApp extends Application {
                             return;
                         }
                         case DECLARATION -> {
-                            Platform.runLater(() -> showUsages(word));
+                            Platform.runLater(() -> showUsagesPopup(currentEditor(), word, caretLine, caretColumn, null));
                             return;
                         }
                         case NONE -> { /* fall through to heuristics */ }
@@ -2552,7 +2654,7 @@ public class LuminaApp extends Application {
                 if (hitFile[0] != null) {
                     final Path f = hitFile[0];
                     final int ln = hit[0];
-                    Platform.runLater(() -> openFileAtLine(f, ln));
+                    Platform.runLater(() -> openFileAtLineAndSymbol(f, ln, word, true));
                     return;
                 }
             }
@@ -2560,7 +2662,7 @@ public class LuminaApp extends Application {
             if (targetType != null) {
                 Path typeFile = findTypeFile(targetType);
                 if (typeFile != null) {
-                    Platform.runLater(() -> openTypeAndMaybeMethod(typeFile, word));
+                    Platform.runLater(() -> openFileAtLineAndSymbol(typeFile, 1, word, true));
                     return;
                 }
                 // (3) library/JDK type -> decompile from the classpath (like IntelliJ)
@@ -3139,10 +3241,20 @@ public class LuminaApp extends Application {
     }
 
     private void openFileAtLine(Path path, int line) {
+        openFileAtLineAndSymbol(path, line, null, false);
+    }
+
+    private void openFileAtLineAndSymbol(Path path, int line, String symbol, boolean flashAndDoc) {
         openFile(path);
         Platform.runLater(() -> {
             EditorTab tab = currentEditor();
-            if (tab != null) tab.goToLine(line);
+            if (tab != null) {
+                if (symbol != null && !symbol.isBlank() && flashAndDoc) {
+                    tab.flashSymbolAt(line, symbol, true);
+                } else {
+                    tab.goToLine(line);
+                }
+            }
         });
     }
 
@@ -4362,15 +4474,15 @@ public class LuminaApp extends Application {
         // M4: '(' opens parameter info.
         tab.setParamInfoTrigger(this::showParameterInfo);
         loadAuthorHints(tab);
+        tab.setQuickDocProvider((line, col) -> {
+            if (semantics == null || tab.getPath() == null) return null;
+            return semantics.symbolDocAt(tab.getPath(), tab.getEditorText(), line, col);
+        });
+        tab.setNavigationCoordinatesHandler((word, line, col, screenBounds) -> {
+            handleNavigationOrUsages(tab, word, line, col, screenBounds);
+        });
         tab.setNavigationHandler(word -> {
-            // Ctrl+Click on a declaration -> usages; on a usage -> declaration.
-            EditorTab current = currentEditor();
-            if (current != null && word != null && isDeclarationLine(
-                    current.currentLineText(), word)) {
-                showUsages(word);
-            } else {
-                goToDeclaration(word);
-            }
+            handleNavigationOrUsages(tab, word, tab.getCaretLine(), tab.getCaretColumn(), null);
         });
         group.getTabs().add(tab);
         group.getSelectionModel().select(tab);

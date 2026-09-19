@@ -31,6 +31,42 @@ public final class Docs {
                        int openParenOffset) {
     }
 
+    /** Rich symbol documentation for hover and quick documentation cards. */
+    public record SymbolDoc(
+            String kind,            // "class", "interface", "record", "enum", "method", "field", "variable"
+            String containerFqcn,   // e.g. "com.roze.nexacommerce.user.repository.RoleRepository"
+            String returnType,      // e.g. "Optional<Role>" or field type
+            String name,            // e.g. "findByName"
+            List<String> params,    // e.g. ["String superadmin"]
+            String moduleName,      // e.g. "NexaCommerce"
+            String javadoc,         // cleaned javadoc, if available
+            Path declFile,          // declaration file
+            int declLine            // declaration line
+    ) {
+        /** Formatted signature matching IntelliJ layout. */
+        public String formattedSignature() {
+            StringBuilder sb = new StringBuilder();
+            if (returnType != null && !returnType.isBlank()) {
+                sb.append(returnType).append(" ");
+            }
+            sb.append(name);
+            if (params != null) {
+                if (params.isEmpty()) {
+                    sb.append("()");
+                } else {
+                    sb.append("(\n");
+                    for (int i = 0; i < params.size(); i++) {
+                        sb.append("    ").append(params.get(i));
+                        if (i < params.size() - 1) sb.append(",");
+                        sb.append("\n");
+                    }
+                    sb.append(")");
+                }
+            }
+            return sb.toString();
+        }
+    }
+
     private Docs() {
     }
 

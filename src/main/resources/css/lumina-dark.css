@@ -3573,3 +3573,249 @@
     -fx-font-size: 11px;
 }
 
+
+/* ============================================================
+   IntelliJ-style Quick Documentation Hover Popup & Show Usages
+   ============================================================ */
+
+.quick-doc-popup {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 8;
+    -fx-border-color: #43454A;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-padding: 10 14 10 14;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 6);
+}
+
+.quick-doc-header {
+    -fx-padding: 0 0 6 0;
+}
+
+.quick-doc-badge {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+    -fx-min-width: 16px;
+    -fx-max-width: 16px;
+    -fx-min-height: 16px;
+    -fx-max-height: 16px;
+    -fx-background-radius: 8;
+    -fx-alignment: center;
+}
+
+.badge-interface { -fx-background-color: #179387; }
+.badge-class { -fx-background-color: #3875D7; }
+.badge-record { -fx-background-color: #8E44AD; }
+.badge-enum { -fx-background-color: #D35400; }
+.badge-method { -fx-background-color: #2980B9; }
+.badge-field { -fx-background-color: #8E44AD; }
+
+.quick-doc-container {
+    -fx-text-fill: #6C9DF8;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+}
+
+.quick-doc-sig-box {
+    -fx-padding: 4 0 6 0;
+}
+
+.quick-doc-sig-flow {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-type {
+    -fx-fill: #56B6C2;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-name {
+    -fx-fill: #E5C07B;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.quick-doc-sig-punct {
+    -fx-fill: #ABB2BF;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-param-type {
+    -fx-fill: #56B6C2;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-param-name {
+    -fx-fill: #D8DBE6;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-separator {
+    -fx-background-color: #393B40;
+    -fx-margin: 6 0 6 0;
+}
+
+.quick-doc-javadoc {
+    -fx-text-fill: #BCBEC4;
+    -fx-font-size: 12px;
+    -fx-line-spacing: 2;
+    -fx-padding: 6 0 6 0;
+}
+
+.quick-doc-scroll, .quick-doc-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.quick-doc-footer {
+    -fx-padding: 6 0 0 0;
+}
+
+.quick-doc-module-icon {
+    -fx-font-size: 11px;
+}
+
+.quick-doc-module-label {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 11.5px;
+}
+
+.quick-doc-action-icon {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 0 3 0 3;
+}
+
+/* Usages Popup */
+.usages-popup {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 8;
+    -fx-border-color: #43454A;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.65), 24, 0.2, 0, 8);
+    -fx-padding: 8 10 8 10;
+}
+
+.usages-header {
+    -fx-padding: 4 6 6 6;
+    -fx-border-color: transparent transparent #393B40 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.usages-header-title {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.usages-header-count {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 12px;
+}
+
+.usages-toolbar {
+    -fx-padding: 4 6 4 6;
+    -fx-border-color: transparent transparent #35373C transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.usages-tool-btn {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 11px;
+    -fx-padding: 2 4 2 4;
+    -fx-cursor: hand;
+}
+
+.usages-scope-label {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 11.5px;
+    -fx-cursor: hand;
+}
+
+.usages-scope-desc {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 11px;
+}
+
+.usages-list {
+    -fx-background-color: transparent;
+    -fx-padding: 2 0 2 0;
+}
+
+.usages-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 3 6 3 6;
+}
+
+.usages-list .list-cell:filled:selected {
+    -fx-background-color: #2E436E;
+    -fx-background-radius: 4;
+}
+
+.usages-list .list-cell:filled:hover {
+    -fx-background-color: #252F47;
+    -fx-background-radius: 4;
+}
+
+.usages-row {
+    -fx-alignment: center-left;
+}
+
+.usages-class-badge {
+    -fx-background-color: #3875D7;
+    -fx-background-radius: 3;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 9.5px;
+    -fx-font-weight: bold;
+    -fx-min-width: 14px;
+    -fx-max-width: 14px;
+    -fx-min-height: 14px;
+    -fx-max-height: 14px;
+    -fx-alignment: center;
+}
+
+.usages-filename {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.usages-line-number {
+    -fx-text-fill: #61AFEF;
+    -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.usages-snippet-text {
+    -fx-fill: #ABB2BF;
+    -fx-font-size: 12px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.usages-snippet-match {
+    -fx-fill: #FFFFFF;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-underline: true;
+}
+
+.usages-footer {
+    -fx-padding: 4 8 2 8;
+    -fx-border-color: #393B40 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.usages-footer-path {
+    -fx-text-fill: #868A91;
+    -fx-font-size: 11px;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}

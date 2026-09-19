@@ -16,10 +16,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TerminalPaneTest {
 
+    private static volatile boolean javaFxAvailable = false;
+
     @BeforeAll
     static void initJavaFX() {
         try {
-            Platform.startup(() -> {});
+            String display = System.getenv("DISPLAY");
+            if (display == null || display.isBlank() || java.awt.GraphicsEnvironment.isHeadless()) {
+                return;
+            }
+            Platform.startup(() -> javaFxAvailable = true);
+            javaFxAvailable = true;
         } catch (Throwable ignored) {
             // JavaFX runtime already initialized or headless without DISPLAY
         }
@@ -37,6 +44,7 @@ class TerminalPaneTest {
 
     @Test
     void testOverlayChildrenAreUnmanaged() throws Exception {
+        if (!javaFxAvailable) return;
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<TerminalPane> paneRef = new AtomicReference<>();
 
@@ -49,7 +57,7 @@ class TerminalPaneTest {
                     latch.countDown();
                 }
             });
-        } catch (IllegalStateException e) {
+        } catch (Throwable e) {
             // Toolkit not initialized in headless environment without display
             return;
         }
