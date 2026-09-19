@@ -60,6 +60,7 @@ public class TerminalPane extends BorderPane {
     private final StyleClassedTextArea output = new StyleClassedTextArea();
     private final Label ghost = new Label();
     private final Rectangle cursor = new Rectangle();
+    private boolean hasPositionedCursor = false;
     // Re-syncing the cursor's position on every blink tick (not just when
     // the caret-bounds listener fires) is a deliberate safety net: if a
     // bounds update is ever missed right after new output streams in (a
@@ -68,7 +69,9 @@ public class TerminalPane extends BorderPane {
     // blink cycle instead of staying stuck wherever it last was.
     private final Timeline cursorBlink = new Timeline(
             new KeyFrame(Duration.millis(600), e -> {
-                cursor.setVisible(!cursor.isVisible());
+                if (hasPositionedCursor) {
+                    cursor.setVisible(!cursor.isVisible());
+                }
                 resyncCursorPosition();
             }));
     private final List<String> history = new ArrayList<>();
@@ -119,6 +122,8 @@ public class TerminalPane extends BorderPane {
             output.clear();
             writePos = 0;
             lineStart = 0;
+            hasPositionedCursor = false;
+            cursor.setVisible(false);
         });
 
         rail = new VBox(6, restart, clear);
@@ -138,9 +143,12 @@ public class TerminalPane extends BorderPane {
         ghost.getStyleClass().add("terminal-ghost-suggestion");
         ghost.setMouseTransparent(true);
         ghost.setVisible(false);
+        ghost.setManaged(false);
 
         cursor.getStyleClass().add("terminal-cursor");
         cursor.setMouseTransparent(true);
+        cursor.setManaged(false);
+        cursor.setVisible(false);
         applyCursorShape();
         cursorBlink.setCycleCount(Timeline.INDEFINITE);
         cursorBlink.play();
@@ -159,6 +167,29 @@ public class TerminalPane extends BorderPane {
                     cursorBlink.playFromStart();
                 }));
 
+        output.caretPositionProperty().addListener((obs, old, pos) ->
+                Platform.runLater(this::resyncCursorPosition));
+
+        overlay.layoutBoundsProperty().addListener((obs, old, b) ->
+                Platform.runLater(this::resyncCursorPosition));
+
+        overlay.sceneProperty().addListener((obs, old, sc) -> {
+            if (sc != null) {
+                Platform.runLater(this::resyncCursorPosition);
+            }
+        });
+
+        output.estimatedScrollYProperty().addListener((obs, old, val) ->
+                resyncCursorPosition());
+
+        output.setOnMouseClicked(e -> {
+            if (output.getSelectedText().isEmpty()) {
+                int target = Math.max(0, Math.min(writePos, output.getLength()));
+                output.moveTo(target);
+                resyncCursorPosition();
+            }
+        });
+
         setRight(rail);
         setCenter(overlay);
         setMinHeight(120);
@@ -166,7 +197,7 @@ public class TerminalPane extends BorderPane {
 
     private void positionGhost(javafx.geometry.Bounds screenBounds) {
         javafx.scene.Node parent = ghost.getParent();
-        if (parent == null) return;
+        if (parent == null || parent.getScene() == null) return;
         javafx.geometry.Point2D topRight =
                 parent.screenToLocal(screenBounds.getMaxX(), screenBounds.getMinY());
         if (topRight == null) return;
@@ -176,25 +207,34 @@ public class TerminalPane extends BorderPane {
 
     private void positionCursor(javafx.geometry.Bounds screenBounds) {
         // caretBoundsProperty() reports bounds in SCREEN coordinates (it's
-        // meant for positioning popups), not local ones \u2014 using them
+        // meant for positioning popups), not local ones — using them
         // directly as this overlay's layoutX/Y, without converting through
         // screenToLocal, is what was landing the cursor near the corner of
         // the terminal instead of at the actual caret position.
         javafx.scene.Node parent = cursor.getParent();
-        if (parent == null) return;
+        if (parent == null || parent.getScene() == null) return;
         javafx.geometry.Point2D topLeft =
                 parent.screenToLocal(screenBounds.getMinX(), screenBounds.getMinY());
         javafx.geometry.Point2D bottomRight =
                 parent.screenToLocal(screenBounds.getMaxX(), screenBounds.getMaxY());
         if (topLeft == null || bottomRight == null) return;   // not on screen yet
+
+        double parentHeight = parent.getLayoutBounds().getHeight();
+        if (parentHeight > 0 && (topLeft.getY() < -5 || topLeft.getY() > parentHeight)) {
+            cursor.setVisible(false);
+            return;
+        }
+
         double charWidth = bottomRight.getX() - topLeft.getX();
-        if (charWidth <= 0) charWidth = 8;
+        if (charWidth < 4) charWidth = estimatedCharWidth();
         double charHeight = bottomRight.getY() - topLeft.getY();
-        cursor.setLayoutX(topLeft.getX());
+        if (charHeight <= 0) charHeight = estimatedLineHeight();
+
+        cursor.setLayoutX(Math.max(0, topLeft.getX()));
         switch (Settings.get(Settings.TERMINAL_CURSOR_SHAPE) == null
                 ? "Block" : Settings.get(Settings.TERMINAL_CURSOR_SHAPE)) {
             case "Underline" -> {
-                cursor.setLayoutY(bottomRight.getY() - 2);
+                cursor.setLayoutY(topLeft.getY() + charHeight - 2);
                 cursor.setWidth(charWidth);
                 cursor.setHeight(2);
             }
@@ -209,26 +249,71 @@ public class TerminalPane extends BorderPane {
                 cursor.setHeight(charHeight);
             }
         }
+        if (!hasPositionedCursor) {
+            hasPositionedCursor = true;
+            cursor.setVisible(true);
+            cursorBlink.playFromStart();
+        }
     }
 
     /** Re-reads the caret's current bounds and repositions the cursor
-     *  overlay to match \u2014 called after every batch of output and on
+     *  overlay to match — called after every batch of output and on
      *  every blink tick, so the cursor can't end up stuck wherever it was
      *  before the prompt actually finished streaming in. */
     private void resyncCursorPosition() {
-        output.caretBoundsProperty().getValue().ifPresent(this::positionCursor);
+        javafx.scene.Node parent = cursor.getParent();
+        if (parent == null || parent.getScene() == null) return;
+
+        java.util.Optional<javafx.geometry.Bounds> bounds = output.getCaretBounds();
+        if (bounds.isPresent() && !bounds.get().isEmpty()) {
+            positionCursor(bounds.get());
+            return;
+        }
+
+        // Fallback 1: Try character bounds at current caret position
+        int pos = output.getCaretPosition();
+        if (pos > 0 && pos <= output.getLength()) {
+            java.util.Optional<javafx.geometry.Bounds> cb = output.getCharacterBoundsOnScreen(pos - 1, pos);
+            if (cb.isPresent() && !cb.get().isEmpty()) {
+                javafx.geometry.Bounds b = cb.get();
+                javafx.geometry.BoundingBox caretBox = new javafx.geometry.BoundingBox(
+                        b.getMaxX(), b.getMinY(), 0, b.getHeight());
+                positionCursor(caretBox);
+                return;
+            }
+        } else if (pos == 0 && output.getLength() > 0) {
+            java.util.Optional<javafx.geometry.Bounds> cb = output.getCharacterBoundsOnScreen(0, 1);
+            if (cb.isPresent() && !cb.get().isEmpty()) {
+                javafx.geometry.Bounds b = cb.get();
+                javafx.geometry.BoundingBox caretBox = new javafx.geometry.BoundingBox(
+                        b.getMinX(), b.getMinY(), 0, b.getHeight());
+                positionCursor(caretBox);
+                return;
+            }
+        }
+
+        // Fallback 2: Paragraph bounds for empty document or start of line
+        int par = output.getCurrentParagraph();
+        java.util.Optional<javafx.geometry.Bounds> pb = output.getParagraphBoundsOnScreen(par);
+        if (pb.isPresent() && !pb.get().isEmpty()) {
+            javafx.geometry.Bounds b = pb.get();
+            double x = b.getMinX();
+            int col = Math.max(0, pos - lineStart);
+            if (col > 0) {
+                x += col * estimatedCharWidth();
+            }
+            javafx.geometry.BoundingBox caretBox = new javafx.geometry.BoundingBox(
+                    x, b.getMinY(), 0, b.getHeight());
+            positionCursor(caretBox);
+        }
     }
 
     private void applyCursorShape() {
-        // Bounds aren't known yet on construction; the real sizing happens
-        // in positionCursor() once the caret first reports its bounds. This
-        // just gives the cursor a sane default so it isn't a zero-size rect
-        // before that first callback fires.
-        cursor.setWidth(8);
-        cursor.setHeight(15);
+        cursor.setWidth(estimatedCharWidth());
+        cursor.setHeight(estimatedLineHeight());
     }
 
-    private static String fontSizeStyle() {
+    private static double estimatedFontSize() {
         String size = Settings.get(Settings.TERMINAL_FONT_SIZE);
         double px = 12;
         if (size != null) {
@@ -237,7 +322,19 @@ public class TerminalPane extends BorderPane {
             } catch (NumberFormatException ignored) {
             }
         }
-        return "-fx-font-size: " + px + "px;";
+        return px;
+    }
+
+    private static double estimatedCharWidth() {
+        return Math.max(7, Math.round(estimatedFontSize() * 0.62));
+    }
+
+    private static double estimatedLineHeight() {
+        return Math.max(14, Math.round(estimatedFontSize() * 1.35));
+    }
+
+    private static String fontSizeStyle() {
+        return "-fx-font-size: " + estimatedFontSize() + "px;";
     }
 
     /** (Re)start the shell in the given directory (overridden by the
@@ -257,6 +354,8 @@ public class TerminalPane extends BorderPane {
         typedThisLine.setLength(0);
         typedCursorPos = 0;
         hideGhost();
+        hasPositionedCursor = false;
+        cursor.setVisible(false);
         output.setStyle(fontSizeStyle());
 
         String[] cmd = shellCommand();
@@ -317,7 +416,10 @@ public class TerminalPane extends BorderPane {
     }
 
     public void focusInput() {
-        Platform.runLater(output::requestFocus);
+        Platform.runLater(() -> {
+            output.requestFocus();
+            resyncCursorPosition();
+        });
     }
 
     /** Toggled from the session tab's right-click "Show Toolbar" \u2014 hides
@@ -582,6 +684,31 @@ public class TerminalPane extends BorderPane {
                             currentStyle = mapSgr(seq);
                         } else if (seq.endsWith("K")) {
                             eraseToEndOfLine();
+                        } else if (seq.endsWith("C")) {
+                            int n = parseCsiParam(seq, 1);
+                            writePos = Math.min(output.getLength(), writePos + n);
+                        } else if (seq.endsWith("D")) {
+                            int n = parseCsiParam(seq, 1);
+                            writePos = Math.max(lineStart, writePos - n);
+                        } else if (seq.endsWith("G")) {
+                            int col = parseCsiParam(seq, 1) - 1;
+                            writePos = Math.min(output.getLength(), lineStart + Math.max(0, col));
+                        } else if (seq.endsWith("H") || seq.endsWith("f")) {
+                            if (seq.equals("\u001B[H") || seq.equals("\u001B[1;1H")) {
+                                writePos = lineStart;
+                            }
+                        } else if (seq.endsWith("J")) {
+                            if (seq.contains("2J") || seq.contains("3J")) {
+                                output.clear();
+                                writePos = 0;
+                                lineStart = 0;
+                                hasPositionedCursor = false;
+                                cursor.setVisible(false);
+                            }
+                        } else if (seq.endsWith("h") && seq.contains("?25")) {
+                            if (hasPositionedCursor) cursor.setVisible(true);
+                        } else if (seq.endsWith("l") && seq.contains("?25")) {
+                            cursor.setVisible(false);
                         }
                         i += seq.length();
                     } else if (osc.lookingAt()) {
@@ -598,12 +725,16 @@ public class TerminalPane extends BorderPane {
                 }
             }
             flush(plain);
-            output.moveTo(output.getLength());
+            int targetPos = Math.max(0, Math.min(writePos, output.getLength()));
+            output.moveTo(targetPos);
             output.requestFollowCaret();
             // Bounds right after moveTo() can reflect a layout pass that
             // hasn't caught up with the just-inserted text yet; deferring
-            // one pulse gives layout time to settle before we trust them.
-            Platform.runLater(this::resyncCursorPosition);
+            // gives layout time to settle before we position the cursor.
+            Platform.runLater(() -> {
+                resyncCursorPosition();
+                Platform.runLater(this::resyncCursorPosition);
+            });
         });
     }
 
@@ -662,5 +793,14 @@ public class TerminalPane extends BorderPane {
             }
         }
         return result;
+    }
+
+    static int parseCsiParam(String seq, int defaultValue) {
+        try {
+            String num = seq.replaceAll("[^0-9]", "");
+            return num.isEmpty() ? defaultValue : Integer.parseInt(num);
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 }
