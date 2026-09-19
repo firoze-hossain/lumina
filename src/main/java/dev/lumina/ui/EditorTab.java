@@ -301,33 +301,49 @@ public class EditorTab extends Tab {
         });
 
         VirtualizedScrollPane<CodeArea> scroll = new VirtualizedScrollPane<>(codeArea);
+        codeGuidesOverlay = new CodeGuidesOverlay(codeArea);
         hintOverlay = new javafx.scene.layout.Pane();
         hintOverlay.setPickOnBounds(false);   // only the hint labels catch clicks
         javafx.scene.layout.StackPane stack =
-                new javafx.scene.layout.StackPane(scroll, hintOverlay);
+                new javafx.scene.layout.StackPane(scroll, codeGuidesOverlay, hintOverlay);
+        javafx.scene.layout.StackPane.setAlignment(codeGuidesOverlay, javafx.geometry.Pos.TOP_LEFT);
+        javafx.scene.layout.StackPane.setAlignment(hintOverlay, javafx.geometry.Pos.TOP_LEFT);
+        codeGuidesOverlay.widthProperty().bind(scroll.widthProperty());
+        codeGuidesOverlay.heightProperty().bind(scroll.heightProperty());
+
         mavenSyncBanner = buildMavenSyncBanner();
         stack.getChildren().add(mavenSyncBanner);
         javafx.scene.layout.StackPane.setAlignment(mavenSyncBanner, javafx.geometry.Pos.TOP_RIGHT);
         javafx.scene.layout.StackPane.setMargin(mavenSyncBanner,
                 new javafx.geometry.Insets(10, 18, 0, 0));
-        // Recompute inline author positions on scroll / resize / edits.
+        // Recompute inline author positions and guide lines on scroll / resize / edits.
         codeArea.estimatedScrollYProperty().addListener((o, a, b) -> {
             refreshInlineHints();
             hideDiagPopup();
+            codeGuidesOverlay.render();
         });
         codeArea.estimatedScrollXProperty().addListener((o, a, b) -> {
             refreshInlineHints();
             hideDiagPopup();
+            codeGuidesOverlay.render();
         });
-        codeArea.widthProperty().addListener((o, a, b) -> refreshInlineHints());
-        codeArea.heightProperty().addListener((o, a, b) -> refreshInlineHints());
+        codeArea.widthProperty().addListener((o, a, b) -> {
+            refreshInlineHints();
+            codeGuidesOverlay.render();
+        });
+        codeArea.heightProperty().addListener((o, a, b) -> {
+            refreshInlineHints();
+            codeGuidesOverlay.render();
+        });
         codeArea.multiPlainChanges()
                 .successionEnds(Duration.ofMillis(150))
                 .subscribe(ignore -> {
                     refreshInlineHints();
+                    updateCodeGuides();
                     if (onContentSettled != null) onContentSettled.run();
                 });
         setContent(stack);
+        javafx.application.Platform.runLater(this::updateCodeGuides);
     }
 
     // ----------------------------------------------------------- breakpoints
@@ -355,6 +371,7 @@ public class EditorTab extends Tab {
     private java.util.List<dev.lumina.git.GitService.BlameLine> blameLines;
     private boolean fullBlame;   // true = date+author on every line in the gutter
     private javafx.scene.layout.Pane hintOverlay;   // holds inline author labels
+    private CodeGuidesOverlay codeGuidesOverlay;
 
     public boolean hasBlame() {
         return fullBlame;
@@ -451,6 +468,7 @@ public class EditorTab extends Tab {
                 box = new javafx.scene.layout.HBox(2, dotBox, num);
             }
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            box.getStyleClass().add("gutter-row");
             return box;
         });
     }
@@ -888,6 +906,20 @@ public class EditorTab extends Tab {
             codeArea.setParagraphStyle(line, java.util.List.of("has-caret"));
         }
         currentHighlightedLine = line;
+        if (codeGuidesOverlay != null) {
+            codeGuidesOverlay.setActiveCaretLine(line);
+        }
+    }
+
+    public void updateCodeGuides() {
+        if (codeGuidesOverlay == null) return;
+        String text = codeArea.getText();
+        CodeGuidesScanner.GuidesResult res = CodeGuidesScanner.scan(text, baseName);
+        codeGuidesOverlay.updateGuides(res, codeArea.getCurrentParagraph());
+    }
+
+    public CodeGuidesOverlay getCodeGuidesOverlay() {
+        return codeGuidesOverlay;
     }
 
     private void notifyCaret() {
