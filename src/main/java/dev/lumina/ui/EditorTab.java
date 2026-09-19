@@ -73,6 +73,12 @@ public class EditorTab extends Tab {
             quickDocPopup.hide();
             if (flashTimeline != null) flashTimeline.stop();
         });
+        quickDocPopup.setOnSafeDelete(diag -> {
+            if (diag.quickFix() != null) {
+                runQuickFix(diag.quickFix());
+            }
+        });
+        quickDocPopup.setOnMoreActions(this::openContextActions);
         diagHideTimer.setOnFinished(ev -> {
             if (!isMouseOverDiagPopup) {
                 hideDiagPopup();
@@ -99,9 +105,50 @@ public class EditorTab extends Tab {
                 clearNavUnderline();
                 var hit = codeArea.hit(e.getX(), e.getY());
                 int charIdx = hit.getInsertionIndex();
-                dev.lumina.diagnostics.JavaDiagnostics.Diag hitDiag =
-                        diagAt(charIdx);
-                if (hitDiag != null) {
+                dev.lumina.diagnostics.JavaDiagnostics.Diag hitDiag = diagAt(charIdx);
+                String word = wordAt(charIdx);
+                boolean isUnusedSymbolDiag = hitDiag != null && hitDiag.quickFix() != null
+                        && (hitDiag.quickFix().startsWith("unused-method:") || hitDiag.quickFix().startsWith("unused-field:"));
+
+                if (hitDiag != null && !isUnusedSymbolDiag) {
+                    quickDocDebounce.stop();
+                    if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                        quickDocPopup.hide();
+                    }
+                    diagHideTimer.stop();
+                    if (currentPopupDiag != hitDiag) {
+                        currentPopupDiag = hitDiag;
+                        diagHoverTimer.setOnFinished(ev -> showDiagPopup(hitDiag));
+                        diagHoverTimer.playFromStart();
+                    }
+                } else if (word != null && quickDocProvider != null) {
+                    diagHoverTimer.stop();
+                    if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
+                        diagHideTimer.playFromStart();
+                    }
+                    int[] range = wordRangeAt(charIdx);
+                    if (range != null && (lastHoverWordStart != range[0] || lastHoverWordEnd != range[1])) {
+                        lastHoverWordStart = range[0];
+                        lastHoverWordEnd = range[1];
+                        quickDocDebounce.stop();
+                        final dev.lumina.diagnostics.JavaDiagnostics.Diag activeDiag = hitDiag;
+                        quickDocDebounce.setOnFinished(ev -> {
+                            if (quickDocPopup.isMouseOver()) return;
+                            int line = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
+                            int col = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMinor() + 1;
+                            Docs.SymbolDoc doc = quickDocProvider.apply(line, col);
+                            if (doc != null) {
+                                javafx.geometry.Bounds b = getWordBoundsOnScreen(charIdx);
+                                if (b != null) {
+                                    quickDocPopup.show(codeArea, doc, b, activeDiag);
+                                }
+                            } else if (activeDiag != null) {
+                                showDiagPopup(activeDiag);
+                            }
+                        });
+                        quickDocDebounce.playFromStart();
+                    }
+                } else if (hitDiag != null) {
                     quickDocDebounce.stop();
                     if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
                         quickDocPopup.hide();
@@ -117,34 +164,11 @@ public class EditorTab extends Tab {
                     if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
                         diagHideTimer.playFromStart();
                     }
-                    String word = wordAt(charIdx);
-                    if (word != null && quickDocProvider != null) {
-                        int[] range = wordRangeAt(charIdx);
-                        if (range != null && (lastHoverWordStart != range[0] || lastHoverWordEnd != range[1])) {
-                            lastHoverWordStart = range[0];
-                            lastHoverWordEnd = range[1];
-                            quickDocDebounce.stop();
-                            quickDocDebounce.setOnFinished(ev -> {
-                                if (quickDocPopup.isMouseOver()) return;
-                                int line = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
-                                int col = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMinor() + 1;
-                                Docs.SymbolDoc doc = quickDocProvider.apply(line, col);
-                                if (doc != null) {
-                                    javafx.geometry.Bounds b = getWordBoundsOnScreen(charIdx);
-                                    if (b != null) {
-                                        quickDocPopup.show(codeArea, doc, b);
-                                    }
-                                }
-                            });
-                            quickDocDebounce.playFromStart();
-                        }
-                    } else {
-                        lastHoverWordStart = -1;
-                        lastHoverWordEnd = -1;
-                        quickDocDebounce.stop();
-                        if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
-                            quickDocPopup.scheduleHide();
-                        }
+                    lastHoverWordStart = -1;
+                    lastHoverWordEnd = -1;
+                    quickDocDebounce.stop();
+                    if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                        quickDocPopup.scheduleHide();
                     }
                 }
             }
@@ -1252,6 +1276,18 @@ public class EditorTab extends Tab {
             } else if (onQuickFix != null) {
                 onQuickFix.accept(id);
             }
+        } else if (id.startsWith("unused-method:")) {
+            String methodSig = id.substring("unused-method:".length()).trim();
+            String methodName = methodSig;
+            int paren = methodSig.indexOf('(');
+            if (paren > 0) methodName = methodSig.substring(0, paren);
+            String full = codeArea.getText();
+            String updated = dev.lumina.codegen.JavaCodeGenerator.removeMethod(full, methodName);
+            if (!updated.equals(full)) {
+                codeArea.replaceText(0, full.length(), updated);
+                applyHighlighting();
+                scheduleDiagnostics();
+            }
         } else if (id.startsWith("unused-field:")) {
             String fieldName = id.substring("unused-field:".length()).trim();
             String full = codeArea.getText();
@@ -1269,6 +1305,10 @@ public class EditorTab extends Tab {
 
     private static String quickFixActionLabel(String id) {
         if (id == null) return "Apply fix";
+        if (id.startsWith("unused-method:")) {
+            String sig = id.substring("unused-method:".length()).trim();
+            return "Safe delete '" + sig + "'";
+        }
         if (id.startsWith("unused-field:")) {
             return "Add constructor parameter";
         }
@@ -1384,10 +1424,14 @@ public class EditorTab extends Tab {
                 builder.add(java.util.List.of(), start - last);
             }
             boolean isUnusedField = d.quickFix() != null && d.quickFix().startsWith("unused-field:");
+            boolean isUnusedMethod = d.quickFix() != null && d.quickFix().startsWith("unused-method:");
             java.util.List<String> classes = new java.util.ArrayList<>();
             if (isUnusedField) {
                 classes.add("unused-field");
-                classes.add("diag-warning");
+                classes.add("unused-symbol");
+            } else if (isUnusedMethod) {
+                classes.add("unused-method");
+                classes.add("unused-symbol");
             } else if (d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR) {
                 classes.add("diag-error");
             } else {
@@ -1823,7 +1867,32 @@ public class EditorTab extends Tab {
             }
         }
 
-        if (fieldName != null) {
+        // Detect method or field from diagnostic
+        String methodSig = null;
+        if (diag != null && diag.quickFix() != null && diag.quickFix().startsWith("unused-method:")) {
+            methodSig = diag.quickFix().substring("unused-method:".length()).trim();
+        }
+
+        if (methodSig != null) {
+            final String targetSig = methodSig;
+            String mName = targetSig;
+            int paren = targetSig.indexOf('(');
+            if (paren > 0) mName = targetSig.substring(0, paren);
+            final String targetName = mName;
+
+            var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveMethod(full, targetName);
+            items.add(ContextActionsPopup.ActionItem.fix("safe-delete-method",
+                    "Safe delete '" + targetSig + "'", pRem, () -> {
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeMethod(codeArea.getText(), targetName);
+                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        applyHighlighting();
+                        scheduleDiagnostics();
+                    }));
+            items.add(ContextActionsPopup.ActionItem.separator());
+            items.add(ContextActionsPopup.ActionItem.item("change-access", "Change access modifier", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.itemWithIcon("copilot-chat", "Open GitHub Copilot Inline Chat", "\uD83D\uDCAC", () -> {}));
+            items.add(ContextActionsPopup.ActionItem.item("add-javadoc", "Add Javadoc", () -> {}));
+        } else if (fieldName != null) {
             final String targetField = fieldName;
             var pCtor = dev.lumina.codegen.JavaCodeGenerator.previewAddConstructorParam(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fixWithDots("add-ctor-param",

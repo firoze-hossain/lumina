@@ -4457,6 +4457,7 @@ public class LuminaApp extends Application {
             String mod = projectRoot != null ? projectRoot.getFileName().toString() : null;
             results.addAll(dev.lumina.diagnostics.JpaDiagnostics.checkPersistentEntities(file, text, mod));
             results.addAll(dev.lumina.diagnostics.FieldDiagnostics.checkUnusedFields(file, text, mod));
+            results.addAll(dev.lumina.diagnostics.MethodDiagnostics.checkUnusedMethods(file, text, roots, mod));
             return results;
         });
         tab.setDiagnosticsListener(diags -> {

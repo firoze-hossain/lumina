@@ -38,14 +38,26 @@ public final class Docs {
             String returnType,      // e.g. "Optional<Role>" or field type
             String name,            // e.g. "findByName"
             List<String> params,    // e.g. ["String superadmin"]
+            List<String> annotations, // e.g. ["@Query(...)"]
             String moduleName,      // e.g. "NexaCommerce"
             String javadoc,         // cleaned javadoc, if available
             Path declFile,          // declaration file
             int declLine            // declaration line
     ) {
+        public SymbolDoc(String kind, String containerFqcn, String returnType, String name,
+                         List<String> params, String moduleName, String javadoc,
+                         Path declFile, int declLine) {
+            this(kind, containerFqcn, returnType, name, params, List.of(), moduleName, javadoc, declFile, declLine);
+        }
+
         /** Formatted signature matching IntelliJ layout. */
         public String formattedSignature() {
             StringBuilder sb = new StringBuilder();
+            if (annotations != null && !annotations.isEmpty()) {
+                for (String ann : annotations) {
+                    sb.append(ann).append("\n");
+                }
+            }
             if (returnType != null && !returnType.isBlank()) {
                 sb.append(returnType).append(" ");
             }

@@ -2128,13 +2128,22 @@ public final class SemanticEngine {
                 if (p instanceof ClassOrInterfaceDeclaration cd) {
                     kind = cd.isInterface() ? "interface" : "class";
                 }
+                List<String> annotations = new ArrayList<>();
+                for (var ann : md.getAnnotations()) {
+                    annotations.add(ann.toString());
+                }
                 List<String> params = new ArrayList<>();
                 for (Parameter param : md.getParameters()) {
-                    params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                    StringBuilder paramStr = new StringBuilder();
+                    for (var pa : param.getAnnotations()) {
+                        paramStr.append(pa.toString()).append(" ");
+                    }
+                    paramStr.append(cleanType(param.getType().asString())).append(" ").append(param.getNameAsString());
+                    params.add(paramStr.toString());
                 }
                 String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(md));
                 return new Docs.SymbolDoc(kind, containerFqcn, cleanType(md.getType().asString()),
-                        md.getNameAsString(), params, moduleName, javadoc, file, beginLine(md));
+                        md.getNameAsString(), params, annotations, moduleName, javadoc, file, beginLine(md));
             }
 
             // Case 2: Class/Interface/Record/Enum Declaration in current file
@@ -2177,14 +2186,23 @@ public final class SemanticEngine {
                                     if (p instanceof ClassOrInterfaceDeclaration cd) {
                                         kind = cd.isInterface() ? "interface" : "class";
                                     }
+                                    List<String> annotations = new ArrayList<>();
+                                    for (var ann : md.getAnnotations()) {
+                                        annotations.add(ann.toString());
+                                    }
                                     List<String> params = new ArrayList<>();
                                     for (Parameter param : md.getParameters()) {
-                                        params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                                        StringBuilder paramStr = new StringBuilder();
+                                        for (var pa : param.getAnnotations()) {
+                                            paramStr.append(pa.toString()).append(" ");
+                                        }
+                                        paramStr.append(cleanType(param.getType().asString())).append(" ").append(param.getNameAsString());
+                                        params.add(paramStr.toString());
                                     }
                                     List<String> srcLines = Files.readAllLines(declPath);
                                     String javadoc = Docs.javadocAbove(srcLines, beginLine(md));
                                     return new Docs.SymbolDoc(kind, declaringFqcn, cleanType(md.getType().asString()),
-                                            memberName, params, moduleName, javadoc, declPath, beginLine(md));
+                                            memberName, params, annotations, moduleName, javadoc, declPath, beginLine(md));
                                 }
                             }
                         }
@@ -2195,7 +2213,7 @@ public final class SemanticEngine {
                         params.add(m.getParam(i).getType().describe() + " " + m.getParam(i).getName());
                     }
                     return new Docs.SymbolDoc("method", declaringFqcn, m.getReturnType().describe(),
-                            memberName, params, moduleName, null, null, -1);
+                            memberName, params, List.of(), moduleName, null, null, -1);
                 } catch (Throwable unresolved) {
                     // 3b: Fallback for Spring Data repositories, Lombok, etc.
                     String receiverType = null;
@@ -2227,14 +2245,23 @@ public final class SemanticEngine {
                                         if (p instanceof ClassOrInterfaceDeclaration cd) {
                                             kind = cd.isInterface() ? "interface" : "class";
                                         }
+                                        List<String> annotations = new ArrayList<>();
+                                        for (var ann : md.getAnnotations()) {
+                                            annotations.add(ann.toString());
+                                        }
                                         List<String> params = new ArrayList<>();
                                         for (Parameter param : md.getParameters()) {
-                                            params.add(cleanType(param.getType().asString()) + " " + param.getNameAsString());
+                                            StringBuilder paramStr = new StringBuilder();
+                                            for (var pa : param.getAnnotations()) {
+                                                paramStr.append(pa.toString()).append(" ");
+                                            }
+                                            paramStr.append(cleanType(param.getType().asString())).append(" ").append(param.getNameAsString());
+                                            params.add(paramStr.toString());
                                         }
                                         List<String> srcLines = Files.readAllLines(declPath);
                                         String javadoc = Docs.javadocAbove(srcLines, beginLine(md));
                                         return new Docs.SymbolDoc(kind, receiverType, cleanType(md.getType().asString()),
-                                                memberName, params, moduleName, javadoc, declPath, beginLine(md));
+                                                memberName, params, annotations, moduleName, javadoc, declPath, beginLine(md));
                                     }
                                 }
                             }

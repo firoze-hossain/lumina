@@ -37,6 +37,28 @@ class QuickDocAndUsagesTest {
     }
 
     @Test
+    void testSymbolDocWithAnnotations() {
+        Docs.SymbolDoc doc = new Docs.SymbolDoc(
+                "interface", "com.roze.nexacommerce.user.repository.RoleRepository",
+                "Page<Role>", "searchRoles",
+                List.of("@Param(\"searchTerm\") String searchTerm", "Pageable pageable"),
+                List.of("@Query(\"SELECT r FROM Role r WHERE r.name LIKE %:searchTerm% OR r.description LIKE %:searchTerm%\")"),
+                "NexaCommerce", null, null, 17
+        );
+
+        assertNotNull(doc.annotations());
+        assertEquals(1, doc.annotations().size());
+        assertTrue(doc.annotations().get(0).contains("@Query"));
+        assertEquals(2, doc.params().size());
+        assertTrue(doc.params().get(0).contains("@Param(\"searchTerm\")"));
+
+        String formatted = doc.formattedSignature();
+        assertTrue(formatted.startsWith("@Query"));
+        assertTrue(formatted.contains("Page<Role> searchRoles("));
+        assertTrue(formatted.contains("@Param(\"searchTerm\") String searchTerm"));
+    }
+
+    @Test
     void testSymbolDocAtMethodDeclaration(@TempDir Path tempDir) throws IOException {
         Path srcDir = tempDir.resolve("src/main/java/com/roze/nexacommerce/user/repository");
         Files.createDirectories(srcDir);

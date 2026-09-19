@@ -3436,7 +3436,9 @@
    Unused fields, Context Actions, Live Code Preview & Generate
    ============================================================ */
 
-.code-area .unused-field {
+.code-area .unused-field,
+.code-area .unused-method,
+.code-area .unused-symbol {
     -fx-fill: #7A7E85 !important;
 }
 
@@ -3588,6 +3590,51 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 6);
 }
 
+.quick-doc-inspection-box {
+    -fx-padding: 0 0 8 0;
+}
+
+.quick-doc-warning-icon {
+    -fx-text-fill: #E5C07B;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.quick-doc-inspection-title {
+    -fx-text-fill: #CED0D6;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+}
+
+.quick-doc-action-link {
+    -fx-text-fill: #56A8F5;
+    -fx-font-size: 11.5px;
+    -fx-underline: false;
+}
+
+.quick-doc-action-link:hover {
+    -fx-text-fill: #70B7F8;
+    -fx-underline: true;
+}
+
+.quick-doc-shortcut-hint {
+    -fx-text-fill: #7A7E85;
+    -fx-font-size: 10.5px;
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+}
+
+.quick-doc-menu-btn {
+    -fx-text-fill: #7A7E85;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 0 4 0 4;
+}
+
+.quick-doc-menu-btn:hover {
+    -fx-text-fill: #CED0D6;
+}
+
 .quick-doc-header {
     -fx-padding: 0 0 6 0;
 }
@@ -3622,6 +3669,18 @@
 }
 
 .quick-doc-sig-flow {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-annotation {
+    -fx-fill: #BBB529;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.quick-doc-sig-string {
+    -fx-fill: #6A8759;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
     -fx-font-size: 12px;
 }
