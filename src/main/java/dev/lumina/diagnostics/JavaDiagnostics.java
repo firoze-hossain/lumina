@@ -71,9 +71,8 @@ public final class JavaDiagnostics {
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) return List.of();
 
-            boolean lombok = text.contains("import lombok");
-            String lombokJar = lombok ? findLombokJar(classpath) : null;
-            if (lombok && lombokJar == null) {
+            String lombokJar = findLombokJar(classpath);
+            if (text.contains("import lombok") && lombokJar == null) {
                 return List.of();   // honest skip: cannot resolve generated members
             }
 
@@ -123,6 +122,13 @@ public final class JavaDiagnostics {
                     default -> null;
                 };
                 if (severity == null) continue;
+
+                // IntelliJ-style Lombok inspection: suppress false errors for generated members
+                if (severity == Severity.ERROR && dev.lumina.semantics.LombokSupport.isLombokDiagnostic(
+                        d, file, text, sourceRoots, classpath)) {
+                    continue;
+                }
+
                 int line = (int) Math.max(1, d.getLineNumber());
                 int start = (int) d.getStartPosition();
                 int end = (int) d.getEndPosition();
@@ -146,10 +152,28 @@ public final class JavaDiagnostics {
                 if (severity == Severity.ERROR && ((code != null && code.contains("cant.resolve"))
                         || (rawMsg != null && (rawMsg.contains("cannot find symbol") || rawMsg.contains("cant.resolve"))))) {
                     String sym = text.substring(start, end).trim();
-                    if (!sym.isEmpty() && Character.isJavaIdentifierStart(sym.charAt(0))) {
-                        title = "Cannot resolve symbol '" + sym + "'";
-                        rawMsg = "Cannot resolve symbol '" + sym + "'";
-                        quickFix = "import-class:" + sym;
+                    if (!sym.isEmpty()) {
+                        int dot = sym.lastIndexOf('.');
+                        if (dot >= 0 && dot < sym.length() - 1) {
+                            String receiver = sym.substring(0, dot);
+                            String member = sym.substring(dot + 1);
+                            if (member.contains(">")) {
+                                int angle = member.lastIndexOf('>');
+                                start = start + dot + 1 + angle + 1;
+                                member = member.substring(angle + 1).trim();
+                            } else {
+                                start = start + dot + 1;
+                            }
+                            title = "Cannot resolve method '" + member + "' in '" + receiver + "'";
+                            rawMsg = title;
+                            quickFix = null;
+                        } else if (Character.isJavaIdentifierStart(sym.charAt(0))) {
+                            title = "Cannot resolve symbol '" + sym + "'";
+                            rawMsg = "Cannot resolve symbol '" + sym + "'";
+                            boolean isClassSymbol = rawMsg.contains("symbol:   class")
+                                    || (Character.isUpperCase(sym.charAt(0)) && !rawMsg.contains("symbol:   method"));
+                            quickFix = isClassSymbol ? "import-class:" + sym : null;
+                        }
                     }
                 }
                 result.add(new Diag(severity, line, start, end, rawMsg, quickFix,

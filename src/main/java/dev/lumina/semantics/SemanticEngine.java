@@ -463,9 +463,38 @@ public final class SemanticEngine {
             }
 
             if (parent instanceof MethodCallExpr call && call.getName() == target) {
-                ResolvedMethodDeclaration m = call.resolve();
-                return memberLocation(m.declaringType().getQualifiedName(),
-                        m.getName(), m.getNumberOfParams(), true);
+                try {
+                    ResolvedMethodDeclaration m = call.resolve();
+                    return memberLocation(m.declaringType().getQualifiedName(),
+                            m.getName(), m.getNumberOfParams(), true);
+                } catch (Throwable unresolved) {
+                    String memberName = target.getIdentifier();
+                    String receiverType = null;
+                    if (call.getScope().isPresent()) {
+                        com.github.javaparser.ast.expr.Expression scope = call.getScope().get();
+                        if (scope.isNameExpr()) {
+                            String recName = scope.asNameExpr().getNameAsString();
+                            if (Character.isUpperCase(recName.charAt(0))) {
+                                receiverType = resolveTypeName(recName, text);
+                            } else {
+                                String dt = declaredTypeOf(file, text, line, recName);
+                                if (dt != null) {
+                                    receiverType = dt.contains(".") ? dt : resolveTypeName(dt, text);
+                                }
+                            }
+                        }
+                    } else {
+                        receiverType = fqcnForFile(file);
+                    }
+                    if (receiverType != null) {
+                        LombokSupport.Location loc = LombokSupport.resolveLombokDeclaration(
+                                receiverType, memberName, sourceRoots, text);
+                        if (loc != null) {
+                            return Resolution.project(new Location(loc.file(), loc.line()));
+                        }
+                    }
+                    return Resolution.none();
+                }
             }
 
             if (parent instanceof ClassOrInterfaceType type && type.getName() == target) {
@@ -486,14 +515,28 @@ public final class SemanticEngine {
             }
 
             if (parent instanceof NameExpr name && name.getName() == target) {
-                ResolvedValueDeclaration v = name.resolve();
-                if (v instanceof ResolvedFieldDeclaration f) {
-                    return memberLocation(f.declaringType().getQualifiedName(),
-                            f.getName(), -1, false);
+                try {
+                    ResolvedValueDeclaration v = name.resolve();
+                    if (v instanceof ResolvedFieldDeclaration f) {
+                        return memberLocation(f.declaringType().getQualifiedName(),
+                                f.getName(), -1, false);
+                    }
+                    // local variable or parameter: find it in this same file
+                    Location local = localDeclaration(cu, file, target);
+                    return local != null ? Resolution.project(local) : Resolution.none();
+                } catch (Throwable unresolved) {
+                    if ("log".equals(target.getIdentifier())) {
+                        String currentClass = fqcnForFile(file);
+                        if (currentClass != null) {
+                            LombokSupport.Location loc = LombokSupport.resolveLombokDeclaration(
+                                    currentClass, "log", sourceRoots, text);
+                            if (loc != null) {
+                                return Resolution.project(new Location(loc.file(), loc.line()));
+                            }
+                        }
+                    }
+                    return Resolution.none();
                 }
-                // local variable or parameter: find it in this same file
-                Location local = localDeclaration(cu, file, target);
-                return local != null ? Resolution.project(local) : Resolution.none();
             }
         } catch (Throwable unresolved) {
             return Resolution.none();
@@ -978,6 +1021,16 @@ public final class SemanticEngine {
                     staticOnly = false;
                     fqcn = typeName.contains(".") ? typeName
                             : resolveTypeName(typeName, text);
+                }
+            }
+            if (fqcn == null && receiver.endsWith("Builder")) {
+                fqcn = resolveTypeName(receiver, text);
+                if (fqcn == null) {
+                    String base = receiver.substring(0, receiver.length() - "Builder".length());
+                    String baseFqcn = resolveTypeName(base, text);
+                    if (baseFqcn != null) {
+                        fqcn = baseFqcn + "Builder";
+                    }
                 }
             }
             if (fqcn == null) return List.of();
@@ -1662,6 +1715,7 @@ public final class SemanticEngine {
                     }
                 }
                 if (owner != null) {
+                    items.addAll(LombokSupport.getLombokCompletions(owner, prefix, staticOnly, sourceRoots));
                     String ownText = readText(source);
                     for (ClassOrInterfaceType ext : owner.getExtendedTypes()) {
                         String superFqcn = resolveTypeName(
@@ -1673,6 +1727,25 @@ public final class SemanticEngine {
                     }
                 }
                 return items;
+            }
+        }
+
+        if (fqcn.endsWith("Builder")) {
+            String outerFqcn = fqcn.contains(".")
+                    ? fqcn.substring(0, fqcn.lastIndexOf('.'))
+                    : fqcn.substring(0, fqcn.length() - "Builder".length());
+            Path outerSource = sourceFileFor(outerFqcn);
+            if (outerSource != null) {
+                CompilationUnit cu = parse(outerSource, null);
+                if (cu != null) {
+                    String outerSimple = outerFqcn.substring(outerFqcn.lastIndexOf('.') + 1);
+                    for (ClassOrInterfaceDeclaration d : cu.findAll(ClassOrInterfaceDeclaration.class)) {
+                        if (d.getNameAsString().equals(outerSimple)) {
+                            items.addAll(LombokSupport.getBuilderCompletions(d, prefix, sourceRoots));
+                            return items;
+                        }
+                    }
+                }
             }
         }
 

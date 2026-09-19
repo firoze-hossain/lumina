@@ -66,6 +66,36 @@ public final class Completion {
                 receiverStart--;
             }
             String receiver = text.substring(receiverStart, dot);
+            if (receiver.isEmpty() && dot > 2 && text.charAt(dot - 1) == ')' && text.charAt(dot - 2) == '(') {
+                int callEnd = dot - 2;
+                int callStart = callEnd;
+                while (callStart > 0 && isIdentChar(text.charAt(callStart - 1))) {
+                    callStart--;
+                }
+                String methodName = text.substring(callStart, callEnd);
+                if ("builder".equals(methodName)) {
+                    int pDot = callStart - 1;
+                    while (pDot >= 0 && Character.isWhitespace(text.charAt(pDot))) pDot--;
+                    if (pDot >= 0 && text.charAt(pDot) == '>') {
+                        int depth = 1;
+                        pDot--;
+                        while (pDot >= 0 && depth > 0) {
+                            if (text.charAt(pDot) == '>') depth++;
+                            else if (text.charAt(pDot) == '<') depth--;
+                            pDot--;
+                        }
+                        while (pDot >= 0 && Character.isWhitespace(text.charAt(pDot))) pDot--;
+                    }
+                    if (pDot >= 0 && text.charAt(pDot) == '.') {
+                        int typeStart = pDot;
+                        while (typeStart > 0 && isIdentChar(text.charAt(typeStart - 1))) {
+                            typeStart--;
+                        }
+                        String typeName = text.substring(typeStart, pDot);
+                        receiver = typeName + "Builder";
+                    }
+                }
+            }
             if (receiver.isEmpty()) return null;   // "foo()." or "]." — not yet
             // number literal like "3." is not a member access
             if (Character.isDigit(receiver.charAt(0))) return null;
