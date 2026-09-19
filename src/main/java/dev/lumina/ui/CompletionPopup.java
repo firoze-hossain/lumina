@@ -10,6 +10,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.stage.Popup;
 
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.function.Consumer;
 public class CompletionPopup {
 
     private final Popup popup = new Popup();
+    private final VBox root = new VBox();
     private final ListView<Completion.Item> list = new ListView<>();
     private final Consumer<Completion.Item> onAccept;
 
@@ -32,6 +34,9 @@ public class CompletionPopup {
         popup.setAutoHide(true);
         popup.setHideOnEscape(false);   // the editor handles Esc itself
 
+        root.getStyleClass().add("completion-container");
+        root.setFocusTraversable(false);
+
         list.getStyleClass().add("completion-list");
         list.setCellFactory(lv -> new ItemCell());
         list.setPrefWidth(460);
@@ -40,7 +45,20 @@ public class CompletionPopup {
         list.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) acceptSelected();
         });
-        popup.getContent().add(list);
+
+        HBox footer = new HBox(6);
+        footer.getStyleClass().add("completion-footer");
+        footer.setAlignment(Pos.CENTER_LEFT);
+
+        Label bulb = new Label("💡");
+        bulb.getStyleClass().add("completion-tip-bulb");
+
+        Label tip = new Label("Press Ctrl+Space to see non-imported classes");
+        tip.getStyleClass().add("completion-tip-label");
+
+        footer.getChildren().addAll(bulb, tip);
+        root.getChildren().addAll(list, footer);
+        popup.getContent().add(root);
     }
 
     /** Show (or refresh) the popup anchored under the caret bounds. */
@@ -84,6 +102,19 @@ public class CompletionPopup {
 
     // -------------------------------------------------------------- render
 
+    public static String glyphFor(Completion.Kind kind) {
+        return switch (kind) {
+            case METHOD -> "m";
+            case FIELD -> "f";
+            case VARIABLE -> "v";
+            case CLASS -> "C";
+            case INTERFACE -> "I";
+            case KEYWORD -> "k";
+            case TEMPLATE -> "t";
+            case ANNOTATION -> "@";
+        };
+    }
+
     private static final class ItemCell extends ListCell<Completion.Item> {
         @Override
         protected void updateItem(Completion.Item item, boolean empty) {
@@ -95,9 +126,16 @@ public class CompletionPopup {
             }
             Label icon = new Label(glyphFor(item.kind()));
             icon.getStyleClass().addAll("completion-icon",
-                    "completion-icon-" + item.kind().name().toLowerCase());
-            icon.setMinWidth(20);
-            icon.setAlignment(Pos.CENTER);
+                    switch (item.kind()) {
+                        case METHOD -> "completion-icon-method";
+                        case FIELD -> "completion-icon-field";
+                        case VARIABLE -> "completion-icon-var";
+                        case CLASS -> "completion-icon-class";
+                        case INTERFACE -> "completion-icon-interface";
+                        case KEYWORD -> "completion-icon-kw";
+                        case TEMPLATE -> "completion-icon-tpl";
+                        case ANNOTATION -> "completion-icon-annotation";
+                    });
 
             Label label = new Label(item.label());
             label.getStyleClass().add("completion-label");
@@ -112,17 +150,6 @@ public class CompletionPopup {
             row.setAlignment(Pos.CENTER_LEFT);
             setGraphic(row);
             setText(null);
-        }
-
-        private static String glyphFor(Completion.Kind kind) {
-            return switch (kind) {
-                case METHOD -> "m";
-                case FIELD -> "f";
-                case VARIABLE -> "v";
-                case CLASS -> "C";
-                case KEYWORD -> "k";
-                case TEMPLATE -> "t";
-            };
         }
     }
 }

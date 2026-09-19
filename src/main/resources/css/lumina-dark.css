@@ -1291,36 +1291,65 @@
    M2 — completion popup
    ============================================================ */
 
-.completion-list {
-    -fx-background-color: #1F2230;
-    -fx-background-radius: 10;
-    -fx-border-color: #E8B450;
+.completion-container {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 8;
+    -fx-border-color: #43454A;
     -fx-border-width: 1;
-    -fx-border-radius: 10;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 18, 0.2, 0, 5);
+}
+.completion-list {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8 8 0 0;
+    -fx-border-width: 0;
     -fx-padding: 4;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.2, 0, 6);
 }
 .completion-list .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 4 10 4 8;
-    -fx-background-radius: 6;
+    -fx-background-radius: 4;
 }
-.completion-list .list-cell:selected { -fx-background-color: #3A3122; }
-.completion-label { -fx-text-fill: #D8DBE6; -fx-font-size: 12px;
+.completion-list .list-cell:selected { -fx-background-color: #2E436E; }
+.completion-label { -fx-text-fill: #DFE1E5; -fx-font-size: 12px;
     -fx-font-family: "JetBrains Mono", "Consolas", "Menlo", monospace; }
-.completion-detail { -fx-text-fill: #697089; -fx-font-size: 11px; }
+.completion-detail { -fx-text-fill: #8C92A4; -fx-font-size: 11px; }
 .completion-icon {
     -fx-font-size: 10px;
     -fx-font-weight: bold;
     -fx-background-radius: 4;
     -fx-padding: 1 5 1 5;
 }
-.completion-icon-method   { -fx-text-fill: #56A8F5; -fx-background-color: #1D2B3A; }
-.completion-icon-field    { -fx-text-fill: #C77DBB; -fx-background-color: #2E2233; }
-.completion-icon-variable { -fx-text-fill: #8FCE8F; -fx-background-color: #1F2E1F; }
-.completion-icon-class    { -fx-text-fill: #E8B450; -fx-background-color: #33290F; }
-.completion-icon-keyword  { -fx-text-fill: #CF8E6D; -fx-background-color: #33231B; }
-.completion-icon-template { -fx-text-fill: #2AACB8; -fx-background-color: #15292B; }
+.completion-icon-method     { -fx-text-fill: #56A8F5; -fx-background-color: #1D2B3A; }
+.completion-icon-field      { -fx-text-fill: #C77DBB; -fx-background-color: #2E2233; }
+.completion-icon-variable   { -fx-text-fill: #8FCE8F; -fx-background-color: #1F2E1F; }
+.completion-icon-class      { -fx-text-fill: #56A8F5; -fx-background-color: #1D2B3A; }
+.completion-icon-interface  { -fx-text-fill: #40B6E0; -fx-background-color: #162E3B; }
+.completion-icon-keyword    { -fx-text-fill: #CF8E6D; -fx-background-color: #33231B; }
+.completion-icon-template   { -fx-text-fill: #2AACB8; -fx-background-color: #15292B; }
+.completion-icon-annotation { -fx-text-fill: #499C54; -fx-background-color: #1E3022; }
+
+.editor-ghost-suggestion {
+    -fx-text-fill: #6C707E;
+    -fx-font-style: italic;
+    -fx-font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+    -fx-font-size: 13px;
+}
+
+.completion-footer {
+    -fx-background-color: #26282E;
+    -fx-background-radius: 0 0 8 8;
+    -fx-border-color: #393B40 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 4 10 4 10;
+}
+.completion-tip-label {
+    -fx-text-fill: #8C92A4;
+    -fx-font-size: 11px;
+}
+.completion-tip-bulb {
+    -fx-font-size: 11px;
+}
 
 /* ============================================================
    M3 - diagnostics: squiggle underlines, Problems panel, status
