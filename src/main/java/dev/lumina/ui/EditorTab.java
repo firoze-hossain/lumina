@@ -1,5 +1,6 @@
 package dev.lumina.ui;
 
+import dev.lumina.semantics.Docs;
 import dev.lumina.syntax.JavaSyntaxHighlighter;
 import javafx.application.Platform;
 import javafx.scene.control.Tab;
@@ -69,6 +70,8 @@ public class EditorTab extends Tab {
             hideGhostSuggestion();
             contextActionsPopup.hide();
             generatePopup.hide();
+            quickDocPopup.hide();
+            if (flashTimeline != null) flashTimeline.stop();
         });
         diagHideTimer.setOnFinished(ev -> {
             if (!isMouseOverDiagPopup) {
@@ -86,14 +89,23 @@ public class EditorTab extends Tab {
             if (nav) {
                 clearNavUnderline();
                 hideDiagPopup();
+                quickDocDebounce.stop();
+                if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                    quickDocPopup.hide();
+                }
                 var hit = codeArea.hit(e.getX(), e.getY());
                 underlineWordAt(hit.getInsertionIndex());
             } else {
                 clearNavUnderline();
                 var hit = codeArea.hit(e.getX(), e.getY());
+                int charIdx = hit.getInsertionIndex();
                 dev.lumina.diagnostics.JavaDiagnostics.Diag hitDiag =
-                        diagAt(hit.getInsertionIndex());
+                        diagAt(charIdx);
                 if (hitDiag != null) {
+                    quickDocDebounce.stop();
+                    if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                        quickDocPopup.hide();
+                    }
                     diagHideTimer.stop();
                     if (currentPopupDiag != hitDiag) {
                         currentPopupDiag = hitDiag;
@@ -105,6 +117,35 @@ public class EditorTab extends Tab {
                     if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
                         diagHideTimer.playFromStart();
                     }
+                    String word = wordAt(charIdx);
+                    if (word != null && quickDocProvider != null) {
+                        int[] range = wordRangeAt(charIdx);
+                        if (range != null && (lastHoverWordStart != range[0] || lastHoverWordEnd != range[1])) {
+                            lastHoverWordStart = range[0];
+                            lastHoverWordEnd = range[1];
+                            quickDocDebounce.stop();
+                            quickDocDebounce.setOnFinished(ev -> {
+                                if (quickDocPopup.isMouseOver()) return;
+                                int line = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
+                                int col = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMinor() + 1;
+                                Docs.SymbolDoc doc = quickDocProvider.apply(line, col);
+                                if (doc != null) {
+                                    javafx.geometry.Bounds b = getWordBoundsOnScreen(charIdx);
+                                    if (b != null) {
+                                        quickDocPopup.show(codeArea, doc, b);
+                                    }
+                                }
+                            });
+                            quickDocDebounce.playFromStart();
+                        }
+                    } else {
+                        lastHoverWordStart = -1;
+                        lastHoverWordEnd = -1;
+                        quickDocDebounce.stop();
+                        if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                            quickDocPopup.scheduleHide();
+                        }
+                    }
                 }
             }
         });
@@ -113,6 +154,12 @@ public class EditorTab extends Tab {
             diagHoverTimer.stop();
             if (diagPopup.isShowing() && !isMouseOverDiagPopup) {
                 diagHideTimer.playFromStart();
+            }
+            quickDocDebounce.stop();
+            lastHoverWordStart = -1;
+            lastHoverWordEnd = -1;
+            if (quickDocPopup.isShowing() && !quickDocPopup.isMouseOver()) {
+                quickDocPopup.scheduleHide();
             }
         });
         // Dropping the modifier key removes the underline.
@@ -175,6 +222,11 @@ public class EditorTab extends Tab {
                 }
             }
             if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                if (quickDocPopup.isShowing()) {
+                    quickDocPopup.hide();
+                    e.consume();
+                    return;
+                }
                 if (diagPopup.isShowing()) {
                     hideDiagPopup();
                     e.consume();
@@ -233,6 +285,7 @@ public class EditorTab extends Tab {
 
         // '.' auto-triggers member completion; typing refines the open popup.
         codeArea.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, e -> {
+            quickDocPopup.hide();
             String ch = e.getCharacter();
             if (ch == null || ch.isEmpty()) return;
             char c = ch.charAt(0);
@@ -280,22 +333,34 @@ public class EditorTab extends Tab {
             hideDiagPopup();
             hideGhostSuggestion();
         });
+        // Hide completion when focus leaves the code area.
         codeArea.focusedProperty().addListener((obs, was, focused) -> {
             if (!focused) {
                 completionPopup.hide();
                 hideGhostSuggestion();
+                quickDocPopup.hide();
                 if (!isMouseOverDiagPopup) hideDiagPopup();
             }
         });
 
-        // Ctrl/Cmd+Click on an identifier -> go to its declaration.
+        // Ctrl/Cmd+Click on an identifier -> go to its declaration or show usages.
         codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
-            if ((e.isControlDown() || e.isMetaDown()) && navigationHandler != null) {
+            if (e.isControlDown() || e.isMetaDown()) {
                 var hit = codeArea.hit(e.getX(), e.getY());
-                String word = wordAt(hit.getInsertionIndex());
+                int charIdx = hit.getInsertionIndex();
+                codeArea.moveTo(charIdx);
+                String word = wordAt(charIdx);
                 if (word != null) {
                     e.consume();
-                    navigationHandler.accept(word);
+                    quickDocPopup.hide();
+                    int line = codeArea.getCurrentParagraph() + 1;
+                    int col = codeArea.getCaretColumn() + 1;
+                    javafx.geometry.Bounds b = getWordBoundsOnScreen(charIdx);
+                    if (navigationCoordinatesHandler != null) {
+                        navigationCoordinatesHandler.navigate(word, line, col, b);
+                    } else if (navigationHandler != null) {
+                        navigationHandler.accept(word);
+                    }
                 }
             }
         });
@@ -320,11 +385,13 @@ public class EditorTab extends Tab {
         codeArea.estimatedScrollYProperty().addListener((o, a, b) -> {
             refreshInlineHints();
             hideDiagPopup();
+            quickDocPopup.hide();
             codeGuidesOverlay.render();
         });
         codeArea.estimatedScrollXProperty().addListener((o, a, b) -> {
             refreshInlineHints();
             hideDiagPopup();
+            quickDocPopup.hide();
             codeGuidesOverlay.render();
         });
         codeArea.widthProperty().addListener((o, a, b) -> {
@@ -690,6 +757,30 @@ public class EditorTab extends Tab {
 
     // ------------------------------------------------------------ navigation
 
+    @FunctionalInterface
+    public interface NavigationCoordinatesHandler {
+        void navigate(String word, int line, int column, javafx.geometry.Bounds screenBounds);
+    }
+
+    private NavigationCoordinatesHandler navigationCoordinatesHandler;
+    private java.util.function.BiFunction<Integer, Integer, Docs.SymbolDoc> quickDocProvider;
+
+    public void setNavigationCoordinatesHandler(NavigationCoordinatesHandler handler) {
+        this.navigationCoordinatesHandler = handler;
+    }
+
+    public void setQuickDocProvider(java.util.function.BiFunction<Integer, Integer, Docs.SymbolDoc> provider) {
+        this.quickDocProvider = provider;
+    }
+
+    public QuickDocPopup getQuickDocPopup() {
+        return quickDocPopup;
+    }
+
+    public CodeArea getCodeArea() {
+        return codeArea;
+    }
+
     private java.util.function.Consumer<String> navigationHandler;
 
     public void setNavigationHandler(java.util.function.Consumer<String> handler) {
@@ -775,6 +866,117 @@ public class EditorTab extends Tab {
             }
         }
         navFrom = navTo = -1;
+    }
+
+    public int[] wordRangeAt(int index) {
+        String text = codeArea.getText();
+        if (text.isEmpty()) return null;
+        int i = Math.max(0, Math.min(index, text.length() - 1));
+        if (!isWordChar(text.charAt(i)) && i > 0 && isWordChar(text.charAt(i - 1))) i--;
+        if (!isWordChar(text.charAt(i))) return null;
+        int start = i, end = i;
+        while (start > 0 && isWordChar(text.charAt(start - 1))) start--;
+        while (end < text.length() && isWordChar(text.charAt(end))) end++;
+        return new int[]{start, end};
+    }
+
+    public javafx.geometry.Bounds getWordBoundsOnScreen(int index) {
+        int[] range = wordRangeAt(index);
+        if (range != null) {
+            var opt = codeArea.getCharacterBoundsOnScreen(range[0], range[1]);
+            if (opt.isPresent()) return opt.get();
+        }
+        return codeArea.getCaretBounds().orElse(null);
+    }
+
+    public void flashSymbolAt(int line, String word, boolean showQuickDoc) {
+        if (line <= 0) line = 1;
+        int targetParagraph = Math.max(0, Math.min(line - 1, codeArea.getParagraphs().size() - 1));
+
+        int matchStart = -1;
+        int matchEnd = -1;
+
+        for (int p = Math.max(0, targetParagraph - 2); p <= Math.min(codeArea.getParagraphs().size() - 1, targetParagraph + 2); p++) {
+            String pText = codeArea.getParagraph(p).getText();
+            int idx = pText.indexOf(word);
+            if (idx >= 0) {
+                targetParagraph = p;
+                int absStart = codeArea.getAbsolutePosition(p, idx);
+                matchStart = absStart;
+                matchEnd = absStart + word.length();
+                break;
+            }
+        }
+
+        if (matchStart >= 0) {
+            final int fStart = matchStart;
+            final int fEnd = matchEnd;
+            final int fParagraph = targetParagraph;
+
+            codeArea.moveTo(fStart);
+            codeArea.requestFollowCaret();
+            focusEditor();
+
+            Platform.runLater(() -> {
+                codeArea.selectRange(fStart, fEnd);
+
+                try {
+                    codeArea.getCharacterBoundsOnScreen(fStart, fEnd).ifPresent(screenB -> {
+                        javafx.geometry.Bounds localB = hintOverlay.screenToLocal(screenB);
+                        if (localB != null) {
+                            if (flashOverlayRect != null) {
+                                hintOverlay.getChildren().remove(flashOverlayRect);
+                            }
+                            if (flashTimeline != null) {
+                                flashTimeline.stop();
+                            }
+                            flashOverlayRect = new javafx.scene.shape.Rectangle(
+                                    localB.getMinX() - 2, localB.getMinY() - 2,
+                                    localB.getWidth() + 4, localB.getHeight() + 4);
+                            flashOverlayRect.setArcWidth(4);
+                            flashOverlayRect.setArcHeight(4);
+                            flashOverlayRect.setFill(javafx.scene.paint.Color.web("#ffffff", 0.65));
+                            flashOverlayRect.setStroke(javafx.scene.paint.Color.web("#6ba7f7", 0.9));
+                            flashOverlayRect.setStrokeWidth(1.5);
+                            flashOverlayRect.setMouseTransparent(true);
+                            hintOverlay.getChildren().add(flashOverlayRect);
+
+                            flashTimeline = new javafx.animation.Timeline(
+                                    new javafx.animation.KeyFrame(javafx.util.Duration.ZERO,
+                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 1.0)),
+                                    new javafx.animation.KeyFrame(javafx.util.Duration.millis(350),
+                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.8)),
+                                    new javafx.animation.KeyFrame(javafx.util.Duration.millis(1200),
+                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.0))
+                            );
+                            flashTimeline.setOnFinished(e -> {
+                                hintOverlay.getChildren().remove(flashOverlayRect);
+                                flashOverlayRect = null;
+                            });
+                            flashTimeline.play();
+                        }
+                    });
+                } catch (Exception ignored) {
+                }
+
+                if (showQuickDoc && quickDocProvider != null) {
+                    javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
+                    pt.setOnFinished(e -> {
+                        int col = codeArea.getCaretColumn() + 1;
+                        Docs.SymbolDoc doc = quickDocProvider.apply(fParagraph + 1, col);
+                        if (doc != null) {
+                            javafx.geometry.Bounds b = getWordBoundsOnScreen(fStart);
+                            if (b != null) {
+                                quickDocPopup.show(codeArea, doc, b);
+                            }
+                        }
+                    });
+                    pt.play();
+                }
+            });
+        } else {
+            goToLine(line);
+        }
     }
 
     private String wordAt(int index) {
@@ -945,6 +1147,13 @@ public class EditorTab extends Tab {
     private final javafx.animation.PauseTransition diagHideTimer =
             new javafx.animation.PauseTransition(javafx.util.Duration.millis(650));
     private boolean isMouseOverDiagPopup = false;
+    private final QuickDocPopup quickDocPopup = new QuickDocPopup();
+    private final javafx.animation.PauseTransition quickDocDebounce =
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(350));
+    private int lastHoverWordStart = -1;
+    private int lastHoverWordEnd = -1;
+    private javafx.animation.Timeline flashTimeline;
+    private javafx.scene.shape.Rectangle flashOverlayRect;
     private Runnable paramInfoTrigger;
     private java.util.function.Consumer<String> onQuickFix;
     private java.util.function.Function<String, String> typeResolver;
