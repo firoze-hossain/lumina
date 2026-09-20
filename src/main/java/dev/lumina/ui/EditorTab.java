@@ -914,15 +914,26 @@ public class EditorTab extends Tab {
     }
 
     public void flashSymbolAt(int line, String word, boolean showQuickDoc) {
-        if (line <= 0) line = 1;
-        int targetParagraph = Math.max(0, Math.min(line - 1, codeArea.getParagraphs().size() - 1));
+        final int targetLine = line <= 0 ? 1 : line;
+        int targetParagraph = Math.max(0, Math.min(targetLine - 1, codeArea.getParagraphs().size() - 1));
+
+        if (codeArea.getHeight() <= 0 || codeArea.getWidth() <= 0) {
+            javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(60));
+            pt.setOnFinished(e -> flashSymbolAt(targetLine, word, showQuickDoc));
+            pt.play();
+            return;
+        }
 
         int matchStart = -1;
         int matchEnd = -1;
 
-        for (int p = Math.max(0, targetParagraph - 2); p <= Math.min(codeArea.getParagraphs().size() - 1, targetParagraph + 2); p++) {
+        // Search in target paragraph first, then expand outward
+        int[] searchOffsets = new int[]{0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8};
+        for (int offset : searchOffsets) {
+            int p = targetParagraph + offset;
+            if (p < 0 || p >= codeArea.getParagraphs().size()) continue;
             String pText = codeArea.getParagraph(p).getText();
-            int idx = pText.indexOf(word);
+            int idx = findIdentifierInLine(pText, word);
             if (idx >= 0) {
                 targetParagraph = p;
                 int absStart = codeArea.getAbsolutePosition(p, idx);
@@ -937,49 +948,63 @@ public class EditorTab extends Tab {
             final int fEnd = matchEnd;
             final int fParagraph = targetParagraph;
 
+            codeArea.showParagraphAtCenter(fParagraph);
             codeArea.moveTo(fStart);
             codeArea.requestFollowCaret();
             focusEditor();
 
-            Platform.runLater(() -> {
+            Runnable triggerAnimation = () -> {
                 codeArea.selectRange(fStart, fEnd);
 
-                try {
-                    codeArea.getCharacterBoundsOnScreen(fStart, fEnd).ifPresent(screenB -> {
-                        javafx.geometry.Bounds localB = hintOverlay.screenToLocal(screenB);
-                        if (localB != null) {
-                            if (flashOverlayRect != null) {
-                                hintOverlay.getChildren().remove(flashOverlayRect);
-                            }
-                            if (flashTimeline != null) {
-                                flashTimeline.stop();
-                            }
-                            flashOverlayRect = new javafx.scene.shape.Rectangle(
-                                    localB.getMinX() - 2, localB.getMinY() - 2,
-                                    localB.getWidth() + 4, localB.getHeight() + 4);
-                            flashOverlayRect.setArcWidth(4);
-                            flashOverlayRect.setArcHeight(4);
-                            flashOverlayRect.setFill(javafx.scene.paint.Color.web("#ffffff", 0.65));
-                            flashOverlayRect.setStroke(javafx.scene.paint.Color.web("#6ba7f7", 0.9));
-                            flashOverlayRect.setStrokeWidth(1.5);
-                            flashOverlayRect.setMouseTransparent(true);
-                            hintOverlay.getChildren().add(flashOverlayRect);
-
-                            flashTimeline = new javafx.animation.Timeline(
-                                    new javafx.animation.KeyFrame(javafx.util.Duration.ZERO,
-                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 1.0)),
-                                    new javafx.animation.KeyFrame(javafx.util.Duration.millis(350),
-                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.8)),
-                                    new javafx.animation.KeyFrame(javafx.util.Duration.millis(1200),
-                                            new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.0))
-                            );
-                            flashTimeline.setOnFinished(e -> {
-                                hintOverlay.getChildren().remove(flashOverlayRect);
-                                flashOverlayRect = null;
-                            });
-                            flashTimeline.play();
+                java.util.function.Consumer<javafx.geometry.Bounds> showOverlay = screenB -> {
+                    javafx.geometry.Bounds localB = hintOverlay.screenToLocal(screenB);
+                    if (localB != null) {
+                        if (flashOverlayRect != null) {
+                            hintOverlay.getChildren().remove(flashOverlayRect);
                         }
-                    });
+                        if (flashTimeline != null) {
+                            flashTimeline.stop();
+                        }
+                        flashOverlayRect = new javafx.scene.shape.Rectangle(
+                                localB.getMinX() - 2, localB.getMinY() - 2,
+                                localB.getWidth() + 4, localB.getHeight() + 4);
+                        flashOverlayRect.setArcWidth(4);
+                        flashOverlayRect.setArcHeight(4);
+                        flashOverlayRect.setFill(javafx.scene.paint.Color.web("#ffffff", 0.65));
+                        flashOverlayRect.setStroke(javafx.scene.paint.Color.web("#6ba7f7", 0.9));
+                        flashOverlayRect.setStrokeWidth(1.5);
+                        flashOverlayRect.setMouseTransparent(true);
+                        hintOverlay.getChildren().add(flashOverlayRect);
+
+                        flashTimeline = new javafx.animation.Timeline(
+                                new javafx.animation.KeyFrame(javafx.util.Duration.ZERO,
+                                        new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 1.0)),
+                                new javafx.animation.KeyFrame(javafx.util.Duration.millis(350),
+                                        new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.8)),
+                                new javafx.animation.KeyFrame(javafx.util.Duration.millis(1200),
+                                        new javafx.animation.KeyValue(flashOverlayRect.opacityProperty(), 0.0))
+                        );
+                        flashTimeline.setOnFinished(e -> {
+                            hintOverlay.getChildren().remove(flashOverlayRect);
+                            flashOverlayRect = null;
+                        });
+                        flashTimeline.play();
+                    }
+                };
+
+                try {
+                    codeArea.getCharacterBoundsOnScreen(fStart, fEnd).ifPresentOrElse(
+                            showOverlay,
+                            () -> {
+                                javafx.animation.PauseTransition retryPt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(50));
+                                retryPt.setOnFinished(ev -> {
+                                    try {
+                                        codeArea.getCharacterBoundsOnScreen(fStart, fEnd).ifPresent(showOverlay);
+                                    } catch (Exception ignored) {}
+                                });
+                                retryPt.play();
+                            }
+                    );
                 } catch (Exception ignored) {
                 }
 
@@ -997,10 +1022,26 @@ public class EditorTab extends Tab {
                     });
                     pt.play();
                 }
-            });
+            };
+            Platform.runLater(triggerAnimation);
         } else {
             goToLine(line);
         }
+    }
+
+    private int findIdentifierInLine(String text, String word) {
+        if (text == null || word == null || word.isEmpty()) return -1;
+        int from = 0;
+        while (from < text.length()) {
+            int idx = text.indexOf(word, from);
+            if (idx < 0) break;
+            boolean startOk = idx == 0 || !Character.isJavaIdentifierPart(text.charAt(idx - 1));
+            boolean endOk = (idx + word.length() >= text.length())
+                    || !Character.isJavaIdentifierPart(text.charAt(idx + word.length()));
+            if (startOk && endOk) return idx;
+            from = idx + 1;
+        }
+        return text.indexOf(word);
     }
 
     private String wordAt(int index) {
@@ -2282,6 +2323,13 @@ public class EditorTab extends Tab {
 
     public void goToLine(int line) {
         int target = Math.max(0, Math.min(line - 1, codeArea.getParagraphs().size() - 1));
+        if (codeArea.getHeight() <= 0 || codeArea.getWidth() <= 0) {
+            javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(60));
+            pt.setOnFinished(e -> goToLine(line));
+            pt.play();
+            return;
+        }
+        codeArea.showParagraphAtCenter(target);
         codeArea.moveTo(target, 0);
         codeArea.requestFollowCaret();
         focusEditor();

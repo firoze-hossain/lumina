@@ -2682,8 +2682,10 @@ public class LuminaApp extends Application {
                             return;
                         }
                         case LIBRARY -> {
+                            String member = res.member() != null ? res.member() : word;
+                            int params = res.paramCount();
                             Platform.runLater(() ->
-                                    openLibraryType(res.libraryFqcn(), word));
+                                    openLibraryMember(res.libraryFqcn(), member, params));
                             return;
                         }
                         case DECLARATION -> {
@@ -2712,12 +2714,22 @@ public class LuminaApp extends Application {
             if (targetType != null) {
                 Path typeFile = findTypeFile(targetType);
                 if (typeFile != null) {
+                    if (looksLikeMethodCall && !isMethodDeclaredInFile(typeFile, word)) {
+                        String superType = findSuperTypeInFile(typeFile);
+                        if (superType != null) {
+                            String fqcn = resolveImportedFqcn(typeFile, superType);
+                            String resolvedFqcn = fqcn != null ? fqcn : superType;
+                            Platform.runLater(() -> openLibraryMember(resolvedFqcn, word, -1));
+                            return;
+                        }
+                    }
                     Platform.runLater(() -> openFileAtLineAndSymbol(typeFile, 1, word, true));
                     return;
                 }
                 // (3) library/JDK type -> decompile from the classpath (like IntelliJ)
                 String fqcn = resolveImportedFqcn(currentFile, targetType);
-                Platform.runLater(() -> openLibraryType(fqcn != null ? fqcn : targetType, word));
+                String resolvedFqcn = fqcn != null ? fqcn : targetType;
+                Platform.runLater(() -> openLibraryMember(resolvedFqcn, word, -1));
                 return;
             }
             Platform.runLater(() ->
@@ -2868,49 +2880,84 @@ public class LuminaApp extends Application {
         return null;
     }
 
-    /** Decompile a library/JDK class from the run classpath, like IntelliJ. */    /**
-     * Resolve a library/JDK type like IntelliJ: prefer real *-sources.jar
-     * (actual .java with line numbers), else fall back to javap bytecode.
-     * The classpath is obtained via dependency:build-classpath, which is far
-     * more reliable than copy-dependencies and needs no target/dependency dir.
+    private boolean isMethodDeclaredInFile(Path file, String methodName) {
+        if (file == null || !Files.isRegularFile(file)) return false;
+        try {
+            String text = Files.readString(file);
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                    "\\b" + java.util.regex.Pattern.quote(methodName) + "\\s*\\(");
+            for (String line : text.split("\n")) {
+                String s = line.strip();
+                if (s.startsWith("*") || s.startsWith("//") || s.startsWith("return ") || s.contains("." + methodName + "(")) continue;
+                if (p.matcher(line).find()) return true;
+            }
+        } catch (IOException ignored) {}
+        return false;
+    }
+
+    private String findSuperTypeInFile(Path file) {
+        if (file == null || !Files.isRegularFile(file)) return null;
+        try {
+            String text = Files.readString(file);
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                    "\\b(extends|implements)\\s+([A-Za-z0-9_<>,\t ]+)");
+            var m = p.matcher(text);
+            if (m.find()) {
+                String raw = m.group(2);
+                String first = raw.split("[,<]")[0].trim();
+                if (!first.isBlank()) return first;
+            }
+        } catch (IOException ignored) {}
+        return null;
+    }
+
+    /**
+     * Resolve a library/JDK member like IntelliJ: prefer real *-sources.jar
+     * (actual .java with line numbers and persistent disk caching),
+     * jump to the exact declaration line, and flash/blink the symbol.
      */
-    private void openLibraryType(String fqcn, String word) {
-        console.println("Resolving " + fqcn + " \u2026");
+    private List<Path> classpathJars() {
+        String cp = ensureClasspath();
+        List<Path> jars = new java.util.ArrayList<>();
+        if (cp != null && !cp.isBlank()) {
+            for (String part : cp.split(java.util.regex.Pattern.quote(File.pathSeparator))) {
+                if (part.endsWith(".jar")) {
+                    Path p = Path.of(part);
+                    if (Files.isRegularFile(p)) jars.add(p);
+                }
+            }
+        }
+        return jars;
+    }
+
+    private void openLibraryMember(String fqcn, String member, int paramCount) {
+        if (fqcn == null || fqcn.isBlank()) return;
         Thread t = new Thread(() -> {
             try {
-                // 1) Try to open real source from a *-sources.jar in the local repo.
-                String source = findLibrarySource(fqcn);
-                if (source != null) {
-                    Platform.runLater(() -> showLibrarySource(fqcn, source, word));
-                    return;
-                }
-                // 2) Fall back to javap bytecode using a proper classpath.
+                dev.lumina.semantics.LibrarySourceService service =
+                        dev.lumina.semantics.LibrarySourceService.getInstance();
+                List<Path> jars = classpathJars();
                 String cp = ensureClasspath();
-                String javap = Path.of(System.getProperty("java.home"), "bin",
-                        isWindows() ? "javap.exe" : "javap").toString();
-                List<String> cmd = new java.util.ArrayList<>(
-                        List.of(javap, "-p", "-protected"));
-                if (cp != null) { cmd.add("-classpath"); cmd.add(cp); }
-                cmd.add(fqcn);
-                Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-                String out = new String(p.getInputStream().readAllBytes(),
-                        StandardCharsets.UTF_8);
-                p.waitFor();
-                if (out.isBlank() || out.contains("Error:") || out.contains("not found")) {
+
+                Path sourceFile = service.getOrResolveSource(
+                        fqcn, projectRoot, jars, cp,
+                        msg -> Platform.runLater(() -> console.println(msg))
+                );
+
+                if (sourceFile == null || !Files.isRegularFile(sourceFile)) {
                     Platform.runLater(() -> console.println(
                             "Could not resolve " + fqcn + ". Run Build Project once so "
                                     + "dependencies are downloaded, then Ctrl+Click again."));
                     return;
                 }
-                final String bytecode = out;
+
+                String sourceText = Files.readString(sourceFile);
+                int line = dev.lumina.semantics.LibrarySourceService.findMemberLine(sourceText, member, paramCount);
+
                 Platform.runLater(() -> {
-                    EditorTab tab = new EditorTab(simpleName(fqcn) + ".class", null);
-                    tab.setEditorText("// Decompiled from classpath (javap) \u2014 read-only\n"
-                            + "// " + fqcn + "\n\n" + bytecode);
-                    tab.setReadOnly();
-                    addTab(tab);
+                    openFileAtLineAndSymbol(sourceFile, line, member, true);
                 });
-            } catch (IOException | InterruptedException ex) {
+            } catch (Exception ex) {
                 Platform.runLater(() -> console.println(
                         "Resolve failed: " + ex.getMessage()));
             }
@@ -2919,60 +2966,24 @@ public class LuminaApp extends Application {
         t.start();
     }
 
-    /** Search downloaded *-sources.jar files for fqcn's .java; return its text. */
-    private String findLibrarySource(String fqcn) {
-        String entry = fqcn.replace('.', '/') + ".java";
-        // Ensure sources are downloaded (one-time per project).
-        if (RunConfiguration.isMavenProject(projectRoot)) {
-            // Marker lives in ~/.lumina (NOT target/, which `mvn clean` wipes),
-            // keyed by project path so each project downloads sources only once.
-            Path marker = sourcesMarker(projectRoot);
-            if (!Files.exists(marker)) {
-                Platform.runLater(() -> console.println(
-                        "Downloading dependency sources (one-time per project)\u2026"));
-                runBuildToolQuiet(RunConfiguration.maven(projectRoot,
-                        "-q", "dependency:sources"));
-                try { Files.createDirectories(marker.getParent());
-                    Files.writeString(marker, "done"); } catch (IOException ignored) {}
-            }
-        }
-        for (Path jar : sourceJars()) {
-            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(jar.toFile())) {
-                java.util.zip.ZipEntry e = zip.getEntry(entry);
-                if (e != null) {
-                    try (var in = zip.getInputStream(e)) {
-                        return new String(in.readAllBytes(),
-                                StandardCharsets.UTF_8);
-                    }
-                }
-            } catch (IOException ignored) {
-            }
-        }
-        return null;
+    private void openLibraryType(String fqcn, String word) {
+        openLibraryMember(fqcn, word, -1);
     }
 
-    private void showLibrarySource(String fqcn, String source, String word) {
-        EditorTab tab = new EditorTab(simpleName(fqcn) + ".java", null);
-        tab.setEditorText("// Library source \u2014 read-only\n// " + fqcn + "\n\n" + source);
-        tab.setReadOnly();
-        addTab(tab);
-        // Jump to the method/type if we can locate it in the source text.
-        String[] lines = source.split("\n");
-        java.util.regex.Pattern decl = Character.isUpperCase(word.charAt(0))
-                ? java.util.regex.Pattern.compile("\\b(class|interface|enum|record)\\s+"
-                + java.util.regex.Pattern.quote(word) + "\\b")
-                : java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(word)
-                + "\\s*\\(");
-        for (int i = 0; i < lines.length; i++) {
-            if (decl.matcher(lines[i]).find()) {
-                final int ln = i + 4; // account for the 3 header lines we prepended
-                Platform.runLater(() -> {
-                    EditorTab cur = currentEditor();
-                    if (cur != null) cur.goToLine(ln);
-                });
-                break;
+    /** Search downloaded *-sources.jar files for fqcn's .java; return its text. */
+    private String findLibrarySource(String fqcn) {
+        try {
+            dev.lumina.semantics.LibrarySourceService service =
+                    dev.lumina.semantics.LibrarySourceService.getInstance();
+            List<Path> jars = classpathJars();
+            String cp = ensureClasspath();
+            Path sourceFile = service.getOrResolveSource(
+                    fqcn, projectRoot, jars, cp, null);
+            if (sourceFile != null && Files.isRegularFile(sourceFile)) {
+                return Files.readString(sourceFile);
             }
-        }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     /** All *-sources.jar under the Maven local repo referenced by this project. */
@@ -3295,14 +3306,14 @@ public class LuminaApp extends Application {
     }
 
     private void openFileAtLineAndSymbol(Path path, int line, String symbol, boolean flashAndDoc) {
-        openFile(path);
+        EditorTab tab = openFile(path);
         Platform.runLater(() -> {
-            EditorTab tab = currentEditor();
-            if (tab != null) {
+            EditorTab target = tab != null ? tab : currentEditor();
+            if (target != null) {
                 if (symbol != null && !symbol.isBlank() && flashAndDoc) {
-                    tab.flashSymbolAt(line, symbol, true);
+                    target.flashSymbolAt(line, symbol, true);
                 } else {
-                    tab.goToLine(line);
+                    target.goToLine(line);
                 }
             }
         });
@@ -4630,29 +4641,33 @@ public class LuminaApp extends Application {
         if (dir != null) openProjectInteractive(dir.toPath());
     }
 
-    private void openFile(Path path) {
+    private EditorTab openFile(Path path) {
         for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && path.equals(et.getPath())) {
                 groupOf(t).getSelectionModel().select(t);
-                return;
+                return et;
             }
         }
         if (path.getFileName().toString().endsWith(".class")) {
-            openClassFile(path);
-            return;
+            return openClassFile(path);
         }
         try {
             String content = Files.readString(path);
             EditorTab tab = new EditorTab(path.getFileName().toString(), path);
             tab.setEditorText(content);
+            if (dev.lumina.semantics.LibrarySourceService.getInstance().isLibraryCacheFile(path)) {
+                tab.setReadOnly();
+            }
             addTab(tab);
+            return tab;
         } catch (IOException ex) {
             error("Could not open file", ex.getMessage());
+            return null;
         }
     }
 
     /** Disassemble a .class file with javap and show it read-only. */
-    private void openClassFile(Path path) {
+    private EditorTab openClassFile(Path path) {
         try {
             String javap = Path.of(System.getProperty("java.home"), "bin",
                     System.getProperty("os.name", "").toLowerCase().contains("win")
@@ -4666,11 +4681,13 @@ public class LuminaApp extends Application {
             tab.setEditorText("// Decompiled with javap \u2014 read-only\n\n" + out);
             tab.setReadOnly();
             addTab(tab);
+            return tab;
         } catch (IOException ex) {
             error("Could not disassemble class", ex.getMessage());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
+        return null;
     }
 
     private void addTab(EditorTab tab) {

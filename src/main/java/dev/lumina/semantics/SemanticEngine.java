@@ -62,18 +62,24 @@ public final class SemanticEngine {
     public record Location(Path file, int line) {
     }
 
-    public record Resolution(Kind kind, Location location, String libraryFqcn) {
+    public record Resolution(Kind kind, Location location, String libraryFqcn, String member, int paramCount) {
+        public Resolution(Kind kind, Location location, String libraryFqcn) {
+            this(kind, location, libraryFqcn, null, -1);
+        }
         public static Resolution project(Location loc) {
-            return new Resolution(Kind.PROJECT, loc, null);
+            return new Resolution(Kind.PROJECT, loc, null, null, -1);
         }
         public static Resolution library(String fqcn) {
-            return new Resolution(Kind.LIBRARY, null, fqcn);
+            return new Resolution(Kind.LIBRARY, null, fqcn, null, -1);
+        }
+        public static Resolution library(String fqcn, String member, int paramCount) {
+            return new Resolution(Kind.LIBRARY, null, fqcn, member, paramCount);
         }
         public static Resolution declaration(Location loc) {
-            return new Resolution(Kind.DECLARATION, loc, null);
+            return new Resolution(Kind.DECLARATION, loc, null, null, -1);
         }
         public static Resolution none() {
-            return new Resolution(Kind.NONE, null, null);
+            return new Resolution(Kind.NONE, null, null, null, -1);
         }
     }
 
@@ -608,7 +614,7 @@ public final class SemanticEngine {
                                       int paramCount, boolean isMethod) {
         Path source = sourceFileFor(typeQn);
         if (source == null) {
-            return Resolution.library(libraryEntryName(typeQn));
+            return Resolution.library(libraryEntryName(typeQn), member, paramCount);
         }
         CompilationUnit cu = parse(source, null);
         if (cu == null) return Resolution.project(new Location(source, 1));
@@ -651,10 +657,10 @@ public final class SemanticEngine {
     /** Locate a type declaration by FQCN. */
     private Resolution typeLocation(String typeQn) {
         Path source = sourceFileFor(typeQn);
-        if (source == null) {
-            return Resolution.library(libraryEntryName(typeQn));
-        }
         String simple = typeQn.substring(typeQn.lastIndexOf('.') + 1);
+        if (source == null) {
+            return Resolution.library(libraryEntryName(typeQn), simple, -2);
+        }
         CompilationUnit cu = parse(source, null);
         if (cu != null) {
             for (ClassOrInterfaceDeclaration d : cu.findAll(ClassOrInterfaceDeclaration.class)) {
