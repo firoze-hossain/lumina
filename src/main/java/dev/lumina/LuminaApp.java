@@ -243,7 +243,7 @@ public class LuminaApp extends Application {
         iconRail.selectTop(0);
 
         // Right tool windows, selected from a compact IntelliJ-style vertical rail.
-        mavenPanel = new MavenPanel(this::runBuildGoal);
+        mavenPanel = new MavenPanel(this::runBuildGoal, this::openFile);
         dbPanel = new DatabasePanel();
         rightTabs = new TabPane(
                 toolTab("Notifications", rightPlaceholder("Notifications", "Timeline\n\nNo new notifications")),
@@ -260,13 +260,26 @@ public class LuminaApp extends Application {
 
         rightToolTitle = new Label();
         rightToolTitle.getStyleClass().add("right-tool-title");
-        Button rightToolClose = new Button("\u2715");
+
+        Button rightToolOptions = new Button("…");
+        rightToolOptions.getStyleClass().add("right-tool-close");
+        rightToolOptions.setTooltip(new Tooltip("Options"));
+        rightToolOptions.setOnAction(e -> {
+            ContextMenu optMenu = new ContextMenu();
+            MenuItem viewMode = new MenuItem("View Mode: Docked Pinned");
+            MenuItem floatMode = new MenuItem("Floating Mode");
+            MenuItem windowMode = new MenuItem("Windowed Mode");
+            optMenu.getItems().addAll(viewMode, floatMode, windowMode);
+            optMenu.show(rightToolOptions, javafx.geometry.Side.BOTTOM, 0, 0);
+        });
+
+        Button rightToolClose = new Button("−");
         rightToolClose.getStyleClass().add("right-tool-close");
         rightToolClose.setTooltip(new Tooltip("Hide"));
         rightToolClose.setOnAction(e -> toggleRightPanel(false));
         Region rightTitleSpacer = new Region();
         HBox.setHgrow(rightTitleSpacer, Priority.ALWAYS);
-        HBox rightToolTitleBar = new HBox(rightToolTitle, rightTitleSpacer, rightToolClose);
+        HBox rightToolTitleBar = new HBox(6, rightToolTitle, rightTitleSpacer, rightToolOptions, rightToolClose);
         rightToolTitleBar.getStyleClass().add("right-tool-titlebar");
         rightToolTitleBar.setAlignment(Pos.CENTER_LEFT);
         rightTabs.getSelectionModel().selectedItemProperty().addListener(
@@ -3297,9 +3310,10 @@ public class LuminaApp extends Application {
 
     private void runBuildGoal(String goal) {
         if (projectRoot == null) return;
+        String[] parts = goal.trim().split("\\s+");
         List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
-                ? RunConfiguration.maven(projectRoot, goal)
-                : RunConfiguration.gradleCmd(projectRoot, goal);
+                ? RunConfiguration.maven(projectRoot, parts)
+                : RunConfiguration.gradleCmd(projectRoot, parts);
         showRunPanel();
         console.runCommand(goal, cmd, projectRoot);
     }

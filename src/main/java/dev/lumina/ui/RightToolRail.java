@@ -44,7 +44,7 @@ public final class RightToolRail extends VBox {
         add(bellIcon(), "Notifications", 0, onSelect);
         add(chatIcon(), "AI Chat", 1, onSelect);
         add(databaseIcon(), "Database", 2, onSelect);
-        add(letterIcon("m"), "Maven", 3, onSelect);
+        add(mavenRailIcon(), "Maven", 3, onSelect);
         add(gearIcon(), "Services", 4, onSelect);
         add(letterIcon("gh"), "GitHub Copilot", 5, onSelect);
     }
@@ -84,6 +84,12 @@ public final class RightToolRail extends VBox {
         pane.setMinSize(16, 16);
         pane.setMaxSize(16, 16);
         return pane;
+    }
+
+    private static Node mavenRailIcon() {
+        Label m = new Label("m");
+        m.getStyleClass().add("right-rail-maven-glyph");
+        return icon(m);
     }
 
     private static Node letterIcon(String text) {
