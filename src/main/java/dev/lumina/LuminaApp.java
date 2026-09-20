@@ -4,6 +4,7 @@ import dev.lumina.git.GitHubAuth;
 import dev.lumina.git.GitService;
 import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
+import dev.lumina.project.RecentProjectsManager;
 import dev.lumina.run.RunConfiguration;
 import dev.lumina.semantics.Docs;
 import dev.lumina.ui.*;
@@ -29,6 +30,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
 /**
@@ -38,6 +40,9 @@ import java.util.stream.Stream;
  * Boot), Go to File, and .class viewing via javap.
  */
 public class LuminaApp extends Application {
+
+    /** Global registry of all active LuminaApp window instances. */
+    public static final List<LuminaApp> ACTIVE_INSTANCES = new CopyOnWriteArrayList<>();
 
     private Stage stage;
     private TabPane editorTabs;
@@ -312,12 +317,8 @@ public class LuminaApp extends Application {
 
         stage.setTitle("Lumina");
         stage.setScene(scene);
-        stage.setOnCloseRequest(e -> {
-            saveSession();
-            console.shutdown();
-            terminal.stop();
-            dbPanel.shutdown();
-        });
+        ACTIVE_INSTANCES.add(this);
+        stage.setOnCloseRequest(e -> closeWindow());
         stage.show();
 
         terminal.start(Path.of(System.getProperty("user.home")));
@@ -435,15 +436,42 @@ public class LuminaApp extends Application {
                 item("Package", null, e -> newPackage()),
                 item("File", "Shortcut+N", e -> newFile()));
 
-        Menu recentProjects = new Menu("Recent Projects");
-        String lastProject = Settings.get(Settings.LAST_PROJECT);
-        if (lastProject == null || lastProject.isBlank()) {
-            MenuItem none = new MenuItem("No recent projects");
-            none.setDisable(true);
-            recentProjects.getItems().add(none);
-        } else {
-            recentProjects.getItems().add(item(lastProject, null, e -> openProjectInteractive(Path.of(lastProject))));
-        }
+        Menu openRecentProjectMenu = new Menu("Open Recent Project");
+        Runnable refreshRecentProjects = () -> {
+            openRecentProjectMenu.getItems().clear();
+            List<RecentProjectsManager.RecentProject> recents =
+                    RecentProjectsManager.getInstance().getRecentProjects();
+            if (recents.isEmpty()) {
+                MenuItem none = new MenuItem("No recent projects");
+                none.setDisable(true);
+                openRecentProjectMenu.getItems().add(none);
+            } else {
+                for (RecentProjectsManager.RecentProject rp : recents) {
+                    String label = RecentProjectsManager.getInstance()
+                            .getDisplayLabel(rp, recents);
+                    MenuItem mi = new MenuItem(label);
+                    mi.setOnAction(e -> openProjectInteractive(Path.of(rp.path())));
+                    openRecentProjectMenu.getItems().add(mi);
+                }
+                openRecentProjectMenu.getItems().add(new SeparatorMenuItem());
+                MenuItem clearList = new MenuItem("Clear List");
+                clearList.setOnAction(e -> {
+                    RecentProjectsManager.getInstance().clear();
+                    openRecentProjectMenu.getItems().clear();
+                    MenuItem none = new MenuItem("No recent projects");
+                    none.setDisable(true);
+                    openRecentProjectMenu.getItems().add(none);
+                });
+                openRecentProjectMenu.getItems().add(clearList);
+            }
+        };
+        openRecentProjectMenu.setOnShowing(e -> refreshRecentProjects.run());
+        refreshRecentProjects.run();
+
+        MenuItem closeProjectItem = item("Close Project", null, e -> closeProject());
+        MenuItem closeAllProjectsItem = item("Close All Projects", null, e -> closeAllProjects());
+        MenuItem closeOtherProjectsItem = item("Close Other Projects", null, e -> closeOtherProjects());
+
         Menu fileProperties = new Menu("File Properties");
         fileProperties.getItems().addAll(
                 item("File Encoding", null, e -> showInfo("File Encoding", "UTF-8")),
@@ -452,9 +480,14 @@ public class LuminaApp extends Application {
         localHistory.getItems().addAll(
                 item("Show History", null, e -> showInfo("Local History", "No local changes recorded yet.")),
                 item("Put Label…", null, e -> showInfo("Local History", "Labels will be available in a future update.")));
-        Menu manageSettings = new Menu("Manage Settings");
+        Menu manageSettings = new Menu("Manage IDE Settings");
         manageSettings.getItems().addAll(
                 item("Restore Default Settings…", null, e -> showInfo("Settings", "Default settings restored.")),
+                item("Reset \"Open Project\" Prompt", null, e -> {
+                    Settings.put(Settings.OPEN_PROJECT_MODE, null);
+                    console.println("\u2713 The Open Project prompt (Cancel / New "
+                            + "Window / This Window) will ask again next time.");
+                }),
                 item("Import Settings…", null, e -> showInfo("Settings", "Import settings is not available yet.")),
                 item("Export Settings…", null, e -> showInfo("Settings", "Export settings is not available yet.")));
         Menu newProjectsSetup = new Menu("New Projects Setup");
@@ -467,22 +500,27 @@ public class LuminaApp extends Application {
                 ? "Power Save Mode enabled" : "Power Save Mode disabled"));
 
         Menu file = new Menu("File");
+        file.setOnShowing(e -> {
+            refreshRecentProjects.run();
+            boolean hasProject = projectRoot != null;
+            boolean hasOtherProjects = ACTIVE_INSTANCES.stream()
+                    .anyMatch(a -> a != this && a.projectRoot != null);
+            boolean hasAnyProject = hasProject || hasOtherProjects;
+
+            closeProjectItem.setDisable(!hasProject);
+            closeAllProjectsItem.setDisable(!hasAnyProject);
+            closeOtherProjectsItem.setDisable(!hasOtherProjects);
+        });
+
         file.getItems().addAll(
                 newMenu,
                 item("Open…", "Shortcut+O", e -> openFolderDialog()),
-                recentProjects,
-                item("Close Project", null, e -> closeProject()),
-                item("Reset \"Open Project\" Prompt", null, e -> {
-                    Settings.put(Settings.OPEN_PROJECT_MODE, null);
-                    console.println("\u2713 The Open Project prompt (Cancel / New "
-                            + "Window / This Window) will ask again next time.");
-                }),
-                new SeparatorMenuItem(),
-                // item("Remote Development…", null, e -> showInfo("Remote Development", "Remote development is not available yet.")),
-                // In buildMenuBar(), find the Remote Development item and change it:
+                openRecentProjectMenu,
+                closeProjectItem,
+                closeAllProjectsItem,
+                closeOtherProjectsItem,
                 item("Remote Development…", null, e -> new RemoteDevelopmentDialog(stage).show()),
                 new SeparatorMenuItem(),
-//                item("Settings…", "Shortcut+Alt+S", e -> showInfo("Settings", "IDE settings are not available yet.")),
                 item("Settings…", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
                 //     item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
                 // In buildMenuBar(), find the Project Structure item:
@@ -3672,6 +3710,13 @@ public class LuminaApp extends Application {
             stage.requestFocus();
             return;
         }
+        for (LuminaApp app : ACTIVE_INSTANCES) {
+            if (app.projectRoot != null && target.equals(app.projectRoot.toAbsolutePath().normalize())) {
+                app.stage.toFront();
+                app.stage.requestFocus();
+                return;
+            }
+        }
         String remembered = Settings.get(Settings.OPEN_PROJECT_MODE);
         if ("NEW_WINDOW".equals(remembered)) {
             openInNewWindow(dir);
@@ -3712,7 +3757,7 @@ public class LuminaApp extends Application {
 
     /** Replaces this window's project with dir, clearing the old one first. */
     private void replaceInThisWindow(Path dir) {
-        closeProject();
+        resetProjectStateInWindow();
         openProject(dir);
     }
 
@@ -3727,6 +3772,7 @@ public class LuminaApp extends Application {
         refreshGitInfo();
         mavenPanel.setProject(dir);
         Settings.put(Settings.LAST_PROJECT, dir.toString());
+        RecentProjectsManager.getInstance().recordProjectOpened(dir);
         initSemanticEngine(dir);
         terminal.start(dir);
 
@@ -3792,7 +3838,25 @@ public class LuminaApp extends Application {
         dev.lumina.util.ProjectSession.save(projectRoot, expanded, open, active);
     }
 
-    private void closeProject() {
+    /**
+     * Cleanly closes this window and deregisters it from the global active instances.
+     */
+    public void closeWindow() {
+        ACTIVE_INSTANCES.remove(this);
+        saveSession();
+        try {
+            console.shutdown();
+            terminal.stop();
+            dbPanel.shutdown();
+        } catch (Exception ignored) {
+        }
+        stage.close();
+    }
+
+    /**
+     * Resets the project state in this window to the clean "No project" welcome state.
+     */
+    private void resetProjectStateInWindow() {
         saveSession();
         projectRoot = null;
         closeEditorTabsWhere(t -> true);
@@ -3805,6 +3869,43 @@ public class LuminaApp extends Application {
         mavenPanel.setProject(null);
         semantics = null;
         Settings.put(Settings.LAST_PROJECT, null);
+        updateEditorVisibility();
+    }
+
+    /**
+     * In IntelliJ: if multiple project windows are open, closes this window;
+     * if this is the only window open, resets to the clean "No project" welcome state.
+     */
+    private void closeProject() {
+        if (ACTIVE_INSTANCES.size() > 1) {
+            closeWindow();
+        } else {
+            resetProjectStateInWindow();
+        }
+    }
+
+    /**
+     * Closes all projects across all windows. All other windows are closed,
+     * and this window is reset to the clean "No project" welcome state.
+     */
+    private void closeAllProjects() {
+        for (LuminaApp app : new java.util.ArrayList<>(ACTIVE_INSTANCES)) {
+            if (app != this) {
+                app.closeWindow();
+            }
+        }
+        resetProjectStateInWindow();
+    }
+
+    /**
+     * Closes all other project windows, leaving this window and its project untouched.
+     */
+    private void closeOtherProjects() {
+        for (LuminaApp app : new java.util.ArrayList<>(ACTIVE_INSTANCES)) {
+            if (app != this) {
+                app.closeWindow();
+            }
+        }
     }
 
     private int rank(Path p) {

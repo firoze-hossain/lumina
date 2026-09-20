@@ -139,9 +139,10 @@ public class SettingsMenusToolbarsPage extends VBox {
         MenuItemNode fileMenu = new MenuItemNode("File", "📄", false, true);
         fileMenu.addChild(new MenuItemNode("New", "📄", false, false));
         fileMenu.addChild(new MenuItemNode("Open…", "", false, false));
-        fileMenu.addChild(new MenuItemNode("Recent Projects", "", false, false));
+        fileMenu.addChild(new MenuItemNode("Open Recent Project", "", false, false));
         fileMenu.addChild(new MenuItemNode("Close Project", "", false, false));
-        fileMenu.addChild(new MenuItemNode("", "", true, false));
+        fileMenu.addChild(new MenuItemNode("Close All Projects", "", false, false));
+        fileMenu.addChild(new MenuItemNode("Close Other Projects", "", false, false));
         fileMenu.addChild(new MenuItemNode("Remote Development…", "", false, false));
         fileMenu.addChild(new MenuItemNode("", "", true, false));
         fileMenu.addChild(new MenuItemNode("Settings…", "⚙", false, false));
