@@ -44,6 +44,11 @@ public class FileExplorer extends BorderPane {
     private java.util.function.Consumer<Path> onOpenModuleSettings;
     /** Menu label of the item clicked, for scaffolding not wired up yet. */
     private java.util.function.Consumer<String> onPlaceholder;
+    private NewMenuBuilder.CreationHandlers creationHandlers;
+
+    public void setCreationHandlers(NewMenuBuilder.CreationHandlers handlers) {
+        this.creationHandlers = handlers;
+    }
 
     /** Wire run/test/delete actions used by the tree's right-click menu. */
     public void setActions(java.util.function.Consumer<Path> run,
@@ -161,6 +166,8 @@ public class FileExplorer extends BorderPane {
         boolean isJava = p.getFileName().toString().endsWith(".java");
         boolean isTest = p.toString().replace('\\', '/').contains("/src/test/java/");
         List<javafx.scene.control.MenuItem> items = new java.util.ArrayList<>();
+        items.add(newMenu(p.getParent(), NodeKind.PACKAGE));
+        items.add(new javafx.scene.control.SeparatorMenuItem());
         items.add(action("Open", () -> onOpenFile.accept(p)));
         if (isJava && !isTest) items.add(action("\u25B6  Run", () -> run(onRun, p)));
         if (isJava && isTest) items.add(action("\u2705  Run Test", () -> run(onRunTest, p)));
@@ -272,6 +279,13 @@ public class FileExplorer extends BorderPane {
      */
     private javafx.scene.control.Menu newMenu(Path dir, NodeKind kind) {
         javafx.scene.control.Menu menu = new javafx.scene.control.Menu("New");
+        if (creationHandlers != null) {
+            boolean isRoot = (kind == NodeKind.ROOT)
+                    || (rootPath != null && dir != null && dir.toAbsolutePath().normalize().equals(rootPath.toAbsolutePath().normalize()))
+                    || NewMenuBuilder.isProjectRoot(dir);
+            NewMenuBuilder.populateNewMenu(menu, dir, true, isRoot, creationHandlers);
+            return menu;
+        }
         if (kind == NodeKind.ROOT) {
             menu.getItems().add(action("Module\u2026", () -> ph("Module")));
             menu.getItems().add(new javafx.scene.control.SeparatorMenuItem());
@@ -382,11 +396,22 @@ public class FileExplorer extends BorderPane {
         tree.setShowRoot(true);
         tree.setCellFactory(tv -> new PathCell());
         tree.setOnMouseClicked(e -> {
+            if (e.getTarget() instanceof javafx.scene.Node n) {
+                javafx.scene.control.TreeCell<?> cell = findParentTreeCell(n);
+                if (cell == null || cell.isEmpty() || cell.getItem() == null) {
+                    tree.getSelectionModel().clearSelection();
+                }
+            }
             if (e.getClickCount() == 2) {
                 TreeItem<Path> item = tree.getSelectionModel().getSelectedItem();
                 if (item != null && Files.isRegularFile(item.getValue())) {
                     onOpenFile.accept(item.getValue());
                 }
+            }
+        });
+        tree.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                tree.getSelectionModel().clearSelection();
             }
         });
         tree.setContextMenu(buildTreeContextMenu());
@@ -806,5 +831,13 @@ public class FileExplorer extends BorderPane {
                 return List.of();
             }
         }
+    }
+
+    private javafx.scene.control.TreeCell<?> findParentTreeCell(javafx.scene.Node n) {
+        while (n != null && n != tree) {
+            if (n instanceof javafx.scene.control.TreeCell<?> tc) return tc;
+            n = n.getParent();
+        }
+        return null;
     }
 }
