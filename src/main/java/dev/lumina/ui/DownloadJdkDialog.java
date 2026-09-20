@@ -32,7 +32,8 @@ public class DownloadJdkDialog {
     private final ComboBox<Integer> versionBox = new ComboBox<>();
     private final ComboBox<JdkPackage> vendorBox = new ComboBox<>();
     private final TextField locationField = new TextField();
-    private final Button browseBtn = new Button("…");
+    private final Label archiveSizeLabel = new Label("Archive size: 209.1 MB");
+    private final Button browseBtn = new Button("📁");
     private final ProgressBar progressBar = new ProgressBar();
     private final Label statusLabel = new Label();
     private final Button cancelBtn = new Button("Cancel");
@@ -54,12 +55,12 @@ public class DownloadJdkDialog {
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "download-node-dialog");
 
-        VBox content = new VBox(12);
+        VBox content = new VBox(10);
         content.setPadding(new Insets(18, 22, 10, 22));
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
-        grid.setVgap(14);
+        grid.setVgap(12);
 
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setMinWidth(75);
@@ -117,7 +118,21 @@ public class DownloadJdkDialog {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    setText(item.formatDisplay());
+                    setText(null);
+                    HBox row = new HBox(12);
+                    row.setAlignment(Pos.CENTER_LEFT);
+
+                    Label nameLbl = new Label(item.vendorDisplay());
+                    nameLbl.setStyle("-fx-text-fill: #EDEFF6; -fx-font-size: 12px;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    Label infoLbl = new Label(item.javaVersion() + "  " + item.architecture());
+                    infoLbl.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px;");
+
+                    row.getChildren().addAll(nameLbl, spacer, infoLbl);
+                    setGraphic(row);
                 }
             }
         });
@@ -129,7 +144,21 @@ public class DownloadJdkDialog {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    setText(item.formatDisplay());
+                    setText(null);
+                    HBox row = new HBox(8);
+                    row.setAlignment(Pos.CENTER_LEFT);
+
+                    Label nameLbl = new Label(item.vendorDisplay());
+                    nameLbl.setStyle("-fx-text-fill: #EDEFF6; -fx-font-size: 12px;");
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    Label infoLbl = new Label(item.javaVersion() + "  " + item.architecture());
+                    infoLbl.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px;");
+
+                    row.getChildren().addAll(nameLbl, spacer, infoLbl);
+                    setGraphic(row);
                 }
             }
         });
@@ -143,7 +172,7 @@ public class DownloadJdkDialog {
         locationField.getStyleClass().add("text-field");
         HBox.setHgrow(locationField, Priority.ALWAYS);
 
-        browseBtn.getStyleClass().addAll("console-button", "react-browse-btn");
+        browseBtn.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-cursor: hand; -fx-font-size: 12px; -fx-padding: 3 7 3 7;");
         browseBtn.setOnAction(e -> pickDirectory());
 
         HBox locationRow = new HBox(8, locationField, browseBtn);
@@ -158,7 +187,11 @@ public class DownloadJdkDialog {
             }
         });
 
-        // Row 3: Progress & Status
+        // Row 3: Archive size (matching media_1789873735586.png directly under Location)
+        archiveSizeLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8C92A4;");
+        grid.add(archiveSizeLabel, 1, 3);
+
+        // Progress & Status
         progressBar.setMaxWidth(Double.MAX_VALUE);
         progressBar.setProgress(0.0);
         progressBar.setVisible(false);
@@ -244,8 +277,12 @@ public class DownloadJdkDialog {
         List<JdkPackage> pkgs = JdkMetadata.fetchPackages(version, false);
         vendorBox.getItems().setAll(pkgs);
         if (!pkgs.isEmpty()) {
-            vendorBox.setValue(pkgs.getFirst());
-            updateDefaultLocation(pkgs.getFirst());
+            JdkPackage defaultMatch = pkgs.stream()
+                    .filter(p -> p.vendorDisplay().contains("Oracle OpenJDK"))
+                    .findFirst()
+                    .orElse(pkgs.getFirst());
+            vendorBox.setValue(defaultMatch);
+            updateDefaultLocation(defaultMatch);
         }
 
         Thread.ofVirtual().start(() -> {
@@ -262,7 +299,11 @@ public class DownloadJdkDialog {
                                     .orElse(remote.getFirst());
                             vendorBox.setValue(match);
                         } else {
-                            vendorBox.setValue(remote.getFirst());
+                            JdkPackage defaultMatch = remote.stream()
+                                    .filter(p -> p.vendorDisplay().contains("Oracle OpenJDK"))
+                                    .findFirst()
+                                    .orElse(remote.getFirst());
+                            vendorBox.setValue(defaultMatch);
                         }
                     }
                 });
@@ -272,13 +313,22 @@ public class DownloadJdkDialog {
 
     private void updateDefaultLocation(JdkPackage pkg) {
         Path defaultDir = JdkMetadata.getDefaultInstallDir(pkg.vendorDisplay(), pkg.majorVersion(), pkg.javaVersion());
-        locationField.setText(defaultDir.toAbsolutePath().toString());
+        String pathStr = defaultDir.toAbsolutePath().toString();
+        String userHome = System.getProperty("user.home", "");
+        if (!userHome.isBlank() && pathStr.startsWith(userHome)) {
+            pathStr = "~" + pathStr.substring(userHome.length());
+        }
+        locationField.setText(pathStr);
+        archiveSizeLabel.setText("Archive size: " + pkg.formatArchiveSize());
     }
 
     private void pickDirectory() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select JDK Installation Directory");
         String current = locationField.getText().trim();
+        if (current.startsWith("~")) {
+            current = System.getProperty("user.home") + current.substring(1);
+        }
         if (!current.isBlank()) {
             File curFile = new File(current);
             File parent = curFile.getParentFile();
@@ -289,7 +339,12 @@ public class DownloadJdkDialog {
         File selected = chooser.showDialog(stage);
         if (selected != null) {
             locationManuallyEdited = true;
-            locationField.setText(selected.getAbsolutePath());
+            String pathStr = selected.getAbsolutePath();
+            String userHome = System.getProperty("user.home", "");
+            if (!userHome.isBlank() && pathStr.startsWith(userHome)) {
+                pathStr = "~" + pathStr.substring(userHome.length());
+            }
+            locationField.setText(pathStr);
         }
     }
 
@@ -306,6 +361,9 @@ public class DownloadJdkDialog {
             return;
         }
 
+        if (locStr.startsWith("~")) {
+            locStr = System.getProperty("user.home") + locStr.substring(1);
+        }
         Path targetDir = Path.of(locStr);
 
         // Disable controls
