@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,13 +41,50 @@ public final class ProjectStructureModel {
 
     public static class DependencyItem {
         private String name;
-        private String scope;
-        private boolean isModule;
+        private String scope = "Compile";
+        private boolean isModule = false;
+        private boolean isSdk = false;
+        private boolean isModuleSource = false;
+        private boolean export = false;
+        private ProjectSdk.SdkItem sdkItem;
+        private LibraryModel libraryModel;
 
         public DependencyItem(String name, String scope, boolean isModule) {
             this.name = name;
-            this.scope = scope;
+            this.scope = scope != null && !scope.isBlank() ? scope : "Compile";
             this.isModule = isModule;
+        }
+
+        public DependencyItem(String name, String scope, boolean isModule, boolean export) {
+            this.name = name;
+            this.scope = scope != null && !scope.isBlank() ? scope : "Compile";
+            this.isModule = isModule;
+            this.export = export;
+        }
+
+        public static DependencyItem forSdk(ProjectSdk.SdkItem sdk) {
+            String displayName = sdk != null ? sdk.name() : "Project SDK";
+            DependencyItem item = new DependencyItem(displayName, "", false, false);
+            item.isSdk = true;
+            item.sdkItem = sdk;
+            return item;
+        }
+
+        public static DependencyItem forModuleSource() {
+            DependencyItem item = new DependencyItem("<Module source>", "", false, false);
+            item.isModuleSource = true;
+            return item;
+        }
+
+        public static DependencyItem forLibrary(LibraryModel lib, String scope, boolean export) {
+            DependencyItem item = new DependencyItem(lib != null ? lib.getName() : "Library", scope, false, export);
+            item.libraryModel = lib;
+            return item;
+        }
+
+        public static DependencyItem forModule(String moduleName, String scope, boolean export) {
+            DependencyItem item = new DependencyItem(moduleName, scope, true, export);
+            return item;
         }
 
         public String getName() { return name; }
@@ -55,14 +93,25 @@ public final class ProjectStructureModel {
         public void setScope(String scope) { this.scope = scope; }
         public boolean isModule() { return isModule; }
         public void setModule(boolean module) { isModule = module; }
+        public boolean isSdk() { return isSdk; }
+        public void setSdk(boolean sdk) { isSdk = sdk; }
+        public boolean isModuleSource() { return isModuleSource; }
+        public void setModuleSource(boolean moduleSource) { isModuleSource = moduleSource; }
+        public boolean isExport() { return export; }
+        public void setExport(boolean export) { this.export = export; }
+        public ProjectSdk.SdkItem getSdkItem() { return sdkItem; }
+        public void setSdkItem(ProjectSdk.SdkItem sdkItem) { this.sdkItem = sdkItem; }
+        public LibraryModel getLibraryModel() { return libraryModel; }
+        public void setLibraryModel(LibraryModel libraryModel) { this.libraryModel = libraryModel; }
 
         @Override
-        public String toString() { return name + " (" + scope + ")"; }
+        public String toString() { return name + (scope != null && !scope.isBlank() ? " (" + scope + ")" : ""); }
     }
 
     public static class FacetModel {
         private String name;
         private String type;
+        private String moduleName;
         private Map<String, String> configuration = new LinkedHashMap<>();
 
         public FacetModel(String name, String type) {
@@ -70,21 +119,96 @@ public final class ProjectStructureModel {
             this.type = type;
         }
 
+        public FacetModel(String name, String type, String moduleName) {
+            this.name = name;
+            this.type = type;
+            this.moduleName = moduleName;
+        }
+
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
         public String getType() { return type; }
         public void setType(String type) { this.type = type; }
+        public String getModuleName() { return moduleName; }
+        public void setModuleName(String moduleName) { this.moduleName = moduleName; }
         public Map<String, String> getConfiguration() { return configuration; }
+
+        public static String getIconGlyph(String type) {
+            if (type == null) return "✦";
+            return switch (type.toLowerCase()) {
+                case "spring", "spring boot" -> "🍃";
+                case "kotlin" -> "🔷";
+                case "python" -> "🐍";
+                case "hibernate" -> "🧊";
+                case "jpa" -> "🗄";
+                case "web" -> "🌐";
+                case "javaee application", "javaee", "jakarta" -> "🏢";
+                case "jruby" -> "💎";
+                case "jruby on rails" -> "🛤";
+                case "javafx" -> "🖼";
+                default -> "✦";
+            };
+        }
     }
 
     public static class LibraryModel {
         private String name;
-        private List<String> classesPaths = new ArrayList<>();
-        private List<String> sourcesPaths = new ArrayList<>();
-        private List<String> javadocPaths = new ArrayList<>();
+        private final List<String> classesPaths = new ArrayList<>();
+        private final List<String> sourcesPaths = new ArrayList<>();
+        private final List<String> javadocPaths = new ArrayList<>();
 
         public LibraryModel(String name) {
             this.name = name;
+        }
+
+        public static LibraryModel createMavenLibrary(String groupId, String artifactId, String version) {
+            return createMavenLibrary(groupId, artifactId, null, version);
+        }
+
+        public static LibraryModel createMavenLibrary(String groupId, String artifactId, String classifier, String version) {
+            StringBuilder label = new StringBuilder("Maven: ");
+            if (groupId != null && !groupId.isBlank()) label.append(groupId).append(":");
+            label.append(artifactId != null ? artifactId : "unknown");
+            if (classifier != null && !classifier.isBlank()) label.append(":").append(classifier);
+            if (version != null && !version.isBlank()) label.append(":").append(version);
+
+            LibraryModel lib = new LibraryModel(label.toString());
+
+            if (groupId != null && artifactId != null && version != null && !version.isBlank()) {
+                String home = System.getProperty("user.home");
+                Path m2 = Path.of(home, ".m2", "repository");
+                String groupSubdir = groupId.replace('.', File.separatorChar);
+                Path artifactDir = m2.resolve(groupSubdir).resolve(artifactId).resolve(version);
+
+                String jarName = classifier != null && !classifier.isBlank()
+                        ? artifactId + "-" + version + "-" + classifier + ".jar"
+                        : artifactId + "-" + version + ".jar";
+                Path classJar = artifactDir.resolve(jarName);
+                Path sourceJar = artifactDir.resolve(artifactId + "-" + version + "-sources.jar");
+                Path javadocJar = artifactDir.resolve(artifactId + "-" + version + "-javadoc.jar");
+
+                lib.getClassesPaths().add(classJar.toAbsolutePath().toString());
+                lib.getSourcesPaths().add(sourceJar.toAbsolutePath().toString());
+                lib.getJavadocPaths().add(javadocJar.toAbsolutePath().toString());
+            }
+            return lib;
+        }
+
+        public LibraryModel duplicate(String newName) {
+            LibraryModel copy = new LibraryModel(newName);
+            copy.classesPaths.addAll(this.classesPaths);
+            copy.sourcesPaths.addAll(this.sourcesPaths);
+            copy.javadocPaths.addAll(this.javadocPaths);
+            return copy;
+        }
+
+        public static String getIconGlyph(String name) {
+            if (name == null) return "📚";
+            String lower = name.toLowerCase();
+            if (lower.contains("kotlin")) return "🟪";
+            if (lower.contains("scala")) return "🔴";
+            if (lower.contains("maven")) return "Ⓜ";
+            return "📚";
         }
 
         public String getName() { return name; }
@@ -94,15 +218,100 @@ public final class ProjectStructureModel {
         public List<String> getJavadocPaths() { return javadocPaths; }
     }
 
+    public static class GlobalLibraries {
+        private static final Preferences PREFS = Preferences.userNodeForPackage(ProjectStructureModel.class);
+        private static final String PREF_KEY = "lumina.global.libraries";
+        private static final com.google.gson.Gson GSON = new com.google.gson.Gson();
+
+        private static class StoredLib {
+            String name;
+            List<String> classes = new ArrayList<>();
+            List<String> sources = new ArrayList<>();
+            List<String> javadocs = new ArrayList<>();
+        }
+
+        public static List<LibraryModel> load() {
+            List<LibraryModel> list = new ArrayList<>();
+            String raw = PREFS.get(PREF_KEY, "");
+            if (raw.isBlank()) {
+                return list;
+            }
+            try {
+                StoredLib[] arr = GSON.fromJson(raw, StoredLib[].class);
+                if (arr != null) {
+                    for (StoredLib sl : arr) {
+                        LibraryModel lm = new LibraryModel(sl.name);
+                        if (sl.classes != null) lm.getClassesPaths().addAll(sl.classes);
+                        if (sl.sources != null) lm.getSourcesPaths().addAll(sl.sources);
+                        if (sl.javadocs != null) lm.getJavadocPaths().addAll(sl.javadocs);
+                        list.add(lm);
+                    }
+                }
+            } catch (Exception ignored) {}
+            return list;
+        }
+
+        public static void save(List<LibraryModel> libraries) {
+            List<StoredLib> stored = new ArrayList<>();
+            for (LibraryModel lib : libraries) {
+                StoredLib sl = new StoredLib();
+                sl.name = lib.getName();
+                sl.classes.addAll(lib.getClassesPaths());
+                sl.sources.addAll(lib.getSourcesPaths());
+                sl.javadocs.addAll(lib.getJavadocPaths());
+                stored.add(sl);
+            }
+            PREFS.put(PREF_KEY, GSON.toJson(stored));
+        }
+
+        public static void add(LibraryModel lib) {
+            List<LibraryModel> current = new ArrayList<>(load());
+            current.removeIf(l -> l.getName().equals(lib.getName()));
+            current.add(lib);
+            save(current);
+        }
+
+        public static void remove(LibraryModel lib) {
+            List<LibraryModel> current = new ArrayList<>(load());
+            current.removeIf(l -> l.getName().equals(lib.getName()));
+            save(current);
+        }
+    }
+
     public static class ArtifactModel {
         private String name;
         private String type;
         private String outputPath;
+        private boolean includeInBuild = false;
+        private final List<String> outputLayout = new ArrayList<>();
 
         public ArtifactModel(String name, String type, String outputPath) {
+            this(name, type, outputPath, false);
+        }
+
+        public ArtifactModel(String name, String type, String outputPath, boolean includeInBuild) {
             this.name = name;
             this.type = type;
             this.outputPath = outputPath;
+            this.includeInBuild = includeInBuild;
+        }
+
+        public ArtifactModel duplicate(String newName) {
+            ArtifactModel copy = new ArtifactModel(newName, this.type, this.outputPath, this.includeInBuild);
+            copy.outputLayout.addAll(this.outputLayout);
+            return copy;
+        }
+
+        public static String getIconGlyph(String type) {
+            if (type == null) return "📦";
+            String lower = type.toLowerCase();
+            if (lower.contains("jar")) return "📦";
+            if (lower.contains("jlink") || lower.contains("run-time image")) return "🔷";
+            if (lower.contains("javafx")) return "🧩";
+            if (lower.contains("web")) return "🌐";
+            if (lower.contains("java ee") || lower.contains("ejb")) return "☕";
+            if (lower.contains("platform") || lower.contains("package")) return "💿";
+            return "📦";
         }
 
         public String getName() { return name; }
@@ -111,6 +320,9 @@ public final class ProjectStructureModel {
         public void setType(String type) { this.type = type; }
         public String getOutputPath() { return outputPath; }
         public void setOutputPath(String outputPath) { this.outputPath = outputPath; }
+        public boolean isIncludeInBuild() { return includeInBuild; }
+        public void setIncludeInBuild(boolean includeInBuild) { this.includeInBuild = includeInBuild; }
+        public List<String> getOutputLayout() { return outputLayout; }
     }
 
     public static class ModuleModel {
@@ -128,6 +340,9 @@ public final class ProjectStructureModel {
         private boolean inheritCompilerOutput = true;
         private String outputPath = "";
         private String testOutputPath = "";
+        private boolean excludeOutputPaths = false;
+        private final List<String> javadocPaths = new ArrayList<>();
+        private final List<String> externalAnnotationsPaths = new ArrayList<>();
         private final List<DependencyItem> dependencies = new ArrayList<>();
 
         public ModuleModel(String name, Path contentRoot) {
@@ -160,6 +375,10 @@ public final class ProjectStructureModel {
         public void setOutputPath(String outputPath) { this.outputPath = outputPath; }
         public String getTestOutputPath() { return testOutputPath; }
         public void setTestOutputPath(String testOutputPath) { this.testOutputPath = testOutputPath; }
+        public boolean isExcludeOutputPaths() { return excludeOutputPaths; }
+        public void setExcludeOutputPaths(boolean excludeOutputPaths) { this.excludeOutputPaths = excludeOutputPaths; }
+        public List<String> getJavadocPaths() { return javadocPaths; }
+        public List<String> getExternalAnnotationsPaths() { return externalAnnotationsPaths; }
         public List<DependencyItem> getDependencies() { return dependencies; }
 
         public void markFolder(String relativePath, FolderType targetType) {
@@ -321,10 +540,13 @@ public final class ProjectStructureModel {
 
         private static void inspectMaven(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("JAVA_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK));
+            ProjectSdk.SdkItem jdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK);
+            model.setProjectSdk(jdk);
             model.setCompilerOutput(root.resolve("target/classes").toString());
+            module.setInheritCompilerOutput(false);
             module.setOutputPath(root.resolve("target/classes").toString());
             module.setTestOutputPath(root.resolve("target/test-classes").toString());
+            module.setExcludeOutputPaths(false);
 
             addFolderIfExists(root, module, "src/main/java", FolderType.SOURCE);
             addFolderIfExists(root, module, "src/main/kotlin", FolderType.SOURCE);
@@ -334,6 +556,10 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, "src/test/resources", FolderType.TEST_RESOURCE);
             addFolderIfExists(root, module, "target", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
+
+            // SDK and Module Source dependency rows
+            module.getDependencies().add(DependencyItem.forSdk(jdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
 
             try {
                 String pom = Files.readString(root.resolve("pom.xml"));
@@ -355,46 +581,81 @@ public final class ProjectStructureModel {
                     }
                 }
 
+                // Extract Maven properties to resolve ${...} in versions/classifiers
+                Map<String, String> properties = new HashMap<>();
+                Matcher propBlock = Pattern.compile("<properties>([\\s\\S]*?)</properties>").matcher(pom);
+                if (propBlock.find()) {
+                    Matcher propMatch = Pattern.compile("<([a-zA-Z0-9._-]+)>([^<]+)</\\1>").matcher(propBlock.group(1));
+                    while (propMatch.find()) {
+                        properties.put(propMatch.group(1), propMatch.group(2).trim());
+                    }
+                }
+
                 // Dependencies
                 Matcher depMatch = Pattern.compile("<dependency>([\\s\\S]*?)</dependency>").matcher(pom);
                 while (depMatch.find()) {
                     String block = depMatch.group(1);
                     String g = extractTag(block, "groupId");
                     String a = extractTag(block, "artifactId");
+                    String c = extractTag(block, "classifier");
                     String v = extractTag(block, "version");
                     String s = extractTag(block, "scope");
+
+                    g = resolveProperty(g, properties);
+                    a = resolveProperty(a, properties);
+                    c = resolveProperty(c, properties);
+                    v = resolveProperty(v, properties);
+
                     if (s == null || s.isBlank()) s = "Compile";
                     else s = Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase();
 
-                    String label = (g != null && !g.isBlank() ? g + ":" : "") + (a != null ? a : "dep") + (v != null && !v.isBlank() ? ":" + v : "");
-                    module.getDependencies().add(new DependencyItem(label, s, false));
-                    model.getLibraries().add(new LibraryModel("Maven: " + label));
+                    LibraryModel lib = LibraryModel.createMavenLibrary(g, a, c, v);
+                    model.getLibraries().add(lib);
+                    module.getDependencies().add(DependencyItem.forLibrary(lib, s, false));
 
                     if ("spring-boot-starter".equals(a) || (g != null && g.contains("springframework.boot"))) {
                         if (model.getFacets().stream().noneMatch(f -> "Spring Boot".equals(f.getName()))) {
-                            model.getFacets().add(new FacetModel("Spring Boot", "Spring"));
+                            model.getFacets().add(new FacetModel("Spring Boot", "Spring", module.getName()));
                         }
                     }
                     if ("javafx-controls".equals(a) || (g != null && g.contains("openjfx"))) {
                         if (model.getFacets().stream().noneMatch(f -> "JavaFX".equals(f.getName()))) {
-                            model.getFacets().add(new FacetModel("JavaFX", "JavaFX"));
+                            model.getFacets().add(new FacetModel("JavaFX", "JavaFX", module.getName()));
                         }
                     }
                     if ("kotlin-stdlib".equals(a) || (g != null && g.contains("jetbrains.kotlin"))) {
                         if (model.getFacets().stream().noneMatch(f -> "Kotlin".equals(f.getName()))) {
-                            model.getFacets().add(new FacetModel("Kotlin", "Kotlin"));
+                            model.getFacets().add(new FacetModel("Kotlin", "Kotlin", module.getName()));
+                        }
+                    }
+                    if ("hibernate-core".equals(a) || (g != null && g.contains("hibernate"))) {
+                        if (model.getFacets().stream().noneMatch(f -> "Hibernate".equals(f.getName()))) {
+                            model.getFacets().add(new FacetModel("Hibernate", "Hibernate", module.getName()));
                         }
                     }
                 }
             } catch (Exception ignored) {}
         }
 
+        private static String resolveProperty(String val, Map<String, String> props) {
+            if (val == null) return null;
+            val = val.trim();
+            if (val.startsWith("${") && val.endsWith("}")) {
+                String key = val.substring(2, val.length() - 1);
+                return props.getOrDefault(key, val);
+            }
+            return val;
+        }
+
         private static void inspectGradle(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("JAVA_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK));
+            ProjectSdk.SdkItem jdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK);
+            model.setProjectSdk(jdk);
             model.setCompilerOutput(root.resolve("build/classes/java/main").toString());
+            module.setInheritCompilerOutput(false);
             module.setOutputPath(root.resolve("build/classes/java/main").toString());
             module.setTestOutputPath(root.resolve("build/classes/java/test").toString());
+            module.setExcludeOutputPaths(false);
 
             addFolderIfExists(root, module, "src/main/java", FolderType.SOURCE);
             addFolderIfExists(root, module, "src/main/kotlin", FolderType.SOURCE);
@@ -405,6 +666,10 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, "build", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".gradle", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
+
+            // SDK and Module Source dependency rows
+            module.getDependencies().add(DependencyItem.forSdk(jdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
 
             // Read settings.gradle or build.gradle
             Path settings = root.resolve("settings.gradle");
@@ -432,13 +697,30 @@ public final class ProjectStructureModel {
                         module.setLanguageLevel(ver);
                     }
                     if (content.contains("org.springframework.boot")) {
-                        model.getFacets().add(new FacetModel("Spring Boot", "Spring"));
+                        model.getFacets().add(new FacetModel("Spring Boot", "Spring", module.getName()));
                     }
                     if (content.contains("javafx")) {
-                        model.getFacets().add(new FacetModel("JavaFX", "JavaFX"));
+                        model.getFacets().add(new FacetModel("JavaFX", "JavaFX", module.getName()));
                     }
                     if (content.contains("kotlin(\"jvm\")") || content.contains("org.jetbrains.kotlin")) {
-                        model.getFacets().add(new FacetModel("Kotlin", "Kotlin"));
+                        model.getFacets().add(new FacetModel("Kotlin", "Kotlin", module.getName()));
+                    }
+
+                    // Parse Gradle dependencies
+                    Matcher gDep = Pattern.compile("(?:implementation|testImplementation|compileOnly|runtimeOnly|api)\\s*\\(?['\"]([^:'\"]+):([^:'\"]+):([^:'\"]+)['\"]\\)?").matcher(content);
+                    while (gDep.find()) {
+                        String g = gDep.group(1);
+                        String a = gDep.group(2);
+                        String v = gDep.group(3);
+                        String matchFull = gDep.group(0);
+                        String scope = "Compile";
+                        if (matchFull.startsWith("testImplementation")) scope = "Test";
+                        else if (matchFull.startsWith("compileOnly")) scope = "Provided";
+                        else if (matchFull.startsWith("runtimeOnly")) scope = "Runtime";
+
+                        LibraryModel lib = LibraryModel.createMavenLibrary(g, a, v);
+                        model.getLibraries().add(lib);
+                        module.getDependencies().add(DependencyItem.forLibrary(lib, scope, false));
                     }
                 } catch (Exception ignored) {}
             }
@@ -446,7 +728,8 @@ public final class ProjectStructureModel {
 
         private static void inspectPython(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("PYTHON_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.PYTHON));
+            ProjectSdk.SdkItem pySdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.PYTHON);
+            model.setProjectSdk(pySdk);
             model.setLanguageLevel("Python 3.12");
             module.setLanguageLevel("Python 3.12");
 
@@ -460,7 +743,10 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, ".pytest_cache", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
 
-            model.getFacets().add(new FacetModel("Python", "Python"));
+            module.getDependencies().add(DependencyItem.forSdk(pySdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
+
+            model.getFacets().add(new FacetModel("Python", "Python", module.getName()));
 
             Path reqs = root.resolve("requirements.txt");
             if (Files.isRegularFile(reqs)) {
@@ -477,7 +763,8 @@ public final class ProjectStructureModel {
 
         private static void inspectPhp(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("PHP_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.PHP));
+            ProjectSdk.SdkItem phpSdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.PHP);
+            model.setProjectSdk(phpSdk);
             model.setLanguageLevel("8.3");
             module.setLanguageLevel("8.3");
 
@@ -487,7 +774,10 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, "vendor", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
 
-            model.getFacets().add(new FacetModel("PHP", "PHP"));
+            module.getDependencies().add(DependencyItem.forSdk(phpSdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
+
+            model.getFacets().add(new FacetModel("PHP", "PHP", module.getName()));
 
             Path comp = root.resolve("composer.json");
             if (Files.isRegularFile(comp)) {
@@ -506,7 +796,8 @@ public final class ProjectStructureModel {
 
         private static void inspectNode(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("WEB_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.NODE));
+            ProjectSdk.SdkItem nodeSdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.NODE);
+            model.setProjectSdk(nodeSdk);
 
             addFolderIfExists(root, module, "src", FolderType.SOURCE);
             addFolderIfExists(root, module, "public", FolderType.RESOURCE);
@@ -515,12 +806,16 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, "build", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
 
-            model.getFacets().add(new FacetModel("Node.js", "Web"));
+            module.getDependencies().add(DependencyItem.forSdk(nodeSdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
+
+            model.getFacets().add(new FacetModel("Node.js", "Web", module.getName()));
         }
 
         private static void inspectGeneric(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
             module.setType("JAVA_MODULE");
-            model.setProjectSdk(findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK));
+            ProjectSdk.SdkItem jdk = findFirstSdkOfType(allSdks, ProjectSdk.SdkType.JDK);
+            model.setProjectSdk(jdk);
 
             addFolderIfExists(root, module, "src/main/java", FolderType.SOURCE);
             addFolderIfExists(root, module, "src/main/resources", FolderType.RESOURCE);
@@ -529,6 +824,9 @@ public final class ProjectStructureModel {
             addFolderIfExists(root, module, "target", FolderType.EXCLUDED);
             addFolderIfExists(root, module, "build", FolderType.EXCLUDED);
             addFolderIfExists(root, module, ".idea", FolderType.EXCLUDED);
+
+            module.getDependencies().add(DependencyItem.forSdk(jdk));
+            module.getDependencies().add(DependencyItem.forModuleSource());
         }
 
         private static void addFolderIfExists(Path root, ModuleModel module, String rel, FolderType type) {
@@ -663,9 +961,64 @@ public final class ProjectStructureModel {
                             module.markFolder(e.getAsString(), FolderType.TEST_RESOURCE);
                         }
                     }
-                    if (obj.has("excluded")) {
-                        for (JsonElement e : obj.getAsJsonArray("excluded")) {
-                            module.markFolder(e.getAsString(), FolderType.EXCLUDED);
+                    if (obj.has("inheritCompilerOutput")) module.setInheritCompilerOutput(obj.get("inheritCompilerOutput").getAsBoolean());
+                    if (obj.has("outputPath")) module.setOutputPath(obj.get("outputPath").getAsString());
+                    if (obj.has("testOutputPath")) module.setTestOutputPath(obj.get("testOutputPath").getAsString());
+                    if (obj.has("excludeOutputPaths")) module.setExcludeOutputPaths(obj.get("excludeOutputPaths").getAsBoolean());
+                    if (obj.has("javadocPaths")) {
+                        module.getJavadocPaths().clear();
+                        for (JsonElement e : obj.getAsJsonArray("javadocPaths")) module.getJavadocPaths().add(e.getAsString());
+                    }
+                    if (obj.has("annotationsPaths")) {
+                        module.getExternalAnnotationsPaths().clear();
+                        for (JsonElement e : obj.getAsJsonArray("annotationsPaths")) module.getExternalAnnotationsPaths().add(e.getAsString());
+                    }
+                    if (obj.has("dependencies")) {
+                        module.getDependencies().clear();
+                        for (JsonElement e : obj.getAsJsonArray("dependencies")) {
+                            JsonObject d = e.getAsJsonObject();
+                            DependencyItem di = new DependencyItem(
+                                    d.get("name").getAsString(),
+                                    d.has("scope") ? d.get("scope").getAsString() : "Compile",
+                                    d.has("isModule") && d.get("isModule").getAsBoolean(),
+                                    d.has("export") && d.get("export").getAsBoolean()
+                            );
+                            if (d.has("isSdk") && d.get("isSdk").getAsBoolean()) di.setSdk(true);
+                            if (d.has("isModuleSource") && d.get("isModuleSource").getAsBoolean()) di.setModuleSource(true);
+                            module.getDependencies().add(di);
+                        }
+                    }
+                    if (obj.has("libraries")) {
+                        model.getLibraries().clear();
+                        for (JsonElement e : obj.getAsJsonArray("libraries")) {
+                            JsonObject l = e.getAsJsonObject();
+                            LibraryModel lib = new LibraryModel(l.get("name").getAsString());
+                            if (l.has("classes")) {
+                                for (JsonElement cp : l.getAsJsonArray("classes")) lib.getClassesPaths().add(cp.getAsString());
+                            }
+                            if (l.has("sources")) {
+                                for (JsonElement sp : l.getAsJsonArray("sources")) lib.getSourcesPaths().add(sp.getAsString());
+                            }
+                            if (l.has("javadoc")) {
+                                for (JsonElement jp : l.getAsJsonArray("javadoc")) lib.getJavadocPaths().add(jp.getAsString());
+                            }
+                            model.getLibraries().add(lib);
+                        }
+                    }
+                    if (obj.has("facets")) {
+                        model.getFacets().clear();
+                        for (JsonElement e : obj.getAsJsonArray("facets")) {
+                            JsonObject f = e.getAsJsonObject();
+                            FacetModel facet = new FacetModel(
+                                    f.get("name").getAsString(),
+                                    f.get("type").getAsString(),
+                                    f.has("module") ? f.get("module").getAsString() : module.getName()
+                            );
+                            if (f.has("config")) {
+                                JsonObject c = f.getAsJsonObject("config");
+                                for (String k : c.keySet()) facet.getConfiguration().put(k, c.get(k).getAsString());
+                            }
+                            model.getFacets().add(facet);
                         }
                     }
                 } catch (Exception ignored) {}
@@ -721,9 +1074,21 @@ public final class ProjectStructureModel {
                         <?xml version="1.0" encoding="UTF-8"?>
                         <module type="%s" version="4">
                           <component name="NewModuleRootManager" inherit-compiler-output="%b">
-                            <exclude-output />
-                            <content url="file://$MODULE_DIR$/..">
                         """.formatted(primary.getType(), primary.isInheritCompilerOutput()));
+
+                if (!primary.isInheritCompilerOutput()) {
+                    if (primary.getOutputPath() != null && !primary.getOutputPath().isBlank()) {
+                        imlContent.append("    <output url=\"file://").append(primary.getOutputPath()).append("\" />\n");
+                    }
+                    if (primary.getTestOutputPath() != null && !primary.getTestOutputPath().isBlank()) {
+                        imlContent.append("    <output-test url=\"file://").append(primary.getTestOutputPath()).append("\" />\n");
+                    }
+                }
+                if (primary.isExcludeOutputPaths()) {
+                    imlContent.append("    <exclude-output />\n");
+                }
+
+                imlContent.append("    <content url=\"file://$MODULE_DIR$/..\">\n");
 
                 for (String sf : primary.getSourceFolders()) {
                     imlContent.append("      <sourceFolder url=\"file://$MODULE_DIR$/../").append(sf).append("\" isTestSource=\"false\" />\n");
@@ -741,10 +1106,29 @@ public final class ProjectStructureModel {
                     imlContent.append("      <excludeFolder url=\"file://$MODULE_DIR$/../").append(ef).append("\" />\n");
                 }
 
+                imlContent.append("    </content>\n");
+
+                for (DependencyItem dep : primary.getDependencies()) {
+                    if (dep.isSdk()) {
+                        imlContent.append("    <orderEntry type=\"inheritedJdk\" />\n");
+                    } else if (dep.isModuleSource()) {
+                        imlContent.append("    <orderEntry type=\"sourceFolder\" forTests=\"false\" />\n");
+                    } else if (dep.isModule()) {
+                        imlContent.append("    <orderEntry type=\"module\" module-name=\"")
+                                .append(dep.getName()).append("\"")
+                                .append(dep.isExport() ? " exported=\"\"" : "")
+                                .append(dep.getScope() != null && !dep.getScope().isBlank() ? " scope=\"" + dep.getScope() + "\"" : "")
+                                .append(" />\n");
+                    } else {
+                        imlContent.append("    <orderEntry type=\"library\" name=\"")
+                                .append(dep.getName()).append("\" level=\"project\"")
+                                .append(dep.isExport() ? " exported=\"\"" : "")
+                                .append(dep.getScope() != null && !dep.getScope().isBlank() ? " scope=\"" + dep.getScope() + "\"" : "")
+                                .append(" />\n");
+                    }
+                }
+
                 imlContent.append("""
-                            </content>
-                            <orderEntry type="inheritedJdk" />
-                            <orderEntry type="sourceFolder" forTests="false" />
                           </component>
                         </module>
                         """);
@@ -760,6 +1144,19 @@ public final class ProjectStructureModel {
                 if (model.getProjectSdk() != null) json.addProperty("sdkName", model.getProjectSdk().name());
                 json.addProperty("languageLevel", model.getLanguageLevel());
                 json.addProperty("compilerOutput", model.getCompilerOutput());
+
+                json.addProperty("inheritCompilerOutput", primary.isInheritCompilerOutput());
+                json.addProperty("outputPath", primary.getOutputPath());
+                json.addProperty("testOutputPath", primary.getTestOutputPath());
+                json.addProperty("excludeOutputPaths", primary.isExcludeOutputPaths());
+
+                JsonArray javadocArr = new JsonArray();
+                primary.getJavadocPaths().forEach(javadocArr::add);
+                json.add("javadocPaths", javadocArr);
+
+                JsonArray annoArr = new JsonArray();
+                primary.getExternalAnnotationsPaths().forEach(annoArr::add);
+                json.add("annotationsPaths", annoArr);
 
                 JsonArray sourcesArr = new JsonArray();
                 primary.getSourceFolders().forEach(sourcesArr::add);
@@ -780,6 +1177,49 @@ public final class ProjectStructureModel {
                 JsonArray exclArr = new JsonArray();
                 primary.getExcludedFolders().forEach(exclArr::add);
                 json.add("excluded", exclArr);
+
+                JsonArray depsArr = new JsonArray();
+                for (DependencyItem di : primary.getDependencies()) {
+                    JsonObject dObj = new JsonObject();
+                    dObj.addProperty("name", di.getName());
+                    dObj.addProperty("scope", di.getScope());
+                    dObj.addProperty("export", di.isExport());
+                    dObj.addProperty("isModule", di.isModule());
+                    dObj.addProperty("isSdk", di.isSdk());
+                    dObj.addProperty("isModuleSource", di.isModuleSource());
+                    depsArr.add(dObj);
+                }
+                json.add("dependencies", depsArr);
+
+                JsonArray libsArr = new JsonArray();
+                for (LibraryModel lm : model.getLibraries()) {
+                    JsonObject lObj = new JsonObject();
+                    lObj.addProperty("name", lm.getName());
+                    JsonArray cpArr = new JsonArray();
+                    lm.getClassesPaths().forEach(cpArr::add);
+                    lObj.add("classes", cpArr);
+                    JsonArray spArr = new JsonArray();
+                    lm.getSourcesPaths().forEach(spArr::add);
+                    lObj.add("sources", spArr);
+                    JsonArray jpArr = new JsonArray();
+                    lm.getJavadocPaths().forEach(jpArr::add);
+                    lObj.add("javadoc", jpArr);
+                    libsArr.add(lObj);
+                }
+                json.add("libraries", libsArr);
+
+                JsonArray facetsArr = new JsonArray();
+                for (FacetModel fm : model.getFacets()) {
+                    JsonObject fObj = new JsonObject();
+                    fObj.addProperty("name", fm.getName());
+                    fObj.addProperty("type", fm.getType());
+                    fObj.addProperty("module", fm.getModuleName());
+                    JsonObject cfgObj = new JsonObject();
+                    fm.getConfiguration().forEach(cfgObj::addProperty);
+                    fObj.add("config", cfgObj);
+                    facetsArr.add(fObj);
+                }
+                json.add("facets", facetsArr);
 
                 Files.writeString(luminaDir.resolve("project-structure.json"),
                         new GsonBuilder().setPrettyPrinting().create().toJson(json));

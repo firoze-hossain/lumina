@@ -267,4 +267,309 @@ class ProjectStructureTest {
         List<ProjectSdk.SdkItem> all = ProjectSdk.discoverAllSdks();
         assertTrue(all.stream().anyMatch(s -> s.id().equals(registered.id())));
     }
+
+    @Test
+    void testModulePathsConfiguration(@TempDir Path tempDir) {
+        ModuleModel module = new ModuleModel("test-module", tempDir);
+        module.setInheritCompilerOutput(false);
+        module.setOutputPath("/path/to/classes");
+        module.setTestOutputPath("/path/to/test-classes");
+        module.setExcludeOutputPaths(false);
+
+        assertFalse(module.isInheritCompilerOutput());
+        assertEquals("/path/to/classes", module.getOutputPath());
+        assertEquals("/path/to/test-classes", module.getTestOutputPath());
+        assertFalse(module.isExcludeOutputPaths());
+
+        module.getJavadocPaths().add("https://docs.oracle.com/en/java/javase/21/docs/api/");
+        module.getExternalAnnotationsPaths().add("/path/to/annotations");
+
+        assertEquals(1, module.getJavadocPaths().size());
+        assertEquals(1, module.getExternalAnnotationsPaths().size());
+        assertTrue(module.getJavadocPaths().getFirst().startsWith("https://"));
+        assertEquals("/path/to/annotations", module.getExternalAnnotationsPaths().getFirst());
+    }
+
+    @Test
+    void testModuleDependenciesHierarchy(@TempDir Path tempDir) throws IOException {
+        String pomXml = """
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                  <modelVersion>4.0.0</modelVersion>
+                  <groupId>dev.lumina</groupId>
+                  <artifactId>sample-dep-app</artifactId>
+                  <version>1.0.0</version>
+                  <dependencies>
+                    <dependency>
+                      <groupId>org.openjfx</groupId>
+                      <artifactId>javafx-controls</artifactId>
+                      <version>23.0.2</version>
+                      <scope>compile</scope>
+                    </dependency>
+                    <dependency>
+                      <groupId>org.junit.jupiter</groupId>
+                      <artifactId>junit-jupiter</artifactId>
+                      <version>5.10.2</version>
+                      <scope>test</scope>
+                    </dependency>
+                  </dependencies>
+                </project>
+                """;
+        Files.writeString(tempDir.resolve("pom.xml"), pomXml);
+
+        ProjectStructureModel model = ProjectStructureModel.Service.load(tempDir);
+        ModuleModel module = model.getPrimaryModule();
+
+        assertNotNull(module);
+        List<ProjectStructureModel.DependencyItem> deps = module.getDependencies();
+        assertTrue(deps.size() >= 4, "Should have SDK, Module source, and at least 2 Maven dependencies");
+
+        // Row 1: SDK
+        ProjectStructureModel.DependencyItem row1 = deps.get(0);
+        assertTrue(row1.isSdk(), "Row 1 must be SDK entry");
+
+        // Row 2: Module source
+        ProjectStructureModel.DependencyItem row2 = deps.get(1);
+        assertTrue(row2.isModuleSource(), "Row 2 must be Module Source");
+        assertEquals("<Module source>", row2.getName());
+
+        // Row 3: Library with Scope
+        ProjectStructureModel.DependencyItem row3 = deps.get(2);
+        assertFalse(row3.isSdk());
+        assertFalse(row3.isModuleSource());
+        assertTrue(row3.getName().contains("javafx-controls"));
+        assertEquals("Compile", row3.getScope());
+        assertFalse(row3.isExport());
+
+        // Test export toggle
+        row3.setExport(true);
+        assertTrue(row3.isExport());
+
+        // Row 4: Test scope
+        ProjectStructureModel.DependencyItem row4 = deps.get(3);
+        assertTrue(row4.getName().contains("junit-jupiter"));
+        assertEquals("Test", row4.getScope());
+    }
+
+    @Test
+    void testLibraryDynamicPathResolution() {
+        ProjectStructureModel.LibraryModel lib = ProjectStructureModel.LibraryModel.createMavenLibrary(
+                "com.google.code.gson", "gson", "2.10.1"
+        );
+        assertNotNull(lib);
+        assertEquals("Maven: com.google.code.gson:gson:2.10.1", lib.getName());
+
+        assertFalse(lib.getClassesPaths().isEmpty());
+        String classJar = lib.getClassesPaths().getFirst();
+        assertTrue(classJar.contains(".m2"));
+        assertTrue(classJar.contains("gson-2.10.1.jar"));
+
+        assertFalse(lib.getSourcesPaths().isEmpty());
+        String sourceJar = lib.getSourcesPaths().getFirst();
+        assertTrue(sourceJar.contains("gson-2.10.1-sources.jar"));
+
+        assertFalse(lib.getJavadocPaths().isEmpty());
+        String javadocJar = lib.getJavadocPaths().getFirst();
+        assertTrue(javadocJar.contains("gson-2.10.1-javadoc.jar"));
+
+        // Classifier test
+        ProjectStructureModel.LibraryModel classifierLib = ProjectStructureModel.LibraryModel.createMavenLibrary(
+                "org.openjfx", "javafx-controls", "mac-aarch64", "23.0.2"
+        );
+        assertEquals("Maven: org.openjfx:javafx-controls:mac-aarch64:23.0.2", classifierLib.getName());
+        assertTrue(classifierLib.getClassesPaths().getFirst().contains("javafx-controls-23.0.2-mac-aarch64.jar"));
+    }
+
+    @Test
+    void testFacetsAddAndConfiguration(@TempDir Path tempDir) throws IOException {
+        ProjectStructureModel model = ProjectStructureModel.Service.load(tempDir);
+        String modName = model.getPrimaryModule().getName();
+
+        // Test glyph lookup
+        assertEquals("🍃", ProjectStructureModel.FacetModel.getIconGlyph("Spring"));
+        assertEquals("🍃", ProjectStructureModel.FacetModel.getIconGlyph("Spring Boot"));
+        assertEquals("🔷", ProjectStructureModel.FacetModel.getIconGlyph("Kotlin"));
+        assertEquals("🐍", ProjectStructureModel.FacetModel.getIconGlyph("Python"));
+        assertEquals("🧊", ProjectStructureModel.FacetModel.getIconGlyph("Hibernate"));
+        assertEquals("🗄", ProjectStructureModel.FacetModel.getIconGlyph("JPA"));
+        assertEquals("🌐", ProjectStructureModel.FacetModel.getIconGlyph("Web"));
+        assertEquals("🏢", ProjectStructureModel.FacetModel.getIconGlyph("JavaEE Application"));
+        assertEquals("💎", ProjectStructureModel.FacetModel.getIconGlyph("JRuby"));
+        assertEquals("🛤", ProjectStructureModel.FacetModel.getIconGlyph("JRuby on Rails"));
+
+        // Add facets
+        ProjectStructureModel.FacetModel springFacet = new ProjectStructureModel.FacetModel("Spring Boot", "Spring", modName);
+        springFacet.getConfiguration().put("Application Context", "application.yml");
+        model.getFacets().add(springFacet);
+
+        ProjectStructureModel.FacetModel kotlinFacet = new ProjectStructureModel.FacetModel("Kotlin", "Kotlin", modName);
+        kotlinFacet.getConfiguration().put("Language Version", "2.1");
+        model.getFacets().add(kotlinFacet);
+
+        // Save & reload to verify persistence
+        ProjectStructureModel.Service.save(model);
+        ProjectStructureModel reloaded = ProjectStructureModel.Service.load(tempDir);
+
+        assertNotNull(reloaded);
+        assertEquals(2, reloaded.getFacets().size());
+        assertTrue(reloaded.getFacets().stream().anyMatch(f -> "Spring Boot".equals(f.getName())));
+        assertTrue(reloaded.getFacets().stream().anyMatch(f -> "Kotlin".equals(f.getName())));
+    }
+
+    @Test
+    void testJdkClasspathModulesResolution() {
+        List<ProjectSdk.SdkItem> all = ProjectSdk.discoverAllSdks();
+        ProjectSdk.SdkItem jdk = all.stream()
+                .filter(s -> s.type() == ProjectSdk.SdkType.JDK && s.homePath() != null)
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(jdk, "Expected at least one JDK detected");
+        List<String> cp = ProjectSdk.detectJdkClasspath(jdk.homePath());
+        assertNotNull(cp);
+        assertFalse(cp.isEmpty(), "Classpath entries should not be empty");
+
+        // Verify IntelliJ IDEA format: entries contain '!/java.' or end with .jar/.jmod
+        boolean hasModuleEntry = cp.stream().anyMatch(e -> e.contains("!/java.base") || e.endsWith("java.base"));
+        assertTrue(hasModuleEntry, "JDK classpath should contain java.base module matching IntelliJ IDEA format: " + cp.subList(0, Math.min(5, cp.size())));
+    }
+
+    @Test
+    void testJdkSourcepathModulesResolution() {
+        List<ProjectSdk.SdkItem> all = ProjectSdk.discoverAllSdks();
+        ProjectSdk.SdkItem jdk = all.stream()
+                .filter(s -> s.type() == ProjectSdk.SdkType.JDK && s.homePath() != null)
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(jdk);
+        List<String> sp = ProjectSdk.detectJdkSourcepath(jdk.homePath());
+        assertNotNull(sp);
+        // If host JDK has src.zip, verify it contains !/
+        Path srcZip = Path.of(jdk.homePath()).resolve("lib/src.zip");
+        if (Files.isRegularFile(srcZip)) {
+            assertFalse(sp.isEmpty());
+            boolean hasZipBang = sp.stream().anyMatch(e -> e.contains("lib/src.zip!"));
+            assertTrue(hasZipBang, "Sourcepath should format entries with lib/src.zip!/<module>: " + sp);
+        }
+    }
+
+    @Test
+    void testJdkAnnotationsAndDocumentation() {
+        List<String> annotations = ProjectSdk.detectJdkAnnotations();
+        assertNotNull(annotations);
+        assertFalse(annotations.isEmpty());
+        assertTrue(annotations.getFirst().contains("jdkAnnotations.jar"));
+
+        // By default, IntelliJ IDEA does not bundle local documentation for detected JDKs; list is empty
+        List<String> docs21 = ProjectSdk.detectJdkDocumentation("21");
+        assertNotNull(docs21);
+        assertTrue(docs21.isEmpty(), "JDK documentation list should be empty by default matching IntelliJ IDEA");
+
+        // When the user clicks the 🌐 icon, resolveStandardJdkDocUrl produces the dynamic Oracle JavaDoc URL
+        assertEquals("https://docs.oracle.com/en/java/javase/21/docs/api/", ProjectSdk.resolveStandardJdkDocUrl("21"));
+        assertEquals("https://docs.oracle.com/en/java/javase/25/docs/api/", ProjectSdk.resolveStandardJdkDocUrl("25.0.1"));
+        assertEquals("https://docs.oracle.com/en/java/javase/17/docs/api/", ProjectSdk.resolveStandardJdkDocUrl("17.0.9"));
+        assertEquals("https://docs.oracle.com/en/java/javase/21/docs/api/", ProjectSdk.resolveStandardJdkDocUrl(null));
+    }
+
+    @Test
+    void testArtifactsCreationDuplicationAndLayout() {
+        ProjectStructureModel.ArtifactModel jarArt = new ProjectStructureModel.ArtifactModel(
+                "lumina:jar", "JAR", "/path/to/out/artifacts/lumina_jar", true
+        );
+        jarArt.getOutputLayout().add("'lumina' compile output");
+        jarArt.getOutputLayout().add("gson-2.10.1.jar");
+
+        assertEquals("lumina:jar", jarArt.getName());
+        assertEquals("JAR", jarArt.getType());
+        assertEquals("/path/to/out/artifacts/lumina_jar", jarArt.getOutputPath());
+        assertTrue(jarArt.isIncludeInBuild());
+        assertEquals(2, jarArt.getOutputLayout().size());
+        assertEquals("📦", ProjectStructureModel.ArtifactModel.getIconGlyph("JAR"));
+
+        // Duplicate
+        ProjectStructureModel.ArtifactModel dup = jarArt.duplicate("lumina:jar2");
+        assertEquals("lumina:jar2", dup.getName());
+        assertEquals("JAR", dup.getType());
+        assertEquals(jarArt.getOutputPath(), dup.getOutputPath());
+        assertTrue(dup.isIncludeInBuild());
+        assertEquals(2, dup.getOutputLayout().size());
+
+        // Glyph tests
+        assertEquals("🔷", ProjectStructureModel.ArtifactModel.getIconGlyph("Run-time image (JLink)"));
+        assertEquals("🧩", ProjectStructureModel.ArtifactModel.getIconGlyph("JavaFX application"));
+        assertEquals("🌐", ProjectStructureModel.ArtifactModel.getIconGlyph("Web Application: Exploded"));
+        assertEquals("☕", ProjectStructureModel.ArtifactModel.getIconGlyph("Java EE Application: Archive"));
+        assertEquals("☕", ProjectStructureModel.ArtifactModel.getIconGlyph("EJB Application: Exploded"));
+        assertEquals("💿", ProjectStructureModel.ArtifactModel.getIconGlyph("Platform specific package (DMG)"));
+    }
+
+    @Test
+    void testGlobalLibrariesPersistence() {
+        String testLibName = "TestGlobalLibraryUnit";
+        ProjectStructureModel.LibraryModel lib = new ProjectStructureModel.LibraryModel(testLibName);
+        lib.getClassesPaths().add("/path/to/classes.jar");
+        lib.getSourcesPaths().add("/path/to/sources.jar");
+        lib.getJavadocPaths().add("https://example.com/api");
+
+        // Add & persist
+        ProjectStructureModel.GlobalLibraries.add(lib);
+
+        // Load & verify
+        List<ProjectStructureModel.LibraryModel> loaded = ProjectStructureModel.GlobalLibraries.load();
+        assertNotNull(loaded);
+        assertTrue(loaded.stream().anyMatch(l -> l.getName().equals(testLibName)));
+
+        ProjectStructureModel.LibraryModel found = loaded.stream()
+                .filter(l -> l.getName().equals(testLibName))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(List.of("/path/to/classes.jar"), found.getClassesPaths());
+        assertEquals(List.of("/path/to/sources.jar"), found.getSourcesPaths());
+        assertEquals(List.of("https://example.com/api"), found.getJavadocPaths());
+
+        // Remove & verify
+        ProjectStructureModel.GlobalLibraries.remove(lib);
+        List<ProjectStructureModel.LibraryModel> afterRemove = ProjectStructureModel.GlobalLibraries.load();
+        assertFalse(afterRemove.stream().anyMatch(l -> l.getName().equals(testLibName)));
+    }
+
+    @Test
+    void testLibraryModelDuplicationAndGlyphs() {
+        ProjectStructureModel.LibraryModel lib = new ProjectStructureModel.LibraryModel("Maven: org.junit.jupiter:junit-jupiter:5.10.2");
+        lib.getClassesPaths().add("/path/to/junit-jupiter.jar");
+        lib.getSourcesPaths().add("/path/to/junit-jupiter-sources.jar");
+
+        ProjectStructureModel.LibraryModel copy = lib.duplicate("Maven: org.junit.jupiter:junit-jupiter:5.10.2 (copy)");
+        assertEquals("Maven: org.junit.jupiter:junit-jupiter:5.10.2 (copy)", copy.getName());
+        assertEquals(List.of("/path/to/junit-jupiter.jar"), copy.getClassesPaths());
+        assertEquals(List.of("/path/to/junit-jupiter-sources.jar"), copy.getSourcesPaths());
+
+        // Glyph checks
+        assertEquals("Ⓜ", ProjectStructureModel.LibraryModel.getIconGlyph("Maven: org.example:demo:1.0"));
+        assertEquals("🟪", ProjectStructureModel.LibraryModel.getIconGlyph("KotlinJavaRuntime"));
+        assertEquals("🔴", ProjectStructureModel.LibraryModel.getIconGlyph("scala-sdk-2.13.12"));
+        assertEquals("📚", ProjectStructureModel.LibraryModel.getIconGlyph("custom-library"));
+    }
+
+    @Test
+    void testSdkRegistrationFromDetected() {
+        String testName = "Test Custom JDK 21";
+        String testHome = "/Library/Java/JavaVirtualMachines/test-jdk-21";
+        ProjectSdk.SdkItem registered = ProjectSdk.registerSdk(testName, ProjectSdk.SdkType.JDK, testHome, "21");
+
+        assertNotNull(registered);
+        assertEquals(testName, registered.name());
+        assertEquals(ProjectSdk.SdkType.JDK, registered.type());
+        assertEquals(testHome, registered.homePath());
+        assertTrue(registered.isRegistered());
+
+        // Verify loaded from preferences
+        List<ProjectSdk.SdkItem> list = ProjectSdk.loadRegisteredSdks();
+        assertTrue(list.stream().anyMatch(s -> s.name().equals(testName) && testHome.equals(s.homePath())));
+
+        // Clean up
+        list.removeIf(s -> s.name().equals(testName));
+        ProjectSdk.saveRegisteredSdks(list);
+    }
 }

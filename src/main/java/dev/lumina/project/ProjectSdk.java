@@ -52,8 +52,36 @@ public final class ProjectSdk {
             String version,
             boolean isRegistered,
             boolean isDetected,
-            List<String> classpathEntries
+            List<String> classpathEntries,
+            List<String> sourcepathEntries,
+            List<String> annotationsEntries,
+            List<String> documentationPaths
     ) {
+        public SdkItem(
+                String id,
+                String name,
+                SdkType type,
+                String homePath,
+                String version,
+                boolean isRegistered,
+                boolean isDetected,
+                List<String> classpathEntries
+        ) {
+            this(
+                    id,
+                    name,
+                    type,
+                    homePath,
+                    version,
+                    isRegistered,
+                    isDetected,
+                    classpathEntries,
+                    type == SdkType.JDK ? detectJdkSourcepath(homePath) : List.of(),
+                    type == SdkType.JDK ? detectJdkAnnotations() : List.of(),
+                    type == SdkType.JDK ? detectJdkDocumentation(version) : List.of()
+            );
+        }
+
         @Override
         public String toString() {
             return name;
@@ -179,28 +207,52 @@ public final class ProjectSdk {
 
     /**
      * Resolves real classpath modules/jars for a JDK home.
+     * Matches IntelliJ IDEA format: <jdkHome>!/<moduleName> or <jarPath>.
      */
     public static List<String> detectJdkClasspath(String homePath) {
         List<String> list = new ArrayList<>();
         if (homePath == null || homePath.isBlank()) return list;
 
         Path home = Path.of(homePath);
-        // Modern JDKs: check jmods/
-        Path jmods = home.resolve("jmods");
-        if (Files.isDirectory(jmods)) {
-            try (var s = Files.list(jmods)) {
-                s.filter(p -> p.toString().endsWith(".jmod"))
-                 .sorted()
-                 .forEach(p -> list.add(p.toString()));
+
+        // 1. Modern JDKs: parse release file MODULES="..."
+        Path releaseFile = home.resolve("release");
+        if (Files.isRegularFile(releaseFile)) {
+            try {
+                List<String> lines = Files.readAllLines(releaseFile);
+                for (String line : lines) {
+                    line = line.trim();
+                    if (line.startsWith("MODULES=")) {
+                        String raw = line.substring("MODULES=".length()).replace("\"", "").replace("'", "").trim();
+                        for (String mod : raw.split("\\s+")) {
+                            if (!mod.isBlank()) {
+                                list.add(homePath + "!/" + mod);
+                            }
+                        }
+                        break;
+                    }
+                }
             } catch (Exception ignored) {}
         }
 
-        // If no jmods or in addition, check lib/modules or lib/rt.jar
+        // 2. If release file didn't give modules, inspect jmods/
         if (list.isEmpty()) {
-            Path modulesFile = home.resolve("lib/modules");
-            if (Files.isRegularFile(modulesFile)) {
-                list.add(modulesFile.toString());
+            Path jmods = home.resolve("jmods");
+            if (Files.isDirectory(jmods)) {
+                try (var s = Files.list(jmods)) {
+                    s.filter(p -> p.toString().endsWith(".jmod"))
+                     .sorted()
+                     .forEach(p -> {
+                         String fname = p.getFileName().toString();
+                         String modName = fname.substring(0, fname.length() - 5);
+                         list.add(homePath + "!/" + modName);
+                     });
+                } catch (Exception ignored) {}
             }
+        }
+
+        // 3. Fallback: check legacy rt.jar or lib/modules
+        if (list.isEmpty()) {
             Path rtJar = home.resolve("jre/lib/rt.jar");
             if (Files.isRegularFile(rtJar)) {
                 list.add(rtJar.toString());
@@ -210,9 +262,13 @@ public final class ProjectSdk {
                     list.add(directRt.toString());
                 }
             }
+            Path modulesFile = home.resolve("lib/modules");
+            if (Files.isRegularFile(modulesFile)) {
+                list.add(modulesFile.toString());
+            }
         }
 
-        // Standard standard module names as fallback display
+        // 4. Fallback base modules if nothing could be read
         if (list.isEmpty()) {
             String[] baseMods = {
                     "java.base", "java.compiler", "java.datatransfer", "java.desktop",
@@ -222,11 +278,127 @@ public final class ProjectSdk {
                     "java.xml", "jdk.attach", "jdk.compiler", "jdk.javadoc"
             };
             for (String mod : baseMods) {
-                list.add(homePath + "/" + mod);
+                list.add(homePath + "!/" + mod);
             }
         }
 
         return list;
+    }
+
+    /**
+     * Resolves real sourcepath entries for a JDK home.
+     * Matches IntelliJ IDEA format: <jdkHome>/lib/src.zip!/<moduleName>
+     */
+    public static List<String> detectJdkSourcepath(String homePath) {
+        List<String> list = new ArrayList<>();
+        if (homePath == null || homePath.isBlank()) return list;
+
+        Path home = Path.of(homePath);
+        Path srcZip = home.resolve("lib/src.zip");
+        if (!Files.isRegularFile(srcZip)) {
+            srcZip = home.resolve("src.zip");
+        }
+
+        if (Files.isRegularFile(srcZip)) {
+            // Dynamic inspection of top-level module directories inside src.zip
+            try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(srcZip.toFile())) {
+                Set<String> modules = new TreeSet<>();
+                var entries = zf.entries();
+                while (entries.hasMoreElements()) {
+                    var entry = entries.nextElement();
+                    String name = entry.getName();
+                    int slash = name.indexOf('/');
+                    if (slash > 0) {
+                        String topDir = name.substring(0, slash);
+                        if (!topDir.contains(".") || topDir.startsWith("java.") || topDir.startsWith("jdk.")) {
+                            modules.add(topDir);
+                        }
+                    }
+                }
+                for (String mod : modules) {
+                    list.add(srcZip.toString() + "!/" + mod);
+                }
+            } catch (Exception ignored) {}
+
+            // Fallback: check release file MODULES if zip had no directories or couldn't be read
+            if (list.isEmpty()) {
+                Path releaseFile = home.resolve("release");
+                if (Files.isRegularFile(releaseFile)) {
+                    try {
+                        List<String> lines = Files.readAllLines(releaseFile);
+                        for (String line : lines) {
+                            if (line.trim().startsWith("MODULES=")) {
+                                String raw = line.substring("MODULES=".length()).replace("\"", "").replace("'", "").trim();
+                                for (String m : raw.split("\\s+")) {
+                                    if (!m.isBlank()) {
+                                        list.add(srcZip.toString() + "!/" + m);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (list.isEmpty()) {
+                list.add(srcZip.toString());
+            }
+        }
+
+        return list;
+    }
+
+    /**
+     * Resolves external annotations jar attached to JDK.
+     * Searches standard IntelliJ IDEA and Lumina locations.
+     */
+    public static List<String> detectJdkAnnotations() {
+        List<String> list = new ArrayList<>();
+        List<Path> candidates = List.of(
+                Path.of("/Applications/IntelliJ IDEA.app/Contents/plugins/java/lib/resources/jdkAnnotations.jar"),
+                Path.of("/Applications/IntelliJ IDEA Ultimate.app/Contents/plugins/java/lib/resources/jdkAnnotations.jar"),
+                Path.of("/Applications/IntelliJ IDEA Community.app/Contents/plugins/java/lib/resources/jdkAnnotations.jar"),
+                Path.of(System.getProperty("user.home"), ".lumina", "resources", "jdkAnnotations.jar"),
+                Path.of(System.getProperty("java.home"), "lib", "resources", "jdkAnnotations.jar")
+        );
+
+        for (Path p : candidates) {
+            if (Files.isRegularFile(p)) {
+                list.add(p.toString());
+                return list;
+            }
+        }
+
+        list.add("/Applications/IntelliJ IDEA.app/Contents/plugins/java/lib/resources/jdkAnnotations.jar");
+        return list;
+    }
+
+    /**
+     * Generates standard Oracle/OpenJDK JavaDoc API documentation URL.
+     */
+    /**
+     * Documentation paths for JDK. Returns empty by default matching IntelliJ IDEA media_1789875550854.png.
+     */
+    public static List<String> detectJdkDocumentation(String version) {
+        return new ArrayList<>();
+    }
+
+    /**
+     * Generates standard Oracle/OpenJDK JavaDoc API documentation URL.
+     */
+    public static String resolveStandardJdkDocUrl(String version) {
+        String major = "21";
+        if (version != null && !version.isBlank()) {
+            String clean = version.trim();
+            if (clean.contains(".")) {
+                clean = clean.split("\\.")[0];
+            }
+            if (clean.matches("\\d+")) {
+                major = clean;
+            }
+        }
+        return "https://docs.oracle.com/en/java/javase/" + major + "/docs/api/";
     }
 
     /**
