@@ -149,6 +149,20 @@ public class InvalidateCachesDialog {
 
     private void performInvalidate(boolean fullInvalidate) {
         try {
+            // Clear library and JDK source cache
+            dev.lumina.semantics.LibrarySourceService.getInstance().clearCache();
+
+            // Clear sources-*.done markers in ~/.lumina
+            Path luminaDir = Path.of(System.getProperty("user.home"), ".lumina");
+            if (Files.isDirectory(luminaDir)) {
+                try (var stream = Files.list(luminaDir)) {
+                    stream.filter(p -> p.getFileName().toString().startsWith("sources-") && p.getFileName().toString().endsWith(".done"))
+                            .forEach(p -> {
+                                try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+                            });
+                } catch (Exception ignored) {}
+            }
+
             Path cacheDir = Path.of(System.getProperty("user.home"), ".lumina", "cache");
 
             if (Files.exists(cacheDir)) {
