@@ -132,6 +132,7 @@ public class LuminaApp extends Application {
                 this::copyPathToClipboard,
                 p -> showComingSoon("Open Module Settings"),
                 this::showComingSoon);
+        fileExplorer.setCreationHandlers(createNewMenuHandlers());
 
         editorTabs = new TabPane();
         editorGroups.add(editorTabs);
@@ -429,12 +430,17 @@ public class LuminaApp extends Application {
     private MenuBar buildMenuBar() {
         // ---- File
         Menu newMenu = new Menu("New");
-        newMenu.getItems().addAll(
-                item("Project\u2026", "Shortcut+Shift+N", e -> showNewProjectDialog()),
-                new SeparatorMenuItem(),
-                item("Java Class", null, e -> newJavaClass()),
-                item("Package", null, e -> newPackage()),
-                item("File", "Shortcut+N", e -> newFile()));
+        Runnable refreshNewMenu = () -> {
+            Path target = activeTargetPath();
+            boolean isRoot = target != null && (
+                    (projectRoot != null && target.toAbsolutePath().normalize().equals(projectRoot.toAbsolutePath().normalize()))
+                    || (fileExplorer != null && fileExplorer.getRootPath() != null && target.toAbsolutePath().normalize().equals(fileExplorer.getRootPath().toAbsolutePath().normalize()))
+                    || NewMenuBuilder.isProjectRoot(target)
+            );
+            NewMenuBuilder.populateNewMenu(newMenu, target, false, isRoot, createNewMenuHandlers());
+        };
+        newMenu.setOnShowing(e -> refreshNewMenu.run());
+        refreshNewMenu.run();
 
         Menu openRecentProjectMenu = new Menu("Open Recent Project");
         Runnable refreshRecentProjects = () -> {
@@ -501,6 +507,7 @@ public class LuminaApp extends Application {
 
         Menu file = new Menu("File");
         file.setOnShowing(e -> {
+            refreshNewMenu.run();
             refreshRecentProjects.run();
             boolean hasProject = projectRoot != null;
             boolean hasOtherProjects = ACTIVE_INSTANCES.stream()
@@ -3817,10 +3824,11 @@ public class LuminaApp extends Application {
      *  time this project opens, it looks exactly like it does right now. */
     private void saveSession() {
         if (projectRoot == null) return;
-        java.util.Set<Path> expanded = fileExplorer.getExpandedPaths();
+        java.util.Set<Path> expanded = fileExplorer != null ? fileExplorer.getExpandedPaths() : java.util.Set.of();
         List<Path> open = new java.util.ArrayList<>();
         Path active = null;
-        Tab selectedTab = activeEditorGroup.getSelectionModel().getSelectedItem();
+        Tab selectedTab = (activeEditorGroup != null && activeEditorGroup.getSelectionModel() != null)
+                ? activeEditorGroup.getSelectionModel().getSelectedItem() : null;
         for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && et.getPath() != null) {
                 open.add(et.getPath());
@@ -4053,6 +4061,169 @@ public class LuminaApp extends Application {
             } catch (IOException ex) {
                 error("Could not create directory", ex.getMessage());
             }
+        });
+    }
+
+    private NewMenuBuilder.CreationHandlers createNewMenuHandlers() {
+        return new NewMenuBuilder.CreationHandlers() {
+            @Override public void onNewProject() { showNewProjectDialog(); }
+            @Override public void onNewProjectFromExisting() { openFolderDialog(); }
+            @Override public void onNewProjectFromVCS() { cloneGitRepositoryDialog(); }
+            @Override public void onNewModule() { showComingSoon("New Module"); }
+            @Override public void onNewModuleFromExisting() { openFolderDialog(); }
+            @Override public void onNewJavaClass(Path dir) { newJavaClass(dir); }
+            @Override public void onNewKotlinClass(Path dir) { newKotlinClass(dir); }
+            @Override public void onNewFile(Path dir) { newFile(dir); }
+            @Override public void onNewPackage(Path dir) { newPackage(dir); }
+            @Override public void onNewDirectory(Path dir) { newDirectory(dir); }
+            @Override public void onNewFxml(Path dir) { newFxmlFile(dir); }
+            @Override public void onNewJavaFxApp(Path dir) { newJavaFxApp(dir); }
+            @Override public void onNewPackageInfo(Path dir) { newPackageInfo(dir); }
+            @Override public void onNewModuleInfo(Path dir) { newModuleInfo(dir); }
+            @Override public void onNewKotlinNotebook(Path dir) {
+                newSpecificFile(dir, "untitled.ipynb", "{\\n \\\"cells\\\": [],\\n \\\"metadata\\\": {},\\n \\\"nbformat\\\": 4,\\n \\\"nbformat_minor\\\": 2\\n}\\n");
+            }
+            @Override public void onNewResourceBundle(Path dir) { newResourceBundle(dir); }
+            @Override public void onNewScratchFile(Path dir) {
+                addTab(new EditorTab("scratch_" + System.currentTimeMillis() + ".txt", null));
+            }
+            @Override public void onNewSpecificFile(Path dir, String defaultName, String defaultContent) {
+                newSpecificFile(dir, defaultName, defaultContent);
+            }
+            @Override public void onPlaceholder(String title) { showComingSoon(title); }
+        };
+    }
+
+    private void newFxmlFile(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        prompt("New FXML File", "FXML file name:", "view.fxml").ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            if (!name.endsWith(".fxml")) name += ".fxml";
+            String content = """
+                    <?xml version="1.0" encoding="UTF-8"?>
+
+                    <?import javafx.scene.layout.VBox?>
+
+                    <VBox xmlns="http://javafx.com/javafx"
+                          xmlns:fx="http://javafx.com/fxml">
+
+                    </VBox>
+                    """;
+            writeAndOpen(dir.resolve(name), content);
+        });
+    }
+
+    private void newJavaFxApp(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        prompt("New JavaFX Application", "Class name:", "MainApplication").ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            if (name.endsWith(".java")) name = name.substring(0, name.length() - 5);
+            String pkg = inferPackage(dir);
+            String pkgStmt = pkg.isEmpty() ? "" : "package " + pkg + ";\n\n";
+            String content = pkgStmt + """
+                    import javafx.application.Application;
+                    import javafx.scene.Scene;
+                    import javafx.scene.layout.StackPane;
+                    import javafx.stage.Stage;
+
+                    public class %s extends Application {
+
+                        @Override
+                        public void start(Stage primaryStage) {
+                            primaryStage.setTitle("%s");
+                            primaryStage.setScene(new Scene(new StackPane(), 800, 600));
+                            primaryStage.show();
+                        }
+
+                        public static void main(String[] args) {
+                            launch(args);
+                        }
+                    }
+                    """.formatted(name, name);
+            writeAndOpen(dir.resolve(name + ".java"), content);
+        });
+    }
+
+    private void newPackageInfo(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        String pkg = inferPackage(dir);
+        String pkgStmt = pkg.isEmpty() ? "" : "package " + pkg + ";\n";
+        String content = """
+                /**
+                 * Package documentation for {@code %s}.
+                 */
+                %s""".formatted(pkg.isEmpty() ? "default package" : pkg, pkgStmt);
+        writeAndOpen(dir.resolve("package-info.java"), content);
+    }
+
+    private void newModuleInfo(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        Path sourceRoot = findSourceRoot(dir);
+        Path root = sourceRoot != null ? sourceRoot : dir;
+        String modName = (projectRoot != null ? projectRoot.getFileName().toString() : "app")
+                .toLowerCase().replaceAll("[^a-zA-Z0-9_.]", "");
+        String content = """
+                module %s {
+                    requires javafx.controls;
+                    requires javafx.fxml;
+                }
+                """.formatted(modName);
+        writeAndOpen(root.resolve("module-info.java"), content);
+    }
+
+    private void newKotlinClass(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        prompt("New Kotlin Class/File", "Name:", "MyClass").ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            if (name.endsWith(".kt")) name = name.substring(0, name.length() - 3);
+            String pkg = inferPackage(dir);
+            String pkgStmt = pkg.isEmpty() ? "" : "package " + pkg + "\n\n";
+            String content = pkgStmt + "class " + name + " {\n}\n";
+            writeAndOpen(dir.resolve(name + ".kt"), content);
+        });
+    }
+
+    private void newResourceBundle(Path target) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        prompt("New Resource Bundle", "Resource bundle base name:", "messages").ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            if (name.endsWith(".properties")) name = name.substring(0, name.length() - 11);
+            writeAndOpen(dir.resolve(name + ".properties"), "# Resource bundle: " + name + "\n");
+        });
+    }
+
+    private void newSpecificFile(Path target, String defaultName, String defaultContent) {
+        Path dir = target != null ? (Files.isDirectory(target) ? target : target.getParent())
+                : targetDirectory();
+        if (dir == null) return;
+        prompt("New " + defaultName, "File name:", defaultName).ifPresent(raw -> {
+            String name = raw.trim();
+            if (name.isEmpty()) return;
+            writeAndOpen(dir.resolve(name), defaultContent != null ? defaultContent : "");
+        });
+    }
+
+    private void cloneGitRepositoryDialog() {
+        prompt("Get from Version Control", "Repository URL:", "https://github.com/").ifPresent(url -> {
+            String u = url.trim();
+            if (u.isEmpty()) return;
+            console.println("Cloning repository: " + u);
         });
     }
 
@@ -4318,18 +4489,35 @@ public class LuminaApp extends Application {
         });
     }
 
+    private Path activeTargetPath() {
+        boolean projectExplorerActive = horizontalSplit != null
+                && horizontalSplit.getItems().contains(leftDock)
+                && leftTabs != null
+                && leftTabs.getSelectionModel().getSelectedIndex() == 0;
+
+        if (projectExplorerActive && fileExplorer != null) {
+            Path selected = fileExplorer.getSelectedPath();
+            if (selected != null) {
+                return Files.isDirectory(selected) ? selected : selected.getParent();
+            }
+        }
+        return null;
+    }
+
     private Path targetDirectory() {
-        Path selected = fileExplorer.getSelectedPath();
-        if (selected != null) {
-            return Files.isDirectory(selected) ? selected : selected.getParent();
+        Path target = activeTargetPath();
+        if (target != null) {
+            return target;
         }
-        Path root = fileExplorer.getRootPath();
-        if (root == null) {
-            error("No folder open",
-                    "Open or create a project first (File \u2192 New \u2192 Project\u2026).");
-            return null;
+        if (fileExplorer != null && fileExplorer.getRootPath() != null) {
+            return fileExplorer.getRootPath();
         }
-        return root;
+        if (projectRoot != null) {
+            return projectRoot;
+        }
+        error("No folder open",
+                "Open or create a project first (File \u2192 New \u2192 Project\u2026).");
+        return null;
     }
 
     public static Path findSourceRoot(Path dir) {
@@ -5003,11 +5191,13 @@ public class LuminaApp extends Application {
     }
 
     private void closeCurrentTab() {
+        if (activeEditorGroup == null || activeEditorGroup.getSelectionModel() == null) return;
         Tab t = activeEditorGroup.getSelectionModel().getSelectedItem();
         if (t != null) activeEditorGroup.getTabs().remove(t);
     }
 
     private EditorTab currentEditor() {
+        if (activeEditorGroup == null || activeEditorGroup.getSelectionModel() == null) return null;
         Tab t = activeEditorGroup.getSelectionModel().getSelectedItem();
         return (t instanceof EditorTab et) ? et : null;
     }
