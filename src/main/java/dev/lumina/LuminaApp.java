@@ -522,15 +522,7 @@ public class LuminaApp extends Application {
                 item("Remote Development…", null, e -> new RemoteDevelopmentDialog(stage).show()),
                 new SeparatorMenuItem(),
                 item("Settings…", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
-                //     item("Project Structure…", "Shortcut+Alt+Shift+S", e -> showInfo("Project Structure", "Project structure is defined by the selected generator.")),
-                // In buildMenuBar(), find the Project Structure item:
-                item("Project Structure…", "Shortcut+Alt+Shift+S", e -> {
-                    if (projectRoot == null) {
-                        showInfo("Project Structure", "Open a project first to see its structure.");
-                        return;
-                    }
-                    new ProjectStructureDialog(stage, projectRoot.getFileName().toString(), projectRoot).show();
-                }),
+                item("Project Structure…", projectStructureShortcut(), e -> openProjectStructure()),
                 fileProperties,
                 localHistory,
                 new SeparatorMenuItem(),
@@ -4089,8 +4081,8 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(),
                 item("Run Anything\u2026", null, e -> showComingSoon("Run Anything")),
                 new SeparatorMenuItem(),
-                item("Project Structure\u2026", "Shortcut+Alt+Shift+S",
-                        e -> showComingSoon("Project Structure")),
+                item("Project Structure\u2026", projectStructureShortcut(),
+                        e -> openProjectStructure()),
                 item("Settings\u2026", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
                 item("Plugins\u2026", null, e -> new PluginManagerDialog(stage).show()),
                 disabled("Backup and Sync\u2026 Off"),
@@ -4101,6 +4093,19 @@ public class LuminaApp extends Application {
                 item("Customize Main Toolbar\u2026", null,
                         e -> showComingSoon("Customize Main Toolbar")));
         menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 4);
+    }
+
+    private String projectStructureShortcut() {
+        boolean isMac = System.getProperty("os.name", "").toLowerCase().contains("mac");
+        return isMac ? "Shortcut+SEMICOLON" : "Shortcut+Alt+Shift+S";
+    }
+
+    private void openProjectStructure() {
+        if (projectRoot == null) {
+            showInfo("Project Structure", "Open a project first to see its structure.");
+            return;
+        }
+        new ProjectStructureDialog(stage, projectRoot.getFileName().toString(), projectRoot).show();
     }
 
     /** Opens Settings straight to Tools \u2192 Terminal, from the terminal
