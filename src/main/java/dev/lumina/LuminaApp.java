@@ -4780,7 +4780,7 @@ public class LuminaApp extends Application {
                     new java.util.ArrayList<>(dev.lumina.diagnostics.JavaDiagnostics.compile(
                             file, text, full, roots));
             String mod = projectRoot != null ? projectRoot.getFileName().toString() : null;
-            results.addAll(dev.lumina.diagnostics.JpaDiagnostics.checkPersistentEntities(file, text, mod));
+            results.addAll(dev.lumina.diagnostics.JpaDiagnostics.checkPersistentEntities(file, text, roots, mod));
             results.addAll(dev.lumina.diagnostics.FieldDiagnostics.checkUnusedFields(file, text, mod));
             results.addAll(dev.lumina.diagnostics.MethodDiagnostics.checkUnusedMethods(file, text, roots, mod));
             return results;
