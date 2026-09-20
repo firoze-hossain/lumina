@@ -5,6 +5,7 @@
 # IDE and editor files
 /.idea/
 /.vscode/
+/.lumina/
 *.iml
 *.ipr
 *.iws
