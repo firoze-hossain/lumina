@@ -354,6 +354,20 @@
 .right-rail-button:hover { -fx-background-color: #2C3042; }
 .right-rail-button:selected { -fx-background-color: #3574F0; }
 .right-rail-button:selected .label { -fx-text-fill: white; }
+.right-rail-button:selected Shape { -fx-fill: white; -fx-stroke: white; }
+.right-rail-maven-glyph {
+    -fx-text-fill: #B9BECF;
+    -fx-font-family: "Georgia", "DejaVu Serif", serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-font-style: italic;
+}
+.right-rail-button:hover .right-rail-maven-glyph {
+    -fx-text-fill: #DFE1E5;
+}
+.right-rail-button:selected .right-rail-maven-glyph {
+    -fx-text-fill: white;
+}
 
 /* The rail alone drives which tool window shows, so the right dock's own
    tab-header strip (the row of text tabs IntelliJ never shows here) is
@@ -3924,3 +3938,175 @@
     -fx-font-size: 11px;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
 }
+
+/* ----------------------------------------------------------- Maven Tool Window */
+
+.maven-panel {
+    -fx-background-color: #14161E;
+}
+
+.maven-toolbar {
+    -fx-background-color: #1A1D28;
+    -fx-padding: 3 6 3 6;
+    -fx-border-color: transparent transparent #232636 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-spacing: 4;
+}
+
+.maven-tool-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #B9BECF;
+    -fx-padding: 3 5 3 5;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-min-height: 22;
+    -fx-min-width: 22;
+}
+
+.maven-tool-btn:hover {
+    -fx-background-color: #2C3042;
+    -fx-text-fill: #FFFFFF;
+}
+
+.maven-tool-btn:selected {
+    -fx-background-color: #263859;
+    -fx-border-color: #3574F0;
+    -fx-border-radius: 4;
+    -fx-border-width: 1;
+}
+
+.maven-symbol-btn {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.maven-sync-btn .arrow-button {
+    -fx-padding: 0 2 0 2;
+}
+
+.maven-sync-btn .arrow {
+    -fx-background-color: #B9BECF;
+}
+
+.maven-tree {
+    -fx-background-color: #14161E;
+    -fx-border-color: transparent;
+    -fx-padding: 4 0 4 0;
+}
+
+.maven-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #BCBEC4;
+    -fx-padding: 2 6 2 6;
+    -fx-font-size: 12px;
+}
+
+.maven-tree .tree-cell:hover {
+    -fx-background-color: #1F2230;
+}
+
+.maven-tree .tree-cell:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.maven-tree .tree-cell .arrow {
+    -fx-background-color: #697089;
+}
+
+.maven-tree .tree-cell:selected .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+.maven-menu-tool-btn .arrow-button {
+    -fx-padding: 0 1 0 1;
+}
+
+.maven-menu-tool-btn .arrow {
+    -fx-background-color: #B9BECF;
+}
+
+/* Run Anything Dialog */
+.run-anything-dialog {
+    -fx-background-color: #1E1F22;
+    -fx-background-radius: 8;
+    -fx-border-color: #43454A;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+}
+
+.run-anything-title {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.run-anything-scope {
+    -fx-text-fill: #8C90A0;
+    -fx-font-size: 11px;
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 4;
+    -fx-padding: 2 6 2 6;
+}
+
+.run-anything-input-box {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 6;
+    -fx-border-color: #393B40;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+
+.run-anything-input-box:focused-within {
+    -fx-border-color: #3574F0;
+}
+
+.run-anything-input {
+    -fx-background-color: transparent;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 13px;
+    -fx-border-width: 0;
+    -fx-padding: 4 6;
+}
+
+.run-anything-separator .line {
+    -fx-border-color: #393B40;
+    -fx-border-width: 0.5;
+}
+
+.run-anything-section-header {
+    -fx-text-fill: #7A7E8D;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.run-anything-list {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 4 8 8 8;
+}
+
+.run-anything-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 4 8;
+    -fx-background-radius: 4;
+}
+
+.run-anything-list .list-cell:filled:hover {
+    -fx-background-color: #2B2D30;
+}
+
+.run-anything-list .list-cell:filled:selected {
+    -fx-background-color: #2E436E;
+}
+
+.run-anything-goal-text {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 13px;
+}
+
+.run-anything-list .list-cell:filled:selected .run-anything-goal-text {
+    -fx-text-fill: white;
+}
+
+
