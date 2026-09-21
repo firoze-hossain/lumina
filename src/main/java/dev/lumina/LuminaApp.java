@@ -6,6 +6,7 @@ import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.RecentProjectsManager;
 import dev.lumina.run.RunConfiguration;
+import dev.lumina.notification.NotificationService;
 import dev.lumina.semantics.Docs;
 import dev.lumina.ui.*;
 import dev.lumina.util.Settings;
@@ -80,6 +81,7 @@ public class LuminaApp extends Application {
     private Button stopButton;
     private RightToolRail rightRail;
     private Label rightToolTitle;
+    private NotificationsToolWindowPanel notificationsPanel;
     private TestResultsPanel testsPanel;
     private long testRunStart;
     private Runnable lastTestRun;
@@ -245,8 +247,9 @@ public class LuminaApp extends Application {
         // Right tool windows, selected from a compact IntelliJ-style vertical rail.
         mavenPanel = new MavenPanel(this::runBuildGoal, this::openFile);
         dbPanel = new DatabasePanel();
+        notificationsPanel = new NotificationsToolWindowPanel();
         rightTabs = new TabPane(
-                toolTab("Notifications", rightPlaceholder("Notifications", "Timeline\n\nNo new notifications")),
+                toolTab("Notifications", notificationsPanel),
                 toolTab("AI Chat", rightPlaceholder("AI Chat", "Multiline code completion\n\nCode generation in the editor\n\nStart a new chat to ask Lumina for help.")),
                 toolTab("Database", dbPanel), toolTab("Maven", mavenPanel),
                 toolTab("Services", rightPlaceholder("Services", "No services are running")),
@@ -306,7 +309,25 @@ public class LuminaApp extends Application {
         outerSplit = new SplitPane(horizontalSplit);
         outerSplit.setDividerPositions(0.74);
 
-        root.setCenter(outerSplit);
+        VBox toastContainer = new VBox(8);
+        toastContainer.setAlignment(Pos.BOTTOM_RIGHT);
+        toastContainer.setPadding(new Insets(0, 16, 16, 0));
+        toastContainer.setPickOnBounds(false);
+
+        StackPane centerStack = new StackPane(outerSplit, toastContainer);
+        StackPane.setAlignment(toastContainer, Pos.BOTTOM_RIGHT);
+
+        NotificationService.getInstance().addToastListener(notification -> {
+            NotificationBalloonToast toast = new NotificationBalloonToast(
+                    notification,
+                    () -> showRightPanel(0),
+                    () -> toastContainer.getChildren().removeIf(node -> node.getUserData() == notification)
+            );
+            toast.setUserData(notification);
+            toastContainer.getChildren().add(toast);
+        });
+
+        root.setCenter(centerStack);
         root.setBottom(buildBottomArea());
         updateEditorVisibility();
 
@@ -855,7 +876,7 @@ public class LuminaApp extends Application {
         Menu layouts = new Menu("Layouts"); layouts.getItems().add(placeholder("Save Current Layout as…", null));
         Menu activeWindow = new Menu("Active Tool Window"); activeWindow.getItems().add(item("Terminal", null, e -> showTerminal()));
         Menu editorTabsMenu = new Menu("Editor Tabs"); editorTabsMenu.getItems().add(placeholder("Close All", null));
-        Menu notifications = new Menu("Notifications"); notifications.getItems().add(placeholder("Show Notifications", null));
+        Menu notifications = new Menu("Notifications"); notifications.getItems().add(item("Show Notifications", null, e -> showRightPanel(0)));
         Menu processes = new Menu("Processes"); processes.getItems().add(disabled("No running processes"));
         Menu window = new Menu("Window");
         window.getItems().addAll(layouts, activeWindow, editorTabsMenu, notifications, processes, new SeparatorMenuItem(),

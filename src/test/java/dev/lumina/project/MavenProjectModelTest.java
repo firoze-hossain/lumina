@@ -11,7 +11,7 @@ class MavenProjectModelTest {
 
     @Test
     void testParseCurrentProjectPom() {
-        Path root = Path.of("/home/firoze/projects/others/lumina");
+        Path root = Path.of(".").toAbsolutePath().normalize();
         MavenProjectModel.MavenProject project = MavenProjectModel.parseProject(root);
 
         assertNotNull(project, "Project should be parsed from pom.xml");

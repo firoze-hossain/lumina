@@ -4109,4 +4109,24 @@
     -fx-text-fill: white;
 }
 
+/* ============================================================
+   Notifications Tool Window & Balloon Toast Popups
+   ============================================================ */
 
+.notifications-tool-window {
+    -fx-background-color: #1E1F22;
+}
+
+.notification-clear-all:hover {
+    -fx-underline: true;
+}
+
+.notification-card {
+    -fx-background-color: #1E1F22;
+    -fx-border-color: transparent transparent #2B2D30 transparent;
+    -fx-border-width: 1;
+}
+
+.notification-card:hover {
+    -fx-background-color: #26282D;
+}
