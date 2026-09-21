@@ -58,11 +58,12 @@ public class SettingsDialog {
         tree.setPrefWidth(260);
         tree.setMinWidth(240);
         tree.getStyleClass().add("settings-tree");
+        tree.setStyle("-fx-background-color: #1E1F22;");
 
         HBox searchBox = new HBox(6);
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setPadding(new Insets(8, 12, 8, 12));
-        searchBox.setStyle("-fx-background-color: #14161E; -fx-border-color: transparent transparent #262936 transparent; -fx-border-width: 0 0 1 0;");
+        searchBox.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent transparent #393B40 transparent; -fx-border-width: 0 0 1 0;");
 
         Label searchIcon = new Label("🔍");
         searchIcon.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px;");
@@ -88,6 +89,7 @@ public class SettingsDialog {
         VBox leftPane = new VBox(searchBox, tree);
         leftPane.setPrefWidth(260);
         leftPane.setMinWidth(240);
+        leftPane.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent #393B40 transparent transparent; -fx-border-width: 0 1 0 0;");
 
         // ---- Right: Header + Content ----
         BorderPane rightPane = new BorderPane();
@@ -156,7 +158,7 @@ public class SettingsDialog {
         HBox bar = new HBox(6);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(14, 24, 12, 24));
-        bar.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent transparent #262936 transparent; -fx-border-width: 0 0 1 0;");
+        bar.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent transparent #393B40 transparent; -fx-border-width: 0 0 1 0;");
 
         breadcrumbBox.setAlignment(Pos.CENTER_LEFT);
         breadcrumbBox.setSpacing(6);
@@ -366,10 +368,12 @@ public class SettingsDialog {
     private void wrapInScroll(javafx.scene.Node page) {
         ScrollPane scroll = new ScrollPane(page);
         scroll.setFitToWidth(true);
+        scroll.setFitToHeight(true);
         scroll.getStyleClass().add("settings-scroll");
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setStyle("-fx-background-color: transparent; -fx-background: #1E1F22; -fx-border-color: transparent;");
+        scroll.setStyle("-fx-background-color: #1E1F22; -fx-background: #1E1F22; -fx-border-color: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
         contentContainer.getChildren().setAll(scroll);
     }
 

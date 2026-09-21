@@ -1650,11 +1650,11 @@
    ============================================================ */
 
 .settings-dialog {
-    -fx-background-color: #191C26;
+    -fx-background-color: #1E1F22;
 }
 
 .settings-tree {
-    -fx-background-color: #14161E;
+    -fx-background-color: #1E1F22;
     -fx-background-insets: 0;
     -fx-padding: 8 0 8 0;
 }
@@ -1666,17 +1666,17 @@
     -fx-font-size: 12px;
 }
 .settings-tree .tree-cell:hover {
-    -fx-background-color: #1F2230;
+    -fx-background-color: #2B2D30;
 }
 .settings-tree .tree-cell:selected {
-    -fx-background-color: #3A3122;
-    -fx-text-fill: #F2D9A6;
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
 }
 .settings-tree .tree-cell .arrow {
     -fx-background-color: #697089;
 }
 .settings-tree .tree-cell:selected .arrow {
-    -fx-background-color: #E8B450;
+    -fx-background-color: #DFE1E5;
 }
 .settings-tree .tree-cell .tree-disclosure-node {
     -fx-padding: 2 6 2 0;
@@ -1686,7 +1686,7 @@
 }
 
 .settings-page {
-    -fx-background-color: #191C26;
+    -fx-background-color: #1E1F22;
 }
 .settings-page-title {
     -fx-text-fill: #EDEFF6;
@@ -1818,11 +1818,11 @@
 }
 
 .settings-scroll {
-    -fx-background-color: #191C26;
-    -fx-background: #191C26;
+    -fx-background-color: #1E1F22;
+    -fx-background: #1E1F22;
 }
 .settings-scroll > .viewport {
-    -fx-background-color: #191C26;
+    -fx-background-color: #1E1F22;
 }
 .settings-scroll .scroll-bar:horizontal {
     -fx-opacity: 0;
