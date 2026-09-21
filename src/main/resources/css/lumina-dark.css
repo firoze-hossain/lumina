@@ -400,15 +400,46 @@
 
 /* ---------------------------------------------- left tool windows (M4) */
 
-.commit-panel, .pull-requests-panel, .structure-panel, .git-log-panel {
-    -fx-background-color: #14161E;
+.commit-panel {
+    -fx-background-color: #1E1F22;
+}
+.pull-requests-panel, .structure-panel, .git-log-panel {
+    -fx-background-color: #1E1F22;
 }
 .commit-changes-scroll { -fx-background-color: transparent; }
 .commit-changes-scroll > .viewport { -fx-background-color: transparent; }
 .commit-message {
-    -fx-control-inner-background: #1A1D28;
-    -fx-text-fill: #C9CDDC;
+    -fx-background-color: #2B2D30;
+    -fx-control-inner-background: #2B2D30;
+    -fx-border-color: #43454A;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-text-fill: #DFE1E5;
+    -fx-prompt-text-fill: #868A91;
     -fx-font-size: 12px;
+}
+.commit-message:focused {
+    -fx-border-color: #3574F0;
+}
+.commit-message .content {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 4;
+}
+.commit-tree {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-border-color: transparent;
+}
+.commit-tree .tree-cell {
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-padding: 2 4 2 4;
+}
+.commit-tree .tree-cell:filled:hover {
+    -fx-background-color: #2B2D30;
+}
+.commit-tree .tree-cell:filled:selected {
+    -fx-background-color: #2E436E;
 }
 .pr-row { -fx-padding: 4 0 4 0; }
 .pr-link { -fx-text-fill: #6FA8E0; -fx-font-size: 12px; }

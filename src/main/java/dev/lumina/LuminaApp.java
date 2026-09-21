@@ -200,6 +200,7 @@ public class LuminaApp extends Application {
         // Project / Commit / Pull Requests / Structure, one at a time, no
         // tab-header strip of its own (mirrors the right dock below).
         commitPanel = new CommitPanel(() -> projectRoot, console::println);
+        commitPanel.setOnOpenFile(this::openFile);
         pullRequestsPanel = new PullRequestsPanel(() -> projectRoot,
                 () -> Settings.get(Settings.GITHUB_TOKEN),
                 () -> Settings.get(Settings.GITHUB_USER),

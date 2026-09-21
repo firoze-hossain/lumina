@@ -18,6 +18,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,42 +139,66 @@ public final class IconRail extends VBox {
     }
 
     private static Node commitIcon() {
-        Circle dot = new Circle(3);
-        dot.setFill(Color.TRANSPARENT);
-        dot.setStroke(Color.web(INK));
-        dot.setStrokeWidth(1.4);
-        Line left = new Line(-8, 0, -3, 0);
-        Line right = new Line(3, 0, 8, 0);
-        left.setStroke(Color.web(INK));
-        right.setStroke(Color.web(INK));
-        left.setStrokeWidth(1.4);
-        right.setStrokeWidth(1.4);
-        return sized(new StackPane(left, right, dot));
+        // IntelliJ Git Commit rail icon: horizontal branch with centered commit node (—o—)
+        double strokeW = 1.35;
+        double circleRadius = 2.6;
+
+        Circle centerCircle = new Circle(circleRadius);
+        centerCircle.setFill(Color.TRANSPARENT);
+        centerCircle.setStroke(Color.web(INK));
+        centerCircle.setStrokeWidth(strokeW);
+
+        Line leftLine = new Line(-6.5, 0, -2.6, 0);
+        leftLine.setStroke(Color.web(INK));
+        leftLine.setStrokeWidth(strokeW);
+        leftLine.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+
+        Line rightLine = new Line(2.6, 0, 6.5, 0);
+        rightLine.setStroke(Color.web(INK));
+        rightLine.setStrokeWidth(strokeW);
+        rightLine.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+
+        return sized(new StackPane(leftLine, rightLine, centerCircle));
     }
 
     private static Node pullRequestIcon() {
-        Circle top = new Circle(2.2);
-        top.setFill(Color.web(INK));
-        top.setTranslateX(-4);
-        top.setTranslateY(-5);
-        Circle bottom = new Circle(2.2);
-        bottom.setFill(Color.web(INK));
-        bottom.setTranslateX(-4);
-        bottom.setTranslateY(5);
-        Circle right = new Circle(2.2);
-        right.setFill(Color.web(INK));
-        right.setTranslateX(4);
-        right.setTranslateY(-5);
-        Line stem = new Line(-4, -3, -4, 3);
+        // IntelliJ Git Branch / Pull Request icon: 3 circular nodes with curved branch
+        double r = 2.0;
+        double strokeW = 1.35;
+
+        Circle cTopLeft = new Circle(r);
+        cTopLeft.setFill(Color.TRANSPARENT);
+        cTopLeft.setStroke(Color.web(INK));
+        cTopLeft.setStrokeWidth(strokeW);
+        cTopLeft.setTranslateX(-3.5);
+        cTopLeft.setTranslateY(-4.5);
+
+        Circle cBottomLeft = new Circle(r);
+        cBottomLeft.setFill(Color.TRANSPARENT);
+        cBottomLeft.setStroke(Color.web(INK));
+        cBottomLeft.setStrokeWidth(strokeW);
+        cBottomLeft.setTranslateX(-3.5);
+        cBottomLeft.setTranslateY(4.5);
+
+        Line stem = new Line(-3.5, -2.5, -3.5, 2.5);
         stem.setStroke(Color.web(INK));
-        stem.setStrokeWidth(1.4);
-        Line arm = new Line(-4, -5, 4, -5);
-        arm.setStroke(Color.web(INK));
-        arm.setStrokeWidth(1.4);
-        Line arrow = new Line(4, -3, 4, -5);
-        arrow.setStroke(Color.web(INK));
-        arrow.setStrokeWidth(1.4);
-        return sized(new StackPane(stem, arm, arrow, top, bottom, right));
+        stem.setStrokeWidth(strokeW);
+
+        Circle cTopRight = new Circle(r);
+        cTopRight.setFill(Color.TRANSPARENT);
+        cTopRight.setStroke(Color.web(INK));
+        cTopRight.setStrokeWidth(strokeW);
+        cTopRight.setTranslateX(3.5);
+        cTopRight.setTranslateY(-4.5);
+
+        SVGPath branch = new SVGPath();
+        branch.setContent("M 3.5 -2.5 C 3.5 1.5, -3.5 0.5, -3.5 4.5");
+        branch.setStroke(Color.web(INK));
+        branch.setStrokeWidth(strokeW);
+        branch.setFill(Color.TRANSPARENT);
+        branch.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+
+        return sized(new StackPane(branch, stem, cTopLeft, cBottomLeft, cTopRight));
     }
 
     private static Node structureIcon() {
