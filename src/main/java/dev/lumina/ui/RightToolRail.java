@@ -1,5 +1,6 @@
 package dev.lumina.ui;
 
+import dev.lumina.notification.NotificationService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -10,9 +11,13 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +46,7 @@ public final class RightToolRail extends VBox {
         setAlignment(Pos.TOP_CENTER);
         setSpacing(8);
         setPadding(new Insets(10, 4, 10, 4));
-        add(bellIcon(), "Notifications", 0, onSelect);
+        add(notificationIcon(), "Notifications", 0, onSelect);
         add(chatIcon(), "AI Chat", 1, onSelect);
         add(databaseIcon(), "Database", 2, onSelect);
         add(mavenRailIcon(), "Maven", 3, onSelect);
@@ -98,16 +103,31 @@ public final class RightToolRail extends VBox {
         return icon(label);
     }
 
-    private static Node bellIcon() {
-        Polygon bell = new Polygon(
-                6, 0,   10, 0,
-                12, 9,  4, 9);
-        bell.setFill(Color.web("#B9BECF"));
-        Rectangle clapper = new Rectangle(6.5, 9.5, 3, 2);
-        clapper.setArcWidth(2);
-        clapper.setArcHeight(2);
-        clapper.setFill(Color.web("#B9BECF"));
-        return icon(bell, clapper);
+    private static Node notificationIcon() {
+        SVGPath bell = new SVGPath();
+        bell.setContent("M 8 1 C 7.3 1 6.8 1.5 6.8 2.2 L 6.8 2.6 C 4.8 3.3 3.5 5.2 3.5 7.5 L 3.5 10.0 C 3.5 10.7 3.0 11.2 2.3 11.5 L 2.0 11.6 L 14.0 11.6 L 13.7 11.5 C 13.0 11.2 12.5 10.7 12.5 10.0 L 12.5 7.5 C 12.5 5.2 11.2 3.3 9.2 2.6 L 9.2 2.2 C 9.2 1.5 8.7 1 8 1 Z M 6.4 12.2 C 6.6 13.8 7.2 14.4 8.0 14.4 C 8.8 14.4 9.4 13.8 9.6 12.2");
+        bell.setFill(Color.TRANSPARENT);
+        bell.setStroke(Color.web("#CED0D6"));
+        bell.setStrokeWidth(1.25);
+        bell.setStrokeLineCap(StrokeLineCap.ROUND);
+        bell.setStrokeLineJoin(StrokeLineJoin.ROUND);
+
+        Circle badge = new Circle(2.2);
+        badge.setFill(Color.web("#3574F0"));
+        badge.setTranslateX(5.0);
+        badge.setTranslateY(-5.0);
+
+        // Bind badge visibility dynamically to notifications timeline
+        var timeline = NotificationService.getInstance().getTimeline();
+        badge.setVisible(!timeline.isEmpty());
+        timeline.addListener((javafx.collections.ListChangeListener<dev.lumina.notification.Notification>) c ->
+                badge.setVisible(!timeline.isEmpty()));
+
+        StackPane pane = new StackPane(bell, badge);
+        pane.setPrefSize(16, 16);
+        pane.setMinSize(16, 16);
+        pane.setMaxSize(16, 16);
+        return pane;
     }
 
     private static Node chatIcon() {
