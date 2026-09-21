@@ -65,6 +65,16 @@ public final class SystemSettings {
         HTTP, SOCKS
     }
 
+    public enum PasswordStoragePolicy {
+        NATIVE_KEYCHAIN("In native Keychain"),
+        KEEPASS("In KeePass"),
+        DO_NOT_SAVE("Do not save, forget passwords after restart");
+
+        private final String label;
+        PasswordStoragePolicy(String label) { this.label = label; }
+        public String getLabel() { return label; }
+    }
+
     // General & Process
     private boolean confirmExit = true;
     private ProcessClosePolicy processClosePolicy = ProcessClosePolicy.ASK;
@@ -104,6 +114,32 @@ public final class SystemSettings {
     private String proxyLogin = "";
     private String proxyPassword = "";
     private boolean proxyRemember = false;
+
+    // Language and Region
+    private String language = "English";
+    private String region = "Not specified";
+
+    // Passwords
+    private PasswordStoragePolicy passwordStoragePolicy = PasswordStoragePolicy.NATIVE_KEYCHAIN;
+    private String keepassDbPath = System.getProperty("user.home") + File.separator + ".config" + File.separator + "JetBrains" + File.separator + "IntelliJIdea2025.3" + File.separator + "c.kdbx";
+    private boolean protectMasterPasswordWithPgp = false;
+
+    // Process Elevation
+    private boolean keepSudoAuth = false;
+    private String sudoTimeout = "15 min";
+    private boolean extendSudoTimeout = true;
+
+    // Server Certificates
+    private boolean acceptNonTrustedCerts = false;
+    private final java.util.List<String> acceptedCertificates = new java.util.ArrayList<>();
+
+    // Trusted Hosts
+    private final java.util.List<String> trustedHosts = new java.util.ArrayList<>(java.util.List.of(
+            "download.jetbrains.com",
+            "download-cf.jetbrains.com",
+            "download-cdn.jetbrains.com",
+            "cache-redirector.jetbrains.com"
+    ));
 
     private SystemSettings() {
         load();
@@ -218,6 +254,56 @@ public final class SystemSettings {
 
         val = Settings.get("system.proxy.remember");
         if (val != null) proxyRemember = Boolean.parseBoolean(val);
+
+        // Language and Region
+        val = Settings.get("system.language");
+        if (val != null) language = val;
+
+        val = Settings.get("system.region");
+        if (val != null) region = val;
+
+        // Passwords
+        val = Settings.get("system.passwords.policy");
+        if (val != null) {
+            try { passwordStoragePolicy = PasswordStoragePolicy.valueOf(val); } catch (Exception ignored) {}
+        }
+
+        val = Settings.get("system.passwords.keepassDb");
+        if (val != null && !val.isBlank()) keepassDbPath = val;
+
+        val = Settings.get("system.passwords.pgp");
+        if (val != null) protectMasterPasswordWithPgp = Boolean.parseBoolean(val);
+
+        // Process Elevation
+        val = Settings.get("system.elevation.keepSudo");
+        if (val != null) keepSudoAuth = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.elevation.timeout");
+        if (val != null) sudoTimeout = val;
+
+        val = Settings.get("system.elevation.extend");
+        if (val != null) extendSudoTimeout = Boolean.parseBoolean(val);
+
+        // Server Certificates
+        val = Settings.get("system.certs.acceptNonTrusted");
+        if (val != null) acceptNonTrustedCerts = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.certs.acceptedList");
+        if (val != null) {
+            acceptedCertificates.clear();
+            if (!val.isBlank()) {
+                acceptedCertificates.addAll(java.util.Arrays.asList(val.split(";")));
+            }
+        }
+
+        // Trusted Hosts
+        val = Settings.get("system.trustedHosts");
+        if (val != null) {
+            trustedHosts.clear();
+            if (!val.isBlank()) {
+                trustedHosts.addAll(java.util.Arrays.asList(val.split(";")));
+            }
+        }
     }
 
     /**
@@ -261,6 +347,18 @@ public final class SystemSettings {
             Settings.put("system.proxy.password", null);
         }
         Settings.put("system.proxy.remember", String.valueOf(proxyRemember));
+
+        Settings.put("system.language", language);
+        Settings.put("system.region", region);
+        Settings.put("system.passwords.policy", passwordStoragePolicy.name());
+        Settings.put("system.passwords.keepassDb", keepassDbPath);
+        Settings.put("system.passwords.pgp", String.valueOf(protectMasterPasswordWithPgp));
+        Settings.put("system.elevation.keepSudo", String.valueOf(keepSudoAuth));
+        Settings.put("system.elevation.timeout", sudoTimeout);
+        Settings.put("system.elevation.extend", String.valueOf(extendSudoTimeout));
+        Settings.put("system.certs.acceptNonTrusted", String.valueOf(acceptNonTrustedCerts));
+        Settings.put("system.certs.acceptedList", String.join(";", acceptedCertificates));
+        Settings.put("system.trustedHosts", String.join(";", trustedHosts));
 
         apply();
     }
@@ -515,4 +613,35 @@ public final class SystemSettings {
 
     public boolean isProxyRemember() { return proxyRemember; }
     public void setProxyRemember(boolean proxyRemember) { this.proxyRemember = proxyRemember; }
+
+    public String getLanguage() { return language; }
+    public void setLanguage(String language) { this.language = language; }
+
+    public String getRegion() { return region; }
+    public void setRegion(String region) { this.region = region; }
+
+    public PasswordStoragePolicy getPasswordStoragePolicy() { return passwordStoragePolicy; }
+    public void setPasswordStoragePolicy(PasswordStoragePolicy passwordStoragePolicy) { this.passwordStoragePolicy = passwordStoragePolicy; }
+
+    public String getKeepassDbPath() { return keepassDbPath; }
+    public void setKeepassDbPath(String keepassDbPath) { this.keepassDbPath = keepassDbPath; }
+
+    public boolean isProtectMasterPasswordWithPgp() { return protectMasterPasswordWithPgp; }
+    public void setProtectMasterPasswordWithPgp(boolean protectMasterPasswordWithPgp) { this.protectMasterPasswordWithPgp = protectMasterPasswordWithPgp; }
+
+    public boolean isKeepSudoAuth() { return keepSudoAuth; }
+    public void setKeepSudoAuth(boolean keepSudoAuth) { this.keepSudoAuth = keepSudoAuth; }
+
+    public String getSudoTimeout() { return sudoTimeout; }
+    public void setSudoTimeout(String sudoTimeout) { this.sudoTimeout = sudoTimeout; }
+
+    public boolean isExtendSudoTimeout() { return extendSudoTimeout; }
+    public void setExtendSudoTimeout(boolean extendSudoTimeout) { this.extendSudoTimeout = extendSudoTimeout; }
+
+    public boolean isAcceptNonTrustedCerts() { return acceptNonTrustedCerts; }
+    public void setAcceptNonTrustedCerts(boolean acceptNonTrustedCerts) { this.acceptNonTrustedCerts = acceptNonTrustedCerts; }
+
+    public java.util.List<String> getAcceptedCertificates() { return acceptedCertificates; }
+
+    public java.util.List<String> getTrustedHosts() { return trustedHosts; }
 }
