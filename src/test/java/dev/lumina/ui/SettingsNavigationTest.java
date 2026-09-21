@@ -224,6 +224,17 @@ class SettingsNavigationTest {
 
             page.showSubPage("Updates");
             assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getCheckIdeUpdatesCheck());
+            assertNotNull(page.getIdeUpdateChannelCombo());
+            assertEquals(2, page.getIdeUpdateChannelCombo().getItems().size());
+            assertTrue(page.getIdeUpdateChannelCombo().getItems().contains("Early Access Program"));
+            assertTrue(page.getIdeUpdateChannelCombo().getItems().contains("Stable Releases"));
+            assertNotNull(page.getCheckPluginUpdatesCheck());
+            assertNotNull(page.getUpdatePluginsAutoCheck());
+            assertNotNull(page.getCheckForUpdatesBtn());
+            assertNotNull(page.getLastCheckedLabel());
+            assertNotNull(page.getShowWhatsNewCheck());
+            assertNotNull(page.getCheckJdkUpdatesCheck());
             switchLatch.countDown();
         });
         switchLatch.await(5, java.util.concurrent.TimeUnit.SECONDS);

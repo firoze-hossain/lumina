@@ -116,6 +116,16 @@ public class SettingsSystemPage extends VBox {
     private ObservableList<String> trustedHostsList;
     private ListView<String> trustedHostsListView;
 
+    // ---- Updates Controls ----
+    private CheckBox checkIdeUpdatesCheck;
+    private ComboBox<String> ideUpdateChannelCombo;
+    private CheckBox checkPluginUpdatesCheck;
+    private CheckBox updatePluginsAutoCheck;
+    private Button checkForUpdatesBtn;
+    private Label lastCheckedLabel;
+    private CheckBox showWhatsNewCheck;
+    private CheckBox checkJdkUpdatesCheck;
+
     public SettingsSystemPage() {
         setPadding(new Insets(16, 24, 24, 24));
         setSpacing(14);
@@ -785,6 +795,26 @@ public class SettingsSystemPage extends VBox {
             settings.getTrustedHosts().clear();
             settings.getTrustedHosts().addAll(trustedHostsList);
         }
+
+        // Updates
+        if (checkIdeUpdatesCheck != null) {
+            settings.setCheckIdeUpdates(checkIdeUpdatesCheck.isSelected());
+        }
+        if (ideUpdateChannelCombo != null && ideUpdateChannelCombo.getValue() != null) {
+            settings.setUpdateChannel(ideUpdateChannelCombo.getValue());
+        }
+        if (checkPluginUpdatesCheck != null) {
+            settings.setCheckPluginUpdates(checkPluginUpdatesCheck.isSelected());
+        }
+        if (updatePluginsAutoCheck != null) {
+            settings.setUpdatePluginsAutomatically(updatePluginsAutoCheck.isSelected());
+        }
+        if (showWhatsNewCheck != null) {
+            settings.setShowWhatsNewAfterUpdate(showWhatsNewCheck.isSelected());
+        }
+        if (checkJdkUpdatesCheck != null) {
+            settings.setCheckJdkUpdates(checkJdkUpdatesCheck.isSelected());
+        }
     }
 
     // ============================================================
@@ -1183,35 +1213,105 @@ public class SettingsSystemPage extends VBox {
         return page;
     }
 
-    // 6. Updates Page
+    // 6. Updates Page (Matches Images 1 & 2)
     private Node buildUpdatesPage() {
         VBox page = new VBox(14);
         page.setStyle("-fx-background-color: #1E1F22;");
 
-        Label versionLabel = new Label("Current version: Lumina IDE 0.1.0");
-        versionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+        // Current version header line
+        TextFlow versionFlow = new TextFlow();
+        Text prefix = new Text("Current version: ");
+        prefix.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 13px;");
+        Text title = new Text("Lumina 2025.3.2");
+        title.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+        Text buildInfo = new Text("  LU-253.30387.90 January 22, 2026");
+        buildInfo.setStyle("-fx-fill: #868A91; -fx-font-size: 13px;");
+        versionFlow.getChildren().addAll(prefix, title, buildInfo);
 
-        CheckBox checkIdeUpdates = new CheckBox("Check IDE updates for: Stable Releases");
-        checkIdeUpdates.setSelected(true);
-        styleCheck(checkIdeUpdates);
+        // Row 1: Check IDE updates for: [ Stable Releases v ]
+        checkIdeUpdatesCheck = new CheckBox("Check IDE updates for:");
+        checkIdeUpdatesCheck.setSelected(settings.isCheckIdeUpdates());
+        styleCheck(checkIdeUpdatesCheck);
 
-        CheckBox checkPluginUpdates = new CheckBox("Check for plugin updates");
-        checkPluginUpdates.setSelected(true);
-        styleCheck(checkPluginUpdates);
+        ideUpdateChannelCombo = new ComboBox<>();
+        ideUpdateChannelCombo.getItems().addAll("Early Access Program", "Stable Releases");
+        ideUpdateChannelCombo.setValue(settings.getUpdateChannel());
+        styleCombo(ideUpdateChannelCombo);
+        ideUpdateChannelCombo.setPrefWidth(190);
+        ideUpdateChannelCombo.disableProperty().bind(checkIdeUpdatesCheck.selectedProperty().not());
 
-        CheckBox updatePluginsAuto = new CheckBox("Update plugins automatically");
-        updatePluginsAuto.setSelected(false);
-        styleCheck(updatePluginsAuto);
+        HBox ideUpdatesRow = new HBox(8, checkIdeUpdatesCheck, ideUpdateChannelCombo);
+        ideUpdatesRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox checkButtons = new HBox(12);
-        checkButtons.setAlignment(Pos.CENTER_LEFT);
-        Button checkUpdates = new Button("Check for Updates...");
-        styleSecondaryButton(checkUpdates);
-        Label lastChecked = new Label("Last checked: Today");
-        lastChecked.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
-        checkButtons.getChildren().addAll(checkUpdates, lastChecked);
+        // Row 2: Check for plugin updates
+        checkPluginUpdatesCheck = new CheckBox("Check for plugin updates");
+        checkPluginUpdatesCheck.setSelected(settings.isCheckPluginUpdates());
+        styleCheck(checkPluginUpdatesCheck);
 
-        page.getChildren().addAll(versionLabel, checkIdeUpdates, checkPluginUpdates, updatePluginsAuto, checkButtons);
+        // Indented auto update plugins
+        updatePluginsAutoCheck = new CheckBox("Update plugins automatically");
+        updatePluginsAutoCheck.setSelected(settings.isUpdatePluginsAutomatically());
+        styleCheck(updatePluginsAutoCheck);
+
+        Label autoDesc = new Label("Updates will be downloaded in the background and applied after restart automatically");
+        autoDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        VBox autoDescBox = new VBox(autoDesc);
+        autoDescBox.setPadding(new Insets(0, 0, 0, 22));
+
+        VBox autoPluginBox = new VBox(4, updatePluginsAutoCheck, autoDescBox);
+        autoPluginBox.setPadding(new Insets(0, 0, 4, 24));
+        autoPluginBox.disableProperty().bind(checkPluginUpdatesCheck.selectedProperty().not());
+
+        // Row 3: Check for Updates... button and Last checked label
+        checkForUpdatesBtn = new Button("Check for Updates...");
+        styleSecondaryButton(checkForUpdatesBtn);
+
+        lastCheckedLabel = new Label("Last checked: " + settings.getLastUpdateCheckTime());
+        lastCheckedLabel.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+
+        checkForUpdatesBtn.setOnAction(e -> {
+            checkForUpdatesBtn.setDisable(true);
+            checkForUpdatesBtn.setText("Checking...");
+            new Thread(() -> {
+                try { Thread.sleep(500); } catch (Exception ignored) {}
+                SystemSettings.UpdateCheckResult result = settings.checkForUpdates();
+                Platform.runLater(() -> {
+                    checkForUpdatesBtn.setDisable(false);
+                    checkForUpdatesBtn.setText("Check for Updates...");
+                    lastCheckedLabel.setText("Last checked: " + settings.getLastUpdateCheckTime());
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Update Info");
+                    alert.setHeaderText("Lumina is up to date");
+                    alert.setContentText(result.message());
+                    alert.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+                    alert.showAndWait();
+                });
+            }).start();
+        });
+
+        HBox checkRow = new HBox(12, checkForUpdatesBtn, lastCheckedLabel);
+        checkRow.setAlignment(Pos.CENTER_LEFT);
+        checkRow.setPadding(new Insets(4, 0, 4, 0));
+
+        // Row 4: Show What's New in the editor after an IDE update
+        showWhatsNewCheck = new CheckBox("Show What's New in the editor after an IDE update");
+        showWhatsNewCheck.setSelected(settings.isShowWhatsNewAfterUpdate());
+        styleCheck(showWhatsNewCheck);
+
+        // Row 5: Check for JDK updates
+        checkJdkUpdatesCheck = new CheckBox("Check for JDK updates");
+        checkJdkUpdatesCheck.setSelected(settings.isCheckJdkUpdates());
+        styleCheck(checkJdkUpdatesCheck);
+
+        page.getChildren().addAll(
+                versionFlow,
+                ideUpdatesRow,
+                checkPluginUpdatesCheck,
+                autoPluginBox,
+                checkRow,
+                showWhatsNewCheck,
+                checkJdkUpdatesCheck
+        );
         return page;
     }
 
@@ -1309,4 +1409,13 @@ public class SettingsSystemPage extends VBox {
     public CheckBox getAcceptNonTrustedCertsCheck() { return acceptNonTrustedCertsCheck; }
     public ObservableList<String> getCertsList() { return certsList; }
     public ObservableList<String> getTrustedHostsList() { return trustedHostsList; }
+
+    public CheckBox getCheckIdeUpdatesCheck() { return checkIdeUpdatesCheck; }
+    public ComboBox<String> getIdeUpdateChannelCombo() { return ideUpdateChannelCombo; }
+    public CheckBox getCheckPluginUpdatesCheck() { return checkPluginUpdatesCheck; }
+    public CheckBox getUpdatePluginsAutoCheck() { return updatePluginsAutoCheck; }
+    public Button getCheckForUpdatesBtn() { return checkForUpdatesBtn; }
+    public Label getLastCheckedLabel() { return lastCheckedLabel; }
+    public CheckBox getShowWhatsNewCheck() { return showWhatsNewCheck; }
+    public CheckBox getCheckJdkUpdatesCheck() { return checkJdkUpdatesCheck; }
 }

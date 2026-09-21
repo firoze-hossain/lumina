@@ -157,4 +157,101 @@ class SystemSettingsTest {
         settings.setProxyType(SystemSettings.ProxyType.NO_PROXY);
         settings.apply();
     }
+
+    @Test
+    void testLanguageAndRegionSettings() {
+        settings.setLanguage("Japanese");
+        settings.setRegion("Japan");
+        settings.save();
+
+        settings.load();
+        assertEquals("Japanese", settings.getLanguage());
+        assertEquals("Japan", settings.getRegion());
+
+        // Restore
+        settings.setLanguage("English");
+        settings.setRegion("Not specified");
+        settings.save();
+    }
+
+    @Test
+    void testPasswordsAndElevationSettings() {
+        settings.setPasswordStoragePolicy(SystemSettings.PasswordStoragePolicy.KEEPASS);
+        settings.setKeepassDbPath("/custom/path/c.kdbx");
+        settings.setProtectMasterPasswordWithPgp(true);
+
+        settings.setKeepSudoAuth(true);
+        settings.setSudoTimeout("30 min");
+        settings.setExtendSudoTimeout(false);
+        settings.save();
+
+        settings.load();
+        assertEquals(SystemSettings.PasswordStoragePolicy.KEEPASS, settings.getPasswordStoragePolicy());
+        assertEquals("/custom/path/c.kdbx", settings.getKeepassDbPath());
+        assertTrue(settings.isProtectMasterPasswordWithPgp());
+
+        assertTrue(settings.isKeepSudoAuth());
+        assertEquals("30 min", settings.getSudoTimeout());
+        assertFalse(settings.isExtendSudoTimeout());
+
+        // Restore
+        settings.setPasswordStoragePolicy(SystemSettings.PasswordStoragePolicy.NATIVE_KEYCHAIN);
+        settings.setKeepSudoAuth(false);
+        settings.setSudoTimeout("15 min");
+        settings.setExtendSudoTimeout(true);
+        settings.save();
+    }
+
+    @Test
+    void testCertificatesAndTrustedHostsSettings() {
+        settings.setAcceptNonTrustedCerts(true);
+        settings.getAcceptedCertificates().clear();
+        settings.getAcceptedCertificates().add("custom-root.crt");
+
+        settings.getTrustedHosts().add("custom.mirror.org");
+        settings.save();
+
+        settings.load();
+        assertTrue(settings.isAcceptNonTrustedCerts());
+        assertTrue(settings.getAcceptedCertificates().contains("custom-root.crt"));
+        assertTrue(settings.getTrustedHosts().contains("custom.mirror.org"));
+
+        // Restore
+        settings.setAcceptNonTrustedCerts(false);
+        settings.getAcceptedCertificates().clear();
+        settings.getTrustedHosts().remove("custom.mirror.org");
+        settings.save();
+    }
+
+    @Test
+    void testUpdatesSettingsAndCheck() {
+        settings.setCheckIdeUpdates(true);
+        settings.setUpdateChannel("Early Access Program");
+        settings.setCheckPluginUpdates(true);
+        settings.setUpdatePluginsAutomatically(true);
+        settings.setShowWhatsNewAfterUpdate(false);
+        settings.setCheckJdkUpdates(false);
+        settings.save();
+
+        settings.load();
+        assertTrue(settings.isCheckIdeUpdates());
+        assertEquals("Early Access Program", settings.getUpdateChannel());
+        assertTrue(settings.isCheckPluginUpdates());
+        assertTrue(settings.isUpdatePluginsAutomatically());
+        assertFalse(settings.isShowWhatsNewAfterUpdate());
+        assertFalse(settings.isCheckJdkUpdates());
+
+        // Test checkForUpdates
+        SystemSettings.UpdateCheckResult result = settings.checkForUpdates();
+        assertNotNull(result);
+        assertNotNull(result.message());
+        assertTrue(settings.getLastUpdateCheckTime().startsWith("Today"));
+
+        // Restore
+        settings.setUpdateChannel("Stable Releases");
+        settings.setUpdatePluginsAutomatically(false);
+        settings.setShowWhatsNewAfterUpdate(true);
+        settings.setCheckJdkUpdates(true);
+        settings.save();
+    }
 }
