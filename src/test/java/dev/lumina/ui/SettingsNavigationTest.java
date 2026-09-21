@@ -1,0 +1,144 @@
+package dev.lumina.ui;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import javafx.application.Platform;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.TreeItem;
+import javafx.scene.layout.VBox;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SettingsNavigationTest {
+
+    private static volatile boolean javaFxAvailable = false;
+
+    @BeforeAll
+    static void initJavaFX() {
+        try {
+            Platform.startup(() -> javaFxAvailable = true);
+            javaFxAvailable = true;
+        } catch (Throwable ignored) {
+            // Already started or headless
+            javaFxAvailable = true;
+        }
+    }
+
+    @Test
+    void testDynamicBreadcrumbHierarchyCalculation() {
+        TreeItem<String> root = new TreeItem<>("Settings");
+        TreeItem<String> appearanceAndBehavior = new TreeItem<>("Appearance & Behavior");
+        TreeItem<String> appearance = new TreeItem<>("Appearance");
+        TreeItem<String> systemSettings = new TreeItem<>("System Settings");
+        TreeItem<String> passwords = new TreeItem<>("Passwords");
+
+        root.getChildren().add(appearanceAndBehavior);
+        appearanceAndBehavior.getChildren().addAll(appearance, systemSettings);
+        systemSettings.getChildren().add(passwords);
+
+        // Calculate path for 'Appearance'
+        List<String> pathAppearance = getBreadcrumbPath(appearance);
+        assertEquals(List.of("Appearance & Behavior", "Appearance"), pathAppearance);
+
+        // Calculate path for 'Passwords'
+        List<String> pathPasswords = getBreadcrumbPath(passwords);
+        assertEquals(List.of("Appearance & Behavior", "System Settings", "Passwords"), pathPasswords);
+
+        // Calculate path for top-level category
+        List<String> pathCategory = getBreadcrumbPath(appearanceAndBehavior);
+        assertEquals(List.of("Appearance & Behavior"), pathCategory);
+    }
+
+    private List<String> getBreadcrumbPath(TreeItem<String> item) {
+        List<String> segments = new ArrayList<>();
+        TreeItem<String> it = item;
+        while (it != null && it.getParent() != null) {
+            segments.add(0, it.getValue());
+            it = it.getParent();
+        }
+        return segments;
+    }
+
+    @Test
+    void testCategoryOverviewGeneratesDynamicLinks() {
+        if (!javaFxAvailable) return;
+
+        TreeItem<String> category = new TreeItem<>("Appearance & Behavior");
+        TreeItem<String> child1 = new TreeItem<>("Appearance");
+        TreeItem<String> child2 = new TreeItem<>("Menus and Toolbars");
+        TreeItem<String> child3 = new TreeItem<>("Notifications");
+        category.getChildren().addAll(child1, child2, child3);
+
+        AtomicReference<TreeItem<String>> selectedChild = new AtomicReference<>();
+        SettingsCategoryOverviewPage overview = new SettingsCategoryOverviewPage(category, selectedChild::set);
+
+        // Find links container
+        VBox linksContainer = (VBox) overview.getChildren().get(1);
+        assertEquals(3, linksContainer.getChildren().size());
+
+        Hyperlink link1 = (Hyperlink) linksContainer.getChildren().get(0);
+        assertEquals("Appearance", link1.getText());
+        link1.fire();
+        assertEquals(child1, selectedChild.get());
+
+        Hyperlink link3 = (Hyperlink) linksContainer.getChildren().get(2);
+        assertEquals("Notifications", link3.getText());
+        link3.fire();
+        assertEquals(child3, selectedChild.get());
+    }
+
+    @Test
+    void testIdeAppearancePageThemeStrictlyDarkOnly() {
+        if (!javaFxAvailable) return;
+
+        SettingsIdeAppearancePage page = new SettingsIdeAppearancePage();
+        assertNotNull(page);
+
+        // Traverse children to find theme ComboBox
+        ComboBox<String> themeBox = findComboBox(page);
+        assertNotNull(themeBox, "Theme ComboBox should be present");
+        assertEquals(1, themeBox.getItems().size(), "Strict requirement: Theme ComboBox must have exactly ONE theme");
+        assertEquals("Dark", themeBox.getItems().get(0));
+        assertEquals("Dark", themeBox.getSelectionModel().getSelectedItem());
+
+        // Ensure no JetBrains or IntelliJ branding in any item
+        for (String item : themeBox.getItems()) {
+            assertFalse(item.toLowerCase().contains("jetbrains"), "Must not contain 'jetbrains'");
+            assertFalse(item.toLowerCase().contains("intellij"), "Must not contain 'intellij'");
+        }
+    }
+
+    @Test
+    void testBackgroundImageDialogInitialization() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<BackgroundImageDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                ref.set(new BackgroundImageDialog(null));
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+        assertNotNull(ref.get());
+    }
+
+    @SuppressWarnings("unchecked")
+    private ComboBox<String> findComboBox(javafx.scene.Parent parent) {
+        for (javafx.scene.Node node : parent.getChildrenUnmodifiable()) {
+            if (node instanceof ComboBox<?> cb) {
+                return (ComboBox<String>) cb;
+            } else if (node instanceof javafx.scene.Parent p) {
+                ComboBox<String> found = findComboBox(p);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+}

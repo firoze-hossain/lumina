@@ -1,37 +1,40 @@
 package dev.lumina.ui;
 
+import java.util.ArrayList;
 import java.util.List;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Slider;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 /**
- * IntelliJ-style Settings dialog — exactly matching the two screenshots.
- * Left: category tree. Right: the Appearance panel with all controls.
+ * IntelliJ IDEA-style Settings dialog with:
+ * - Left: Settings category tree with interactive search filtering
+ * - Right Top: Dynamic breadcrumbs header (e.g. Appearance & Behavior › Appearance) and ← → navigation history
+ * - Right Center: Dynamic page routing (Category overview for parent nodes, SettingsIdeAppearancePage for Appearance, etc.)
+ * - Bottom: Status bar with help button and dialog actions (Cancel, Apply, OK)
  */
 public class SettingsDialog {
 
     private final Stage stage;
-    private final SettingsPage currentPage = new SettingsPage();
     private final TreeView<String> tree;
+    private final TextField searchField;
+
+    // Header & History navigation
+    private final HBox breadcrumbBox = new HBox(6);
+    private final Button backButton = new Button("\u2190");
+    private final Button forwardButton = new Button("\u2192");
+    private final List<TreeItem<String>> navHistory = new ArrayList<>();
+    private int navHistoryIndex = -1;
+    private boolean isNavigatingHistory = false;
+
+    // Content container
+    private final StackPane contentContainer = new StackPane();
+    private SettingsIdeAppearancePage currentIdeAppearancePage;
 
     public SettingsDialog(Stage owner) {
         this(owner, "Appearance");
@@ -46,21 +49,57 @@ public class SettingsDialog {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "settings-dialog");
+        root.setStyle("-fx-background-color: #1E1F22;");
 
-        // ---- Left: category tree ----
+        // ---- Left: Category search + tree ----
         tree = buildCategoryTree();
         tree.setPrefWidth(260);
         tree.setMinWidth(240);
         tree.getStyleClass().add("settings-tree");
 
-        // ---- Right: content panel ----
-        currentPage.getStyleClass().add("settings-page");
+        HBox searchBox = new HBox(6);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(8, 12, 8, 12));
+        searchBox.setStyle("-fx-background-color: #14161E; -fx-border-color: transparent transparent #262936 transparent; -fx-border-width: 0 0 1 0;");
 
-        // ---- Bottom: buttons ----
+        Label searchIcon = new Label("🔍");
+        searchIcon.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px;");
+
+        searchField = new TextField();
+        searchField.setPromptText("Search settings");
+        searchField.setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #6F737A; -fx-font-size: 12px; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 4 8 4 8;");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchBox.getChildren().addAll(searchIcon, searchField);
+
+        searchField.textProperty().addListener((obs, oldV, newV) -> {
+            if (newV != null && !newV.trim().isEmpty()) {
+                TreeItem<String> match = searchTree(tree.getRoot(), newV.trim().toLowerCase());
+                if (match != null) {
+                    expandAncestors(match);
+                    tree.getSelectionModel().select(match);
+                    tree.scrollTo(tree.getRow(match));
+                }
+            }
+        });
+
+        VBox.setVgrow(tree, Priority.ALWAYS);
+        VBox leftPane = new VBox(searchBox, tree);
+        leftPane.setPrefWidth(260);
+        leftPane.setMinWidth(240);
+
+        // ---- Right: Header + Content ----
+        BorderPane rightPane = new BorderPane();
+        rightPane.setStyle("-fx-background-color: #1E1F22;");
+
+        HBox header = buildHeader();
+        rightPane.setTop(header);
+        rightPane.setCenter(contentContainer);
+
+        // ---- Bottom: Buttons ----
         HBox buttons = buildButtonBar();
 
-        root.setLeft(tree);
-        root.setCenter(currentPage);
+        root.setLeft(leftPane);
+        root.setCenter(rightPane);
         root.setBottom(buttons);
 
         // Initial selection
@@ -71,14 +110,23 @@ public class SettingsDialog {
             tree.getSelectionModel().select(initialItem);
         }
 
-        // When tree selection changes, update the page
+        // Selection listener
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
-                currentPage.showPage(selected);
+                if (!isNavigatingHistory) {
+                    if (navHistoryIndex >= 0 && navHistoryIndex < navHistory.size() - 1) {
+                        navHistory.subList(navHistoryIndex + 1, navHistory.size()).clear();
+                    }
+                    navHistory.add(selected);
+                    navHistoryIndex = navHistory.size() - 1;
+                    updateNavButtons();
+                }
+                updateBreadcrumbs(selected);
+                showPage(selected);
             }
         });
 
-        Scene scene = new Scene(root, 920, 620);
+        Scene scene = new Scene(root, 960, 640);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
@@ -88,7 +136,322 @@ public class SettingsDialog {
         stage.showAndWait();
     }
 
-    // --------------------------------------------------- category tree
+    // --------------------------------------------------- Header & Navigation
+
+    private HBox buildHeader() {
+        HBox bar = new HBox(6);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(14, 24, 12, 24));
+        bar.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent transparent #262936 transparent; -fx-border-width: 0 0 1 0;");
+
+        breadcrumbBox.setAlignment(Pos.CENTER_LEFT);
+        breadcrumbBox.setSpacing(6);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
+        backButton.setDisable(true);
+        backButton.setOnAction(e -> navigateHistory(-1));
+
+        forwardButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
+        forwardButton.setDisable(true);
+        forwardButton.setOnAction(e -> navigateHistory(1));
+
+        bar.getChildren().addAll(breadcrumbBox, spacer, backButton, forwardButton);
+        return bar;
+    }
+
+    private void updateBreadcrumbs(TreeItem<String> selected) {
+        breadcrumbBox.getChildren().clear();
+        List<TreeItem<String>> chain = new ArrayList<>();
+        TreeItem<String> it = selected;
+        while (it != null && it.getParent() != null) {
+            chain.add(0, it);
+            it = it.getParent();
+        }
+
+        for (int i = 0; i < chain.size(); i++) {
+            final TreeItem<String> item = chain.get(i);
+            if (i < chain.size() - 1) {
+                Hyperlink link = new Hyperlink(item.getValue());
+                link.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 0; -fx-border-color: transparent; -fx-underline: false;");
+                link.setOnMouseEntered(e -> link.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 0; -fx-border-color: transparent; -fx-underline: true;"));
+                link.setOnMouseExited(e -> link.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 0; -fx-border-color: transparent; -fx-underline: false;"));
+                link.setOnAction(e -> {
+                    expandAncestors(item);
+                    tree.getSelectionModel().select(item);
+                });
+
+                Label chevron = new Label("\u203A");
+                chevron.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 14px; -fx-font-weight: bold;");
+                breadcrumbBox.getChildren().addAll(link, chevron);
+            } else {
+                Label current = new Label(item.getValue());
+                current.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+                breadcrumbBox.getChildren().add(current);
+            }
+        }
+    }
+
+    private void navigateHistory(int delta) {
+        int target = navHistoryIndex + delta;
+        if (target >= 0 && target < navHistory.size()) {
+            isNavigatingHistory = true;
+            navHistoryIndex = target;
+            TreeItem<String> item = navHistory.get(target);
+            expandAncestors(item);
+            tree.getSelectionModel().select(item);
+            isNavigatingHistory = false;
+            updateNavButtons();
+        }
+    }
+
+    private void updateNavButtons() {
+        boolean canBack = navHistoryIndex > 0;
+        boolean canFwd = navHistoryIndex < navHistory.size() - 1;
+
+        backButton.setDisable(!canBack);
+        backButton.setStyle(canBack
+                ? "-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0 4 0 4;"
+                : "-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
+
+        forwardButton.setDisable(!canFwd);
+        forwardButton.setStyle(canFwd
+                ? "-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 0 4 0 4;"
+                : "-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
+    }
+
+    // --------------------------------------------------- Page Routing
+
+    private void showPage(TreeItem<String> selected) {
+        contentContainer.getChildren().clear();
+        currentIdeAppearancePage = null;
+
+        String pageName = selected.getValue();
+
+        // 1. If a category node with children is selected (e.g. Appearance & Behavior), show Category Overview
+        if (!selected.getChildren().isEmpty() &&
+                (selected.getParent() == tree.getRoot() || "Appearance & Behavior".equals(pageName))) {
+            SettingsCategoryOverviewPage overview = new SettingsCategoryOverviewPage(selected, child -> {
+                expandAncestors(child);
+                tree.getSelectionModel().select(child);
+            });
+            wrapInScroll(overview);
+            return;
+        }
+
+        // 2. Ancestor hierarchy detection
+        TreeItem<String> ancestor = selected.getParent();
+        boolean underAppearanceGroup = false;
+        boolean underEditorGroup = false;
+        boolean underColorScheme = false;
+
+        while (ancestor != null) {
+            String v = ancestor.getValue();
+            if (v != null) {
+                if (v.equals("Appearance & Behavior")) underAppearanceGroup = true;
+                if (v.equals("Editor")) underEditorGroup = true;
+                if (v.equals("Color Scheme")) underColorScheme = true;
+            }
+            ancestor = ancestor.getParent();
+        }
+
+        // 3. Appearance & Behavior > Appearance
+        if (underAppearanceGroup && "Appearance".equals(pageName)) {
+            currentIdeAppearancePage = new SettingsIdeAppearancePage();
+            wrapInScroll(currentIdeAppearancePage);
+            return;
+        }
+
+        // 4. Color Scheme subpages
+        if (underColorScheme) {
+            buildColorSchemePage(pageName);
+            return;
+        }
+
+        // 5. Editor and subpages
+        if (underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) {
+            buildEditorPage(pageName);
+            return;
+        }
+
+        // 6. Other Appearance & Behavior or root pages
+        if ("Menus and Toolbars".equals(pageName)) {
+            buildMenusToolbarsPage();
+        } else if ("System Settings".equals(pageName)) {
+            buildSystemSettingsPage();
+        } else if (isSystemSettingsSubPage(pageName)) {
+            buildSystemSettingsSubPage(pageName);
+        } else if ("File Colors".equals(pageName)) {
+            buildFileColorsPage();
+        } else if ("Scopes".equals(pageName)) {
+            buildScopesPage();
+        } else if ("Notifications".equals(pageName)) {
+            buildNotificationsPage();
+        } else if ("Data Editor and Viewer".equals(pageName)) {
+            buildDataEditorPage();
+        } else if ("Quick Lists".equals(pageName)) {
+            buildQuickListsPage();
+        } else if ("Required Plugins".equals(pageName)) {
+            buildRequiredPluginsPage();
+        } else if ("Trusted Locations".equals(pageName)) {
+            buildTrustedLocationsPage();
+        } else if ("Path Variables".equals(pageName)) {
+            buildPathVariablesPage();
+        } else if ("Presentation Assistant".equals(pageName)) {
+            buildPresentationAssistantPage();
+        } else if (isKeymapPage(pageName)) {
+            buildKeymapPage();
+        } else if ("Terminal".equals(pageName)) {
+            buildTerminalSettingsPage();
+        } else {
+            // If it has children, show category overview
+            if (!selected.getChildren().isEmpty()) {
+                SettingsCategoryOverviewPage overview = new SettingsCategoryOverviewPage(selected, child -> {
+                    expandAncestors(child);
+                    tree.getSelectionModel().select(child);
+                });
+                wrapInScroll(overview);
+            } else {
+                // Placeholder for other pages
+                Label title = new Label(pageName);
+                title.getStyleClass().add("settings-page-title");
+
+                Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
+                placeholder.getStyleClass().add("settings-placeholder");
+
+                VBox box = new VBox(20, title, placeholder);
+                box.setPadding(new Insets(40, 24, 20, 24));
+                box.getStyleClass().add("settings-page");
+                wrapInScroll(box);
+            }
+        }
+    }
+
+    private void wrapInScroll(javafx.scene.Node page) {
+        ScrollPane scroll = new ScrollPane(page);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("settings-scroll");
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: #1E1F22; -fx-border-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(scroll);
+    }
+
+    private void buildEditorPage(String pageName) {
+        SettingsEditorPage page = new SettingsEditorPage();
+        page.showEditorPage(pageName);
+        wrapInScroll(page);
+    }
+
+    private void buildKeymapPage() {
+        SettingsKeymapPage page = new SettingsKeymapPage();
+        wrapInScroll(page);
+    }
+
+    private void buildMenusToolbarsPage() {
+        SettingsMenusToolbarsPage page = new SettingsMenusToolbarsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildFileColorsPage() {
+        SettingsFileColorsPage page = new SettingsFileColorsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildTerminalSettingsPage() {
+        SettingsTerminalPage page = new SettingsTerminalPage();
+        wrapInScroll(page);
+    }
+
+    private void buildScopesPage() {
+        SettingsScopesPage page = new SettingsScopesPage();
+        wrapInScroll(page);
+    }
+
+    private void buildNotificationsPage() {
+        SettingsNotificationsPage page = new SettingsNotificationsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildDataEditorPage() {
+        SettingsDataEditorPage page = new SettingsDataEditorPage();
+        wrapInScroll(page);
+    }
+
+    private void buildQuickListsPage() {
+        SettingsQuickListsPage page = new SettingsQuickListsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildRequiredPluginsPage() {
+        SettingsRequiredPluginsPage page = new SettingsRequiredPluginsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildTrustedLocationsPage() {
+        SettingsTrustedLocationsPage page = new SettingsTrustedLocationsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildPathVariablesPage() {
+        SettingsPathVariablesPage page = new SettingsPathVariablesPage();
+        wrapInScroll(page);
+    }
+
+    private void buildPresentationAssistantPage() {
+        SettingsPresentationAssistantPage page = new SettingsPresentationAssistantPage();
+        wrapInScroll(page);
+    }
+
+    private void buildColorSchemePage(String pageName) {
+        SettingsColorSchemePage page = new SettingsColorSchemePage();
+        page.selectPage(pageName);
+        wrapInScroll(page);
+    }
+
+    private void buildSystemSettingsPage() {
+        SettingsSystemPage page = new SettingsSystemPage();
+        wrapInScroll(page);
+    }
+
+    private void buildSystemSettingsSubPage(String pageName) {
+        SettingsSystemPage page = new SettingsSystemPage();
+        page.showSubPage(pageName);
+        wrapInScroll(page);
+    }
+
+    private boolean isSystemSettingsSubPage(String pageName) {
+        return List.of(
+                "Data Sharing", "Date Formats", "HTTP Proxy", "Language and Region",
+                "Passwords", "Process Elevation", "Server Certificates", "Trusted Hosts", "Updates"
+        ).contains(pageName);
+    }
+
+    private boolean isEditorSubPage(String pageName) {
+        return List.of(
+                "General", "Auto Import", "Appearance", "Breadcrumbs", "Code Completion",
+                "Code Folding", "Console", "Editor Tabs", "Gutter Icons", "Inline Completion",
+                "Postfix Completion", "Sticky Lines", "Smart Keys", "YAML", "HTML/CSS", "JSON",
+                "Rust", "Markdown", "SQL", "JavaScript", "Code Editing", "Font", "Color Scheme",
+                "Code Style", "Inspections", "File and Code Templates", "File Encodings",
+                "Live Templates", "File Types", "Copyright", "Inlay Hints", "Duplicates",
+                "Emmet", "Intentions", "Language Injections", "Natural Languages",
+                "Reader Mode", "TextMate Bundles", "TODO"
+        ).contains(pageName);
+    }
+
+    private boolean isKeymapPage(String pageName) {
+        return "Keymap".equals(pageName) || List.of(
+                "Editor Actions", "Main Menu", "Tool Windows", "External Tools",
+                "External Build Systems", "Version Control Systems", "Debugger Actions",
+                "Remote External Tools", "Database", "Macros", "Intentions",
+                "Quick Lists", "Plugins", "Other"
+        ).contains(pageName);
+    }
+
+    // --------------------------------------------------- Category Tree
 
     private TreeView<String> buildCategoryTree() {
         TreeItem<String> root = new TreeItem<>("Settings");
@@ -96,50 +459,38 @@ public class SettingsDialog {
 
         // Appearance & Behavior
         TreeItem<String> appearance = new TreeItem<>("Appearance & Behavior");
-
         TreeItem<String> appearanceSub = new TreeItem<>("Appearance");
         TreeItem<String> menus = new TreeItem<>("Menus and Toolbars");
 
-        // System Settings with all sub-pages
+        // System Settings with sub-pages
         TreeItem<String> system = new TreeItem<>("System Settings");
-        TreeItem<String> dataSharing = new TreeItem<>("Data Sharing");
-        TreeItem<String> dateFormats = new TreeItem<>("Date Formats");
-        TreeItem<String> httpProxy = new TreeItem<>("HTTP Proxy");
-        TreeItem<String> languageRegion = new TreeItem<>("Language and Region");
-        TreeItem<String> passwords = new TreeItem<>("Passwords");
-        TreeItem<String> processElevation = new TreeItem<>("Process Elevation");
-        TreeItem<String> serverCertificates = new TreeItem<>("Server Certificates");
-        TreeItem<String> trustedHosts = new TreeItem<>("Trusted Hosts");
-        TreeItem<String> updates = new TreeItem<>("Updates");
         system.getChildren().addAll(
-                dataSharing, dateFormats, httpProxy, languageRegion,
-                passwords, processElevation, serverCertificates,
-                trustedHosts, updates
+                new TreeItem<>("Data Sharing"),
+                new TreeItem<>("Date Formats"),
+                new TreeItem<>("HTTP Proxy"),
+                new TreeItem<>("Language and Region"),
+                new TreeItem<>("Passwords"),
+                new TreeItem<>("Process Elevation"),
+                new TreeItem<>("Server Certificates"),
+                new TreeItem<>("Trusted Hosts"),
+                new TreeItem<>("Updates")
         );
 
-        TreeItem<String> fileColors = new TreeItem<>("File Colors");
-        TreeItem<String> scopes = new TreeItem<>("Scopes");
-        TreeItem<String> notifications = new TreeItem<>("Notifications");
-        TreeItem<String> dataEditor = new TreeItem<>("Data Editor and Viewer");
-        TreeItem<String> quickLists = new TreeItem<>("Quick Lists");
-        TreeItem<String> requiredPlugins = new TreeItem<>("Required Plugins");
-        TreeItem<String> trustedLocations = new TreeItem<>("Trusted Locations");
-        TreeItem<String> pathVariables = new TreeItem<>("Path Variables");
-        TreeItem<String> presentationAssistant = new TreeItem<>("Presentation Assistant");
-
         appearance.getChildren().addAll(
-                appearanceSub, menus, system, fileColors, scopes,
-                notifications, dataEditor, quickLists, requiredPlugins,
-                trustedLocations, pathVariables, presentationAssistant
+                appearanceSub, menus, system,
+                new TreeItem<>("File Colors"),
+                new TreeItem<>("Scopes"),
+                new TreeItem<>("Notifications"),
+                new TreeItem<>("Data Editor and Viewer"),
+                new TreeItem<>("Quick Lists"),
+                new TreeItem<>("Required Plugins"),
+                new TreeItem<>("Trusted Locations"),
+                new TreeItem<>("Path Variables"),
+                new TreeItem<>("Presentation Assistant")
         );
 
         // Keymap
         TreeItem<String> keymap = new TreeItem<>("Keymap");
-//        keymap.getChildren().addAll(
-//                new TreeItem<>("Editor"),
-//                new TreeItem<>("Plugins"),
-//                new TreeItem<>("Version Control")
-//        );
 
         // Editor
         TreeItem<String> editor = new TreeItem<>("Editor");
@@ -155,11 +506,9 @@ public class SettingsDialog {
                 new TreeItem<>("Gutter Icons"),
                 new TreeItem<>("Inline Completion"),
                 new TreeItem<>("Postfix Completion"),
-               // new TreeItem<>("Smart Keys"),
                 new TreeItem<>("Sticky Lines")
-
         );
-        // 🔴 ADD: Smart Keys with sub-items
+
         TreeItem<String> smartKeys = new TreeItem<>("Smart Keys");
         smartKeys.getChildren().addAll(
                 new TreeItem<>("YAML"),
@@ -170,189 +519,158 @@ public class SettingsDialog {
                 new TreeItem<>("SQL"),
                 new TreeItem<>("JavaScript")
         );
-
-// Add Smart Keys to General
         general.getChildren().add(smartKeys);
-        // Build a Color Scheme node with sub-pages so it is expandable in the left tree
+
         TreeItem<String> colorSchemeNode = new TreeItem<>("Color Scheme");
         colorSchemeNode.getChildren().addAll(
-            new TreeItem<>("General"),
-            new TreeItem<>("Language Defaults"),
-            new TreeItem<>("Color Scheme Font"),
-            new TreeItem<>("Console Font"),
-            new TreeItem<>("Code With Me"),
-            new TreeItem<>("Console Colors"),
-            new TreeItem<>("Debugger"),
-            new TreeItem<>("Diff & Merge"),
-            new TreeItem<>("JVM Logging"),
-            new TreeItem<>("User-Defined File Types"),
-            new TreeItem<>("VCS"),
-            new TreeItem<>("Java"),
-            new TreeItem<>("Angular Template"),
-            new TreeItem<>("Context Free Grammar"),
-            new TreeItem<>("CSS"),
-            new TreeItem<>("Data Editor and Viewer"),
-            new TreeItem<>("Database"),
-            new TreeItem<>("Diagrams"),
-            new TreeItem<>("Dockerfile"),
-            new TreeItem<>("EditorConfig"),
-            new TreeItem<>("FreeMarker"),
-            new TreeItem<>("GitLab CI Expression"),
-            new TreeItem<>("Gradle Declarative Configuration"),
-            new TreeItem<>("Groovy"),
-            new TreeItem<>("HTML"),
-            new TreeItem<>("HTTP Request"),
-            new TreeItem<>("JavaScript"),
-            new TreeItem<>("JPA/Hibernate QL"),
-            new TreeItem<>("JSON"),
-            new TreeItem<>("JSONPath"),
-            new TreeItem<>("JSP"),
-            new TreeItem<>("Jupyter Notebooks"),
-            new TreeItem<>("Kotlin"),
-            new TreeItem<>("Kubernetes"),
-            new TreeItem<>("Less"),
-            new TreeItem<>("Lombok Config"),
-            new TreeItem<>("Markdown"),
-            new TreeItem<>("Micronaut EL"),
-            new TreeItem<>("MongoDB JSON"),
-            new TreeItem<>("PostCSS"),
-            new TreeItem<>("Properties"),
-            new TreeItem<>("Protocol Buffer"),
-            new TreeItem<>("Protocol Buffer Text"),
-            new TreeItem<>("Qute"),
-            new TreeItem<>("RegExp"),
-            new TreeItem<>("Rust"),
-            new TreeItem<>("Sass/SCSS"),
-            new TreeItem<>("Shell Script"),
-            new TreeItem<>("Spring EL"),
-            new TreeItem<>("SQL"),
-            new TreeItem<>("Table Diff"),
-            new TreeItem<>("TOML"),
-            new TreeItem<>("TypeScript"),
-            new TreeItem<>("Velocity"),
-            new TreeItem<>("XML"),
-            new TreeItem<>("XPath"),
-            new TreeItem<>("XSLT"),
-            new TreeItem<>("YAML"),
-            new TreeItem<>("By Scope"),
-            new TreeItem<>("Images")
-        );
-      // Copyright node with sub-items
-        TreeItem<String> copyright = new TreeItem<>("Copyright");
-        // Copyright Profiles sub-item
-        TreeItem<String> copyrightProfiles = new TreeItem<>("Copyright Profiles");
-
-// Formatting node with all language sub-items
-        TreeItem<String> formatting = new TreeItem<>("Formatting");
-        formatting.getChildren().addAll(
+                new TreeItem<>("General"),
+                new TreeItem<>("Language Defaults"),
+                new TreeItem<>("Color Scheme Font"),
+                new TreeItem<>("Console Font"),
+                new TreeItem<>("Code With Me"),
+                new TreeItem<>("Console Colors"),
+                new TreeItem<>("Debugger"),
+                new TreeItem<>("Diff & Merge"),
+                new TreeItem<>("JVM Logging"),
+                new TreeItem<>("User-Defined File Types"),
+                new TreeItem<>("VCS"),
+                new TreeItem<>("Java"),
+                new TreeItem<>("Angular Template"),
+                new TreeItem<>("Context Free Grammar"),
                 new TreeItem<>("CSS"),
-                new TreeItem<>("DTD"),
+                new TreeItem<>("Data Editor and Viewer"),
+                new TreeItem<>("Database"),
+                new TreeItem<>("Diagrams"),
+                new TreeItem<>("Dockerfile"),
+                new TreeItem<>("EditorConfig"),
+                new TreeItem<>("FreeMarker"),
+                new TreeItem<>("GitLab CI Expression"),
+                new TreeItem<>("Gradle Declarative Configuration"),
                 new TreeItem<>("Groovy"),
                 new TreeItem<>("HTML"),
-                new TreeItem<>("Java"),
+                new TreeItem<>("HTTP Request"),
                 new TreeItem<>("JavaScript"),
+                new TreeItem<>("JPA/Hibernate QL"),
+                new TreeItem<>("JSON"),
+                new TreeItem<>("JSONPath"),
                 new TreeItem<>("JSP"),
-                new TreeItem<>("JSPX"),
+                new TreeItem<>("Jupyter Notebooks"),
                 new TreeItem<>("Kotlin"),
+                new TreeItem<>("Kubernetes"),
                 new TreeItem<>("Less"),
+                new TreeItem<>("Lombok Config"),
+                new TreeItem<>("Markdown"),
+                new TreeItem<>("Micronaut EL"),
+                new TreeItem<>("MongoDB JSON"),
                 new TreeItem<>("PostCSS"),
                 new TreeItem<>("Properties"),
+                new TreeItem<>("Protocol Buffer"),
+                new TreeItem<>("Protocol Buffer Text"),
+                new TreeItem<>("Qute"),
+                new TreeItem<>("RegExp"),
                 new TreeItem<>("Rust"),
-                new TreeItem<>("Sass"),
-                new TreeItem<>("SCSS"),
+                new TreeItem<>("Sass/SCSS"),
                 new TreeItem<>("Shell Script"),
-                new TreeItem<>("SPI"),
+                new TreeItem<>("Spring EL"),
                 new TreeItem<>("SQL"),
-                new TreeItem<>("SVG"),
+                new TreeItem<>("Table Diff"),
+                new TreeItem<>("TOML"),
                 new TreeItem<>("TypeScript"),
-                new TreeItem<>("Vue template"),
-                new TreeItem<>("XHTML"),
-                new TreeItem<>("XML")
+                new TreeItem<>("Velocity"),
+                new TreeItem<>("XML"),
+                new TreeItem<>("XPath"),
+                new TreeItem<>("XSLT"),
+                new TreeItem<>("YAML"),
+                new TreeItem<>("By Scope"),
+                new TreeItem<>("Images")
         );
 
+        TreeItem<String> copyright = new TreeItem<>("Copyright");
+        TreeItem<String> copyrightProfiles = new TreeItem<>("Copyright Profiles");
+        TreeItem<String> formatting = new TreeItem<>("Formatting");
+        formatting.getChildren().addAll(
+                new TreeItem<>("CSS"), new TreeItem<>("DTD"), new TreeItem<>("Groovy"),
+                new TreeItem<>("HTML"), new TreeItem<>("Java"), new TreeItem<>("JavaScript"),
+                new TreeItem<>("JSP"), new TreeItem<>("JSPX"), new TreeItem<>("Kotlin"),
+                new TreeItem<>("Less"), new TreeItem<>("PostCSS"), new TreeItem<>("Properties"),
+                new TreeItem<>("Rust"), new TreeItem<>("Sass"), new TreeItem<>("SCSS"),
+                new TreeItem<>("Shell Script"), new TreeItem<>("SPI"), new TreeItem<>("SQL"),
+                new TreeItem<>("SVG"), new TreeItem<>("TypeScript"), new TreeItem<>("Vue template"),
+                new TreeItem<>("XHTML"), new TreeItem<>("XML")
+        );
         copyright.getChildren().addAll(copyrightProfiles, formatting);
+
         editor.getChildren().addAll(
-            general,
-            new TreeItem<>("Code Editing"),
-            new TreeItem<>("Font"),
-            colorSchemeNode,
-            new TreeItem<>("Code Style"),
-            new TreeItem<>("Inspections"),
-            new TreeItem<>("File and Code Templates"),
-            new TreeItem<>("File Encodings"),
-            new TreeItem<>("Live Templates"),
-            new TreeItem<>("File Types"),
+                general,
+                new TreeItem<>("Code Editing"),
+                new TreeItem<>("Font"),
+                colorSchemeNode,
+                new TreeItem<>("Code Style"),
+                new TreeItem<>("Inspections"),
+                new TreeItem<>("File and Code Templates"),
+                new TreeItem<>("File Encodings"),
+                new TreeItem<>("Live Templates"),
+                new TreeItem<>("File Types"),
                 copyright,
-            new TreeItem<>("Inlay Hints"),
-            new TreeItem<>("Duplicates"),
-            new TreeItem<>("Emmet"),
-            new TreeItem<>("Intentions"),
-            new TreeItem<>("Language Injections"),
-            new TreeItem<>("Natural Languages"),
-            new TreeItem<>("Reader Mode"),
-            new TreeItem<>("TextMate Bundles"),
-            new TreeItem<>("TODO")
+                new TreeItem<>("Inlay Hints"),
+                new TreeItem<>("Duplicates"),
+                new TreeItem<>("Emmet"),
+                new TreeItem<>("Intentions"),
+                new TreeItem<>("Language Injections"),
+                new TreeItem<>("Natural Languages"),
+                new TreeItem<>("Reader Mode"),
+                new TreeItem<>("TextMate Bundles"),
+                new TreeItem<>("TODO")
         );
-        // Plugins
+
+        // Additional root categories
         TreeItem<String> plugins = new TreeItem<>("Plugins");
-
-        // Version Control
         TreeItem<String> versionControl = new TreeItem<>("Version Control");
-
-        // Build, Execution, Deployment
         TreeItem<String> build = new TreeItem<>("Build, Execution, Deployment");
-
-        // Languages & Frameworks
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
 
-        // Tools
         TreeItem<String> tools = new TreeItem<>("Tools");
         tools.getChildren().addAll(
-                new TreeItem<>("Actions on Save"),
-                new TreeItem<>("AI Assistant"),
-                new TreeItem<>("Code Provenance"),
-                new TreeItem<>("Code With Me"),
-                new TreeItem<>("CSV Formats"),
-                new TreeItem<>("Database"),
-                new TreeItem<>("Database Versioning"),
-                new TreeItem<>("Diagrams"),
-                new TreeItem<>("Diff & Merge"),
-                new TreeItem<>("External Tools"),
-                new TreeItem<>("Features Suggester"),
-                new TreeItem<>("Features Trainer"),
-                new TreeItem<>("HTTP Client"),
-                new TreeItem<>("JPA Entity Declaration"),
-                new TreeItem<>("JPA Reverse Engineering"),
-                new TreeItem<>("Junie"),
-                new TreeItem<>("Jupyter"),
-                new TreeItem<>("Kotlin Notebook"),
-                new TreeItem<>("MCP Server"),
-                new TreeItem<>("Qodana"),
-                new TreeItem<>("Remote SSH External Tools"),
-                new TreeItem<>("Rsync"),
-                new TreeItem<>("Shared Indexes"),
-                new TreeItem<>("SSH Configurations"),
-                new TreeItem<>("SSH Terminal"),
-                new TreeItem<>("Startup Tasks"),
-                new TreeItem<>("Tasks"),
-                new TreeItem<>("Terminal"),
-                new TreeItem<>("Web Browsers and Preview"),
-                new TreeItem<>("XPath Viewer"));
+                new TreeItem<>("Actions on Save"), new TreeItem<>("AI Assistant"),
+                new TreeItem<>("Code Provenance"), new TreeItem<>("Code With Me"),
+                new TreeItem<>("CSV Formats"), new TreeItem<>("Database"),
+                new TreeItem<>("Database Versioning"), new TreeItem<>("Diagrams"),
+                new TreeItem<>("Diff & Merge"), new TreeItem<>("External Tools"),
+                new TreeItem<>("Features Suggester"), new TreeItem<>("Features Trainer"),
+                new TreeItem<>("HTTP Client"), new TreeItem<>("JPA Entity Declaration"),
+                new TreeItem<>("JPA Reverse Engineering"), new TreeItem<>("Junie"),
+                new TreeItem<>("Jupyter"), new TreeItem<>("Kotlin Notebook"),
+                new TreeItem<>("MCP Server"), new TreeItem<>("Qodana"),
+                new TreeItem<>("Remote SSH External Tools"), new TreeItem<>("Rsync"),
+                new TreeItem<>("Shared Indexes"), new TreeItem<>("SSH Configurations"),
+                new TreeItem<>("SSH Terminal"), new TreeItem<>("Startup Tasks"),
+                new TreeItem<>("Tasks"), new TreeItem<>("Terminal"),
+                new TreeItem<>("Web Browsers and Preview"), new TreeItem<>("XPath Viewer")
+        );
 
-        // Backup and Sync
         TreeItem<String> backup = new TreeItem<>("Backup and Sync");
-
-        // Advanced Settings
         TreeItem<String> advanced = new TreeItem<>("Advanced Settings");
 
-        root.getChildren().addAll(appearance, keymap, editor, plugins, versionControl,
-                build, languages, tools, backup, advanced);
+        root.getChildren().addAll(
+                appearance, keymap, editor, plugins, versionControl,
+                build, languages, tools, backup, advanced
+        );
 
-        TreeView<String> tree = new TreeView<>(root);
-        tree.setShowRoot(false);
-        tree.getStyleClass().add("settings-tree");
+        TreeView<String> tv = new TreeView<>(root);
+        tv.setShowRoot(false);
+        tv.getStyleClass().add("settings-tree");
+        return tv;
+    }
 
-        return tree;
+    private TreeItem<String> searchTree(TreeItem<String> root, String query) {
+        for (TreeItem<String> child : root.getChildren()) {
+            if (child.getValue() != null && child.getValue().toLowerCase().contains(query)) {
+                return child;
+            }
+            TreeItem<String> sub = searchTree(child, query);
+            if (sub != null) return sub;
+        }
+        return null;
     }
 
     private TreeItem<String> findItem(TreeItem<String> root, String text) {
@@ -374,826 +692,44 @@ public class SettingsDialog {
         }
     }
 
-    // --------------------------------------------------- button bar
+    // --------------------------------------------------- Button Bar
 
     private HBox buildButtonBar() {
+        Button helpBtn = new Button("?");
+        helpBtn.setStyle("-fx-background-color: transparent; -fx-border-color: #4E5157; -fx-border-radius: 12; -fx-background-radius: 12; -fx-text-fill: #848BA3; -fx-font-size: 12px; -fx-cursor: hand; -fx-min-width: 24px; -fx-min-height: 24px; -fx-max-width: 24px; -fx-max-height: 24px; -fx-padding: 0;");
+
         Button ok = new Button("OK");
         ok.getStyleClass().add("dialog-primary");
         ok.setDefaultButton(true);
+        ok.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 6 18 6 18; -fx-background-radius: 4; -fx-cursor: hand;");
         ok.setOnAction(e -> {
-            currentPage.save();
+            if (currentIdeAppearancePage != null) {
+                currentIdeAppearancePage.save();
+            }
             stage.close();
         });
 
         Button cancel = new Button("Cancel");
         cancel.getStyleClass().add("dialog-secondary");
+        cancel.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
         cancel.setOnAction(e -> stage.close());
 
         Button apply = new Button("Apply");
         apply.getStyleClass().add("dialog-secondary");
-        apply.setOnAction(e -> currentPage.save());
+        apply.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
+        apply.setOnAction(e -> {
+            if (currentIdeAppearancePage != null) {
+                currentIdeAppearancePage.save();
+            }
+        });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(10, spacer, apply, cancel, ok);
-        bar.setAlignment(Pos.CENTER_RIGHT);
-        bar.setPadding(new Insets(12, 20, 14, 20));
-        bar.getStyleClass().add("dialog-footer");
+        HBox bar = new HBox(10, helpBtn, spacer, apply, cancel, ok);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(10, 20, 12, 20));
+        bar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
         return bar;
-    }
-
-    // --------------------------------------------------- settings page
-
-    /**
-     * The right-hand panel that shows the Appearance & Behavior → Appearance
-     * page, exactly as in the two screenshots.
-     */
-    private static class SettingsPage extends VBox {
-
-        private Label pageTitle;
-        private VBox contentArea;
-
-        // ---- Appearance page controls ----
-        private CheckBox lighterBackground;
-        private Slider zoomSlider;
-        private CheckBox customFont;
-        private ComboBox<String> fontFamily;
-        private Spinner<Integer> fontSize;
-        private CheckBox screenReader;
-        private CheckBox contrastScrollbars;
-        private CheckBox adjustColors;
-        private CheckBox simplifiedSplash;
-        private CheckBox compactMode;
-        private CheckBox fullPathInHeader;
-        private CheckBox projectColors;
-        private CheckBox keepPopupsOpen;
-        private CheckBox hamburgerMenu;
-        private Button backgroundImage;
-        private CheckBox indentGuides;
-        private CheckBox smallerIndents;
-        private CheckBox showToolWindowBars;
-        private CheckBox showToolWindowNames;
-        private CheckBox widescreenLayout;
-        private CheckBox sideBySideLeft;
-        private CheckBox sideBySideRight;
-        private CheckBox rememberSize;
-        private Spinner<Integer> presentationZoom;
-        private ComboBox<String> ideAntialiasing;
-        private ComboBox<String> editorAntialiasing;
-
-        public SettingsPage() {
-            getStyleClass().add("settings-page");
-            setPadding(new Insets(20, 24, 20, 24));
-            setSpacing(16);
-
-            buildAppearancePage();
-        }
-
-        private void buildAppearancePage() {
-            // ---- Header ----
-            pageTitle = new Label("Appearance & Behavior → Appearance");
-            pageTitle.getStyleClass().add("settings-page-title");
-
-            // ---- Scrollable content ----
-            contentArea = new VBox(18);
-            contentArea.getStyleClass().add("settings-content");
-
-            // ---- Appearance section ----
-            Label appearanceSection = sectionLabel("Appearance");
-
-            // Editor color scheme
-            Label colorSchemeLabel = new Label("Editor color scheme:");
-            colorSchemeLabel.getStyleClass().add("settings-label");
-            ComboBox<String> colorScheme = new ComboBox<>();
-            colorScheme.getItems().addAll("Island's Dark Theme default");
-            colorScheme.getSelectionModel().selectFirst();
-            colorScheme.getStyleClass().add("settings-combo");
-
-            // Different tool window background
-            lighterBackground = new CheckBox("Use lighter color in the dark theme and darker color in the light theme as a background");
-            lighterBackground.getStyleClass().add("settings-check");
-
-            VBox colorSchemeBox = new VBox(4, colorSchemeLabel, colorScheme, lighterBackground);
-
-            // ---- Accessibility section ----
-            Label accessibilitySection = sectionLabel("Accessibility");
-
-            // Zoom
-            Label zoomLabel = new Label("Zoom:");
-            zoomLabel.getStyleClass().add("settings-label");
-            zoomSlider = new Slider(50, 200, 100);
-            zoomSlider.setShowTickLabels(true);
-            zoomSlider.setShowTickMarks(true);
-            zoomSlider.setMajorTickUnit(25);
-            zoomSlider.setBlockIncrement(5);
-            zoomSlider.setPrefWidth(240);
-            Label zoomValue = new Label("100%");
-            zoomValue.getStyleClass().add("settings-value");
-            zoomSlider.valueProperty().addListener((obs, old, v) ->
-                    zoomValue.setText(String.format("%.0f%%", v)));
-
-            Label zoomHint = new Label("Change with Ctrl+Alt+Shift+ or Ctrl+Alt+Shift+Minus. Set to 100% with Ctrl+Alt+Shift+0");
-            zoomHint.getStyleClass().add("settings-hint");
-
-            HBox zoomRow = new HBox(12, zoomLabel, zoomSlider, zoomValue);
-            zoomRow.setAlignment(Pos.CENTER_LEFT);
-
-            // Custom font
-            customFont = new CheckBox("Use custom font:");
-            customFont.getStyleClass().add("settings-check");
-            fontFamily = new ComboBox<>();
-            fontFamily.getItems().addAll("Inter", "Segoe UI", "SF Pro Text", "JetBrains Mono");
-            fontFamily.getSelectionModel().select("Inter");
-            fontFamily.setPrefWidth(150);
-
-            Label sizeLabel = new Label("Size:");
-            sizeLabel.getStyleClass().add("settings-label");
-            fontSize = new Spinner<>(8, 24, 13);
-            fontSize.setPrefWidth(70);
-
-            HBox fontRow = new HBox(8, fontFamily, sizeLabel, fontSize);
-            fontRow.setAlignment(Pos.CENTER_LEFT);
-            VBox fontBox = new VBox(4, customFont, fontRow);
-
-            // Screen readers
-            screenReader = new CheckBox("Support screen readers");
-            screenReader.getStyleClass().add("settings-check");
-            Label readerHint = new Label("Requires restart. Ctrl+Tab and Ctrl+Shift+Tab will navigate UI controls in dialogs and will not be available for switching editor tabs or other IDE actions. Tooltips on mouse hover will be disabled.");
-            readerHint.getStyleClass().add("settings-hint");
-            readerHint.setWrapText(true);
-
-            // Contrast scrollbars
-            contrastScrollbars = new CheckBox("Use contrast scrollbars");
-            contrastScrollbars.getStyleClass().add("settings-check");
-
-            // Adjust colors for red-green vision deficiency
-            adjustColors = new CheckBox("Adjust colors for red-green vision deficiency");
-            adjustColors.getStyleClass().add("settings-check");
-            Label adjustHint = new Label("Requires restart. For protanopia and deuteranopia.");
-            adjustHint.getStyleClass().add("settings-hint");
-
-            // Simplified splash
-            simplifiedSplash = new CheckBox("Use simplified splash screen");
-            simplifiedSplash.getStyleClass().add("settings-check");
-
-            VBox accessibilityBox = new VBox(10, zoomRow, zoomHint, fontBox,
-                    screenReader, readerHint, contrastScrollbars,
-                    adjustColors, adjustHint, simplifiedSplash);
-
-            // ---- UI Options section ----
-            Label uiSection = sectionLabel("UI Options");
-
-            compactMode = new CheckBox("Compact mode");
-            compactMode.getStyleClass().add("settings-check");
-            Label compactHint = new Label("UI elements take up less screen space");
-            compactHint.getStyleClass().add("settings-hint");
-
-            fullPathInHeader = new CheckBox("Always show full path in window header");
-            fullPathInHeader.getStyleClass().add("settings-check");
-
-            projectColors = new CheckBox("Use project colors in main toolbar");
-            projectColors.getStyleClass().add("settings-check");
-            Label projectHint = new Label("Distinguish projects with different toolbar colors at a glance.");
-            projectHint.getStyleClass().add("settings-hint");
-
-            keepPopupsOpen = new CheckBox("Keep popups open for toggle items");
-            keepPopupsOpen.getStyleClass().add("settings-check");
-
-            VBox uiBox = new VBox(8, compactMode, compactHint,
-                    fullPathInHeader, projectColors, projectHint,
-                    keepPopupsOpen);
-
-            // ---- Main menu section ----
-            Label mainMenuSection = sectionLabel("Main menu");
-
-            hamburgerMenu = new CheckBox("Hide under Hamburger Button");
-            hamburgerMenu.getStyleClass().add("settings-check");
-            Label hamburgerHint = new Label("Requires restart");
-            hamburgerHint.getStyleClass().add("settings-hint");
-
-            backgroundImage = new Button("Background Image...");
-            backgroundImage.getStyleClass().add("dialog-secondary");
-
-            VBox mainMenuBox = new VBox(6, hamburgerMenu, hamburgerHint, backgroundImage);
-
-            // ---- Tree Views section ----
-            Label treeSection = sectionLabel("Tree Views");
-
-            indentGuides = new CheckBox("Show indent guides");
-            indentGuides.getStyleClass().add("settings-check");
-            smallerIndents = new CheckBox("Use smaller indents");
-            smallerIndents.getStyleClass().add("settings-check");
-
-            VBox treeBox = new VBox(6, indentGuides, smallerIndents);
-
-            // ---- Tool Windows section ----
-            Label toolWindowsSection = sectionLabel("Tool Windows");
-
-            showToolWindowBars = new CheckBox("Show tool window bars");
-            showToolWindowBars.getStyleClass().add("settings-check");
-            showToolWindowNames = new CheckBox("Show tool window names");
-            showToolWindowNames.getStyleClass().add("settings-check");
-            widescreenLayout = new CheckBox("Widescreen tool window layout");
-            widescreenLayout.getStyleClass().add("settings-check");
-            sideBySideLeft = new CheckBox("Side-by-side layout on the left");
-            sideBySideLeft.getStyleClass().add("settings-check");
-            sideBySideRight = new CheckBox("Side-by-side layout on the right");
-            sideBySideRight.getStyleClass().add("settings-check");
-            rememberSize = new CheckBox("Remember size for each tool window");
-            rememberSize.getStyleClass().add("settings-check");
-
-            VBox toolWindowsBox = new VBox(6, showToolWindowBars, showToolWindowNames,
-                    widescreenLayout, sideBySideLeft, sideBySideRight,
-                    rememberSize);
-
-            // ---- Presentation Mode section ----
-            Label presentationSection = sectionLabel("Presentation Mode");
-
-            Label presentationZoomLabel = new Label("Zoom:");
-            presentationZoomLabel.getStyleClass().add("settings-label");
-            presentationZoom = new Spinner<>(100, 300, 175);
-            presentationZoom.setPrefWidth(80);
-
-            HBox presentationRow = new HBox(12, presentationZoomLabel, presentationZoom);
-            presentationRow.setAlignment(Pos.CENTER_LEFT);
-
-            // ---- Antialiasing section ----
-            Label antialiasingSection = sectionLabel("Antialiasing");
-
-            Label ideAA = new Label("IDE:");
-            ideAA.getStyleClass().add("settings-label");
-            ideAntialiasing = new ComboBox<>();
-            ideAntialiasing.getItems().addAll("Subpixel", "Grayscale");
-            ideAntialiasing.getSelectionModel().select("Subpixel");
-
-            Label editorAA = new Label("Editor:");
-            editorAA.getStyleClass().add("settings-label");
-            editorAntialiasing = new ComboBox<>();
-            editorAntialiasing.getItems().addAll("Subpixel", "Grayscale");
-            editorAntialiasing.getSelectionModel().select("Subpixel");
-
-            HBox aaRow = new HBox(20, ideAA, ideAntialiasing, editorAA, editorAntialiasing);
-            aaRow.setAlignment(Pos.CENTER_LEFT);
-
-            VBox aaBox = new VBox(6, aaRow);
-
-            // ---- Assemble the page ----
-            contentArea.getChildren().addAll(
-                    colorSchemeBox,
-                    accessibilitySection,
-                    accessibilityBox,
-                    uiSection,
-                    uiBox,
-                    mainMenuSection,
-                    mainMenuBox,
-                    treeSection,
-                    treeBox,
-                    toolWindowsSection,
-                    toolWindowsBox,
-                    presentationSection,
-                    presentationRow,
-                    antialiasingSection,
-                    aaBox
-            );
-
-            // ---- ScrollPane wrapper ----
-            ScrollPane scroll = new ScrollPane(contentArea);
-            scroll.setFitToWidth(true);
-            scroll.getStyleClass().add("settings-scroll");
-            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            VBox.setVgrow(scroll, Priority.ALWAYS);
-
-            getChildren().addAll(pageTitle, scroll);
-
-            // ---- Load saved values ----
-            load();
-        }
-
-        private Label sectionLabel(String text) {
-            Label label = new Label(text);
-            label.getStyleClass().add("settings-section");
-            return label;
-        }
-
-        /**
-         * Show a page based on the selected tree item.
-         */
-//        public void showPage(String pageName) {
-//            getChildren().clear();
-//
-//            if ("Appearance".equals(pageName)) {
-//                buildAppearancePage();
-//            } else if ("Menus and Toolbars".equals(pageName)) {
-//                buildMenusToolbarsPage();
-//            } else if ("System Settings".equals(pageName)) {
-//                buildSystemSettingsPage();
-//            } else if (isSystemSettingsSubPage(pageName)) {
-//                buildSystemSettingsSubPage(pageName);
-//            }
-//            else if ("File Colors".equals(pageName)) {
-//                buildFileColorsPage();
-//            } else if ("Scopes".equals(pageName)) {
-//                buildScopesPage();
-//            } else if ("Notifications".equals(pageName)) {
-//                buildNotificationsPage();
-//            } else if ("Data Editor and Viewer".equals(pageName)) {
-//                buildDataEditorPage();
-//            } else if ("Quick Lists".equals(pageName)) {
-//                buildQuickListsPage();
-//            } else if ("Required Plugins".equals(pageName)) {
-//                buildRequiredPluginsPage();
-//            } else if ("Trusted Locations".equals(pageName)) {
-//                buildTrustedLocationsPage();
-//            } else if ("Path Variables".equals(pageName)) {
-//                buildPathVariablesPage();
-//            } else if ("Presentation Assistant".equals(pageName)) {
-//                buildPresentationAssistantPage();
-//            }
-//            else if ("Keymap".equals(pageName) ||
-//                    pageName.equals("Editor Actions") ||
-//                    pageName.equals("Main Menu") ||
-//                    pageName.equals("Tool Windows") ||
-//                    pageName.equals("External Tools") ||
-//                    pageName.equals("External Build Systems") ||
-//                    pageName.equals("Version Control Systems") ||
-//                    pageName.equals("Debugger Actions") ||
-//                    pageName.equals("Remote External Tools") ||
-//                    pageName.equals("Database") ||
-//                    pageName.equals("Macros") ||
-//                    pageName.equals("Intentions") ||
-//                    pageName.equals("Quick Lists") ||
-//                    pageName.equals("Plugins") ||
-//                    pageName.equals("Other")) {
-//                buildKeymapPage();
-//            }else if ("Editor".equals(pageName) ||
-//                    pageName.equals("General") ||
-//                    pageName.equals("Code Editing") ||
-//                    pageName.equals("Font") ||
-//                    pageName.equals("Color Scheme") ||
-//                    pageName.equals("Code Style") ||
-//                    pageName.equals("Inspections") ||
-//                    pageName.equals("File and Code Templates") ||
-//                    pageName.equals("File Encodings") ||
-//                    pageName.equals("Live Templates") ||
-//                    pageName.equals("File Types") ||
-//                    pageName.equals("Copyright") ||
-//                    pageName.equals("Inlay Hints") ||
-//                    pageName.equals("Duplicates") ||
-//                    pageName.equals("Emmet") ||
-//                    pageName.equals("Intentions") ||
-//                    pageName.equals("Language Injections") ||
-//                    pageName.equals("Natural Languages") ||
-//                    pageName.equals("Reader Mode") ||
-//                    pageName.equals("TextMate Bundles") ||
-//                    pageName.equals("TODO")) {
-//                // Pass the page name to the editor page
-//                buildEditorPage(pageName);
-//            }
-//            else {
-//                // Placeholder for other pages
-//                Label title = new Label(pageName);
-//                title.getStyleClass().add("settings-page-title");
-//
-//                Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
-//                placeholder.getStyleClass().add("settings-placeholder");
-//
-//                VBox box = new VBox(20, title, placeholder);
-//                box.setPadding(new Insets(40, 24, 20, 24));
-//                box.getStyleClass().add("settings-page");
-//
-//                ScrollPane scroll = new ScrollPane(box);
-//                scroll.setFitToWidth(true);
-//                scroll.getStyleClass().add("settings-scroll");
-//                scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-//                VBox.setVgrow(scroll, Priority.ALWAYS);
-//
-//                getChildren().addAll(scroll);
-//            }
-//        }
-        /**
-         * Show a page based on the selected tree item.
-         */
-//        public void showPage(String pageName) {
-//            getChildren().clear();
-//
-//            if ("Appearance".equals(pageName)) {
-//                buildAppearancePage();
-//            } else if ("Menus and Toolbars".equals(pageName)) {
-//                buildMenusToolbarsPage();
-//            } else if ("System Settings".equals(pageName)) {
-//                buildSystemSettingsPage();
-//            } else if (isSystemSettingsSubPage(pageName)) {
-//                buildSystemSettingsSubPage(pageName);
-//            } else if ("File Colors".equals(pageName)) {
-//                buildFileColorsPage();
-//            } else if ("Scopes".equals(pageName)) {
-//                buildScopesPage();
-//            } else if ("Notifications".equals(pageName)) {
-//                buildNotificationsPage();
-//            } else if ("Data Editor and Viewer".equals(pageName)) {
-//                buildDataEditorPage();
-//            } else if ("Quick Lists".equals(pageName)) {
-//                buildQuickListsPage();
-//            } else if ("Required Plugins".equals(pageName)) {
-//                buildRequiredPluginsPage();
-//            } else if ("Trusted Locations".equals(pageName)) {
-//                buildTrustedLocationsPage();
-//            } else if ("Path Variables".equals(pageName)) {
-//                buildPathVariablesPage();
-//            } else if ("Presentation Assistant".equals(pageName)) {
-//                buildPresentationAssistantPage();
-//            } else if ("Keymap".equals(pageName) ||
-//                    pageName.equals("Editor Actions") ||
-//                    pageName.equals("Main Menu") ||
-//                    pageName.equals("Tool Windows") ||
-//                    pageName.equals("External Tools") ||
-//                    pageName.equals("External Build Systems") ||
-//                    pageName.equals("Version Control Systems") ||
-//                    pageName.equals("Debugger Actions") ||
-//                    pageName.equals("Remote External Tools") ||
-//                    pageName.equals("Database") ||
-//                    pageName.equals("Macros") ||
-//                    pageName.equals("Intentions") ||
-//                    pageName.equals("Quick Lists") ||
-//                    pageName.equals("Plugins") ||
-//                    pageName.equals("Other")) {
-//                buildKeymapPage();
-//            }
-//            // 🔴 FIX: Add Smart Keys and all its sub-items here
-//            else if ("Editor".equals(pageName) ||
-//                    pageName.equals("General") ||
-//                    pageName.equals("Auto Import") ||
-//                    pageName.equals("Appearance") ||
-//                    pageName.equals("Breadcrumbs") ||
-//                    pageName.equals("Code Completion") ||
-//                    pageName.equals("Code Folding") ||
-//                    pageName.equals("Console") ||
-//                    pageName.equals("Editor Tabs") ||
-//                    pageName.equals("Gutter Icons") ||
-//                    pageName.equals("Inline Completion") ||
-//                    pageName.equals("Postfix Completion") ||
-//                    pageName.equals("Sticky Lines") ||
-//                    // 🔴 ADD Smart Keys and sub-items
-//                    pageName.equals("Smart Keys") ||
-//                    pageName.equals("YAML") ||
-//                    pageName.equals("HTML/CSS") ||
-//                    pageName.equals("JSON") ||
-//                    pageName.equals("Rust") ||
-//                    pageName.equals("Markdown") ||
-//                    pageName.equals("SQL") ||
-//                    pageName.equals("JavaScript") ||
-//                    pageName.equals("Code Editing") ||
-//                    pageName.equals("Font") ||
-//                    pageName.equals("Color Scheme") ||
-//                    pageName.equals("Code Style") ||
-//                    pageName.equals("Inspections") ||
-//                    pageName.equals("File and Code Templates") ||
-//                    pageName.equals("File Encodings") ||
-//                    pageName.equals("Live Templates") ||
-//                    pageName.equals("File Types") ||
-//                    pageName.equals("Copyright") ||
-//                    pageName.equals("Inlay Hints") ||
-//                    pageName.equals("Duplicates") ||
-//                    pageName.equals("Emmet") ||
-//                    pageName.equals("Intentions") ||
-//                    pageName.equals("Language Injections") ||
-//                    pageName.equals("Natural Languages") ||
-//                    pageName.equals("Reader Mode") ||
-//                    pageName.equals("TextMate Bundles") ||
-//                    pageName.equals("TODO")) {
-//                // Pass the page name to the editor page
-//                buildEditorPage(pageName);
-//            } else {
-//                // Placeholder for other pages
-//                Label title = new Label(pageName);
-//                title.getStyleClass().add("settings-page-title");
-//
-//                Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
-//                placeholder.getStyleClass().add("settings-placeholder");
-//
-//                VBox box = new VBox(20, title, placeholder);
-//                box.setPadding(new Insets(40, 24, 20, 24));
-//                box.getStyleClass().add("settings-page");
-//
-//                ScrollPane scroll = new ScrollPane(box);
-//                scroll.setFitToWidth(true);
-//                scroll.getStyleClass().add("settings-scroll");
-//                scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-//                VBox.setVgrow(scroll, Priority.ALWAYS);
-//
-//                getChildren().addAll(scroll);
-//            }
-//        }
-        /**
-         * Show a page based on the selected tree item.
-         */
-        public void showPage(TreeItem<String> selected) {
-            getChildren().clear();
-
-            String pageName = selected.getValue();
-
-            // Determine ancestor path to disambiguate identical names (e.g. "Appearance")
-            TreeItem<String> ancestor = selected.getParent();
-            boolean underAppearanceGroup = false;
-            boolean underEditorGroup = false;
-            boolean underColorScheme = false;
-            while (ancestor != null) {
-                String v = ancestor.getValue();
-                if (v != null) {
-                    if (v.equals("Appearance & Behavior")) underAppearanceGroup = true;
-                    if (v.equals("Editor")) underEditorGroup = true;
-                    if (v.equals("Color Scheme")) underEditorGroup = true; // keep Editor group flag
-                    if (v.equals("Color Scheme")) underColorScheme = true;
-                }
-                ancestor = ancestor.getParent();
-            }
-
-            // If the selected node is under the top-level "Appearance & Behavior" group,
-            // treat its "Appearance" as the top-level appearance page. Otherwise if it's
-            // under "Editor" treat it as an editor sub-page.
-            if (underAppearanceGroup && "Appearance".equals(pageName)) {
-                buildAppearancePage();
-                return;
-            }
-
-            // If the selected node is under Editor -> Color Scheme, route to the Color Scheme page
-            if (underColorScheme) {
-                buildColorSchemePage(pageName);
-                return;
-            }
-
-            if (underEditorGroup || "Editor".equals(pageName) ||
-                    pageName.equals("General") ||
-                    pageName.equals("Auto Import") ||
-                    pageName.equals("Appearance") ||
-                    pageName.equals("Breadcrumbs") ||
-                    pageName.equals("Code Completion") ||
-                    pageName.equals("Code Folding") ||
-                    pageName.equals("Console") ||
-                    pageName.equals("Editor Tabs") ||
-                    pageName.equals("Gutter Icons") ||
-                    pageName.equals("Inline Completion") ||
-                    pageName.equals("Postfix Completion") ||
-                    pageName.equals("Sticky Lines") ||
-                    pageName.equals("Smart Keys") ||
-                    pageName.equals("YAML") ||
-                    pageName.equals("HTML/CSS") ||
-                    pageName.equals("JSON") ||
-                    pageName.equals("Rust") ||
-                    pageName.equals("Markdown") ||
-                    pageName.equals("SQL") ||
-                    pageName.equals("JavaScript") ||
-                    pageName.equals("Code Editing") ||
-                    pageName.equals("Font") ||
-                    pageName.equals("Color Scheme") ||
-                    pageName.equals("Code Style") ||
-                    pageName.equals("Inspections") ||
-                    pageName.equals("File and Code Templates") ||
-                    pageName.equals("File Encodings") ||
-                    pageName.equals("Live Templates") ||
-                    pageName.equals("File Types") ||
-                    pageName.equals("Copyright") ||
-                    pageName.equals("Inlay Hints") ||
-                    pageName.equals("Duplicates") ||
-                    pageName.equals("Emmet") ||
-                    pageName.equals("Intentions") ||
-                    pageName.equals("Language Injections") ||
-                    pageName.equals("Natural Languages") ||
-                    pageName.equals("Reader Mode") ||
-                    pageName.equals("TextMate Bundles") ||
-                    pageName.equals("TODO")) {
-                // Pass the page name to the editor page
-                buildEditorPage(pageName);
-                return;
-            }
-
-            if ("Menus and Toolbars".equals(pageName)) {
-                buildMenusToolbarsPage();
-            } else if ("System Settings".equals(pageName)) {
-                buildSystemSettingsPage();
-            } else if (isSystemSettingsSubPage(pageName)) {
-                buildSystemSettingsSubPage(pageName);
-            } else if ("File Colors".equals(pageName)) {
-                buildFileColorsPage();
-            } else if ("Scopes".equals(pageName)) {
-                buildScopesPage();
-            } else if ("Notifications".equals(pageName)) {
-                buildNotificationsPage();
-            } else if ("Data Editor and Viewer".equals(pageName)) {
-                buildDataEditorPage();
-            } else if ("Quick Lists".equals(pageName)) {
-                buildQuickListsPage();
-            } else if ("Required Plugins".equals(pageName)) {
-                buildRequiredPluginsPage();
-            } else if ("Trusted Locations".equals(pageName)) {
-                buildTrustedLocationsPage();
-            } else if ("Path Variables".equals(pageName)) {
-                buildPathVariablesPage();
-            } else if ("Presentation Assistant".equals(pageName)) {
-                buildPresentationAssistantPage();
-            } else if ("Keymap".equals(pageName) ||
-                    pageName.equals("Editor Actions") ||
-                    pageName.equals("Main Menu") ||
-                    pageName.equals("Tool Windows") ||
-                    pageName.equals("External Tools") ||
-                    pageName.equals("External Build Systems") ||
-                    pageName.equals("Version Control Systems") ||
-                    pageName.equals("Debugger Actions") ||
-                    pageName.equals("Remote External Tools") ||
-                    pageName.equals("Database") ||
-                    pageName.equals("Macros") ||
-                    pageName.equals("Intentions") ||
-                    pageName.equals("Quick Lists") ||
-                    pageName.equals("Plugins") ||
-                    pageName.equals("Other")) {
-                buildKeymapPage();
-            } else if ("Terminal".equals(pageName)) {
-                buildTerminalSettingsPage();
-            } else {
-                // Placeholder for other pages
-                Label title = new Label(pageName);
-                title.getStyleClass().add("settings-page-title");
-
-                Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
-                placeholder.getStyleClass().add("settings-placeholder");
-
-                VBox box = new VBox(20, title, placeholder);
-                box.setPadding(new Insets(40, 24, 20, 24));
-                box.getStyleClass().add("settings-page");
-
-                ScrollPane scroll = new ScrollPane(box);
-                scroll.setFitToWidth(true);
-                scroll.getStyleClass().add("settings-scroll");
-                scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-                VBox.setVgrow(scroll, Priority.ALWAYS);
-
-                getChildren().addAll(scroll);
-            }
-        }
-        private void buildEditorPage() {
-            SettingsEditorPage page = new SettingsEditorPage();
-            wrapInScroll(page);
-        }
-        // Update buildEditorPage to accept a page name parameter
-        private void buildEditorPage(String pageName) {
-            SettingsEditorPage page = new SettingsEditorPage();
-            page.showEditorPage(pageName);
-            wrapInScroll(page);
-        }
-
-        // 🔴 ADD this method after buildPresentationAssistantPage()
-        private void buildKeymapPage() {
-            SettingsKeymapPage page = new SettingsKeymapPage();
-            wrapInScroll(page);
-        }
-
-        /**
-         * Builds the Menus and Toolbars page.
-         */
-        private void buildMenusToolbarsPage() {
-            SettingsMenusToolbarsPage page = new SettingsMenusToolbarsPage();
-            ScrollPane scroll = new ScrollPane(page);
-            scroll.setFitToWidth(true);
-            scroll.getStyleClass().add("settings-scroll");
-            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            VBox.setVgrow(scroll, Priority.ALWAYS);
-            getChildren().addAll(scroll);
-        }
-        private void buildFileColorsPage() {
-            SettingsFileColorsPage page = new SettingsFileColorsPage();
-            wrapInScroll(page);
-        }
-
-        private void buildTerminalSettingsPage() {
-            SettingsTerminalPage page = new SettingsTerminalPage();
-            wrapInScroll(page);
-        }
-
-        private void buildScopesPage() {
-            SettingsScopesPage page = new SettingsScopesPage();
-            wrapInScroll(page);
-        }
-
-        private void buildNotificationsPage() {
-            SettingsNotificationsPage page = new SettingsNotificationsPage();
-            wrapInScroll(page);
-        }
-
-        private void buildDataEditorPage() {
-            SettingsDataEditorPage page = new SettingsDataEditorPage();
-            wrapInScroll(page);
-        }
-
-        private void buildQuickListsPage() {
-            SettingsQuickListsPage page = new SettingsQuickListsPage();
-            wrapInScroll(page);
-        }
-
-        private void buildRequiredPluginsPage() {
-            SettingsRequiredPluginsPage page = new SettingsRequiredPluginsPage();
-            wrapInScroll(page);
-        }
-
-        private void buildTrustedLocationsPage() {
-            SettingsTrustedLocationsPage page = new SettingsTrustedLocationsPage();
-            wrapInScroll(page);
-        }
-
-        private void buildPathVariablesPage() {
-            SettingsPathVariablesPage page = new SettingsPathVariablesPage();
-            wrapInScroll(page);
-        }
-
-        private void buildPresentationAssistantPage() {
-            SettingsPresentationAssistantPage page = new SettingsPresentationAssistantPage();
-            wrapInScroll(page);
-        }
-
-        private void buildColorSchemePage(String pageName) {
-            SettingsColorSchemePage page = new SettingsColorSchemePage();
-            page.selectPage(pageName);
-            wrapInScroll(page);
-        }
-
-        // 🔴 ADD: Helper method to wrap in scroll pane
-//        private void wrapInScroll(VBox page) {
-//            ScrollPane scroll = new ScrollPane(page);
-//            scroll.setFitToWidth(true);
-//            scroll.getStyleClass().add("settings-scroll");
-//            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-//            VBox.setVgrow(scroll, Priority.ALWAYS);
-//            getChildren().addAll(scroll);
-//        }
-        private void wrapInScroll(javafx.scene.Node page) {
-            ScrollPane scroll = new ScrollPane(page);
-            scroll.setFitToWidth(true);
-            scroll.getStyleClass().add("settings-scroll");
-            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            VBox.setVgrow(scroll, Priority.ALWAYS);
-            getChildren().addAll(scroll);
-        }
-        /**
-         * Helper method to check if a page is a System Settings sub-page.
-         */
-        private boolean isSystemSettingsSubPage(String pageName) {
-            return List.of(
-                    "Data Sharing",
-                    "Date Formats",
-                    "HTTP Proxy",
-                    "Language and Region",
-                    "Passwords",
-                    "Process Elevation",
-                    "Server Certificates",
-                    "Trusted Hosts",
-                    "Updates"
-            ).contains(pageName);
-        }
-
-        /**
-         * Build the System Settings page (shows Data Sharing by default).
-         */
-        private void buildSystemSettingsPage() {
-            SettingsSystemPage page = new SettingsSystemPage();
-            ScrollPane scroll = new ScrollPane(page);
-            scroll.setFitToWidth(true);
-            scroll.getStyleClass().add("settings-scroll");
-            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            VBox.setVgrow(scroll, Priority.ALWAYS);
-            getChildren().addAll(scroll);
-        }
-
-        /**
-         * Build a specific System Settings sub-page.
-         */
-        private void buildSystemSettingsSubPage(String pageName) {
-            SettingsSystemPage page = new SettingsSystemPage();
-            page.showSubPage(pageName);
-            ScrollPane scroll = new ScrollPane(page);
-            scroll.setFitToWidth(true);
-            scroll.getStyleClass().add("settings-scroll");
-            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-            VBox.setVgrow(scroll, Priority.ALWAYS);
-            getChildren().addAll(scroll);
-        }
-
-        /**
-         * Load saved settings from disk.
-         */
-        private void load() {
-            // Read from Settings.properties if you want persistence
-            // For now, use defaults that match the screenshots
-            // (all checkboxes off by default, matching the screenshots)
-        }
-
-        /**
-         * Save settings to disk.
-         */
-        public void save() {
-            // Persist settings using dev.lumina.util.Settings
-            // Example:
-            // Settings.put("settings.zoom", String.valueOf((int)zoomSlider.getValue()));
-            // ...
-        }
     }
 }

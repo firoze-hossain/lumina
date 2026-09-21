@@ -34,34 +34,7 @@ public class SettingsNotificationsPage extends VBox {
         setSpacing(14);
         setStyle("-fx-background-color: #1E1F22;");
 
-        // 1. Breadcrumb Header: Appearance & Behavior › Notifications
-        HBox breadcrumb = new HBox(6);
-        breadcrumb.setAlignment(Pos.CENTER_LEFT);
-        breadcrumb.setPadding(new Insets(0, 0, 4, 0));
-
-        Label parentCat = new Label("Appearance & Behavior");
-        parentCat.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-        Label chevron = new Label("\u203A");
-        chevron.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 14px; -fx-font-weight: bold;");
-
-        Label pageTitle = new Label("Notifications");
-        pageTitle.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button backArrow = new Button("\u2190");
-        backArrow.setStyle("-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
-        backArrow.setDisable(true);
-
-        Button fwdArrow = new Button("\u2192");
-        fwdArrow.setStyle("-fx-background-color: transparent; -fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-cursor: default; -fx-padding: 0 4 0 4;");
-        fwdArrow.setDisable(true);
-
-        breadcrumb.getChildren().addAll(parentCat, chevron, pageTitle, spacer, backArrow, fwdArrow);
-
-        // 2. Global Checkboxes
+        // Global Checkboxes
         CheckBox displayBalloon = new CheckBox("Display balloon notifications");
         displayBalloon.setSelected(service.isDisplayBalloonNotifications());
         displayBalloon.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
@@ -281,6 +254,6 @@ public class SettingsNotificationsPage extends VBox {
 
         dontAskBox.getChildren().addAll(toolbar, contentStack);
 
-        getChildren().addAll(breadcrumb, displayBalloon, enableSystem, middleBox, dontAskLabel, dontAskBox);
+        getChildren().addAll(displayBalloon, enableSystem, middleBox, dontAskLabel, dontAskBox);
     }
 }
