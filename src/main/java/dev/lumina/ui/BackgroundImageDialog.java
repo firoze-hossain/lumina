@@ -1,7 +1,7 @@
 package dev.lumina.ui;
 
 import java.io.File;
-import java.util.prefs.Preferences;
+import java.util.List;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,23 +21,23 @@ import javafx.stage.Window;
 
 /**
  * IntelliJ IDEA-identical Background Image dialog with:
- * - Dynamic image selection and recent history
- * - Opacity slider & spinner (0 - 100)
+ * - Dynamic image selection and recent history via BackgroundImageService
+ * - Opacity slider & spinner (0 - 100) dynamically synced
  * - Orientation / flip buttons (split horizontal & vertical)
  * - Scope: This project only checkbox
  * - Target tabs: Editor and Tools | Empty Frame
  * - Placement / Scale mode controls (Center, Fill/Stretch, Tile)
  * - 3x3 interactive Anchor Grid selector
  * - Live interactive preview panel showing:
- *     - Syntax-highlighted code with tool-window divider for "Editor and Tools"
- *     - Centered shortcut table for "Empty Frame"
- *     - Live rendering of the background image with real-time opacity, scaling, anchor, and flip
+ *     - Syntax-highlighted code with whitespace dots and tool-window dividers for "Editor and Tools"
+ *     - Clean centered shortcut table for "Empty Frame"
+ *     - Real-time rendering of the background image with live opacity, scaling, anchor, and flip
  * - Bottom action buttons: Cancel, Clear and Close, and dynamic Set button
  */
 public class BackgroundImageDialog {
 
     private final Stage stage;
-    private final Preferences prefs = Preferences.userNodeForPackage(BackgroundImageDialog.class);
+    private final BackgroundImageService bgService = BackgroundImageService.getInstance();
 
     // Target tracking: true = Editor and Tools, false = Empty Frame
     private boolean isEditorTarget = true;
@@ -118,6 +118,10 @@ public class BackgroundImageDialog {
             imageCombo.getEditor().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-prompt-text-fill: #6F737A;");
         }
 
+        // Load recent images into combo
+        List<String> recentImages = bgService.getRecentImages();
+        imageCombo.getItems().setAll(recentImages);
+
         Button browseBtn = new Button("...");
         browseBtn.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-cursor: hand; -fx-padding: 3 8 3 8;");
         browseBtn.setOnAction(e -> {
@@ -176,38 +180,13 @@ public class BackgroundImageDialog {
 
         opacityRow.getChildren().addAll(opacityLabel, opacitySlider, opacitySpinner);
 
-        // 3. Middle Control Strip (Left: Toggles, Checkbox, Tabs; Right: Scale Boxes & Anchor Grid)
+        // 3. Middle Control Strip (Left: Checkbox, Tabs; Right: Flip toggles, Scale Box, Anchor Grid)
         HBox middleStrip = new HBox(14);
         middleStrip.setAlignment(Pos.CENTER_LEFT);
 
         // Left Sub-Column
         VBox leftSubCol = new VBox(8);
         leftSubCol.setAlignment(Pos.CENTER_LEFT);
-
-        HBox flipRow = new HBox(6);
-        flipRow.setAlignment(Pos.CENTER_LEFT);
-
-        splitVertBtn = new ToggleButton("◫");
-        splitVertBtn.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
-        splitVertBtn.setOnAction(e -> {
-            boolean active = splitVertBtn.isSelected();
-            if (isEditorTarget) editorFlipV = active;
-            else frameFlipV = active;
-            updateFlipButtonStyles();
-            updatePreview();
-        });
-
-        splitHorizBtn = new ToggleButton("⊟");
-        splitHorizBtn.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
-        splitHorizBtn.setOnAction(e -> {
-            boolean active = splitHorizBtn.isSelected();
-            if (isEditorTarget) editorFlipH = active;
-            else frameFlipH = active;
-            updateFlipButtonStyles();
-            updatePreview();
-        });
-
-        flipRow.getChildren().addAll(splitVertBtn, splitHorizBtn);
 
         thisProjectOnly = new CheckBox("This project only");
         thisProjectOnly.setSelected(isEditorTarget ? editorProjectOnly : frameProjectOnly);
@@ -238,26 +217,48 @@ public class BackgroundImageDialog {
         });
 
         segmentedTabs.getChildren().addAll(editorAndToolsBtn, emptyFrameBtn);
-        leftSubCol.getChildren().addAll(flipRow, thisProjectOnly, segmentedTabs);
+        leftSubCol.getChildren().addAll(thisProjectOnly, segmentedTabs);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Right Framed Container (Scale Options + Anchor Grid)
-        HBox framedVisualSelectors = new HBox(10);
-        framedVisualSelectors.setAlignment(Pos.CENTER);
-        framedVisualSelectors.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 4 8 4 8;");
+        // Right Group: Flip toggles + Scale Box + Anchor Grid
+        HBox rightControls = new HBox(10);
+        rightControls.setAlignment(Pos.CENTER_RIGHT);
 
-        // Scale Mode Buttons (3 items)
-        HBox scaleBoxRow = new HBox(4);
+        HBox flipRow = new HBox(6);
+        flipRow.setAlignment(Pos.CENTER);
+
+        splitVertBtn = new ToggleButton("◫");
+        splitVertBtn.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
+        splitVertBtn.setOnAction(e -> {
+            boolean active = splitVertBtn.isSelected();
+            if (isEditorTarget) editorFlipV = active;
+            else frameFlipV = active;
+            updateFlipButtonStyles();
+            updatePreview();
+        });
+
+        splitHorizBtn = new ToggleButton("⊟");
+        splitHorizBtn.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8; -fx-cursor: hand;");
+        splitHorizBtn.setOnAction(e -> {
+            boolean active = splitHorizBtn.isSelected();
+            if (isEditorTarget) editorFlipH = active;
+            else frameFlipH = active;
+            updateFlipButtonStyles();
+            updatePreview();
+        });
+
+        flipRow.getChildren().addAll(splitVertBtn, splitHorizBtn);
+
+        // Continuous Scale Modes Box
+        HBox scaleBoxRow = new HBox(0);
         scaleBoxRow.setAlignment(Pos.CENTER);
+        scaleBoxRow.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
 
-        // 1) Center icon
-        scaleBoxes[0] = createScaleBox(0, createCenterIcon());
-        // 2) Fill / Stretch icon (concentric expanding glow boxes)
-        scaleBoxes[1] = createScaleBox(1, createFillIcon());
-        // 3) Tile icon (dense square pattern)
-        scaleBoxes[2] = createScaleBox(2, createTileIcon());
+        scaleBoxes[0] = createScaleBox(0, createCenterIcon(), true, false);
+        scaleBoxes[1] = createScaleBox(1, createFillIcon(), false, false);
+        scaleBoxes[2] = createScaleBox(2, createTileIcon(), false, true);
 
         updateScaleBoxStyles();
         scaleBoxRow.getChildren().addAll(scaleBoxes[0], scaleBoxes[1], scaleBoxes[2]);
@@ -292,8 +293,8 @@ public class BackgroundImageDialog {
         }
         updateAnchorGridStyles();
 
-        framedVisualSelectors.getChildren().addAll(scaleBoxRow, anchorGrid);
-        middleStrip.getChildren().addAll(leftSubCol, spacer, framedVisualSelectors);
+        rightControls.getChildren().addAll(flipRow, scaleBoxRow, anchorGrid);
+        middleStrip.getChildren().addAll(leftSubCol, spacer, rightControls);
 
         topControlsBox.getChildren().addAll(imageRow, opacityRow, middleStrip);
         root.setTop(topControlsBox);
@@ -305,14 +306,12 @@ public class BackgroundImageDialog {
         previewContainer.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         previewContainer.setPadding(Insets.EMPTY);
 
-        // Bind canvas size to preview container size
         previewCanvas.widthProperty().bind(previewContainer.widthProperty().subtract(2));
         previewCanvas.heightProperty().bind(previewContainer.heightProperty().subtract(2));
 
         previewCanvas.widthProperty().addListener(e -> updatePreview());
         previewCanvas.heightProperty().addListener(e -> updatePreview());
 
-        // Build overlays
         buildEditorOverlay();
         buildEmptyFrameOverlay();
 
@@ -366,7 +365,9 @@ public class BackgroundImageDialog {
         // Initial image sync
         String currentPath = isEditorTarget ? editorPath : framePath;
         if (!currentPath.isEmpty()) {
-            imageCombo.getItems().add(currentPath);
+            if (!imageCombo.getItems().contains(currentPath)) {
+                imageCombo.getItems().add(0, currentPath);
+            }
             imageCombo.getSelectionModel().select(currentPath);
             if (imageCombo.getEditor() != null) {
                 imageCombo.getEditor().setText(currentPath);
@@ -396,7 +397,6 @@ public class BackgroundImageDialog {
         isEditorTarget = toEditor;
         updateTargetStyles();
 
-        // Update control values from target state
         String path = isEditorTarget ? editorPath : framePath;
         if (imageCombo.getEditor() != null) {
             imageCombo.getEditor().setText(path);
@@ -415,7 +415,6 @@ public class BackgroundImageDialog {
         updateScaleBoxStyles();
         updateAnchorGridStyles();
 
-        // Switch live overlay
         previewOverlay.getChildren().setAll(isEditorTarget ? editorOverlayBox : emptyFrameOverlayBox);
         setButton.setText(isEditorTarget ? "Set for Editor and Tools" : "Set for Empty Frame");
 
@@ -516,17 +515,16 @@ public class BackgroundImageDialog {
         gc.save();
         gc.setGlobalAlpha(Math.max(0.0, Math.min(1.0, opacity / 100.0)));
 
-        // Coordinate transforms for flip
         if (flipH || flipV) {
             gc.translate(flipH ? w : 0, flipV ? h : 0);
             gc.scale(flipH ? -1 : 1, flipV ? -1 : 1);
         }
 
         if (scaleMode == 1) {
-            // Fill / Stretch: cover preview area
+            // Fill / Stretch
             gc.drawImage(currentLoadedImage, 0, 0, w, h);
         } else if (scaleMode == 0) {
-            // Center / Natural Size positioned by anchor
+            // Center positioned by anchor
             double drawX;
             if (anchorCol == 0) drawX = 0;
             else if (anchorCol == 2) drawX = w - imgW;
@@ -539,7 +537,7 @@ public class BackgroundImageDialog {
 
             gc.drawImage(currentLoadedImage, drawX, drawY);
         } else if (scaleMode == 2) {
-            // Tile: repeating grid
+            // Tile
             double tileW = Math.min(imgW, w);
             double tileH = Math.min(imgH, h);
             if (tileW <= 0) tileW = 100;
@@ -574,18 +572,24 @@ public class BackgroundImageDialog {
         HBox.setHgrow(codeArea, Priority.ALWAYS);
 
         codeArea.getChildren().addAll(
-                createCodeLine(token("#result", "#C77DBB"), token(" = ", "#BCBEC4"), token("1", "#2AACB8"), token(" + ", "#BCBEC4"), token("2", "#2AACB8")),
-                createCodeLine(token("#{", "#CF8E6D"), token("6.0221415E+23D", "#2AACB8"), token(" instanceof ", "#CF8E6D"), token("T(Double)", "#2AACB8")),
-                createCodeLine(token("intArray", "#BCBEC4"), token("[", "#BCBEC4"), token("idx", "#BCBEC4"), token("]-- ", "#BCBEC4"), token("le ", "#CF8E6D"), token("0xFF", "#2AACB8")),
-                createCodeLine(token("{", "#BCBEC4"), token("1", "#2AACB8"), token(", ", "#BCBEC4"), token("2", "#2AACB8"), token(", ", "#BCBEC4"), token("3", "#2AACB8"), token("}", "#BCBEC4")),
-                createCodeLine(token("(", "#BCBEC4"), token("true", "#CF8E6D"), token(" and ", "#CF8E6D"), token("false", "#CF8E6D"), token(") || ", "#BCBEC4"), token("variable ", "#BCBEC4"), token("not null ", "#CF8E6D"), token("? ", "#BCBEC4"), token("1.0f", "#2AACB8"), token(" : ", "#BCBEC4"), token("0.0f", "#2AACB8")),
-                createCodeLine(token("Members.?[", "#BCBEC4"), token("Nationality", "#BCBEC4"), token(" == ", "#BCBEC4"), token("'Serbian'", "#6AAB73"), token("]", "#BCBEC4")),
-                createCodeLine(token("'5.00'", "#6AAB73"), token(" matches ", "#CF8E6D"), token("'^\\-?\\\\d+(\\\\.\\\\d{2})?$'", "#6AAB73")),
-                createCodeLine(token("new ", "#CF8E6D"), token("java.lang.String(", "#BCBEC4"), token("'stringLiteral'", "#6AAB73"), token(")", "#BCBEC4")),
+                createCodeLine(token("#result", "#C77DBB"), dot(), token("=", "#BCBEC4"), dot(), token("1", "#2AACB8"), dot(), token("+", "#BCBEC4"), dot(), token("2", "#2AACB8")),
+                createCodeLine(token("#{", "#CF8E6D"), token("6.0221415E+23D", "#2AACB8"), dot(), token("instanceof", "#CF8E6D"), dot(), token("T(Double)", "#2AACB8")),
+                createCodeLine(token("intArray", "#BCBEC4"), token("[", "#BCBEC4"), token("idx", "#BCBEC4"), token("]--", "#BCBEC4"), dot(), token("le", "#CF8E6D"), dot(), token("0xFF", "#2AACB8")),
+                createCodeLine(token("{", "#BCBEC4"), token("1", "#2AACB8"), token(",", "#BCBEC4"), dot(), token("2", "#2AACB8"), token(",", "#BCBEC4"), dot(), token("3", "#2AACB8"), token("}", "#BCBEC4")),
+                createCodeLine(token("(", "#BCBEC4"), token("true", "#CF8E6D"), dot(), token("and", "#CF8E6D"), dot(), token("false", "#CF8E6D"), token(")", "#BCBEC4"), dot(), token("||", "#BCBEC4"), dot(), token("variable", "#BCBEC4"), dot(), token("not", "#CF8E6D"), dot(), token("null", "#CF8E6D"), dot(), token("?", "#BCBEC4"), dot(), token("1.0f", "#2AACB8"), dot(), token(":", "#BCBEC4"), dot(), token("0.0f", "#2AACB8")),
+                createCodeLine(token("Members.?[", "#BCBEC4"), token("Nationality", "#BCBEC4"), dot(), token("==", "#BCBEC4"), dot(), token("'Serbian'", "#6AAB73"), token("]", "#BCBEC4")),
+                createCodeLine(token("'5.00'", "#6AAB73"), dot(), token("matches", "#CF8E6D"), dot(), token("'^\\-?\\\\d+(\\\\.\\\\d{2})?$'", "#6AAB73")),
+                createCodeLine(token("new", "#CF8E6D"), dot(), token("java.lang.String(", "#BCBEC4"), token("'stringLiteral'", "#6AAB73"), token(")", "#BCBEC4")),
                 createCodeLine(token("${", "#C77DBB"), token("myPropertyKey", "#C77DBB"), token("}", "#C77DBB")),
-                createCodeLine(token("@myBean.", "#BCBEC4"), token("instanceMethod", "#56A8F5"), token("(", "#BCBEC4"), token("1", "#2AACB8"), token(", ", "#BCBEC4"), token("2", "#2AACB8"), token(")", "#BCBEC4")),
-                createCodeLine(token("T(String).", "#BCBEC4"), token("CASE_INSENSITIVE_ORDER", "#C77DBB"))
+                createCodeLine(token("@myBean.", "#BCBEC4"), token("instanceMethod", "#56A8F5"), token("(", "#BCBEC4"), token("1", "#2AACB8"), token(",", "#BCBEC4"), dot(), token("2", "#2AACB8"), token(")", "#BCBEC4"))
         );
+
+        // Subtle horizontal tool window divider line
+        Separator toolDividerH = new Separator();
+        toolDividerH.setStyle("-fx-background-color: #393B40; -fx-opacity: 0.8;");
+
+        TextFlow line11 = createCodeLine(token("T(String).", "#BCBEC4"), token("CASE_INSENSITIVE_ORDER", "#C77DBB"));
+        codeArea.getChildren().addAll(toolDividerH, line11);
 
         // Right Tools Sidebar representation
         VBox toolSidebar = new VBox();
@@ -608,14 +612,20 @@ public class BackgroundImageDialog {
         return t;
     }
 
+    private Text dot() {
+        Text t = new Text(" · ");
+        t.setFill(Color.web("#4E5157"));
+        return t;
+    }
+
     private void buildEmptyFrameOverlay() {
         emptyFrameOverlayBox.getChildren().clear();
         emptyFrameOverlayBox.setAlignment(Pos.CENTER);
         emptyFrameOverlayBox.setPadding(new Insets(24, 20, 20, 20));
 
-        VBox shortcutContainer = new VBox(6);
-        shortcutContainer.setAlignment(Pos.CENTER);
-        shortcutContainer.setMaxWidth(380);
+        VBox shortcutContainer = new VBox(8);
+        shortcutContainer.setAlignment(Pos.CENTER_LEFT);
+        shortcutContainer.setMaxWidth(340);
 
         shortcutContainer.getChildren().addAll(
                 createShortcutRow("Search Everywhere", "Double ⇧"),
@@ -626,18 +636,19 @@ public class BackgroundImageDialog {
         );
 
         Label dropFilesHint = new Label("Drop files here to open them");
-        dropFilesHint.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 16 0 0 0;");
+        dropFilesHint.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 16 0 0 0; -fx-alignment: center-left;");
 
-        emptyFrameOverlayBox.getChildren().addAll(shortcutContainer, dropFilesHint);
+        shortcutContainer.getChildren().add(dropFilesHint);
+        emptyFrameOverlayBox.getChildren().add(shortcutContainer);
     }
 
     private HBox createShortcutRow(String action, String key) {
-        HBox row = new HBox(12);
-        row.setAlignment(Pos.CENTER);
+        HBox row = new HBox(16);
+        row.setAlignment(Pos.CENTER_LEFT);
 
         Label actionLbl = new Label(action);
-        actionLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-alignment: center-right;");
-        actionLbl.setPrefWidth(180);
+        actionLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-alignment: center-left;");
+        actionLbl.setPrefWidth(160);
 
         Label keyLbl = new Label(key);
         keyLbl.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 13px; -fx-alignment: center-left;");
@@ -651,9 +662,9 @@ public class BackgroundImageDialog {
     // Icon Builders & Style Helpers
     // ============================================================
 
-    private StackPane createScaleBox(int index, Region icon) {
+    private StackPane createScaleBox(int index, Region icon, boolean left, boolean right) {
         StackPane box = new StackPane(icon);
-        box.setPrefSize(38, 56);
+        box.setPrefSize(42, 56);
         box.setCursor(javafx.scene.Cursor.HAND);
         box.setOnMouseClicked(e -> {
             if (isEditorTarget) editorScaleMode = index;
@@ -714,9 +725,9 @@ public class BackgroundImageDialog {
         int activeMode = isEditorTarget ? editorScaleMode : frameScaleMode;
         for (int i = 0; i < scaleBoxes.length; i++) {
             if (i == activeMode) {
-                scaleBoxes[i].setStyle("-fx-background-color: #264C72; -fx-border-color: #3574F0; -fx-border-radius: 4; -fx-background-radius: 4;");
+                scaleBoxes[i].setStyle("-fx-background-color: #264C72; -fx-border-color: #3574F0; -fx-border-radius: 3; -fx-background-radius: 3;");
             } else {
-                scaleBoxes[i].setStyle("-fx-background-color: #14161E; -fx-border-color: #2C3042; -fx-border-radius: 4; -fx-background-radius: 4;");
+                scaleBoxes[i].setStyle("-fx-background-color: #14161E; -fx-border-color: #2C3042; -fx-border-radius: 3; -fx-background-radius: 3;");
             }
         }
     }
@@ -737,78 +748,55 @@ public class BackgroundImageDialog {
     }
 
     // ============================================================
-    // Persistence
+    // Persistence via BackgroundImageService
     // ============================================================
 
     private void loadSavedPreferences() {
-        editorPath = prefs.get("bg_editor_path", prefs.get("bg_image_path", ""));
-        editorOpacity = prefs.getInt("bg_editor_opacity", prefs.getInt("bg_opacity", 15));
-        editorScaleMode = prefs.getInt("bg_editor_scale", prefs.getInt("bg_scale_mode", 1));
-        editorAnchorRow = prefs.getInt("bg_editor_anchor_row", prefs.getInt("bg_anchor_row", 1));
-        editorAnchorCol = prefs.getInt("bg_editor_anchor_col", prefs.getInt("bg_anchor_col", 1));
-        editorFlipH = prefs.getBoolean("bg_editor_flip_h", false);
-        editorFlipV = prefs.getBoolean("bg_editor_flip_v", false);
-        editorProjectOnly = prefs.getBoolean("bg_editor_project_only", prefs.getBoolean("bg_project_only", false));
+        BackgroundImageService.TargetConfig ec = bgService.getConfig(BackgroundImageService.Target.EDITOR_AND_TOOLS);
+        editorPath = ec.imagePath;
+        editorOpacity = ec.opacity;
+        editorScaleMode = ec.scaleMode;
+        editorAnchorRow = ec.anchorRow;
+        editorAnchorCol = ec.anchorCol;
+        editorFlipH = ec.flipH;
+        editorFlipV = ec.flipV;
+        editorProjectOnly = ec.projectOnly;
 
-        framePath = prefs.get("bg_frame_path", "");
-        frameOpacity = prefs.getInt("bg_frame_opacity", 15);
-        frameScaleMode = prefs.getInt("bg_frame_scale", 1);
-        frameAnchorRow = prefs.getInt("bg_frame_anchor_row", 1);
-        frameAnchorCol = prefs.getInt("bg_frame_anchor_col", 1);
-        frameFlipH = prefs.getBoolean("bg_frame_flip_h", false);
-        frameFlipV = prefs.getBoolean("bg_frame_flip_v", false);
-        frameProjectOnly = prefs.getBoolean("bg_frame_project_only", false);
+        BackgroundImageService.TargetConfig fc = bgService.getConfig(BackgroundImageService.Target.EMPTY_FRAME);
+        framePath = fc.imagePath;
+        frameOpacity = fc.opacity;
+        frameScaleMode = fc.scaleMode;
+        frameAnchorRow = fc.anchorRow;
+        frameAnchorCol = fc.anchorCol;
+        frameFlipH = fc.flipH;
+        frameFlipV = fc.flipV;
+        frameProjectOnly = fc.projectOnly;
     }
 
     private void saveCurrentSettings() {
-        if (isEditorTarget) {
-            String path = imageCombo.getEditor() != null ? imageCombo.getEditor().getText() : imageCombo.getValue();
-            if (path != null && !path.trim().isEmpty()) {
-                editorPath = path.trim();
-                prefs.put("bg_editor_path", editorPath);
-                prefs.put("bg_image_path", editorPath); // legacy key
-            }
-            prefs.putInt("bg_editor_opacity", editorOpacity);
-            prefs.putInt("bg_opacity", editorOpacity);
-            prefs.putInt("bg_editor_scale", editorScaleMode);
-            prefs.putInt("bg_scale_mode", editorScaleMode);
-            prefs.putInt("bg_editor_anchor_row", editorAnchorRow);
-            prefs.putInt("bg_anchor_row", editorAnchorRow);
-            prefs.putInt("bg_editor_anchor_col", editorAnchorCol);
-            prefs.putInt("bg_anchor_col", editorAnchorCol);
-            prefs.putBoolean("bg_editor_flip_h", editorFlipH);
-            prefs.putBoolean("bg_editor_flip_v", editorFlipV);
-            prefs.putBoolean("bg_editor_project_only", editorProjectOnly);
-            prefs.putBoolean("bg_project_only", editorProjectOnly);
-        } else {
-            String path = imageCombo.getEditor() != null ? imageCombo.getEditor().getText() : imageCombo.getValue();
-            if (path != null && !path.trim().isEmpty()) {
-                framePath = path.trim();
-                prefs.put("bg_frame_path", framePath);
-            }
-            prefs.putInt("bg_frame_opacity", frameOpacity);
-            prefs.putInt("bg_frame_scale", frameScaleMode);
-            prefs.putInt("bg_frame_anchor_row", frameAnchorRow);
-            prefs.putInt("bg_frame_anchor_col", frameAnchorCol);
-            prefs.putBoolean("bg_frame_flip_h", frameFlipH);
-            prefs.putBoolean("bg_frame_flip_v", frameFlipV);
-            prefs.putBoolean("bg_frame_project_only", frameProjectOnly);
-        }
+        BackgroundImageService.Target target = isEditorTarget ? BackgroundImageService.Target.EDITOR_AND_TOOLS : BackgroundImageService.Target.EMPTY_FRAME;
+        BackgroundImageService.TargetConfig cfg = new BackgroundImageService.TargetConfig();
+        String path = imageCombo.getEditor() != null ? imageCombo.getEditor().getText() : imageCombo.getValue();
+        cfg.imagePath = path != null ? path.trim() : "";
+        cfg.opacity = (int) opacitySlider.getValue();
+        cfg.scaleMode = isEditorTarget ? editorScaleMode : frameScaleMode;
+        cfg.anchorRow = isEditorTarget ? editorAnchorRow : frameAnchorRow;
+        cfg.anchorCol = isEditorTarget ? editorAnchorCol : frameAnchorCol;
+        cfg.flipH = isEditorTarget ? editorFlipH : frameFlipH;
+        cfg.flipV = isEditorTarget ? editorFlipV : frameFlipV;
+        cfg.projectOnly = thisProjectOnly.isSelected();
+        bgService.setConfig(target, cfg);
     }
 
     private void clearSettings() {
+        BackgroundImageService.Target target = isEditorTarget ? BackgroundImageService.Target.EDITOR_AND_TOOLS : BackgroundImageService.Target.EMPTY_FRAME;
+        bgService.clear(target);
         if (isEditorTarget) {
             editorPath = "";
             editorOpacity = 15;
-            prefs.remove("bg_editor_path");
-            prefs.remove("bg_image_path");
-            prefs.putInt("bg_editor_opacity", 15);
-            prefs.putInt("bg_opacity", 15);
         } else {
             framePath = "";
             frameOpacity = 15;
-            prefs.remove("bg_frame_path");
-            prefs.putInt("bg_frame_opacity", 15);
         }
         currentLoadedImage = null;
         currentLoadedPath = "";

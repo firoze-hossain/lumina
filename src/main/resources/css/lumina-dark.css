@@ -4130,3 +4130,61 @@
 .notification-card:hover {
     -fx-background-color: #26282D;
 }
+
+/* ============================================================
+   Menus and Toolbars Settings Tree
+   ============================================================ */
+
+.menus-toolbars-tree {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-background: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.menus-toolbars-tree .virtual-flow,
+.menus-toolbars-tree .clipped-container,
+.menus-toolbars-tree .sheet {
+    -fx-background-color: #1E1F22;
+}
+
+.menus-toolbars-tree .tree-cell {
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-padding: 3px 8px 3px 6px;
+}
+
+.menus-toolbars-tree .tree-cell:empty {
+    -fx-background-color: #1E1F22;
+    -fx-border-color: transparent;
+}
+
+.menus-toolbars-tree .tree-cell:hover {
+    -fx-background-color: #2B2D30;
+}
+
+.menus-toolbars-tree .tree-cell:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.menus-toolbars-tree .tree-cell:focused:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.menus-toolbars-tree .tree-cell .arrow {
+    -fx-background-color: #8C9099;
+}
+
+.menus-toolbars-tree .tree-cell:selected .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+.menus-toolbars-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2px 4px 2px 0px;
+}
+

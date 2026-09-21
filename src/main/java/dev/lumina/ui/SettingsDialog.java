@@ -35,6 +35,7 @@ public class SettingsDialog {
     // Content container
     private final StackPane contentContainer = new StackPane();
     private SettingsIdeAppearancePage currentIdeAppearancePage;
+    private SettingsMenusToolbarsPage currentMenusToolbarsPage;
 
     public SettingsDialog(Stage owner) {
         this(owner, "Appearance");
@@ -190,6 +191,19 @@ public class SettingsDialog {
                 Label current = new Label(item.getValue());
                 current.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
                 breadcrumbBox.getChildren().add(current);
+
+                if ("Menus and Toolbars".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("🗄 Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMenusToolbarsPage != null) {
+                            currentMenusToolbarsPage.revertChanges();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                }
             }
         }
     }
@@ -351,8 +365,9 @@ public class SettingsDialog {
     }
 
     private void buildMenusToolbarsPage() {
-        SettingsMenusToolbarsPage page = new SettingsMenusToolbarsPage();
-        wrapInScroll(page);
+        currentMenusToolbarsPage = new SettingsMenusToolbarsPage();
+        VBox.setVgrow(currentMenusToolbarsPage, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(currentMenusToolbarsPage);
     }
 
     private void buildFileColorsPage() {
