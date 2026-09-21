@@ -1,44 +1,104 @@
-// SettingsSystemPage.java
 package dev.lumina.ui;
 
+import dev.lumina.settings.SystemSettings;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.text.Text;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
 
 /**
- * IntelliJ-style System Settings page with all sub-pages.
- * Handles: Data Sharing, Date Formats, HTTP Proxy, Language and Region,
- * Passwords, Process Elevation, Server Certificates, Trusted Hosts, Updates.
+ * IntelliJ IDEA / DataGrip styled System Settings page:
+ * - System Settings (Main page)
+ * - Date Formats
+ * - Data Sharing
+ * - HTTP Proxy
+ * - Language and Region, Passwords, Process Elevation, Server Certificates, Trusted Hosts, Updates
  */
 public class SettingsSystemPage extends VBox {
 
-    private VBox contentArea;
-    private String currentSubPage = "Data Sharing";
+    private final SystemSettings settings = SystemSettings.getInstance();
+
+    // ---- System Settings (Main Page) Controls ----
+    private CheckBox confirmExitCheck;
+    private RadioButton procTerminateRadio;
+    private RadioButton procDisconnectRadio;
+    private RadioButton procAskRadio;
+
+    private CheckBox reopenProjectsCheck;
+    private RadioButton openProjNewRadio;
+    private RadioButton openProjCurrentRadio;
+    private RadioButton openProjAskRadio;
+    private TextField defaultProjectDirField;
+
+    private CheckBox idleAutosaveCheck;
+    private TextField idleSecondsField;
+    private CheckBox focusLostAutosaveCheck;
+    private CheckBox backupFilesCheck;
+    private CheckBox syncOnFocusCheck;
+    private CheckBox syncPeriodicallyCheck;
+
+    // ---- Date Formats Controls ----
+    private CheckBox overrideDateFormatCheck;
+    private ComboBox<String> dateFormatCombo;
+    private CheckBox use24HourTimeCheck;
+    private Label dateFormatPreviewLabel;
+    private CheckBox prettyFormattingCheck;
+
+    // ---- Data Sharing Controls ----
+    private CheckBox sendAnonymousCheck;
+    private CheckBox sendDetailedCheck;
+
+    // ---- HTTP Proxy Controls ----
+    private RadioButton noProxyRadio;
+    private RadioButton autoDetectProxyRadio;
+    private CheckBox autoConfigUrlCheck;
+    private TextField autoConfigUrlField;
+    private Button clearPasswordsBtn;
+
+    private RadioButton manualProxyRadio;
+    private RadioButton manualHttpRadio;
+    private RadioButton manualSocksRadio;
+    private TextField proxyHostField;
+    private TextField proxyPortField;
+    private TextField noProxyForField;
+    private CheckBox proxyAuthCheck;
+    private TextField proxyLoginField;
+    private PasswordField proxyPasswordField;
+    private CheckBox proxyRememberCheck;
+    private Button checkConnectionBtn;
+
+    private VBox autoDetectBox;
+    private VBox manualProxyBox;
+    private VBox authFieldsBox;
+    private VBox dateFormatOptionsBox;
 
     public SettingsSystemPage() {
+        setPadding(new Insets(16, 24, 24, 24));
+        setSpacing(14);
         getStyleClass().add("settings-page");
-        setPadding(new Insets(16, 20, 16, 20));
-        setSpacing(12);
-
-        // Show Data Sharing by default
-        showSubPage("Data Sharing");
+        setStyle("-fx-background-color: #1E1F22;");
+        showSubPage("System Settings");
     }
 
     public void showSubPage(String pageName) {
-        this.currentSubPage = pageName;
         getChildren().clear();
 
-        Label title = new Label("Appearance & Behavior → System Settings → " + pageName);
-        title.getStyleClass().add("settings-page-title");
-
-        contentArea = new VBox(16);
-        contentArea.getStyleClass().add("settings-content");
-
-        switch (pageName) {
-            case "Data Sharing" -> buildDataSharingPage();
+        Node pageContent = switch (pageName) {
+            case "System Settings" -> buildSystemSettingsMainPage();
             case "Date Formats" -> buildDateFormatsPage();
+            case "Data Sharing" -> buildDataSharingPage();
             case "HTTP Proxy" -> buildHttpProxyPage();
             case "Language and Region" -> buildLanguageRegionPage();
             case "Passwords" -> buildPasswordsPage();
@@ -47,316 +107,677 @@ public class SettingsSystemPage extends VBox {
             case "Trusted Hosts" -> buildTrustedHostsPage();
             case "Updates" -> buildUpdatesPage();
             default -> buildPlaceholderPage(pageName);
+        };
+
+        getChildren().add(pageContent);
+    }
+
+    // ============================================================
+    // 1. System Settings (Main Page) - Matches Image 2
+    // ============================================================
+    private Node buildSystemSettingsMainPage() {
+        VBox root = new VBox(14);
+        root.setStyle("-fx-background-color: #1E1F22;");
+
+        // Top Options
+        confirmExitCheck = new CheckBox("Confirm before exiting the IDE");
+        confirmExitCheck.setSelected(settings.isConfirmExit());
+        styleCheck(confirmExitCheck);
+
+        Label procLabel = new Label("When closing a tool window with a running process:");
+        procLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ToggleGroup procGroup = new ToggleGroup();
+        procTerminateRadio = new RadioButton("Terminate process");
+        procDisconnectRadio = new RadioButton("Disconnect");
+        procAskRadio = new RadioButton("Ask");
+
+        procTerminateRadio.setToggleGroup(procGroup);
+        procDisconnectRadio.setToggleGroup(procGroup);
+        procAskRadio.setToggleGroup(procGroup);
+
+        styleRadio(procTerminateRadio);
+        styleRadio(procDisconnectRadio);
+        styleRadio(procAskRadio);
+
+        switch (settings.getProcessClosePolicy()) {
+            case TERMINATE -> procTerminateRadio.setSelected(true);
+            case DISCONNECT -> procDisconnectRadio.setSelected(true);
+            case ASK -> procAskRadio.setSelected(true);
         }
 
-        ScrollPane scroll = new ScrollPane(contentArea);
-        scroll.setFitToWidth(true);
-        scroll.getStyleClass().add("settings-scroll");
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        VBox.setVgrow(scroll, Priority.ALWAYS);
+        HBox procRow = new HBox(16, procLabel, procTerminateRadio, procDisconnectRadio, procAskRadio);
+        procRow.setAlignment(Pos.CENTER_LEFT);
 
-        getChildren().addAll(title, scroll);
+        // Project Section
+        HBox projectSectionHeader = buildSectionHeader("Project");
+
+        reopenProjectsCheck = new CheckBox("Reopen projects on startup");
+        reopenProjectsCheck.setSelected(settings.isReopenProjectsOnStartup());
+        styleCheck(reopenProjectsCheck);
+
+        Label openProjInLabel = new Label("Open project in");
+        openProjInLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ToggleGroup openProjGroup = new ToggleGroup();
+        openProjNewRadio = new RadioButton("New window");
+        openProjCurrentRadio = new RadioButton("Current window");
+        openProjAskRadio = new RadioButton("Ask");
+
+        openProjNewRadio.setToggleGroup(openProjGroup);
+        openProjCurrentRadio.setToggleGroup(openProjGroup);
+        openProjAskRadio.setToggleGroup(openProjGroup);
+
+        styleRadio(openProjNewRadio);
+        styleRadio(openProjCurrentRadio);
+        styleRadio(openProjAskRadio);
+
+        switch (settings.getOpenProjectMode()) {
+            case NEW_WINDOW -> openProjNewRadio.setSelected(true);
+            case CURRENT_WINDOW -> openProjCurrentRadio.setSelected(true);
+            case ASK -> openProjAskRadio.setSelected(true);
+        }
+
+        HBox openProjRow = new HBox(16, openProjInLabel, openProjNewRadio, openProjCurrentRadio, openProjAskRadio);
+        openProjRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label defaultDirLabel = new Label("Default project directory:");
+        defaultDirLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 160px;");
+
+        defaultProjectDirField = new TextField(settings.getDefaultProjectDirectory());
+        styleField(defaultProjectDirField);
+        defaultProjectDirField.setPrefWidth(380);
+
+        Button browseDirBtn = new Button("📁");
+        browseDirBtn.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-cursor: hand; -fx-font-size: 13px; -fx-padding: 3 8 3 8;");
+        browseDirBtn.setOnAction(e -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Select Default Project Directory");
+            File current = new File(defaultProjectDirField.getText().trim());
+            if (current.isDirectory()) {
+                chooser.setInitialDirectory(current);
+            }
+            File selected = chooser.showDialog(getScene() != null ? getScene().getWindow() : null);
+            if (selected != null) {
+                defaultProjectDirField.setText(selected.getAbsolutePath());
+            }
+        });
+
+        HBox defaultDirRow = new HBox(8, defaultDirLabel, defaultProjectDirField, browseDirBtn);
+        defaultDirRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label defaultDirHint = new Label("This directory is preselected in \"Open...\" and \"New | Project...\" dialogs.");
+        defaultDirHint.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px; -fx-padding: 0 0 0 168;");
+
+        VBox projectBox = new VBox(10, reopenProjectsCheck, openProjRow, defaultDirRow, defaultDirHint);
+
+        // Autosave Section
+        HBox autosaveSectionHeader = buildSectionHeader("Autosave");
+
+        idleAutosaveCheck = new CheckBox("Save files if the IDE is idle for");
+        idleAutosaveCheck.setSelected(settings.isIdleAutosaveEnabled());
+        styleCheck(idleAutosaveCheck);
+
+        idleSecondsField = new TextField(String.valueOf(settings.getIdleAutosaveSeconds()));
+        styleField(idleSecondsField);
+        idleSecondsField.setPrefWidth(46);
+        idleSecondsField.setAlignment(Pos.CENTER);
+
+        Label secondsLabel = new Label("seconds");
+        secondsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        HBox idleRow = new HBox(8, idleAutosaveCheck, idleSecondsField, secondsLabel);
+        idleRow.setAlignment(Pos.CENTER_LEFT);
+
+        focusLostAutosaveCheck = new CheckBox("Save files when switching to a different application or a built-in terminal");
+        focusLostAutosaveCheck.setSelected(settings.isSaveOnFocusLost());
+        styleCheck(focusLostAutosaveCheck);
+
+        backupFilesCheck = new CheckBox("Back up files before saving");
+        backupFilesCheck.setSelected(settings.isBackupFilesBeforeSaving());
+        styleCheck(backupFilesCheck);
+
+        Label syncExternalLabel = new Label("Sync external changes:");
+        syncExternalLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: normal;");
+
+        syncOnFocusCheck = new CheckBox("When switching to the IDE window or opening an editor tab");
+        syncOnFocusCheck.setSelected(settings.isSyncExternalOnFocus());
+        styleCheck(syncOnFocusCheck);
+
+        syncPeriodicallyCheck = new CheckBox("Periodically when the IDE is inactive (experimental)");
+        syncPeriodicallyCheck.setSelected(settings.isSyncExternalPeriodically());
+        styleCheck(syncPeriodicallyCheck);
+
+        VBox syncBox = new VBox(8, syncExternalLabel, indent(syncOnFocusCheck, 18), indent(syncPeriodicallyCheck, 18));
+        syncBox.setPadding(new Insets(4, 0, 4, 0));
+
+        HBox footerBox = new HBox(4);
+        footerBox.setAlignment(Pos.CENTER_LEFT);
+        Label autosaveNote = new Label("Autosave cannot be disabled completely.");
+        autosaveNote.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        Hyperlink howItWorks = new Hyperlink("How it works");
+        howItWorks.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-padding: 0; -fx-underline: false;");
+        footerBox.getChildren().addAll(autosaveNote, howItWorks);
+
+        VBox autosaveBox = new VBox(10, idleRow, focusLostAutosaveCheck, backupFilesCheck, syncBox, footerBox);
+
+        root.getChildren().addAll(
+                confirmExitCheck,
+                procRow,
+                projectSectionHeader,
+                projectBox,
+                autosaveSectionHeader,
+                autosaveBox
+        );
+        return root;
     }
 
     // ============================================================
-    // Data Sharing Page
+    // 2. Date Formats Page - Matches Image 3
     // ============================================================
-    private void buildDataSharingPage() {
-        VBox page = new VBox(16);
+    private Node buildDateFormatsPage() {
+        VBox root = new VBox(14);
+        root.setStyle("-fx-background-color: #1E1F22;");
 
-        Label header = new Label("Help shape the future of JetBrains products.");
-        header.getStyleClass().add("settings-label");
-        header.setWrapText(true);
+        overrideDateFormatCheck = new CheckBox("Override system date and time format");
+        overrideDateFormatCheck.setSelected(settings.isOverrideSystemDateFormat());
+        styleCheck(overrideDateFormatCheck);
 
-        Label subHeader = new Label("By sharing your data and usage statistics, you allow us to better understand how you use our tools and how we can improve them.");
-        subHeader.getStyleClass().add("settings-hint");
-        subHeader.setWrapText(true);
+        dateFormatOptionsBox = new VBox(10);
+        dateFormatOptionsBox.setPadding(new Insets(2, 0, 10, 20));
 
-        Hyperlink learnMore = new Hyperlink("Learn more here");
-        learnMore.getStyleClass().add("settings-link");
+        Label formatLabel = new Label("Date format:");
+        formatLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
 
-        VBox headerBox = new VBox(6, header, subHeader, learnMore);
-        headerBox.setPadding(new Insets(0, 0, 8, 0));
+        dateFormatCombo = new ComboBox<>();
+        dateFormatCombo.setEditable(true);
+        dateFormatCombo.getItems().addAll("dd MMM yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy", "d MMM yyyy");
+        dateFormatCombo.setValue(settings.getDateFormatPattern());
+        styleCombo(dateFormatCombo);
+        dateFormatCombo.setPrefWidth(180);
 
-        // Applied to All Installed JetBrains Products
-        Label section1 = new Label("Applied to All Installed JetBrains Products");
-        section1.getStyleClass().add("settings-section");
+        HBox formatRow = new HBox(12, formatLabel, dateFormatCombo);
+        formatRow.setAlignment(Pos.CENTER_LEFT);
 
-        CheckBox sendAnonymous = new CheckBox("Send anonymous usage statistics");
-        sendAnonymous.getStyleClass().add("settings-check");
-        Label anonymousDesc = new Label("This information includes, but is not limited to, anonymous data about your feature and plugin usage, hardware and software configuration, file type statistics, and the number of files per project.");
-        anonymousDesc.getStyleClass().add("settings-hint");
-        anonymousDesc.setWrapText(true);
-        Hyperlink learnMore2 = new Hyperlink("Learn more here");
-        learnMore2.getStyleClass().add("settings-link");
+        use24HourTimeCheck = new CheckBox("Use 24-hour time");
+        use24HourTimeCheck.setSelected(settings.isUse24HourTime());
+        styleCheck(use24HourTimeCheck);
 
-        VBox anonymousBox = new VBox(4, sendAnonymous, anonymousDesc, learnMore2);
-        anonymousBox.setPadding(new Insets(4, 0, 8, 20));
+        dateFormatPreviewLabel = new Label(updateDatePreview());
+        dateFormatPreviewLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px; -fx-padding: 4 0 0 0;");
 
-        // Applied Only to Current IDE
-        Label section2 = new Label("Applied Only to Current IDE");
-        section2.getStyleClass().add("settings-section");
+        // Live preview listeners
+        dateFormatCombo.valueProperty().addListener((obs, old, v) -> dateFormatPreviewLabel.setText(updateDatePreview()));
+        if (dateFormatCombo.getEditor() != null) {
+            dateFormatCombo.getEditor().textProperty().addListener((obs, old, v) -> dateFormatPreviewLabel.setText(updateDatePreview()));
+        }
+        use24HourTimeCheck.selectedProperty().addListener((obs, old, v) -> dateFormatPreviewLabel.setText(updateDatePreview()));
 
-        CheckBox sendDetailed = new CheckBox("Send detailed code-related data");
-        sendDetailed.getStyleClass().add("settings-check");
-        Label detailedDesc = new Label("This includes an expanded range of IDE data with associated code snippets, such as AI feature usage, run configurations, and terminal commands. This data will be used for product improvement and model training purposes.");
-        detailedDesc.getStyleClass().add("settings-hint");
-        detailedDesc.setWrapText(true);
-        Hyperlink learnMore3 = new Hyperlink("Find more details here");
-        learnMore3.getStyleClass().add("settings-link");
+        dateFormatOptionsBox.getChildren().addAll(formatRow, use24HourTimeCheck, dateFormatPreviewLabel);
+        dateFormatOptionsBox.setDisable(!overrideDateFormatCheck.isSelected());
+        overrideDateFormatCheck.selectedProperty().addListener((obs, old, sel) -> dateFormatOptionsBox.setDisable(!sel));
 
-        VBox detailedBox = new VBox(4, sendDetailed, detailedDesc, learnMore3);
-        detailedBox.setPadding(new Insets(4, 0, 0, 20));
+        prettyFormattingCheck = new CheckBox("Use pretty formatting");
+        prettyFormattingCheck.setSelected(settings.isUsePrettyFormatting());
+        styleCheck(prettyFormattingCheck);
 
-        page.getChildren().addAll(headerBox, section1, anonymousBox, section2, detailedBox);
-        contentArea.getChildren().add(page);
-    }
-
-    // ============================================================
-    // Date Formats Page
-    // ============================================================
-    private void buildDateFormatsPage() {
-        VBox page = new VBox(14);
-
-        // Override system date and time format
-        CheckBox overrideSystem = new CheckBox("Override system date and time format");
-        overrideSystem.getStyleClass().add("settings-check");
-
-        VBox overrideBox = new VBox(8);
-        overrideBox.setPadding(new Insets(4, 0, 8, 20));
-
-        HBox dateFormatRow = new HBox(12);
-        dateFormatRow.setAlignment(Pos.CENTER_LEFT);
-        Label dateLabel = new Label("Date format:");
-        dateLabel.getStyleClass().add("settings-label");
-        ComboBox<String> dateFormat = new ComboBox<>();
-        dateFormat.getItems().addAll("dd MMM yyyy", "MM/dd/yyyy", "dd/MM/yyyy", "yyyy-MM-dd");
-        dateFormat.getSelectionModel().selectFirst();
-        dateFormat.getStyleClass().add("settings-combo");
-        dateFormatRow.getChildren().addAll(dateLabel, dateFormat);
-
-        CheckBox use24Hour = new CheckBox("Use 24-hour time");
-        use24Hour.getStyleClass().add("settings-check");
-
-        Label preview = new Label("31 Dec 2100 23:59");
-        preview.getStyleClass().add("settings-value");
-
-        overrideBox.getChildren().addAll(dateFormatRow, use24Hour, preview);
-
-        // Date Formats section
-        Label dateFormatsLabel = new Label("Date Formats");
-        dateFormatsLabel.getStyleClass().add("settings-section");
-
-        CheckBox prettyFormatting = new CheckBox("Use pretty formatting");
-        prettyFormatting.getStyleClass().add("settings-check");
         Label prettyDesc = new Label("Replace numeric date with Today, Yesterday, and 10 minutes ago");
-        prettyDesc.getStyleClass().add("settings-hint");
-        prettyDesc.setPadding(new Insets(0, 0, 0, 20));
+        prettyDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px; -fx-padding: 0 0 0 24;");
 
-        page.getChildren().addAll(overrideSystem, overrideBox, dateFormatsLabel, prettyFormatting, prettyDesc);
-        contentArea.getChildren().add(page);
+        root.getChildren().addAll(
+                overrideDateFormatCheck,
+                dateFormatOptionsBox,
+                prettyFormattingCheck,
+                prettyDesc
+        );
+        return root;
+    }
+
+    private String updateDatePreview() {
+        String pat = dateFormatCombo != null && dateFormatCombo.getValue() != null && !dateFormatCombo.getValue().isBlank()
+                ? dateFormatCombo.getValue().trim() : "dd MMM yyyy";
+        boolean use24 = use24HourTimeCheck == null || use24HourTimeCheck.isSelected();
+        String timePart = use24 ? "HH:mm" : "hh:mm a";
+        LocalDateTime sample = LocalDateTime.of(2100, 12, 31, 23, 59);
+        try {
+            return sample.format(DateTimeFormatter.ofPattern(pat + " " + timePart, Locale.getDefault()));
+        } catch (Exception e) {
+            return "31 Dec 2100 " + (use24 ? "23:59" : "11:59 PM");
+        }
     }
 
     // ============================================================
-    // HTTP Proxy Page
+    // 3. Data Sharing Page - Matches Image 4
     // ============================================================
-    private void buildHttpProxyPage() {
-        VBox page = new VBox(14);
+    private Node buildDataSharingPage() {
+        VBox root = new VBox(14);
+        root.setStyle("-fx-background-color: #1E1F22;");
 
-        // No proxy
-        RadioButton noProxy = new RadioButton("No proxy");
-        noProxy.setSelected(true);
-        noProxy.getStyleClass().add("settings-radio");
+        Label headerText = new Label("Help shape the future of JetBrains products. By sharing your data and usage statistics, you allow us to better understand how you use our tools and how we can improve them. Learn more here ↗.");
+        headerText.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px;");
+        headerText.setWrapText(true);
 
-        // Auto-detect
-        RadioButton autoDetect = new RadioButton("Auto-detect proxy settings");
-        autoDetect.getStyleClass().add("settings-radio");
+        // Section 1
+        HBox allProductsHeader = buildSectionHeader("Applied to All Installed JetBrains Products");
 
-        // Auto proxy config URL
-        RadioButton autoConfig = new RadioButton("Automatic proxy configuration URL:");
-        autoConfig.getStyleClass().add("settings-radio");
+        sendAnonymousCheck = new CheckBox("Send anonymous usage statistics");
+        sendAnonymousCheck.setSelected(settings.isSendAnonymousStats());
+        styleCheck(sendAnonymousCheck);
 
-        TextField autoConfigField = new TextField();
-        autoConfigField.setPromptText("https://example.com/wpad.pac");
-        autoConfigField.getStyleClass().add("text-field");
-        autoConfigField.setPrefWidth(400);
-        HBox autoConfigRow = new HBox(8, autoConfig, autoConfigField);
-        autoConfigRow.setAlignment(Pos.CENTER_LEFT);
-        autoConfigRow.setPadding(new Insets(4, 0, 0, 20));
+        Label anonDesc1 = new Label("This information includes, but is not limited to, anonymous data about your feature and plugin usage, hardware and software configuration, file type statistics, and the number of files per project.");
+        anonDesc1.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        anonDesc1.setWrapText(true);
 
-        // Manual proxy configuration
-        RadioButton manualProxy = new RadioButton("Manual proxy configuration");
-        manualProxy.getStyleClass().add("settings-radio");
+        Label anonDesc2 = new Label("No personal data or sensitive information, such as source code or file names, is shared with us.\nLearn more here ↗.");
+        anonDesc2.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        anonDesc2.setWrapText(true);
 
-        VBox manualBox = new VBox(8);
-        manualBox.setPadding(new Insets(4, 0, 0, 20));
+        VBox anonBox = new VBox(6, sendAnonymousCheck, indent(anonDesc1, 24), indent(anonDesc2, 24));
 
-        // HTTP
-        Label httpLabel = new Label("HTTP:");
-        httpLabel.getStyleClass().add("settings-label");
-        TextField httpHost = new TextField();
-        httpHost.setPromptText("Host name");
-        httpHost.getStyleClass().add("text-field");
-        httpHost.setPrefWidth(200);
-        TextField httpPort = new TextField();
-        httpPort.setPromptText("Port");
-        httpPort.setPrefWidth(80);
-        httpPort.getStyleClass().add("text-field");
-        HBox httpRow = new HBox(8, httpLabel, httpHost, httpPort);
-        httpRow.setAlignment(Pos.CENTER_LEFT);
+        // Section 2
+        HBox currentIdeHeader = buildSectionHeader("Applied Only to Current IDE");
 
-        // SOCKS
-        Label socksLabel = new Label("SOCKS:");
-        socksLabel.getStyleClass().add("settings-label");
-        TextField socksHost = new TextField();
-        socksHost.setPromptText("Host name");
-        socksHost.getStyleClass().add("text-field");
-        socksHost.setPrefWidth(200);
-        TextField socksPort = new TextField();
-        socksPort.setPromptText("Port");
-        socksPort.setPrefWidth(80);
-        socksPort.getStyleClass().add("text-field");
-        HBox socksRow = new HBox(8, socksLabel, socksHost, socksPort);
-        socksRow.setAlignment(Pos.CENTER_LEFT);
+        sendDetailedCheck = new CheckBox("Send detailed code-related data");
+        sendDetailedCheck.setSelected(settings.isSendDetailedData());
+        styleCheck(sendDetailedCheck);
 
-        manualBox.getChildren().addAll(httpRow, socksRow);
+        Label detailedDesc = new Label("This includes an expanded range of IDE data with associated code snippets, such as AI feature usage, run configurations, and terminal commands. This data will be used for product improvement and model training purposes. Find more details here ↗.");
+        detailedDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        detailedDesc.setWrapText(true);
 
-        // No proxy for
-        Label noProxyLabel = new Label("No proxy for:");
-        noProxyLabel.getStyleClass().add("settings-label");
-        TextField noProxyField = new TextField();
-        noProxyField.setPromptText("localhost, *.example.com");
-        noProxyField.getStyleClass().add("text-field");
-        noProxyField.setPrefWidth(400);
-        VBox noProxyBox = new VBox(4, noProxyLabel, noProxyField);
+        VBox detailedBox = new VBox(6, sendDetailedCheck, indent(detailedDesc, 24));
 
-        // Proxy authentication
-        CheckBox proxyAuth = new CheckBox("Proxy authentication");
-        proxyAuth.getStyleClass().add("settings-check");
+        root.getChildren().addAll(
+                headerText,
+                allProductsHeader,
+                anonBox,
+                currentIdeHeader,
+                detailedBox
+        );
+        return root;
+    }
 
-        VBox authBox = new VBox(8);
-        authBox.setPadding(new Insets(4, 0, 0, 20));
-
-        HBox loginRow = new HBox(8);
-        loginRow.setAlignment(Pos.CENTER_LEFT);
-        Label loginLabel = new Label("Login:");
-        loginLabel.getStyleClass().add("settings-label");
-        TextField loginField = new TextField();
-        loginField.getStyleClass().add("text-field");
-        loginField.setPrefWidth(200);
-        loginRow.getChildren().addAll(loginLabel, loginField);
-
-        HBox passwordRow = new HBox(8);
-        passwordRow.setAlignment(Pos.CENTER_LEFT);
-        Label passwordLabel = new Label("Password:");
-        passwordLabel.getStyleClass().add("settings-label");
-        PasswordField passwordField = new PasswordField();
-        passwordField.getStyleClass().add("text-field");
-        passwordField.setPrefWidth(200);
-        passwordRow.getChildren().addAll(passwordLabel, passwordField);
-
-        authBox.getChildren().addAll(loginRow, passwordRow);
-
-        // Clear passwords and Check Connection buttons
-        HBox buttonRow = new HBox(10);
-        Button clearPasswords = new Button("Clear Passwords");
-        clearPasswords.getStyleClass().add("dialog-secondary");
-        Button checkConnection = new Button("Check Connection");
-        checkConnection.getStyleClass().add("dialog-primary");
-        buttonRow.getChildren().addAll(clearPasswords, checkConnection);
+    // ============================================================
+    // 4. HTTP Proxy Page - Matches Image 5
+    // ============================================================
+    private Node buildHttpProxyPage() {
+        VBox root = new VBox(14);
+        root.setStyle("-fx-background-color: #1E1F22;");
 
         ToggleGroup proxyGroup = new ToggleGroup();
-        noProxy.setToggleGroup(proxyGroup);
-        autoDetect.setToggleGroup(proxyGroup);
-        autoConfig.setToggleGroup(proxyGroup);
-        manualProxy.setToggleGroup(proxyGroup);
+        noProxyRadio = new RadioButton("No proxy");
+        autoDetectProxyRadio = new RadioButton("Auto-detect proxy settings");
+        manualProxyRadio = new RadioButton("Manual proxy configuration");
 
-        page.getChildren().addAll(
-            noProxy, autoDetect, autoConfigRow,
-            manualProxy, manualBox, noProxyBox,
-            proxyAuth, authBox, buttonRow
+        noProxyRadio.setToggleGroup(proxyGroup);
+        autoDetectProxyRadio.setToggleGroup(proxyGroup);
+        manualProxyRadio.setToggleGroup(proxyGroup);
+
+        styleRadio(noProxyRadio);
+        styleRadio(autoDetectProxyRadio);
+        styleRadio(manualProxyRadio);
+
+        switch (settings.getProxyType()) {
+            case NO_PROXY -> noProxyRadio.setSelected(true);
+            case AUTO_DETECT -> autoDetectProxyRadio.setSelected(true);
+            case MANUAL -> manualProxyRadio.setSelected(true);
+        }
+
+        // Auto-detect sub block
+        autoConfigUrlCheck = new CheckBox("Automatic proxy configuration URL:");
+        autoConfigUrlCheck.setSelected(settings.isAutoConfigUrlEnabled());
+        styleCheck(autoConfigUrlCheck);
+
+        autoConfigUrlField = new TextField(settings.getAutoConfigUrl());
+        autoConfigUrlField.setPromptText("https://example.com/wpad.pac");
+        styleField(autoConfigUrlField);
+        autoConfigUrlField.setPrefWidth(420);
+
+        HBox autoUrlRow = new HBox(8, autoConfigUrlCheck, autoConfigUrlField);
+        autoUrlRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label autoUrlHint = new Label("Example: https://example.com/wpad.pac");
+        autoUrlHint.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px; -fx-padding: 0 0 0 250;");
+
+        clearPasswordsBtn = new Button("Clear Passwords");
+        styleSecondaryButton(clearPasswordsBtn);
+        clearPasswordsBtn.setOnAction(e -> {
+            settings.clearProxyPasswords();
+            if (proxyPasswordField != null) proxyPasswordField.clear();
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Proxy passwords have been cleared.", ButtonType.OK);
+            alert.initOwner(getScene() != null ? getScene().getWindow() : null);
+            alert.showAndWait();
+        });
+
+        autoDetectBox = new VBox(8, autoUrlRow, autoUrlHint, clearPasswordsBtn);
+        autoDetectBox.setPadding(new Insets(2, 0, 10, 20));
+
+        // Manual proxy sub block
+        ToggleGroup protoGroup = new ToggleGroup();
+        manualHttpRadio = new RadioButton("HTTP");
+        manualSocksRadio = new RadioButton("SOCKS");
+        manualHttpRadio.setToggleGroup(protoGroup);
+        manualSocksRadio.setToggleGroup(protoGroup);
+        styleRadio(manualHttpRadio);
+        styleRadio(manualSocksRadio);
+
+        if (settings.getManualProtocol() == SystemSettings.ManualProtocol.SOCKS) {
+            manualSocksRadio.setSelected(true);
+        } else {
+            manualHttpRadio.setSelected(true);
+        }
+
+        HBox protoRow = new HBox(16, manualHttpRadio, manualSocksRadio);
+        protoRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label hostLabel = new Label("Host name:");
+        hostLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
+        proxyHostField = new TextField(settings.getProxyHost());
+        styleField(proxyHostField);
+        proxyHostField.setPrefWidth(320);
+        HBox hostRow = new HBox(10, hostLabel, proxyHostField);
+        hostRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label portLabel = new Label("Port number:");
+        portLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
+        proxyPortField = new TextField(String.valueOf(settings.getProxyPort()));
+        styleField(proxyPortField);
+        proxyPortField.setPrefWidth(70);
+        HBox portRow = new HBox(10, portLabel, proxyPortField);
+        portRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label noProxyLabel = new Label("No proxy for:");
+        noProxyLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
+        noProxyForField = new TextField(settings.getNoProxyFor());
+        styleField(noProxyForField);
+        noProxyForField.setPrefWidth(380);
+        HBox noProxyRow = new HBox(10, noProxyLabel, noProxyForField);
+        noProxyRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label noProxyHint = new Label("Example: *.example.com, 192.168.*");
+        noProxyHint.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px; -fx-padding: 0 0 0 100;");
+
+        // Proxy Authentication
+        proxyAuthCheck = new CheckBox("Proxy authentication");
+        proxyAuthCheck.setSelected(settings.isProxyAuthEnabled());
+        styleCheck(proxyAuthCheck);
+
+        Label loginLabel = new Label("Login:");
+        loginLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 70px;");
+        proxyLoginField = new TextField(settings.getProxyLogin());
+        styleField(proxyLoginField);
+        proxyLoginField.setPrefWidth(220);
+        HBox loginRow = new HBox(10, loginLabel, proxyLoginField);
+        loginRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label passLabel = new Label("Password:");
+        passLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 70px;");
+        proxyPasswordField = new PasswordField();
+        proxyPasswordField.setText(settings.getProxyPassword());
+        styleField(proxyPasswordField);
+        proxyPasswordField.setPrefWidth(220);
+        HBox passRow = new HBox(10, passLabel, proxyPasswordField);
+        passRow.setAlignment(Pos.CENTER_LEFT);
+
+        proxyRememberCheck = new CheckBox("Remember");
+        proxyRememberCheck.setSelected(settings.isProxyRemember());
+        styleCheck(proxyRememberCheck);
+
+        authFieldsBox = new VBox(8, loginRow, passRow, proxyRememberCheck);
+        authFieldsBox.setPadding(new Insets(2, 0, 4, 20));
+        authFieldsBox.setDisable(!proxyAuthCheck.isSelected());
+        proxyAuthCheck.selectedProperty().addListener((obs, old, sel) -> authFieldsBox.setDisable(!sel));
+
+        manualProxyBox = new VBox(10, protoRow, hostRow, portRow, noProxyRow, noProxyHint, proxyAuthCheck, authFieldsBox);
+        manualProxyBox.setPadding(new Insets(2, 0, 10, 20));
+
+        // Radio group interaction
+        autoDetectBox.setDisable(!autoDetectProxyRadio.isSelected());
+        manualProxyBox.setDisable(!manualProxyRadio.isSelected());
+
+        proxyGroup.selectedToggleProperty().addListener((obs, old, sel) -> {
+            autoDetectBox.setDisable(sel != autoDetectProxyRadio);
+            manualProxyBox.setDisable(sel != manualProxyRadio);
+        });
+
+        // Bottom Check Connection button
+        checkConnectionBtn = new Button("Check Connection");
+        styleSecondaryButton(checkConnectionBtn);
+        checkConnectionBtn.setOnAction(e -> showCheckConnectionDialog());
+
+        root.getChildren().addAll(
+                noProxyRadio,
+                autoDetectProxyRadio,
+                autoDetectBox,
+                manualProxyRadio,
+                manualProxyBox,
+                checkConnectionBtn
         );
-        contentArea.getChildren().add(page);
+        return root;
+    }
+
+    private void showCheckConnectionDialog() {
+        Stage dialog = new Stage();
+        dialog.initOwner(getScene() != null ? getScene().getWindow() : null);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Check Proxy Connection");
+
+        VBox content = new VBox(12);
+        content.setPadding(new Insets(16, 20, 16, 20));
+        content.setStyle("-fx-background-color: #1E1F22;");
+
+        Label label = new Label("Specify URL to check connection:");
+        label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        TextField urlField = new TextField("https://jetbrains.com");
+        styleField(urlField);
+        urlField.setPrefWidth(320);
+
+        Label statusLabel = new Label();
+        statusLabel.setStyle("-fx-font-size: 12px;");
+
+        Button testBtn = new Button("Test");
+        testBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-padding: 5 16 5 16; -fx-background-radius: 4; -fx-cursor: hand;");
+
+        Button closeBtn = new Button("Close");
+        styleSecondaryButton(closeBtn);
+        closeBtn.setOnAction(e -> dialog.close());
+
+        testBtn.setOnAction(e -> {
+            testBtn.setDisable(true);
+            statusLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            statusLabel.setText("Connecting...");
+
+            saveToSettings(); // sync form data before testing
+
+            new Thread(() -> {
+                SystemSettings.ProxyTestResult result = settings.checkConnection(urlField.getText().trim());
+                Platform.runLater(() -> {
+                    testBtn.setDisable(false);
+                    if (result.success()) {
+                        statusLabel.setStyle("-fx-text-fill: #62B543; -fx-font-size: 12px;");
+                        statusLabel.setText("Success! " + result.message() + " in " + result.responseTimeMs() + " ms");
+                    } else {
+                        statusLabel.setStyle("-fx-text-fill: #ED6C63; -fx-font-size: 12px;");
+                        statusLabel.setText("Failed: " + result.message() + " (" + result.responseTimeMs() + " ms)");
+                    }
+                });
+            }).start();
+        });
+
+        HBox buttons = new HBox(8, testBtn, closeBtn);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+
+        content.getChildren().addAll(label, urlField, statusLabel, buttons);
+        Scene scene = new Scene(content, 420, 180);
+        dialog.setScene(scene);
+        dialog.showAndWait();
     }
 
     // ============================================================
-    // Language and Region Page
+    // Save / Sync Logic
     // ============================================================
-    private void buildLanguageRegionPage() {
-        VBox page = new VBox(14);
+    public void save() {
+        saveToSettings();
+        settings.save();
+    }
 
-        // Language
+    private void saveToSettings() {
+        // System Settings
+        if (confirmExitCheck != null) settings.setConfirmExit(confirmExitCheck.isSelected());
+        if (procTerminateRadio != null && procTerminateRadio.isSelected()) {
+            settings.setProcessClosePolicy(SystemSettings.ProcessClosePolicy.TERMINATE);
+        } else if (procDisconnectRadio != null && procDisconnectRadio.isSelected()) {
+            settings.setProcessClosePolicy(SystemSettings.ProcessClosePolicy.DISCONNECT);
+        } else if (procAskRadio != null && procAskRadio.isSelected()) {
+            settings.setProcessClosePolicy(SystemSettings.ProcessClosePolicy.ASK);
+        }
+
+        if (reopenProjectsCheck != null) settings.setReopenProjectsOnStartup(reopenProjectsCheck.isSelected());
+        if (openProjNewRadio != null && openProjNewRadio.isSelected()) {
+            settings.setOpenProjectMode(SystemSettings.OpenProjectMode.NEW_WINDOW);
+        } else if (openProjCurrentRadio != null && openProjCurrentRadio.isSelected()) {
+            settings.setOpenProjectMode(SystemSettings.OpenProjectMode.CURRENT_WINDOW);
+        } else if (openProjAskRadio != null && openProjAskRadio.isSelected()) {
+            settings.setOpenProjectMode(SystemSettings.OpenProjectMode.ASK);
+        }
+
+        if (defaultProjectDirField != null) {
+            String dir = defaultProjectDirField.getText().trim();
+            if (!dir.isBlank()) settings.setDefaultProjectDirectory(dir);
+        }
+
+        if (idleAutosaveCheck != null) settings.setIdleAutosaveEnabled(idleAutosaveCheck.isSelected());
+        if (idleSecondsField != null) {
+            try {
+                int secs = Math.max(1, Integer.parseInt(idleSecondsField.getText().trim()));
+                settings.setIdleAutosaveSeconds(secs);
+            } catch (Exception ignored) {}
+        }
+        if (focusLostAutosaveCheck != null) settings.setSaveOnFocusLost(focusLostAutosaveCheck.isSelected());
+        if (backupFilesCheck != null) settings.setBackupFilesBeforeSaving(backupFilesCheck.isSelected());
+        if (syncOnFocusCheck != null) settings.setSyncExternalOnFocus(syncOnFocusCheck.isSelected());
+        if (syncPeriodicallyCheck != null) settings.setSyncExternalPeriodically(syncPeriodicallyCheck.isSelected());
+
+        // Date Formats
+        if (overrideDateFormatCheck != null) settings.setOverrideSystemDateFormat(overrideDateFormatCheck.isSelected());
+        if (dateFormatCombo != null && dateFormatCombo.getValue() != null && !dateFormatCombo.getValue().isBlank()) {
+            settings.setDateFormatPattern(dateFormatCombo.getValue().trim());
+        }
+        if (use24HourTimeCheck != null) settings.setUse24HourTime(use24HourTimeCheck.isSelected());
+        if (prettyFormattingCheck != null) settings.setUsePrettyFormatting(prettyFormattingCheck.isSelected());
+
+        // Data Sharing
+        if (sendAnonymousCheck != null) settings.setSendAnonymousStats(sendAnonymousCheck.isSelected());
+        if (sendDetailedCheck != null) settings.setSendDetailedData(sendDetailedCheck.isSelected());
+
+        // HTTP Proxy
+        if (noProxyRadio != null && noProxyRadio.isSelected()) {
+            settings.setProxyType(SystemSettings.ProxyType.NO_PROXY);
+        } else if (autoDetectProxyRadio != null && autoDetectProxyRadio.isSelected()) {
+            settings.setProxyType(SystemSettings.ProxyType.AUTO_DETECT);
+        } else if (manualProxyRadio != null && manualProxyRadio.isSelected()) {
+            settings.setProxyType(SystemSettings.ProxyType.MANUAL);
+        }
+
+        if (autoConfigUrlCheck != null) settings.setAutoConfigUrlEnabled(autoConfigUrlCheck.isSelected());
+        if (autoConfigUrlField != null) settings.setAutoConfigUrl(autoConfigUrlField.getText().trim());
+
+        if (manualSocksRadio != null && manualSocksRadio.isSelected()) {
+            settings.setManualProtocol(SystemSettings.ManualProtocol.SOCKS);
+        } else if (manualHttpRadio != null && manualHttpRadio.isSelected()) {
+            settings.setManualProtocol(SystemSettings.ManualProtocol.HTTP);
+        }
+
+        if (proxyHostField != null) settings.setProxyHost(proxyHostField.getText().trim());
+        if (proxyPortField != null) {
+            try {
+                int p = Integer.parseInt(proxyPortField.getText().trim());
+                settings.setProxyPort(p);
+            } catch (Exception ignored) {}
+        }
+        if (noProxyForField != null) settings.setNoProxyFor(noProxyForField.getText().trim());
+        if (proxyAuthCheck != null) settings.setProxyAuthEnabled(proxyAuthCheck.isSelected());
+        if (proxyLoginField != null) settings.setProxyLogin(proxyLoginField.getText().trim());
+        if (proxyPasswordField != null) settings.setProxyPassword(proxyPasswordField.getText());
+        if (proxyRememberCheck != null) settings.setProxyRemember(proxyRememberCheck.isSelected());
+    }
+
+    // ============================================================
+    // Additional Sub-Pages
+    // ============================================================
+    private Node buildLanguageRegionPage() {
+        VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
+
         Label languageLabel = new Label("Language:");
-        languageLabel.getStyleClass().add("settings-label");
+        languageLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
         ComboBox<String> languageCombo = new ComboBox<>();
         languageCombo.getItems().addAll("English", "中文", "日本語", "한국어", "Français", "Deutsch", "Español");
         languageCombo.getSelectionModel().selectFirst();
-        languageCombo.getStyleClass().add("settings-combo");
+        styleCombo(languageCombo);
         languageCombo.setPrefWidth(200);
 
         Label restartHint = new Label("Requires restart");
-        restartHint.getStyleClass().add("settings-hint");
+        restartHint.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
 
         HBox languageRow = new HBox(12, languageLabel, languageCombo, restartHint);
         languageRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Region
         Label regionLabel = new Label("Region:");
-        regionLabel.getStyleClass().add("settings-label");
+        regionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
         ComboBox<String> regionCombo = new ComboBox<>();
         regionCombo.getItems().addAll("Not specified", "United States", "United Kingdom", "Germany", "France", "Japan", "China");
         regionCombo.getSelectionModel().selectFirst();
-        regionCombo.getStyleClass().add("settings-combo");
+        styleCombo(regionCombo);
         regionCombo.setPrefWidth(200);
 
         HBox regionRow = new HBox(12, regionLabel, regionCombo);
         regionRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label regionDesc = new Label("Select a region to ensure that licensing, JetBrains Marketplace, and other region-specific features and links work correctly. Requires restart. See the documentation for details.");
-        regionDesc.getStyleClass().add("settings-hint");
+        Label regionDesc = new Label("Select a region to ensure that licensing, Marketplace, and other region-specific features and links work correctly. Requires restart. See the documentation for details.");
+        regionDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
         regionDesc.setWrapText(true);
 
         page.getChildren().addAll(languageRow, regionRow, regionDesc);
-        contentArea.getChildren().add(page);
+        return page;
     }
 
-    // ============================================================
-    // Passwords Page
-    // ============================================================
-    private void buildPasswordsPage() {
+    private Node buildPasswordsPage() {
         VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
 
         Label saveLabel = new Label("Save passwords:");
-        saveLabel.getStyleClass().add("settings-label");
+        saveLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
         RadioButton nativeKeychain = new RadioButton("In native Keychain");
         nativeKeychain.setSelected(true);
-        nativeKeychain.getStyleClass().add("settings-radio");
+        styleRadio(nativeKeychain);
 
         RadioButton keepass = new RadioButton("In KeePass");
-        keepass.getStyleClass().add("settings-radio");
+        styleRadio(keepass);
 
         VBox keepassBox = new VBox(6);
         keepassBox.setPadding(new Insets(4, 0, 8, 20));
 
         Label dbLabel = new Label("Database:");
-        dbLabel.getStyleClass().add("settings-label");
-        TextField dbField = new TextField("/home/firoze/.config/JetBrains/IntelliJldea2025.3/c.kdbx");
-        dbField.getStyleClass().add("text-field");
-        dbField.setPrefWidth(450);
+        dbLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        TextField dbField = new TextField(System.getProperty("user.home") + "/.config/Lumina/c.kdbx");
+        styleField(dbField);
+        dbField.setPrefWidth(420);
         dbField.setEditable(false);
 
-        Label weakEncryption = new Label("Stored using weak encryption. It is recommended to store on encrypted volume for additional security.");
-        weakEncryption.getStyleClass().add("settings-hint");
+        Label weakEncryption = new Label("Stored using standard encryption. Storing on an encrypted volume is recommended for additional security.");
+        weakEncryption.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
         weakEncryption.setWrapText(true);
 
         CheckBox pgpKey = new CheckBox("Protect master password using PGP key (No keys configured)");
-        pgpKey.getStyleClass().add("settings-check");
+        styleCheck(pgpKey);
 
         keepassBox.getChildren().addAll(dbLabel, dbField, weakEncryption, pgpKey);
 
         RadioButton noSave = new RadioButton("Do not save, forget passwords after restart");
-        noSave.getStyleClass().add("settings-radio");
+        styleRadio(noSave);
 
         ToggleGroup saveGroup = new ToggleGroup();
         nativeKeychain.setToggleGroup(saveGroup);
@@ -364,185 +785,163 @@ public class SettingsSystemPage extends VBox {
         noSave.setToggleGroup(saveGroup);
 
         page.getChildren().addAll(saveLabel, nativeKeychain, keepass, keepassBox, noSave);
-        contentArea.getChildren().add(page);
+        return page;
     }
 
-    // ============================================================
-    // Process Elevation Page
-    // ============================================================
-    private void buildProcessElevationPage() {
+    private Node buildProcessElevationPage() {
         VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
 
         Label description = new Label("Running privileged processes requires 'sudo' authorization.");
-        description.getStyleClass().add("settings-label");
-        description.setWrapText(true);
+        description.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
-        Label description2 = new Label("IntelliJ IDEA utilizes a special service process to do this. For your convenience, you can set it to keep running for a certain amount of time so that you don't have to authorize it again each time you run or debug.");
-        description2.getStyleClass().add("settings-hint");
+        Label description2 = new Label("Lumina utilizes a service process to do this. You can set it to keep running for a certain amount of time so you don't have to authorize it again each time you run or debug.");
+        description2.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
         description2.setWrapText(true);
 
-        Label important = new Label("Important: Enabling this option grants the IDE and all its components, including third-party plugins, unrestricted access to your system.");
-        important.getStyleClass().add("settings-hint");
+        Label important = new Label("Important: Enabling this option grants the IDE unrestricted access to your system.");
+        important.setStyle("-fx-text-fill: #E88A8A; -fx-font-size: 12px;");
         important.setWrapText(true);
-        important.setStyle("-fx-text-fill: #E88A8A;");
 
         CheckBox keepSudo = new CheckBox("Keep 'sudo' authorization for 15 min");
-        keepSudo.getStyleClass().add("settings-check");
+        styleCheck(keepSudo);
 
         CheckBox extendTimeout = new CheckBox("Extend the time limit when starting a new process");
         extendTimeout.setSelected(true);
-        extendTimeout.getStyleClass().add("settings-check");
+        styleCheck(extendTimeout);
+
         Label extendDesc = new Label("The timeout will reset each time a new elevated process is launched within the specified time frame.");
-        extendDesc.getStyleClass().add("settings-hint");
-        extendDesc.setPadding(new Insets(0, 0, 0, 20));
+        extendDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px; -fx-padding: 0 0 0 24;");
         extendDesc.setWrapText(true);
 
         page.getChildren().addAll(description, description2, important, keepSudo, extendTimeout, extendDesc);
-        contentArea.getChildren().add(page);
+        return page;
     }
 
-    // ============================================================
-    // Server Certificates Page
-    // ============================================================
-    private void buildServerCertificatesPage() {
+    private Node buildServerCertificatesPage() {
         VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
 
         CheckBox acceptNonTrusted = new CheckBox("Accept non-trusted certificates automatically");
-        acceptNonTrusted.getStyleClass().add("settings-check");
+        styleCheck(acceptNonTrusted);
 
         Label acceptedLabel = new Label("Accepted certificates:");
-        acceptedLabel.getStyleClass().add("settings-label");
+        acceptedLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
         ListView<String> certList = new ListView<>();
-        certList.getItems().addAll(
-            "Data Sharing",
-            "Date Formats",
-            "HTTP Proxy",
-            "Language and Region",
-            "Passwords",
-            "Process Elevation",
-            "Server Certificates",
-            "Trusted Hosts",
-            "Updates",
-            "File Colors",
-            "Scopes",
-            "Notifications",
-            "Data Editor and Viewer",
-            "Quick Lists",
-            "Required Plugins",
-            "Trusted Locations",
-            "Path Variables",
-            "Presentation Assistant"
-        );
-        certList.getStyleClass().add("settings-list");
-        certList.setPrefHeight(200);
+        certList.getItems().addAll("Default Root CA", "Java Default TrustStore");
+        certList.setPrefHeight(180);
+        certList.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4;");
 
-        Label noCertSelected = new Label("No certificate selected");
-        noCertSelected.getStyleClass().add("settings-hint");
+        Label noCertSelected = new Label("No custom certificate installed");
+        noCertSelected.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
 
         page.getChildren().addAll(acceptNonTrusted, acceptedLabel, certList, noCertSelected);
-        contentArea.getChildren().add(page);
+        return page;
     }
 
-    // ============================================================
-    // Trusted Hosts Page
-    // ============================================================
-    private void buildTrustedHostsPage() {
+    private Node buildTrustedHostsPage() {
         VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
 
-        Label description = new Label("These hosts are trusted for downloading IDE distributions. No confirmation is required.");
-        description.getStyleClass().add("settings-label");
+        Label description = new Label("These hosts are trusted for downloading plugins, SDKs, and updates. No confirmation is required.");
+        description.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
         description.setWrapText(true);
 
         ListView<String> hostList = new ListView<>();
         hostList.getItems().addAll(
-            "download.jetbrains.com",
-            "download-cf.jetbrains.com",
-            "download-cdn.jetbrains.com",
-            "cache-redirector.jetbrains.com"
+                "repo.maven.apache.org",
+                "repo1.maven.org",
+                "download.oracle.com",
+                "github.com",
+                "plugins.jetbrains.com"
         );
-        hostList.getStyleClass().add("settings-list");
-        hostList.setPrefHeight(120);
+        hostList.setPrefHeight(140);
+        hostList.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4;");
 
         page.getChildren().addAll(description, hostList);
-        contentArea.getChildren().add(page);
+        return page;
     }
 
-    // ============================================================
-    // Updates Page
-    // ============================================================
-    private void buildUpdatesPage() {
+    private Node buildUpdatesPage() {
         VBox page = new VBox(14);
+        page.setStyle("-fx-background-color: #1E1F22;");
 
-        Label versionLabel = new Label("Current version: IntelliJ IDEA 2025.3.2 IU-253.30387.90 January 22, 2026");
-        versionLabel.getStyleClass().add("settings-label");
-        versionLabel.setWrapText(true);
+        Label versionLabel = new Label("Current version: Lumina IDE 0.1.0");
+        versionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         CheckBox checkIdeUpdates = new CheckBox("Check IDE updates for: Stable Releases");
         checkIdeUpdates.setSelected(true);
-        checkIdeUpdates.getStyleClass().add("settings-check");
+        styleCheck(checkIdeUpdates);
 
         CheckBox checkPluginUpdates = new CheckBox("Check for plugin updates");
         checkPluginUpdates.setSelected(true);
-        checkPluginUpdates.getStyleClass().add("settings-check");
+        styleCheck(checkPluginUpdates);
 
         CheckBox updatePluginsAuto = new CheckBox("Update plugins automatically");
-        updatePluginsAuto.getStyleClass().add("settings-check");
-        Label updateAutoDesc = new Label("Updates will be downloaded in the background and applied after restart automatically");
-        updateAutoDesc.getStyleClass().add("settings-hint");
-        updateAutoDesc.setPadding(new Insets(0, 0, 0, 20));
-        updateAutoDesc.setWrapText(true);
+        updatePluginsAuto.setSelected(false);
+        styleCheck(updatePluginsAuto);
 
-        HBox checkButtons = new HBox(10);
+        HBox checkButtons = new HBox(12);
+        checkButtons.setAlignment(Pos.CENTER_LEFT);
         Button checkUpdates = new Button("Check for Updates...");
-        checkUpdates.getStyleClass().add("dialog-secondary");
-        Label lastChecked = new Label("Last checked: Today 7:13 AM");
-        lastChecked.getStyleClass().add("settings-hint");
+        styleSecondaryButton(checkUpdates);
+        Label lastChecked = new Label("Last checked: Today");
+        lastChecked.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
         checkButtons.getChildren().addAll(checkUpdates, lastChecked);
 
-        CheckBox showWhatsNew = new CheckBox("Show What's New in the editor after an IDE update");
-        showWhatsNew.setSelected(true);
-        showWhatsNew.getStyleClass().add("settings-check");
+        page.getChildren().addAll(versionLabel, checkIdeUpdates, checkPluginUpdates, updatePluginsAuto, checkButtons);
+        return page;
+    }
 
-        CheckBox checkJdkUpdates = new CheckBox("Check for JDK updates");
-        checkJdkUpdates.setSelected(true);
-        checkJdkUpdates.getStyleClass().add("settings-check");
-
-        Label toolboxLabel = new Label("We recommend the Toolbox App");
-        toolboxLabel.getStyleClass().add("settings-label");
-        Hyperlink toolboxLink = new Hyperlink("Toolbox App");
-        toolboxLink.getStyleClass().add("settings-link");
-        Label toolboxDesc = new Label("Get updates automatically, open your projects with one click, discover other JetBrains products, and more");
-        toolboxDesc.getStyleClass().add("settings-hint");
-        toolboxDesc.setWrapText(true);
-
-        HBox toolboxRow = new HBox(6, toolboxLabel, toolboxLink);
-
-        VBox pluginBox = new VBox(4, checkPluginUpdates, updatePluginsAuto, updateAutoDesc);
-        pluginBox.setPadding(new Insets(4, 0, 8, 20));
-
-        VBox toolboxBox = new VBox(4, toolboxRow, toolboxDesc);
-
-        page.getChildren().addAll(
-            versionLabel,
-            checkIdeUpdates,
-            pluginBox,
-            checkButtons,
-            showWhatsNew,
-            checkJdkUpdates,
-            toolboxBox
-        );
-        contentArea.getChildren().add(page);
+    private Node buildPlaceholderPage(String pageName) {
+        VBox page = new VBox(16);
+        Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
+        placeholder.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 13px;");
+        page.getChildren().add(placeholder);
+        return page;
     }
 
     // ============================================================
-    // Placeholder
+    // Style Helpers
     // ============================================================
-    private void buildPlaceholderPage(String pageName) {
-        VBox page = new VBox(20);
-        Label placeholder = new Label("Settings for '" + pageName + "' will be available in a future update.");
-        placeholder.getStyleClass().add("settings-placeholder");
-        page.getChildren().add(placeholder);
-        contentArea.getChildren().add(page);
+    private HBox buildSectionHeader(String title) {
+        Label label = new Label(title);
+        label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: normal;");
+
+        Region divider = new Region();
+        divider.setStyle("-fx-background-color: #393B40; -fx-pref-height: 1px; -fx-max-height: 1px; -fx-min-height: 1px;");
+        HBox.setHgrow(divider, Priority.ALWAYS);
+
+        HBox header = new HBox(12, label, divider);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(10, 0, 4, 0));
+        return header;
+    }
+
+    private void styleCheck(CheckBox cb) {
+        cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+    }
+
+    private void styleRadio(RadioButton rb) {
+        rb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+    }
+
+    private void styleField(TextField tf) {
+        tf.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 4 8 4 8;");
+    }
+
+    private void styleCombo(ComboBox<String> cb) {
+        cb.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+    }
+
+    private void styleSecondaryButton(Button btn) {
+        btn.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 5 14 5 14; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
+    }
+
+    private Node indent(Node node, double leftPadding) {
+        VBox box = new VBox(node);
+        box.setPadding(new Insets(0, 0, 0, leftPadding));
+        return box;
     }
 }

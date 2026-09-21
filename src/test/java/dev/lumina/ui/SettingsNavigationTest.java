@@ -129,6 +129,71 @@ class SettingsNavigationTest {
         assertNotNull(ref.get());
     }
 
+    @Test
+    void testInitialAppearancePageLoadsContentImmediately() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                ref.set(new SettingsDialog(null));
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsDialog dialog = ref.get();
+        assertNotNull(dialog);
+        assertNotNull(dialog.getContentContainer());
+        assertFalse(dialog.getContentContainer().getChildren().isEmpty(),
+                "Content container MUST not be empty on initial open!");
+        assertEquals("Appearance", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
+    }
+
+    @Test
+    void testSettingsSystemPageSubPages() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsSystemPage> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsSystemPage page = new SettingsSystemPage();
+                ref.set(page);
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsSystemPage page = ref.get();
+        assertNotNull(page);
+        assertFalse(page.getChildren().isEmpty());
+
+        // Test switching to each of the 4 requested pages
+        java.util.concurrent.CountDownLatch switchLatch = new java.util.concurrent.CountDownLatch(4);
+        Platform.runLater(() -> {
+            page.showSubPage("System Settings");
+            assertFalse(page.getChildren().isEmpty());
+            switchLatch.countDown();
+
+            page.showSubPage("Date Formats");
+            assertFalse(page.getChildren().isEmpty());
+            switchLatch.countDown();
+
+            page.showSubPage("Data Sharing");
+            assertFalse(page.getChildren().isEmpty());
+            switchLatch.countDown();
+
+            page.showSubPage("HTTP Proxy");
+            assertFalse(page.getChildren().isEmpty());
+            switchLatch.countDown();
+        });
+        switchLatch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
     @SuppressWarnings("unchecked")
     private ComboBox<String> findComboBox(javafx.scene.Parent parent) {
         for (javafx.scene.Node node : parent.getChildrenUnmodifiable()) {
