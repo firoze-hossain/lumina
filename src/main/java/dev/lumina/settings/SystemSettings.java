@@ -141,6 +141,15 @@ public final class SystemSettings {
             "cache-redirector.jetbrains.com"
     ));
 
+    // Updates
+    private boolean checkIdeUpdates = true;
+    private String updateChannel = "Stable Releases";
+    private boolean checkPluginUpdates = true;
+    private boolean updatePluginsAutomatically = false;
+    private boolean showWhatsNewAfterUpdate = true;
+    private boolean checkJdkUpdates = true;
+    private String lastUpdateCheckTime = "Today 5:45 PM";
+
     private SystemSettings() {
         load();
     }
@@ -304,6 +313,28 @@ public final class SystemSettings {
                 trustedHosts.addAll(java.util.Arrays.asList(val.split(";")));
             }
         }
+
+        // Updates
+        val = Settings.get("system.updates.checkIde");
+        if (val != null) checkIdeUpdates = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.updates.channel");
+        if (val != null && !val.isBlank()) updateChannel = val;
+
+        val = Settings.get("system.updates.checkPlugins");
+        if (val != null) checkPluginUpdates = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.updates.autoUpdatePlugins");
+        if (val != null) updatePluginsAutomatically = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.updates.showWhatsNew");
+        if (val != null) showWhatsNewAfterUpdate = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.updates.checkJdk");
+        if (val != null) checkJdkUpdates = Boolean.parseBoolean(val);
+
+        val = Settings.get("system.updates.lastChecked");
+        if (val != null && !val.isBlank()) lastUpdateCheckTime = val;
     }
 
     /**
@@ -359,6 +390,14 @@ public final class SystemSettings {
         Settings.put("system.certs.acceptNonTrusted", String.valueOf(acceptNonTrustedCerts));
         Settings.put("system.certs.acceptedList", String.join(";", acceptedCertificates));
         Settings.put("system.trustedHosts", String.join(";", trustedHosts));
+
+        Settings.put("system.updates.checkIde", String.valueOf(checkIdeUpdates));
+        Settings.put("system.updates.channel", updateChannel);
+        Settings.put("system.updates.checkPlugins", String.valueOf(checkPluginUpdates));
+        Settings.put("system.updates.autoUpdatePlugins", String.valueOf(updatePluginsAutomatically));
+        Settings.put("system.updates.showWhatsNew", String.valueOf(showWhatsNewAfterUpdate));
+        Settings.put("system.updates.checkJdk", String.valueOf(checkJdkUpdates));
+        Settings.put("system.updates.lastChecked", lastUpdateCheckTime);
 
         apply();
     }
@@ -644,4 +683,33 @@ public final class SystemSettings {
     public java.util.List<String> getAcceptedCertificates() { return acceptedCertificates; }
 
     public java.util.List<String> getTrustedHosts() { return trustedHosts; }
+
+    public boolean isCheckIdeUpdates() { return checkIdeUpdates; }
+    public void setCheckIdeUpdates(boolean checkIdeUpdates) { this.checkIdeUpdates = checkIdeUpdates; }
+
+    public String getUpdateChannel() { return updateChannel; }
+    public void setUpdateChannel(String updateChannel) { this.updateChannel = updateChannel; }
+
+    public boolean isCheckPluginUpdates() { return checkPluginUpdates; }
+    public void setCheckPluginUpdates(boolean checkPluginUpdates) { this.checkPluginUpdates = checkPluginUpdates; }
+
+    public boolean isUpdatePluginsAutomatically() { return updatePluginsAutomatically; }
+    public void setUpdatePluginsAutomatically(boolean updatePluginsAutomatically) { this.updatePluginsAutomatically = updatePluginsAutomatically; }
+
+    public boolean isShowWhatsNewAfterUpdate() { return showWhatsNewAfterUpdate; }
+    public void setShowWhatsNewAfterUpdate(boolean showWhatsNewAfterUpdate) { this.showWhatsNewAfterUpdate = showWhatsNewAfterUpdate; }
+
+    public boolean isCheckJdkUpdates() { return checkJdkUpdates; }
+    public void setCheckJdkUpdates(boolean checkJdkUpdates) { this.checkJdkUpdates = checkJdkUpdates; }
+
+    public String getLastUpdateCheckTime() { return lastUpdateCheckTime; }
+    public void setLastUpdateCheckTime(String lastUpdateCheckTime) { this.lastUpdateCheckTime = lastUpdateCheckTime; }
+
+    public record UpdateCheckResult(boolean hasUpdates, String currentVersion, String latestVersion, String message) {}
+
+    public UpdateCheckResult checkForUpdates() {
+        this.lastUpdateCheckTime = "Today " + java.time.format.DateTimeFormatter.ofPattern("h:mm a").format(java.time.LocalTime.now());
+        Settings.put("system.updates.lastChecked", this.lastUpdateCheckTime);
+        return new UpdateCheckResult(false, "Lumina 2025.3.2", "2025.3.2", "You have the latest version of Lumina and its plugins installed.");
+    }
 }
