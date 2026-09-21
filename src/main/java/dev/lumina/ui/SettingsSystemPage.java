@@ -2,13 +2,18 @@ package dev.lumina.ui;
 
 import dev.lumina.settings.SystemSettings;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -83,6 +88,33 @@ public class SettingsSystemPage extends VBox {
     private VBox manualProxyBox;
     private VBox authFieldsBox;
     private VBox dateFormatOptionsBox;
+
+    // ---- Language and Region Controls ----
+    private ComboBox<String> languageCombo;
+    private ComboBox<String> regionCombo;
+
+    // ---- Passwords Controls ----
+    private RadioButton passKeychainRadio;
+    private RadioButton passKeePassRadio;
+    private RadioButton passDoNotSaveRadio;
+    private TextField keepassDbField;
+    private CheckBox pgpKeyCheck;
+    private ComboBox<String> pgpKeyCombo;
+
+    // ---- Process Elevation Controls ----
+    private CheckBox keepSudoCheck;
+    private ComboBox<String> sudoTimeoutCombo;
+    private CheckBox extendSudoTimeoutCheck;
+
+    // ---- Server Certificates Controls ----
+    private CheckBox acceptNonTrustedCertsCheck;
+    private ObservableList<String> certsList;
+    private ListView<String> certsListView;
+    private Label certDetailLabel;
+
+    // ---- Trusted Hosts Controls ----
+    private ObservableList<String> trustedHostsList;
+    private ListView<String> trustedHostsListView;
 
     public SettingsSystemPage() {
         setPadding(new Insets(16, 24, 24, 24));
@@ -704,22 +736,74 @@ public class SettingsSystemPage extends VBox {
         if (proxyLoginField != null) settings.setProxyLogin(proxyLoginField.getText().trim());
         if (proxyPasswordField != null) settings.setProxyPassword(proxyPasswordField.getText());
         if (proxyRememberCheck != null) settings.setProxyRemember(proxyRememberCheck.isSelected());
+
+        // Language and Region
+        if (languageCombo != null && languageCombo.getValue() != null) {
+            settings.setLanguage(languageCombo.getValue());
+        }
+        if (regionCombo != null && regionCombo.getValue() != null) {
+            settings.setRegion(regionCombo.getValue());
+        }
+
+        // Passwords
+        if (passKeychainRadio != null && passKeychainRadio.isSelected()) {
+            settings.setPasswordStoragePolicy(SystemSettings.PasswordStoragePolicy.NATIVE_KEYCHAIN);
+        } else if (passKeePassRadio != null && passKeePassRadio.isSelected()) {
+            settings.setPasswordStoragePolicy(SystemSettings.PasswordStoragePolicy.KEEPASS);
+        } else if (passDoNotSaveRadio != null && passDoNotSaveRadio.isSelected()) {
+            settings.setPasswordStoragePolicy(SystemSettings.PasswordStoragePolicy.DO_NOT_SAVE);
+        }
+        if (keepassDbField != null) {
+            settings.setKeepassDbPath(keepassDbField.getText().trim());
+        }
+        if (pgpKeyCheck != null) {
+            settings.setProtectMasterPasswordWithPgp(pgpKeyCheck.isSelected());
+        }
+
+        // Process Elevation
+        if (keepSudoCheck != null) {
+            settings.setKeepSudoAuth(keepSudoCheck.isSelected());
+        }
+        if (sudoTimeoutCombo != null && sudoTimeoutCombo.getValue() != null) {
+            settings.setSudoTimeout(sudoTimeoutCombo.getValue());
+        }
+        if (extendSudoTimeoutCheck != null) {
+            settings.setExtendSudoTimeout(extendSudoTimeoutCheck.isSelected());
+        }
+
+        // Server Certificates
+        if (acceptNonTrustedCertsCheck != null) {
+            settings.setAcceptNonTrustedCerts(acceptNonTrustedCertsCheck.isSelected());
+        }
+        if (certsList != null) {
+            settings.getAcceptedCertificates().clear();
+            settings.getAcceptedCertificates().addAll(certsList);
+        }
+
+        // Trusted Hosts
+        if (trustedHostsList != null) {
+            settings.getTrustedHosts().clear();
+            settings.getTrustedHosts().addAll(trustedHostsList);
+        }
     }
 
     // ============================================================
     // Additional Sub-Pages
     // ============================================================
+
+    // 1. Language and Region (Matches Image 1)
     private Node buildLanguageRegionPage() {
         VBox page = new VBox(14);
         page.setStyle("-fx-background-color: #1E1F22;");
 
+        // Language Row
         Label languageLabel = new Label("Language:");
-        languageLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
-        ComboBox<String> languageCombo = new ComboBox<>();
-        languageCombo.getItems().addAll("English", "中文", "日本語", "한국어", "Français", "Deutsch", "Español");
-        languageCombo.getSelectionModel().selectFirst();
+        languageLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 80px;");
+        languageCombo = new ComboBox<>();
+        languageCombo.getItems().addAll("English", "Chinese (Simplified)", "Japanese", "Korean");
+        languageCombo.setValue(settings.getLanguage());
         styleCombo(languageCombo);
-        languageCombo.setPrefWidth(200);
+        languageCombo.setPrefWidth(220);
 
         Label restartHint = new Label("Requires restart");
         restartHint.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
@@ -727,145 +811,379 @@ public class SettingsSystemPage extends VBox {
         HBox languageRow = new HBox(12, languageLabel, languageCombo, restartHint);
         languageRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Region Row
         Label regionLabel = new Label("Region:");
-        regionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 90px;");
-        ComboBox<String> regionCombo = new ComboBox<>();
-        regionCombo.getItems().addAll("Not specified", "United States", "United Kingdom", "Germany", "France", "Japan", "China");
-        regionCombo.getSelectionModel().selectFirst();
+        regionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 80px;");
+        regionCombo = new ComboBox<>();
+        regionCombo.getItems().addAll("Not specified", "United States", "European Union", "China", "India", "Japan", "United Kingdom", "Other");
+        regionCombo.setValue(settings.getRegion());
         styleCombo(regionCombo);
-        regionCombo.setPrefWidth(200);
+        regionCombo.setPrefWidth(220);
 
         HBox regionRow = new HBox(12, regionLabel, regionCombo);
         regionRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label regionDesc = new Label("Select a region to ensure that licensing, Marketplace, and other region-specific features and links work correctly. Requires restart. See the documentation for details.");
-        regionDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
-        regionDesc.setWrapText(true);
+        // Region Description with clickable documentation link
+        TextFlow descFlow = new TextFlow();
+        descFlow.setMaxWidth(560);
 
-        page.getChildren().addAll(languageRow, regionRow, regionDesc);
+        Text text1 = new Text("Select a region to ensure that licensing, JetBrains Marketplace, and other region-specific features and links work correctly. Requires restart. See the ");
+        text1.setStyle("-fx-fill: #6F737A; -fx-font-size: 12px;");
+
+        Hyperlink docLink = new Hyperlink("documentation ↗");
+        docLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-padding: 0; -fx-border-width: 0; -fx-underline: false;");
+        docLink.setOnAction(e -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI("https://www.jetbrains.com"));
+            } catch (Exception ignored) {}
+        });
+
+        Text text2 = new Text(" for details.");
+        text2.setStyle("-fx-fill: #6F737A; -fx-font-size: 12px;");
+
+        descFlow.getChildren().addAll(text1, docLink, text2);
+
+        VBox descBox = new VBox(descFlow);
+        descBox.setPadding(new Insets(0, 0, 0, 92)); // indented under the combobox
+
+        page.getChildren().addAll(languageRow, regionRow, descBox);
         return page;
     }
 
+    // 2. Passwords (Matches Image 2)
     private Node buildPasswordsPage() {
-        VBox page = new VBox(14);
+        VBox page = new VBox(12);
         page.setStyle("-fx-background-color: #1E1F22;");
 
         Label saveLabel = new Label("Save passwords:");
         saveLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
-        RadioButton nativeKeychain = new RadioButton("In native Keychain");
-        nativeKeychain.setSelected(true);
-        styleRadio(nativeKeychain);
+        ToggleGroup saveGroup = new ToggleGroup();
 
-        RadioButton keepass = new RadioButton("In KeePass");
-        styleRadio(keepass);
+        passKeychainRadio = new RadioButton("In native Keychain");
+        passKeychainRadio.setToggleGroup(saveGroup);
+        styleRadio(passKeychainRadio);
 
-        VBox keepassBox = new VBox(6);
-        keepassBox.setPadding(new Insets(4, 0, 8, 20));
+        passKeePassRadio = new RadioButton("In KeePass");
+        passKeePassRadio.setToggleGroup(saveGroup);
+        styleRadio(passKeePassRadio);
+
+        // KeePass options box
+        VBox keepassBox = new VBox(8);
+        keepassBox.setPadding(new Insets(2, 0, 6, 24));
 
         Label dbLabel = new Label("Database:");
-        dbLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-        TextField dbField = new TextField(System.getProperty("user.home") + "/.config/Lumina/c.kdbx");
-        styleField(dbField);
-        dbField.setPrefWidth(420);
-        dbField.setEditable(false);
+        dbLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 70px;");
 
-        Label weakEncryption = new Label("Stored using standard encryption. Storing on an encrypted volume is recommended for additional security.");
-        weakEncryption.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
-        weakEncryption.setWrapText(true);
+        keepassDbField = new TextField(settings.getKeepassDbPath());
+        styleField(keepassDbField);
+        keepassDbField.setPrefWidth(420);
 
-        CheckBox pgpKey = new CheckBox("Protect master password using PGP key (No keys configured)");
-        styleCheck(pgpKey);
+        Button browseBtn = createToolbarButton("📁", "Browse KeePass Database");
+        browseBtn.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Select KeePass Database File");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("KeePass Database (*.kdbx)", "*.kdbx"));
+            File f = chooser.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
+            if (f != null) {
+                keepassDbField.setText(f.getAbsolutePath());
+            }
+        });
 
-        keepassBox.getChildren().addAll(dbLabel, dbField, weakEncryption, pgpKey);
+        Button gearBtn = createToolbarButton("⚙", "KeePass Settings");
+        gearBtn.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("KeePass Settings");
+            alert.setHeaderText(null);
+            alert.setContentText("KeePass master password is synchronized with your Lumina master storage.");
+            alert.showAndWait();
+        });
 
-        RadioButton noSave = new RadioButton("Do not save, forget passwords after restart");
-        styleRadio(noSave);
+        HBox dbRow = new HBox(8, dbLabel, keepassDbField, browseBtn, gearBtn);
+        dbRow.setAlignment(Pos.CENTER_LEFT);
 
-        ToggleGroup saveGroup = new ToggleGroup();
-        nativeKeychain.setToggleGroup(saveGroup);
-        keepass.setToggleGroup(saveGroup);
-        noSave.setToggleGroup(saveGroup);
+        Label weakEncLabel = new Label("Stored using weak encryption. It is recommended to store on encrypted volume for additional security.");
+        weakEncLabel.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        weakEncLabel.setWrapText(true);
+        weakEncLabel.setMaxWidth(540);
+        VBox weakEncBox = new VBox(weakEncLabel);
+        weakEncBox.setPadding(new Insets(0, 0, 0, 78));
 
-        page.getChildren().addAll(saveLabel, nativeKeychain, keepass, keepassBox, noSave);
+        pgpKeyCheck = new CheckBox("Protect master password using PGP key (No keys configured)");
+        pgpKeyCheck.setSelected(settings.isProtectMasterPasswordWithPgp());
+        styleCheck(pgpKeyCheck);
+
+        pgpKeyCombo = new ComboBox<>();
+        pgpKeyCombo.setPromptText("Select key");
+        pgpKeyCombo.setPrefWidth(220);
+        styleCombo(pgpKeyCombo);
+        pgpKeyCombo.setDisable(true);
+        pgpKeyCheck.selectedProperty().addListener((obs, old, sel) -> pgpKeyCombo.setDisable(!sel));
+
+        HBox pgpRow = new HBox(12, pgpKeyCheck, pgpKeyCombo);
+        pgpRow.setAlignment(Pos.CENTER_LEFT);
+
+        keepassBox.getChildren().addAll(dbRow, weakEncBox, pgpRow);
+
+        passDoNotSaveRadio = new RadioButton("Do not save, forget passwords after restart");
+        passDoNotSaveRadio.setToggleGroup(saveGroup);
+        styleRadio(passDoNotSaveRadio);
+
+        // Pre-select radio based on settings
+        switch (settings.getPasswordStoragePolicy()) {
+            case NATIVE_KEYCHAIN -> passKeychainRadio.setSelected(true);
+            case KEEPASS -> passKeePassRadio.setSelected(true);
+            case DO_NOT_SAVE -> passDoNotSaveRadio.setSelected(true);
+        }
+
+        keepassBox.disableProperty().bind(passKeePassRadio.selectedProperty().not());
+
+        page.getChildren().addAll(saveLabel, passKeychainRadio, passKeePassRadio, keepassBox, passDoNotSaveRadio);
         return page;
     }
 
+    // 3. Process Elevation (Matches Image 3)
     private Node buildProcessElevationPage() {
-        VBox page = new VBox(14);
+        VBox page = new VBox(12);
         page.setStyle("-fx-background-color: #1E1F22;");
 
-        Label description = new Label("Running privileged processes requires 'sudo' authorization.");
-        description.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        Label heading = new Label("Running privileged processes requires 'sudo' authorization.");
+        heading.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
-        Label description2 = new Label("Lumina utilizes a service process to do this. You can set it to keep running for a certain amount of time so you don't have to authorize it again each time you run or debug.");
-        description2.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
-        description2.setWrapText(true);
+        Label desc = new Label("IntelliJ IDEA utilizes a special service process to do this. For your convenience, you can set it to keep running for a certain amount of time so you don't have to authorize it again each time you run or debug.");
+        desc.setStyle("-fx-text-fill: #868A91; -fx-font-size: 12px;");
+        desc.setWrapText(true);
+        desc.setMaxWidth(640);
 
-        Label important = new Label("Important: Enabling this option grants the IDE unrestricted access to your system.");
-        important.setStyle("-fx-text-fill: #E88A8A; -fx-font-size: 12px;");
-        important.setWrapText(true);
+        TextFlow importantFlow = new TextFlow();
+        importantFlow.setMaxWidth(640);
+        Text imp1 = new Text("Important: Enabling this option grants the IDE and all its components, including ");
+        imp1.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 12px;");
+        Text imp2 = new Text("third-party plugins");
+        imp2.setStyle("-fx-fill: #FFFFFF; -fx-font-size: 12px; -fx-font-weight: bold;");
+        Text imp3 = new Text(", unrestricted access to your system.");
+        imp3.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 12px;");
+        importantFlow.getChildren().addAll(imp1, imp2, imp3);
 
-        CheckBox keepSudo = new CheckBox("Keep 'sudo' authorization for 15 min");
-        styleCheck(keepSudo);
+        // Keep sudo row
+        keepSudoCheck = new CheckBox("Keep 'sudo' authorization for");
+        keepSudoCheck.setSelected(settings.isKeepSudoAuth());
+        styleCheck(keepSudoCheck);
 
-        CheckBox extendTimeout = new CheckBox("Extend the time limit when starting a new process");
-        extendTimeout.setSelected(true);
-        styleCheck(extendTimeout);
+        sudoTimeoutCombo = new ComboBox<>();
+        sudoTimeoutCombo.getItems().addAll("5 min", "15 min", "30 min", "60 min", "Always");
+        sudoTimeoutCombo.setValue(settings.getSudoTimeout() != null && !settings.getSudoTimeout().isBlank() ? settings.getSudoTimeout() : "15 min");
+        styleCombo(sudoTimeoutCombo);
+        sudoTimeoutCombo.setPrefWidth(100);
+
+        HBox keepSudoRow = new HBox(8, keepSudoCheck, sudoTimeoutCombo);
+        keepSudoRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Extend timeout sub-option
+        extendSudoTimeoutCheck = new CheckBox("Extend the time limit when starting a new process");
+        extendSudoTimeoutCheck.setSelected(settings.isExtendSudoTimeout());
+        styleCheck(extendSudoTimeoutCheck);
 
         Label extendDesc = new Label("The timeout will reset each time a new elevated process is launched within the specified time frame.");
-        extendDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px; -fx-padding: 0 0 0 24;");
+        extendDesc.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
         extendDesc.setWrapText(true);
+        extendDesc.setMaxWidth(600);
+        VBox extendDescBox = new VBox(extendDesc);
+        extendDescBox.setPadding(new Insets(0, 0, 0, 22));
 
-        page.getChildren().addAll(description, description2, important, keepSudo, extendTimeout, extendDesc);
+        VBox extendBox = new VBox(6, extendSudoTimeoutCheck, extendDescBox);
+        extendBox.setPadding(new Insets(0, 0, 0, 24));
+
+        // Enable / disable binding
+        sudoTimeoutCombo.disableProperty().bind(keepSudoCheck.selectedProperty().not());
+        extendBox.disableProperty().bind(keepSudoCheck.selectedProperty().not());
+
+        page.getChildren().addAll(heading, desc, importantFlow, keepSudoRow, extendBox);
         return page;
     }
 
+    // 4. Server Certificates (Matches Image 4)
     private Node buildServerCertificatesPage() {
-        VBox page = new VBox(14);
+        VBox page = new VBox(12);
         page.setStyle("-fx-background-color: #1E1F22;");
 
-        CheckBox acceptNonTrusted = new CheckBox("Accept non-trusted certificates automatically");
-        styleCheck(acceptNonTrusted);
+        acceptNonTrustedCertsCheck = new CheckBox("Accept non-trusted certificates automatically");
+        acceptNonTrustedCertsCheck.setSelected(settings.isAcceptNonTrustedCerts());
+        styleCheck(acceptNonTrustedCertsCheck);
 
         Label acceptedLabel = new Label("Accepted certificates:");
         acceptedLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
-        ListView<String> certList = new ListView<>();
-        certList.getItems().addAll("Default Root CA", "Java Default TrustStore");
-        certList.setPrefHeight(180);
-        certList.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4;");
+        certsList = FXCollections.observableArrayList(settings.getAcceptedCertificates());
 
-        Label noCertSelected = new Label("No custom certificate installed");
-        noCertSelected.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        // Container
+        VBox container = new VBox();
+        container.setStyle("-fx-border-color: #393B40; -fx-border-width: 1px; -fx-border-radius: 4; -fx-background-radius: 4; -fx-background-color: #1E1F22;");
+        container.setPrefHeight(240);
+        container.setMaxWidth(680);
 
-        page.getChildren().addAll(acceptNonTrusted, acceptedLabel, certList, noCertSelected);
+        // Toolbar
+        Button addBtn = createToolbarButton("+", "Add Certificate");
+        Button removeBtn = createToolbarButton("—", "Remove Certificate");
+        removeBtn.setDisable(true);
+
+        HBox toolbar = new HBox(4, addBtn, removeBtn);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setPadding(new Insets(3, 6, 3, 6));
+        toolbar.setStyle("-fx-border-color: #393B40; -fx-border-width: 0 0 1 0; -fx-background-color: #1E1F22;");
+
+        // List & Empty Placeholder
+        certsListView = new ListView<>(certsList);
+        styleListView(certsListView);
+        VBox.setVgrow(certsListView, Priority.ALWAYS);
+
+        Label emptyLabel = new Label("No certificates");
+        emptyLabel.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 13px;");
+        emptyLabel.setVisible(certsList.isEmpty());
+
+        StackPane contentStack = new StackPane(certsListView, emptyLabel);
+        VBox.setVgrow(contentStack, Priority.ALWAYS);
+
+        container.getChildren().addAll(toolbar, contentStack);
+
+        // Bottom label
+        certDetailLabel = new Label("No certificate selected");
+        certDetailLabel.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 12px;");
+        HBox detailBox = new HBox(certDetailLabel);
+        detailBox.setAlignment(Pos.CENTER);
+        detailBox.setMaxWidth(680);
+        detailBox.setPadding(new Insets(12, 0, 0, 0));
+
+        // Selection & actions
+        certsListView.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            removeBtn.setDisable(sel == null);
+            if (sel == null) {
+                certDetailLabel.setText("No certificate selected");
+            } else {
+                certDetailLabel.setText("Selected: " + sel);
+            }
+        });
+
+        addBtn.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Select Certificate File");
+            fileChooser.getExtensionFilters().addAll(
+                    new FileChooser.ExtensionFilter("Certificate Files (*.crt, *.cer, *.pem)", "*.crt", "*.cer", "*.pem"),
+                    new FileChooser.ExtensionFilter("All Files", "*.*")
+            );
+            File f = fileChooser.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
+            if (f != null) {
+                certsList.add(f.getName());
+                emptyLabel.setVisible(certsList.isEmpty());
+                certsListView.getSelectionModel().select(f.getName());
+            }
+        });
+
+        removeBtn.setOnAction(e -> {
+            String selected = certsListView.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                certsList.remove(selected);
+                emptyLabel.setVisible(certsList.isEmpty());
+            }
+        });
+
+        page.getChildren().addAll(acceptNonTrustedCertsCheck, acceptedLabel, container, detailBox);
         return page;
     }
 
+    // 5. Trusted Hosts (Matches Image 5)
     private Node buildTrustedHostsPage() {
-        VBox page = new VBox(14);
+        VBox page = new VBox(12);
         page.setStyle("-fx-background-color: #1E1F22;");
 
-        Label description = new Label("These hosts are trusted for downloading plugins, SDKs, and updates. No confirmation is required.");
-        description.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-        description.setWrapText(true);
+        Label desc = new Label("These hosts are trusted for downloading IDE distributions. No confirmation is required.");
+        desc.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        desc.setWrapText(true);
+        desc.setMaxWidth(680);
 
-        ListView<String> hostList = new ListView<>();
-        hostList.getItems().addAll(
-                "repo.maven.apache.org",
-                "repo1.maven.org",
-                "download.oracle.com",
-                "github.com",
-                "plugins.jetbrains.com"
-        );
-        hostList.setPrefHeight(140);
-        hostList.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4;");
+        trustedHostsList = FXCollections.observableArrayList(settings.getTrustedHosts());
 
-        page.getChildren().addAll(description, hostList);
+        // Container
+        VBox container = new VBox();
+        container.setStyle("-fx-border-color: #393B40; -fx-border-width: 1px; -fx-border-radius: 4; -fx-background-radius: 4; -fx-background-color: #1E1F22;");
+        container.setPrefHeight(260);
+        container.setMaxWidth(680);
+
+        // Toolbar
+        Button addBtn = createToolbarButton("+", "Add Host");
+        Button removeBtn = createToolbarButton("—", "Remove Host");
+        Button upBtn = createToolbarButton("↑", "Move Up");
+        Button downBtn = createToolbarButton("↓", "Move Down");
+
+        removeBtn.setDisable(true);
+        upBtn.setDisable(true);
+        downBtn.setDisable(true);
+
+        HBox toolbar = new HBox(4, addBtn, removeBtn, upBtn, downBtn);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setPadding(new Insets(3, 6, 3, 6));
+        toolbar.setStyle("-fx-border-color: #393B40; -fx-border-width: 0 0 1 0; -fx-background-color: #1E1F22;");
+
+        // List
+        trustedHostsListView = new ListView<>(trustedHostsList);
+        styleListView(trustedHostsListView);
+        VBox.setVgrow(trustedHostsListView, Priority.ALWAYS);
+
+        container.getChildren().addAll(toolbar, trustedHostsListView);
+
+        // Selection update
+        trustedHostsListView.getSelectionModel().selectedIndexProperty().addListener((obs, old, idx) -> {
+            int i = idx.intValue();
+            removeBtn.setDisable(i < 0);
+            upBtn.setDisable(i <= 0);
+            downBtn.setDisable(i < 0 || i >= trustedHostsList.size() - 1);
+        });
+
+        addBtn.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Add Trusted Host");
+            dialog.setHeaderText(null);
+            dialog.setContentText("Host name:");
+            dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+            dialog.showAndWait().ifPresent(host -> {
+                String trimmed = host.trim();
+                if (!trimmed.isBlank() && !trustedHostsList.contains(trimmed)) {
+                    trustedHostsList.add(trimmed);
+                    trustedHostsListView.getSelectionModel().select(trimmed);
+                }
+            });
+        });
+
+        removeBtn.setOnAction(e -> {
+            int idx = trustedHostsListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0) {
+                trustedHostsList.remove(idx);
+            }
+        });
+
+        upBtn.setOnAction(e -> {
+            int idx = trustedHostsListView.getSelectionModel().getSelectedIndex();
+            if (idx > 0) {
+                String item = trustedHostsList.remove(idx);
+                trustedHostsList.add(idx - 1, item);
+                trustedHostsListView.getSelectionModel().select(idx - 1);
+            }
+        });
+
+        downBtn.setOnAction(e -> {
+            int idx = trustedHostsListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < trustedHostsList.size() - 1) {
+                String item = trustedHostsList.remove(idx);
+                trustedHostsList.add(idx + 1, item);
+                trustedHostsListView.getSelectionModel().select(idx + 1);
+            }
+        });
+
+        page.getChildren().addAll(desc, container);
         return page;
     }
 
+    // 6. Updates Page
     private Node buildUpdatesPage() {
         VBox page = new VBox(14);
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -942,9 +1260,53 @@ public class SettingsSystemPage extends VBox {
         btn.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 5 14 5 14; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
     }
 
+    private Button createToolbarButton(String text, String tooltipText) {
+        Button btn = new Button(text);
+        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AFB1B6; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 2 8 2 8; -fx-cursor: hand; -fx-background-radius: 3;");
+        btn.setOnMouseEntered(e -> {
+            if (!btn.isDisable()) btn.setStyle("-fx-background-color: #35373C; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 2 8 2 8; -fx-cursor: hand; -fx-background-radius: 3;");
+        });
+        btn.setOnMouseExited(e -> {
+            if (!btn.isDisable()) btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #AFB1B6; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 2 8 2 8; -fx-cursor: hand; -fx-background-radius: 3;");
+        });
+        btn.setTooltip(new Tooltip(tooltipText));
+        return btn;
+    }
+
+    private void styleListView(ListView<String> lv) {
+        lv.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: transparent; -fx-padding: 0;");
+        lv.setCellFactory(param -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: #1E1F22;");
+                } else {
+                    setText(item);
+                    setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;") + " -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 4 8 4 8;");
+                }
+            }
+        });
+    }
+
     private Node indent(Node node, double leftPadding) {
         VBox box = new VBox(node);
         box.setPadding(new Insets(0, 0, 0, leftPadding));
         return box;
     }
+
+    // Accessors for testing
+    public ComboBox<String> getLanguageCombo() { return languageCombo; }
+    public ComboBox<String> getRegionCombo() { return regionCombo; }
+    public RadioButton getPassKeychainRadio() { return passKeychainRadio; }
+    public RadioButton getPassKeePassRadio() { return passKeePassRadio; }
+    public RadioButton getPassDoNotSaveRadio() { return passDoNotSaveRadio; }
+    public TextField getKeepassDbField() { return keepassDbField; }
+    public CheckBox getKeepSudoCheck() { return keepSudoCheck; }
+    public ComboBox<String> getSudoTimeoutCombo() { return sudoTimeoutCombo; }
+    public CheckBox getAcceptNonTrustedCertsCheck() { return acceptNonTrustedCertsCheck; }
+    public ObservableList<String> getCertsList() { return certsList; }
+    public ObservableList<String> getTrustedHostsList() { return trustedHostsList; }
 }
