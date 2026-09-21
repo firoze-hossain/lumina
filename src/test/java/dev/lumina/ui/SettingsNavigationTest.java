@@ -172,8 +172,8 @@ class SettingsNavigationTest {
         assertNotNull(page);
         assertFalse(page.getChildren().isEmpty());
 
-        // Test switching to each of the 4 requested pages
-        java.util.concurrent.CountDownLatch switchLatch = new java.util.concurrent.CountDownLatch(4);
+        // Test switching to each of the IntelliJ System Settings pages
+        java.util.concurrent.CountDownLatch switchLatch = new java.util.concurrent.CountDownLatch(10);
         Platform.runLater(() -> {
             page.showSubPage("System Settings");
             assertFalse(page.getChildren().isEmpty());
@@ -190,8 +190,44 @@ class SettingsNavigationTest {
             page.showSubPage("HTTP Proxy");
             assertFalse(page.getChildren().isEmpty());
             switchLatch.countDown();
+
+            page.showSubPage("Language and Region");
+            assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getLanguageCombo());
+            assertNotNull(page.getRegionCombo());
+            switchLatch.countDown();
+
+            page.showSubPage("Passwords");
+            assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getPassKeychainRadio());
+            assertNotNull(page.getPassKeePassRadio());
+            assertNotNull(page.getKeepassDbField());
+            switchLatch.countDown();
+
+            page.showSubPage("Process Elevation");
+            assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getKeepSudoCheck());
+            assertNotNull(page.getSudoTimeoutCombo());
+            switchLatch.countDown();
+
+            page.showSubPage("Server Certificates");
+            assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getAcceptNonTrustedCertsCheck());
+            assertNotNull(page.getCertsList());
+            switchLatch.countDown();
+
+            page.showSubPage("Trusted Hosts");
+            assertFalse(page.getChildren().isEmpty());
+            assertNotNull(page.getTrustedHostsList());
+            assertTrue(page.getTrustedHostsList().contains("download.jetbrains.com"));
+            switchLatch.countDown();
+
+            page.showSubPage("Updates");
+            assertFalse(page.getChildren().isEmpty());
+            switchLatch.countDown();
         });
-        switchLatch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+        switchLatch.await(5, java.util.concurrent.TimeUnit.SECONDS);
+        assertEquals(0, switchLatch.getCount(), "All 10 subpages should render without exception");
     }
 
     @SuppressWarnings("unchecked")
