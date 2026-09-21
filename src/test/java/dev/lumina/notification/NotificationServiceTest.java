@@ -60,6 +60,14 @@ class NotificationServiceTest {
         assertEquals(testGroupId, byTitle.getId());
     }
 
+    private void waitForFx() {
+        try {
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            javafx.application.Platform.runLater(latch::countDown);
+            latch.await(2, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Throwable ignored) {}
+    }
+
     @Test
     void testNotifyAddsToTimeline() {
         int initialSize = service.getTimeline().size();
@@ -68,6 +76,7 @@ class NotificationServiceTest {
 
         Notification notification = new Notification("vcs.messages", "VCS messages", title, content, NotificationType.INFORMATION);
         service.notify(notification);
+        waitForFx();
 
         assertEquals(initialSize + 1, service.getTimeline().size());
         Notification first = service.getTimeline().getFirst();
@@ -78,6 +87,7 @@ class NotificationServiceTest {
 
         // Clean up
         service.removeNotification(first);
+        waitForFx();
         assertEquals(initialSize, service.getTimeline().size());
     }
 
@@ -103,6 +113,7 @@ class NotificationServiceTest {
         try {
             Notification n = new Notification("build.finished", "Build finished", "Build completed", "", NotificationType.INFORMATION);
             service.notify(n);
+            waitForFx();
 
             assertNotNull(received.get());
             assertEquals("Build completed", received.get().getTitle());
@@ -124,6 +135,7 @@ class NotificationServiceTest {
         try {
             Notification n = new Notification("silent.group", "Silent Group", "Silent message", "", NotificationType.INFORMATION);
             service.notify(n);
+            waitForFx();
 
             // Balloon toast should NOT fire because displayType is NONE
             assertNull(received.get());
