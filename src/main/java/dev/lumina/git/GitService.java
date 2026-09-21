@@ -82,8 +82,70 @@ public final class GitService {
         return exec(dir, "commit", "-m", message);
     }
 
+    public static Result commitAmend(Path dir, String message) {
+        return exec(dir, "commit", "--amend", "-m", message);
+    }
+
+    public static String lastCommitMessage(Path dir) {
+        Result r = exec(dir, "log", "-1", "--pretty=%B");
+        return r.ok() ? r.output().trim() : "";
+    }
+
+    public static List<String> recentCommitMessages(Path dir, int limit) {
+        List<String> list = new ArrayList<>();
+        Result r = exec(dir, "log", "-" + limit, "--pretty=%s");
+        if (r.ok()) {
+            for (String line : r.output().split("\\R")) {
+                if (!line.isBlank() && !list.contains(line.trim())) {
+                    list.add(line.trim());
+                }
+            }
+        }
+        return list;
+    }
+
+    public static Result rollback(Path dir, List<String> paths) {
+        if (paths == null || paths.isEmpty()) return new Result(0, "");
+        List<String> unstageArgs = new ArrayList<>(List.of("restore", "--staged", "--"));
+        unstageArgs.addAll(paths);
+        exec(dir, unstageArgs.toArray(new String[0]));
+
+        List<String> restoreArgs = new ArrayList<>(List.of("restore", "--"));
+        restoreArgs.addAll(paths);
+        Result r = exec(dir, restoreArgs.toArray(new String[0]));
+        if (!r.ok()) {
+            List<String> checkoutArgs = new ArrayList<>(List.of("checkout", "--"));
+            checkoutArgs.addAll(paths);
+            r = exec(dir, checkoutArgs.toArray(new String[0]));
+        }
+        return r;
+    }
+
+    public static Result statusDetailed(Path dir, boolean showIgnored) {
+        if (showIgnored) {
+            return exec(dir, "status", "--porcelain=v1", "-uall", "--ignored=matching");
+        } else {
+            return exec(dir, "status", "--porcelain=v1", "-uall");
+        }
+    }
+
     public static Result push(Path dir) {
         return exec(dir, "push");
+    }
+
+    public static Result stash(Path dir, String message) {
+        if (message == null || message.isBlank()) {
+            return exec(dir, "stash");
+        }
+        return exec(dir, "stash", "push", "-u", "-m", message);
+    }
+
+    public static Result stashList(Path dir) {
+        return exec(dir, "stash", "list");
+    }
+
+    public static Result stashPop(Path dir) {
+        return exec(dir, "stash", "pop");
     }
 
     /** {@code git log}, one line per commit, most recent first. */
