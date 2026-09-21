@@ -88,7 +88,9 @@ public class SettingsSystemPage extends VBox {
         setPadding(new Insets(16, 24, 24, 24));
         setSpacing(14);
         getStyleClass().add("settings-page");
-        setStyle("-fx-background-color: #1E1F22;");
+        setStyle("-fx-background-color: #1E1F22; -fx-background: #1E1F22;");
+        setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(this, Priority.ALWAYS);
         showSubPage("System Settings");
     }
 
@@ -109,6 +111,7 @@ public class SettingsSystemPage extends VBox {
             default -> buildPlaceholderPage(pageName);
         };
 
+        VBox.setVgrow(pageContent, Priority.ALWAYS);
         getChildren().add(pageContent);
     }
 
