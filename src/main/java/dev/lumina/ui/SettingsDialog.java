@@ -36,6 +36,7 @@ public class SettingsDialog {
     private final StackPane contentContainer = new StackPane();
     private SettingsIdeAppearancePage currentIdeAppearancePage;
     private SettingsMenusToolbarsPage currentMenusToolbarsPage;
+    private SettingsSystemPage currentSystemPage;
 
     public SettingsDialog(Stage owner) {
         this(owner, "Appearance");
@@ -103,14 +104,6 @@ public class SettingsDialog {
         root.setCenter(rightPane);
         root.setBottom(buttons);
 
-        // Initial selection
-        TreeItem<String> initialItem = findItem(tree.getRoot(), initialCategory);
-        if (initialItem == null) initialItem = findItem(tree.getRoot(), "Appearance");
-        if (initialItem != null) {
-            expandAncestors(initialItem);
-            tree.getSelectionModel().select(initialItem);
-        }
-
         // Selection listener
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null) {
@@ -127,6 +120,18 @@ public class SettingsDialog {
             }
         });
 
+        // Initial selection
+        TreeItem<String> initialItem = findItem(tree.getRoot(), initialCategory);
+        if (initialItem == null) initialItem = findItem(tree.getRoot(), "Appearance");
+        if (initialItem != null) {
+            expandAncestors(initialItem);
+            tree.getSelectionModel().select(initialItem);
+            if (contentContainer.getChildren().isEmpty()) {
+                updateBreadcrumbs(initialItem);
+                showPage(initialItem);
+            }
+        }
+
         Scene scene = new Scene(root, 960, 640);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
@@ -135,6 +140,14 @@ public class SettingsDialog {
 
     public void show() {
         stage.showAndWait();
+    }
+
+    StackPane getContentContainer() {
+        return contentContainer;
+    }
+
+    TreeView<String> getTree() {
+        return tree;
     }
 
     // --------------------------------------------------- Header & Navigation
@@ -239,8 +252,15 @@ public class SettingsDialog {
     // --------------------------------------------------- Page Routing
 
     private void showPage(TreeItem<String> selected) {
+        if (currentIdeAppearancePage != null) {
+            currentIdeAppearancePage.save();
+            currentIdeAppearancePage = null;
+        }
+        if (currentSystemPage != null) {
+            currentSystemPage.save();
+            currentSystemPage = null;
+        }
         contentContainer.getChildren().clear();
-        currentIdeAppearancePage = null;
 
         String pageName = selected.getValue();
 
@@ -427,14 +447,15 @@ public class SettingsDialog {
     }
 
     private void buildSystemSettingsPage() {
-        SettingsSystemPage page = new SettingsSystemPage();
-        wrapInScroll(page);
+        currentSystemPage = new SettingsSystemPage();
+        currentSystemPage.showSubPage("System Settings");
+        wrapInScroll(currentSystemPage);
     }
 
     private void buildSystemSettingsSubPage(String pageName) {
-        SettingsSystemPage page = new SettingsSystemPage();
-        page.showSubPage(pageName);
-        wrapInScroll(page);
+        currentSystemPage = new SettingsSystemPage();
+        currentSystemPage.showSubPage(pageName);
+        wrapInScroll(currentSystemPage);
     }
 
     private boolean isSystemSettingsSubPage(String pageName) {
@@ -707,6 +728,15 @@ public class SettingsDialog {
         }
     }
 
+    private void applyAll() {
+        if (currentIdeAppearancePage != null) {
+            currentIdeAppearancePage.save();
+        }
+        if (currentSystemPage != null) {
+            currentSystemPage.save();
+        }
+    }
+
     // --------------------------------------------------- Button Bar
 
     private HBox buildButtonBar() {
@@ -718,9 +748,7 @@ public class SettingsDialog {
         ok.setDefaultButton(true);
         ok.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 6 18 6 18; -fx-background-radius: 4; -fx-cursor: hand;");
         ok.setOnAction(e -> {
-            if (currentIdeAppearancePage != null) {
-                currentIdeAppearancePage.save();
-            }
+            applyAll();
             stage.close();
         });
 
@@ -732,16 +760,12 @@ public class SettingsDialog {
         Button apply = new Button("Apply");
         apply.getStyleClass().add("dialog-secondary");
         apply.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
-        apply.setOnAction(e -> {
-            if (currentIdeAppearancePage != null) {
-                currentIdeAppearancePage.save();
-            }
-        });
+        apply.setOnAction(e -> applyAll());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(10, helpBtn, spacer, apply, cancel, ok);
+        HBox bar = new HBox(10, helpBtn, spacer, ok, cancel, apply);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 20, 12, 20));
         bar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40 transparent transparent transparent; -fx-border-width: 1 0 0 0;");

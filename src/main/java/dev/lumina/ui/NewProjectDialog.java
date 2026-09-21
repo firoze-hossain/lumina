@@ -416,7 +416,9 @@ public class NewProjectDialog {
     // form controls
     private final TextField nameField = new TextField("untitled");
     private final TextField locationField = new TextField(
-            System.getProperty("user.home") + File.separator + "projects" + File.separator + "others");
+            dev.lumina.settings.SystemSettings.getInstance().getDefaultProjectDirectory() != null && !dev.lumina.settings.SystemSettings.getInstance().getDefaultProjectDirectory().isBlank()
+                    ? dev.lumina.settings.SystemSettings.getInstance().getDefaultProjectDirectory()
+                    : System.getProperty("user.home") + File.separator + "projects" + File.separator + "others");
     private final Label locationHint = new Label();
     private final CheckBox gitCheck = new CheckBox("Create Git repository");
     private final CheckBox sampleCodeCheck = new CheckBox("Add sample code");

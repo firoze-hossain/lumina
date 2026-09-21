@@ -27,5 +27,6 @@ module dev.lumina {
     exports dev.lumina.refactor;
     exports dev.lumina.util;
     opens dev.lumina.plugin to com.google.gson;
+    exports dev.lumina.settings;
     exports dev.lumina.spring;
 }

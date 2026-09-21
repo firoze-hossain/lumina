@@ -8,6 +8,7 @@ import dev.lumina.project.RecentProjectsManager;
 import dev.lumina.run.RunConfiguration;
 import dev.lumina.notification.NotificationService;
 import dev.lumina.semantics.Docs;
+import dev.lumina.settings.SystemSettings;
 import dev.lumina.ui.*;
 import dev.lumina.util.Settings;
 import javafx.application.Application;
@@ -353,7 +354,44 @@ public class LuminaApp extends Application {
         stage.setTitle("Lumina");
         stage.setScene(scene);
         ACTIVE_INSTANCES.add(this);
-        stage.setOnCloseRequest(e -> closeWindow());
+
+        SystemSettings.getInstance().apply();
+
+        stage.setOnCloseRequest(e -> {
+            if (SystemSettings.getInstance().isConfirmExit() && ACTIVE_INSTANCES.size() == 1) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Exit Lumina");
+                alert.setHeaderText("Confirm Exit");
+                alert.initOwner(stage);
+
+                CheckBox dontAsk = new CheckBox("Do not ask again");
+                dontAsk.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 8 0 0 0;");
+                Label msg = new Label("Are you sure you want to exit Lumina?");
+                msg.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+                VBox content = new VBox(10, msg, dontAsk);
+                alert.getDialogPane().setContent(content);
+
+                Optional<ButtonType> res = alert.showAndWait();
+                if (res.isPresent() && res.get() == ButtonType.OK) {
+                    if (dontAsk.isSelected()) {
+                        SystemSettings.getInstance().setConfirmExit(false);
+                        SystemSettings.getInstance().save();
+                    }
+                    closeWindow();
+                } else {
+                    e.consume();
+                }
+            } else {
+                closeWindow();
+            }
+        });
+
+        stage.focusedProperty().addListener((obs, old, focused) -> {
+            if (!focused && SystemSettings.getInstance().isSaveOnFocusLost()) {
+                saveAllEditors();
+            }
+        });
+
         stage.show();
 
         terminal.start(Path.of(System.getProperty("user.home")));
@@ -363,7 +401,7 @@ public class LuminaApp extends Application {
         if (pendingProjectToOpen != null) {
             // this window was opened via "New Window" for a specific project
             openProject(pendingProjectToOpen);
-        } else {
+        } else if (SystemSettings.getInstance().isReopenProjectsOnStartup()) {
             // reopen the last project unless it was explicitly closed
             String last = Settings.get(Settings.LAST_PROJECT);
             if (last != null && Files.isDirectory(Path.of(last))) {
@@ -3762,12 +3800,12 @@ public class LuminaApp extends Application {
                 return;
             }
         }
-        String remembered = Settings.get(Settings.OPEN_PROJECT_MODE);
-        if ("NEW_WINDOW".equals(remembered)) {
+        SystemSettings.OpenProjectMode openMode = SystemSettings.getInstance().getOpenProjectMode();
+        if (openMode == SystemSettings.OpenProjectMode.NEW_WINDOW) {
             openInNewWindow(dir);
             return;
         }
-        if ("THIS_WINDOW".equals(remembered)) {
+        if (openMode == SystemSettings.OpenProjectMode.CURRENT_WINDOW) {
             replaceInThisWindow(dir);
             return;
         }
@@ -3776,13 +3814,15 @@ public class LuminaApp extends Application {
                     switch (choice) {
                         case NEW_WINDOW -> {
                             if (rememberChoice) {
-                                Settings.put(Settings.OPEN_PROJECT_MODE, "NEW_WINDOW");
+                                SystemSettings.getInstance().setOpenProjectMode(SystemSettings.OpenProjectMode.NEW_WINDOW);
+                                SystemSettings.getInstance().save();
                             }
                             openInNewWindow(dir);
                         }
                         case THIS_WINDOW -> {
                             if (rememberChoice) {
-                                Settings.put(Settings.OPEN_PROJECT_MODE, "THIS_WINDOW");
+                                SystemSettings.getInstance().setOpenProjectMode(SystemSettings.OpenProjectMode.CURRENT_WINDOW);
+                                SystemSettings.getInstance().save();
                             }
                             replaceInThisWindow(dir);
                         }
@@ -4658,6 +4698,11 @@ public class LuminaApp extends Application {
     private void openFolderDialog() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Open Folder");
+        String defDir = SystemSettings.getInstance().getDefaultProjectDirectory();
+        if (defDir != null && !defDir.isBlank()) {
+            File d = new File(defDir);
+            if (d.isDirectory()) chooser.setInitialDirectory(d);
+        }
         File dir = chooser.showDialog(stage);
         if (dir != null) openProjectInteractive(dir.toPath());
     }
