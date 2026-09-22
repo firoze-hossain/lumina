@@ -1,96 +1,194 @@
-// SettingsPathVariablesPage.java
 package dev.lumina.ui;
 
-import javafx.beans.property.SimpleStringProperty;
+import dev.lumina.pathvar.PathVariable;
+import dev.lumina.pathvar.PathVariablesManager;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Window;
 
 /**
- * IntelliJ-style Path Variables settings page.
+ * Path Variables settings page.
+ * Strictly matches media_1790046850137.png.
  */
 public class SettingsPathVariablesPage extends VBox {
 
+    private final PathVariablesManager manager = PathVariablesManager.getInstance();
+    private final TableView<PathVariable> table = new TableView<>();
+    private final ObservableList<PathVariable> tableData = FXCollections.observableArrayList();
+
+    private final Button addButton = new Button("+");
+    private final Button removeButton = new Button("−");
+    private final Button editButton = new Button("✎");
+
+    private final TextField ignoredVarsField = new TextField();
+
     public SettingsPathVariablesPage() {
         getStyleClass().add("settings-page");
-        setPadding(new Insets(16, 20, 16, 20));
-        setSpacing(14);
+        setStyle("-fx-background-color: #1E1F22;");
+        setPadding(new Insets(14, 24, 16, 24));
+        setSpacing(10);
+        VBox.setVgrow(this, Priority.ALWAYS);
 
-        // Table
-        TableView<PathVarEntry> table = new TableView<>();
-        table.getStyleClass().add("settings-list");
-        table.setPrefHeight(150);
+        // 1. Toolbar (+, -, Edit)
+        HBox toolbar = new HBox(4);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setPadding(new Insets(0, 0, 4, 0));
 
-        TableColumn<PathVarEntry, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(cell -> cell.getValue().nameProperty());
-        nameCol.setPrefWidth(200);
+        styleToolButton(addButton, "Add variable");
+        addButton.setOnAction(e -> onAdd());
 
-        TableColumn<PathVarEntry, String> valueCol = new TableColumn<>("Value");
-        valueCol.setCellValueFactory(cell -> cell.getValue().valueProperty());
-        valueCol.setPrefWidth(400);
+        styleToolButton(removeButton, "Remove");
+        removeButton.setOnAction(e -> onRemove());
+
+        styleToolButton(editButton, "Edit");
+        editButton.setOnAction(e -> onEdit());
+
+        toolbar.getChildren().addAll(addButton, removeButton, editButton);
+
+        // 2. TableView
+        table.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-background: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(table, Priority.ALWAYS);
+
+        TableColumn<PathVariable, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(d -> d.getValue().nameProperty());
+        nameCol.setPrefWidth(220);
+        nameCol.setCellFactory(col -> createStyledCell());
+
+        TableColumn<PathVariable, String> valueCol = new TableColumn<>("Value");
+        valueCol.setCellValueFactory(d -> d.getValue().valueProperty());
+        valueCol.setPrefWidth(420);
+        valueCol.setCellFactory(col -> createStyledCell());
 
         table.getColumns().addAll(nameCol, valueCol);
-        table.getItems().add(new PathVarEntry("MAVEN_REPOSITORY", "/home/firoze/.m2/repository"));
 
-        // Add Variable section
-        Label addLabel = new Label("Add Variable");
-        addLabel.getStyleClass().add("settings-section");
+        table.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> updateButtonStates());
 
-        GridPane addGrid = new GridPane();
-        addGrid.setHgap(12);
-        addGrid.setVgap(8);
-        addGrid.setPadding(new Insets(8, 0, 0, 0));
+        table.setRowFactory(tv -> {
+            TableRow<PathVariable> row = new TableRow<>() {
+                @Override
+                protected void updateItem(PathVariable item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setStyle("-fx-background-color: #1E1F22;");
+                    } else if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E;");
+                    } else {
+                        setStyle("-fx-background-color: #1E1F22;");
+                    }
+                }
+            };
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && !row.isEmpty()) {
+                    onEdit();
+                }
+            });
+            return row;
+        });
 
-        Label nameLabel = new Label("Name:");
-        nameLabel.getStyleClass().add("settings-label");
-        TextField nameField = new TextField();
-        nameField.getStyleClass().add("text-field");
-        nameField.setPrefWidth(200);
+        // 3. Bottom Ignored Variables
+        VBox bottomBox = new VBox(4);
+        bottomBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Label valueLabel = new Label("Value:");
-        valueLabel.getStyleClass().add("settings-label");
-        TextField valueField = new TextField();
-        valueField.getStyleClass().add("text-field");
-        valueField.setPrefWidth(300);
+        HBox ignoredRow = new HBox(12);
+        ignoredRow.setAlignment(Pos.CENTER_LEFT);
 
-        Button addBtn = new Button("OK");
-        addBtn.getStyleClass().add("dialog-primary");
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.getStyleClass().add("dialog-secondary");
+        Label ignoredLbl = new Label("Ignored Variables:");
+        ignoredLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-min-width: 110px;");
 
-        addGrid.add(nameLabel, 0, 0);
-        addGrid.add(nameField, 1, 0);
-        addGrid.add(valueLabel, 0, 1);
-        addGrid.add(valueField, 1, 1);
-        
-        HBox addButtons = new HBox(8, addBtn, cancelBtn);
-        addButtons.setAlignment(Pos.CENTER_LEFT);
-        addGrid.add(addButtons, 1, 2);
+        ignoredVarsField.setText(manager.getIgnoredVariables());
+        ignoredVarsField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 4 8 4 8; -fx-font-size: 12px;");
+        HBox.setHgrow(ignoredVarsField, Priority.ALWAYS);
+        ignoredVarsField.textProperty().addListener((obs, oldV, newV) -> {
+            if (newV != null) {
+                manager.setIgnoredVariables(newV);
+            }
+        });
 
-        // Ignored Variables
-        Label ignoredLabel = new Label("Ignored Variables:");
-        ignoredLabel.getStyleClass().add("settings-label");
-        
-        TextField ignoredField = new TextField();
-        ignoredField.setPromptText("Use ; to separate ignored variables");
-        ignoredField.getStyleClass().add("text-field");
-        ignoredField.setPrefWidth(400);
+        ignoredRow.getChildren().addAll(ignoredLbl, ignoredVarsField);
 
-        VBox content = new VBox(10, table, addLabel, addGrid, ignoredLabel, ignoredField);
-        getChildren().addAll(content);
+        Label hintLbl = new Label("Use ; to separate ignored variables");
+        hintLbl.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px; -fx-padding: 0 0 0 122;");
+
+        bottomBox.getChildren().addAll(ignoredRow, hintLbl);
+
+        getChildren().addAll(toolbar, table, bottomBox);
+
+        manager.addListener(this::reloadTableData);
+        reloadTableData();
     }
 
-    private static class PathVarEntry {
-        private final SimpleStringProperty name;
-        private final SimpleStringProperty value;
+    private TableCell<PathVariable, String> createStyledCell() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    String textFill = isSelected() ? "#FFFFFF" : "#DFE1E5";
+                    setStyle("-fx-text-fill: " + textFill + "; -fx-font-size: 12px; -fx-padding: 5 8 5 8;");
+                }
+            }
+        };
+    }
 
-        public PathVarEntry(String name, String value) {
-            this.name = new SimpleStringProperty(name);
-            this.value = new SimpleStringProperty(value);
+    private void styleToolButton(Button btn, String tooltipText) {
+        btn.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #8C9099; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 2 8 2 8;");
+        btn.setTooltip(new Tooltip(tooltipText));
+        btn.setOnMouseEntered(e -> {
+            if (!btn.isDisabled()) btn.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-text-fill: #DFE1E5; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 2 8 2 8;");
+        });
+        btn.setOnMouseExited(e -> {
+            if (!btn.isDisabled()) btn.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #8C9099; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 2 8 2 8;");
+        });
+    }
+
+    private void reloadTableData() {
+        tableData.setAll(manager.getVariables());
+        table.setItems(tableData);
+        ignoredVarsField.setText(manager.getIgnoredVariables());
+        updateButtonStates();
+    }
+
+    private void updateButtonStates() {
+        boolean hasSel = table.getSelectionModel().getSelectedItem() != null;
+        removeButton.setDisable(!hasSel);
+        editButton.setDisable(!hasSel);
+    }
+
+    private void onAdd() {
+        Window owner = getScene() != null ? getScene().getWindow() : null;
+        PathVariableDialog dialog = new PathVariableDialog(owner, null);
+        PathVariable created = dialog.showAndWait();
+        if (created != null) {
+            manager.addVariable(created);
+            table.getSelectionModel().select(created);
         }
+    }
 
-        public SimpleStringProperty nameProperty() { return name; }
-        public SimpleStringProperty valueProperty() { return value; }
+    private void onEdit() {
+        PathVariable selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        Window owner = getScene() != null ? getScene().getWindow() : null;
+        PathVariableDialog dialog = new PathVariableDialog(owner, selected);
+        PathVariable updated = dialog.showAndWait();
+        if (updated != null) {
+            manager.updateVariable(selected, updated);
+            table.getSelectionModel().select(updated);
+        }
+    }
+
+    private void onRemove() {
+        PathVariable selected = table.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            manager.removeVariable(selected);
+        }
     }
 }
