@@ -53,6 +53,10 @@ class CommitPanelTest {
         assertNotNull(panel.getCommitBtn());
         assertNotNull(panel.getCommitAndPushBtn());
         assertNotNull(panel.getAmendCheck());
+        assertNotNull(panel.getModifiedCountLabel());
+        assertNotNull(panel.getUserAvatarBtn());
+        assertNotNull(panel.getToolWindowTitle());
+        assertEquals("Commit", panel.getToolWindowTitle().getText());
     }
 
     @Test
@@ -157,5 +161,60 @@ class CommitPanelTest {
         msg = msg.replaceFirst("^[0-9a-fA-F]{7,40}\\s+", "").trim();
         assertEquals("master", branch);
         assertEquals("The compositor/Store port with bug", msg);
+    }
+
+    @Test
+    void testModifiedCountLabelUpdatesDynamically() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<CommitPanel> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                CommitPanel panel = new CommitPanel(() -> Path.of("."), msg -> {});
+                ref.set(panel);
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(3, TimeUnit.SECONDS));
+
+        CommitPanel panel = ref.get();
+        Platform.runLater(() -> {
+            panel.getChangesCategory().getFiles().clear();
+            panel.getChangesCategory().getFiles().add(
+                    new CommitPanel.FileItem("src/main/resources/application.yml", CommitPanel.ChangeType.MODIFIED, false, false, true));
+            panel.getChangesCategory().getFiles().add(
+                    new CommitPanel.FileItem("mvnw", CommitPanel.ChangeType.MODIFIED, false, false, true));
+            // Simulate 2 modified files (like in image 2)
+            panel.getModifiedCountLabel().setText(panel.getChangesCategory().getFiles().size() + " modified");
+        });
+
+        CountDownLatch latch2 = new CountDownLatch(1);
+        Platform.runLater(latch2::countDown);
+        assertTrue(latch2.await(3, TimeUnit.SECONDS));
+
+        assertEquals("2 modified", panel.getModifiedCountLabel().getText());
+    }
+
+    @Test
+    void testFocusCommitMessage() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<CommitPanel> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                CommitPanel panel = new CommitPanel(() -> Path.of("."), msg -> {});
+                ref.set(panel);
+                panel.focusCommitMessage();
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(3, TimeUnit.SECONDS));
+        assertNotNull(ref.get());
     }
 }

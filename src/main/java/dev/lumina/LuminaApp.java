@@ -202,6 +202,7 @@ public class LuminaApp extends Application {
         commitPanel = new CommitPanel(() -> projectRoot, console::println);
         commitPanel.setOnOpenFile(this::openFile);
         commitPanel.setOnOpenDiff(this::openDiffViewer);
+        commitPanel.setOnHide(() -> toggleLeftPanel(false));
         pullRequestsPanel = new PullRequestsPanel(() -> projectRoot,
                 () -> Settings.get(Settings.GITHUB_TOKEN),
                 () -> Settings.get(Settings.GITHUB_USER),
@@ -233,7 +234,13 @@ public class LuminaApp extends Application {
         leftToolTitleBar.getStyleClass().add("right-tool-titlebar");
         leftToolTitleBar.setAlignment(Pos.CENTER_LEFT);
         leftTabs.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
-            leftToolTitle.setText(sel != null ? sel.getText() : "");
+            int selectedIdx = leftTabs.getSelectionModel().getSelectedIndex();
+            if (selectedIdx == 1) { // Commit
+                leftDock.setTop(null);
+            } else {
+                leftDock.setTop(leftToolTitleBar);
+                leftToolTitle.setText(sel != null ? sel.getText() : "");
+            }
             refreshLeftPanel();
         });
 
@@ -1157,14 +1164,13 @@ public class LuminaApp extends Application {
 
     private void gitCommit() {
         if (!requireProject()) return;
-        prompt("Commit", "Commit message:", "update").ifPresent(msg -> {
-            if (msg.isBlank()) return;
-            showRunPanel();
-            console.runSequence("git commit",
-                    List.of(List.of("git", "add", "-A"),
-                            List.of("git", "commit", "-m", msg)),
-                    projectRoot);
-        });
+        toggleLeftPanel(true);
+        leftTabs.getSelectionModel().select(1);
+        iconRail.selectTop(1);
+        if (commitPanel != null) {
+            commitPanel.refresh();
+            commitPanel.focusCommitMessage();
+        }
     }
 
     private void gitRun(String label, String subcommand) {
