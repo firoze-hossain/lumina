@@ -201,6 +201,7 @@ public class LuminaApp extends Application {
         // tab-header strip of its own (mirrors the right dock below).
         commitPanel = new CommitPanel(() -> projectRoot, console::println);
         commitPanel.setOnOpenFile(this::openFile);
+        commitPanel.setOnOpenDiff(this::openDiffViewer);
         pullRequestsPanel = new PullRequestsPanel(() -> projectRoot,
                 () -> Settings.get(Settings.GITHUB_TOKEN),
                 () -> Settings.get(Settings.GITHUB_USER),
@@ -4755,6 +4756,20 @@ public class LuminaApp extends Application {
             Thread.currentThread().interrupt();
         }
         return null;
+    }
+
+    private void openDiffViewer(String title, String stashRef, String relPath, Path localPath, String curText, String stashText) {
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof DiffViewerTab dvt
+                    && java.util.Objects.equals(dvt.getStashRef(), stashRef)
+                    && java.util.Objects.equals(dvt.getRelativePath(), relPath)) {
+                groupOf(t).getSelectionModel().select(t);
+                return;
+            }
+        }
+        DiffViewerTab tab = new DiffViewerTab(title, stashRef, relPath, localPath, curText, stashText);
+        activeEditorGroup.getTabs().add(tab);
+        activeEditorGroup.getSelectionModel().select(tab);
     }
 
     private void addTab(EditorTab tab) {

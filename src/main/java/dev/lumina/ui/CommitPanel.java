@@ -7,6 +7,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -28,20 +29,38 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * IntelliJ IDEA-styled Commit tool window:
- * - Changes & Unversioned Files grouped TreeView with tri-state category checkboxes
- * - Colored file status indicators (Modified=cyan, Untracked/Added=green, Deleted=red/strikethrough)
- * - File type icons (.java, .yml, .xml, .gitignore, document)
- * - Professional toolbar: Refresh, Rollback (Ctrl+Alt+Z), Eye (Group By Directory, Show Ignored), Expand All, Collapse All
- * - Commit message toolbar with Amend (auto-loads previous commit) & Recent commit messages (🕒)
- * - Clear, readable commit message placeholder text
- * - Commit (Primary blue) & Commit and Push... buttons with dynamic validation & count badges
- * - Double-click / Enter to jump to source in the editor
+ * IntelliJ IDEA-styled Commit & Git Stash tool window:
+ * - Top tabs: [ Commit ] and [ Stash ] with active pill styling and options dropdown (⋮).
+ * - Commit View:
+ *   - Changes & Unversioned Files grouped TreeView with tri-state category checkboxes
+ *   - Colored file status indicators (Modified=cyan, Untracked/Unversioned=light red #ED6C63, Deleted=red/strikethrough)
+ *   - Vector file type icons (Java class (C) circle, xml </>, config gear, css badge, git dot)
+ *   - Professional toolbar: Refresh, Rollback, Shelve, Diff Preview, View Options Eye, Expand All, Collapse All
+ *   - Commit message toolbar with Amend & Recent commit messages
+ *   - Primary Commit & Commit and Push... buttons
+ * - Stash View:
+ *   - Upper Stash List: dynamically queried stashes with branch tag badges (🏷 master) and blue selection highlight
+ *   - Middle Stash Toolbar: Diff preview toggle, View Options Eye, Expand All, Collapse All
+ *   - Lower Stash File Tree: repository and folder hierarchy, modified file status (#56A8F5), IntelliJ file type icons
+ *   - Bottom Action Bar: [ Apply ] (primary blue), [ Pop ] (outline gray), help ?, and status footer
+ *   - Double-click / Enter / Diff toggle opens side-by-side DiffViewerTab in the editor
  */
 public final class CommitPanel extends VBox {
 
     public enum ChangeType {
         MODIFIED, ADDED, DELETED, RENAMED, UNTRACKED, IGNORED
+    }
+
+    public enum ViewMode {
+        COMMIT, STASH
+    }
+
+    public record StashRepoNode(String name, int count) {}
+    public record StashDirNode(String path, int count) {}
+
+    @FunctionalInterface
+    public interface DiffOpener {
+        void openDiff(String title, String stashRef, String relativePath, Path localPath, String currentContent, String stashedContent);
     }
 
     public static final class FileItem {
@@ -138,7 +157,20 @@ public final class CommitPanel extends VBox {
     private final Supplier<Path> projectRoot;
     private final Consumer<String> log;
     private Consumer<Path> onOpenFile;
+    private DiffOpener onOpenDiff;
 
+    private ViewMode activeViewMode = ViewMode.COMMIT;
+
+    // Tabs & Header
+    private final Button commitTabBtn = new Button("Commit");
+    private final Button stashTabBtn = new Button("Stash");
+    private final Button optionsBtn = createToolbarIconButton(createDotsVerticalIcon(), "Options");
+
+    // Containers
+    private final VBox commitContainer = new VBox(6);
+    private final VBox stashContainer = new VBox(4);
+
+    // Commit View Components
     private final CategoryItem changesCategory = new CategoryItem("Changes");
     private final CategoryItem unversionedCategory = new CategoryItem("Unversioned Files");
     private final CategoryItem ignoredCategory = new CategoryItem("Ignored Files");
@@ -157,28 +189,81 @@ public final class CommitPanel extends VBox {
     private TreeItem<Object> unversionedTreeItem;
     private TreeItem<Object> ignoredTreeItem;
 
+    // Stash View Components
+    private final ListView<GitService.StashEntry> stashListView = new ListView<>();
+    private final TreeView<Object> stashTreeView = new TreeView<>();
+    private final Label stashFooterLabel = new Label();
+    private boolean stashGroupByDirectory = true;
+
     public CommitPanel(Supplier<Path> projectRoot, Consumer<String> log) {
         this.projectRoot = projectRoot;
         this.log = log;
 
         getStyleClass().add("commit-panel");
         setStyle("-fx-background-color: #1E1F22;");
-        setSpacing(6);
-        setPadding(new Insets(6, 10, 10, 10));
+        setSpacing(4);
+        setPadding(new Insets(4, 8, 8, 8));
 
-        // 0. Top tabs matching IntelliJ Commit window header (Commit | Stash)
-        Button commitTabBtn = new Button("Commit");
-        Button stashTabBtn = new Button("Stash");
-        commitTabBtn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-background-radius: 4; -fx-padding: 3 9 3 9; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
-        stashTabBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 3 9 3 9; -fx-cursor: hand;");
-        stashTabBtn.setOnMouseEntered(e -> stashTabBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 9 3 9; -fx-cursor: hand; -fx-background-radius: 4;"));
-        stashTabBtn.setOnMouseExited(e -> stashTabBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 3 9 3 9; -fx-cursor: hand;"));
-        stashTabBtn.setOnAction(e -> showStashMenu(stashTabBtn));
-        commitTabBtn.setOnAction(e -> refresh());
+        // 0. Top header with tabs & options menu
+        commitTabBtn.setOnAction(e -> switchViewMode(ViewMode.COMMIT));
+        stashTabBtn.setOnAction(e -> switchViewMode(ViewMode.STASH));
 
-        HBox topTabs = new HBox(4, commitTabBtn, stashTabBtn);
+        optionsBtn.setOnAction(e -> showToolWindowOptionsMenu(optionsBtn));
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        HBox topTabs = new HBox(4, commitTabBtn, stashTabBtn, headerSpacer, optionsBtn);
         topTabs.setAlignment(Pos.CENTER_LEFT);
-        topTabs.setPadding(new Insets(0, 0, 2, 0));
+        topTabs.setPadding(new Insets(0, 0, 4, 0));
+
+        // 1. Build Commit Container
+        buildCommitContainer();
+
+        // 2. Build Stash Container
+        buildStashContainer();
+
+        StackPane contentStack = new StackPane(commitContainer, stashContainer);
+        VBox.setVgrow(contentStack, Priority.ALWAYS);
+
+        getChildren().addAll(topTabs, contentStack);
+        switchViewMode(ViewMode.COMMIT);
+    }
+
+    public void setOnOpenFile(Consumer<Path> onOpenFile) {
+        this.onOpenFile = onOpenFile;
+    }
+
+    public void setOnOpenDiff(DiffOpener onOpenDiff) {
+        this.onOpenDiff = onOpenDiff;
+    }
+
+    public void switchViewMode(ViewMode mode) {
+        this.activeViewMode = mode;
+        if (mode == ViewMode.COMMIT) {
+            commitTabBtn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-background-radius: 4; -fx-padding: 3 9 3 9; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            stashTabBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 3 9 3 9; -fx-cursor: hand;");
+            commitContainer.setVisible(true);
+            commitContainer.setManaged(true);
+            stashContainer.setVisible(false);
+            stashContainer.setManaged(false);
+            refresh();
+        } else {
+            stashTabBtn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-background-radius: 4; -fx-padding: 3 9 3 9; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            commitTabBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 3 9 3 9; -fx-cursor: hand;");
+            stashContainer.setVisible(true);
+            stashContainer.setManaged(true);
+            commitContainer.setVisible(false);
+            commitContainer.setManaged(false);
+            refreshStashView();
+        }
+    }
+
+    // ----------------------------------------------------------------- Commit View
+
+    private void buildCommitContainer() {
+        commitContainer.setSpacing(6);
+        commitContainer.setStyle("-fx-background-color: #1E1F22;");
 
         // 1. Toolbar matching IntelliJ Commit tool window
         Button refreshBtn = createToolbarIconButton(createRefreshIcon(), "Refresh (Ctrl+F5)");
@@ -244,7 +329,6 @@ public final class CommitPanel extends VBox {
             }
         });
 
-        // Context menu and double-click to open
         treeView.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
                 TreeItem<Object> selected = treeView.getSelectionModel().getSelectedItem();
@@ -262,25 +346,8 @@ public final class CommitPanel extends VBox {
                 }
             } else if (e.isControlDown() && e.isAltDown() && e.getCode() == KeyCode.Z) {
                 doRollback();
-            } else if (e.isControlDown() && e.isAltDown() && e.getCode() == KeyCode.P) {
-                groupByDirectory = !groupByDirectory;
-                buildTree();
             }
         });
-
-        ContextMenu treeContextMenu = new ContextMenu();
-        treeContextMenu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5;");
-        MenuItem jumpItem = new MenuItem("Jump to Source (F4)");
-        jumpItem.setOnAction(e -> {
-            TreeItem<Object> selected = treeView.getSelectionModel().getSelectedItem();
-            if (selected != null && selected.getValue() instanceof FileItem file) {
-                openFileInEditor(file);
-            }
-        });
-        MenuItem rollbackCtxItem = new MenuItem("Rollback\u2026 (Ctrl+Alt+Z)");
-        rollbackCtxItem.setOnAction(e -> doRollback());
-        treeContextMenu.getItems().addAll(jumpItem, rollbackCtxItem);
-        treeView.setContextMenu(treeContextMenu);
 
         // 3. Commit message mini-toolbar
         amendCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-cursor: hand;");
@@ -339,12 +406,356 @@ public final class CommitPanel extends VBox {
         status.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
         status.setWrapText(true);
 
-        getChildren().addAll(topTabs, toolbar, treeView, messageToolbar, message, buttonsRow, status);
+        commitContainer.getChildren().addAll(toolbar, treeView, messageToolbar, message, buttonsRow, status);
     }
 
-    public void setOnOpenFile(Consumer<Path> onOpenFile) {
-        this.onOpenFile = onOpenFile;
+    // ----------------------------------------------------------------- Stash View
+
+    private void buildStashContainer() {
+        stashContainer.setSpacing(4);
+        stashContainer.setStyle("-fx-background-color: #1E1F22;");
+
+        // Stash List View
+        stashListView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #2E3136; -fx-border-width: 0 0 1 0;");
+        stashListView.setPrefHeight(150);
+        stashListView.setMinHeight(100);
+
+        stashListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(GitService.StashEntry item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: #1E1F22;");
+                } else {
+                    Label msgLabel = new Label(item.message());
+                    msgLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    msgLabel.setWrapText(false);
+                    HBox.setHgrow(msgLabel, Priority.ALWAYS);
+
+                    Label branchText = new Label(item.branch());
+                    branchText.setStyle("-fx-text-fill: #C29E5A; -fx-font-size: 11px;");
+                    HBox badge = new HBox(3, createTagIcon(), branchText);
+                    badge.setAlignment(Pos.CENTER_RIGHT);
+
+                    HBox row = new HBox(6, msgLabel, badge);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    row.setPadding(new Insets(2, 6, 2, 6));
+
+                    setGraphic(row);
+                    setText(null);
+                    setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;"));
+                }
+            }
+        });
+
+        stashListView.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            if (sel != null) {
+                loadStashFiles(sel.ref());
+            }
+        });
+
+        // Stash Toolbar
+        Button diffPreviewBtn = createToolbarIconButton(createDiffToggleIcon(), "Toggle Diff Preview");
+        diffPreviewBtn.setOnAction(e -> openSelectedStashFileDiff());
+
+        Button eyeBtn = createToolbarIconButton(createEyeIcon(), "View Options");
+        eyeBtn.setOnAction(e -> showStashOptionsMenu(eyeBtn));
+
+        Button expandAllBtn = createToolbarIconButton(createExpandAllIcon(), "Expand All");
+        expandAllBtn.setOnAction(e -> expandAllStashTree(true));
+
+        Button collapseAllBtn = createToolbarIconButton(createCollapseAllIcon(), "Collapse All");
+        collapseAllBtn.setOnAction(e -> expandAllStashTree(false));
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox stashToolbar = new HBox(2, diffPreviewBtn, eyeBtn, spacer, expandAllBtn, collapseAllBtn);
+        stashToolbar.setAlignment(Pos.CENTER_LEFT);
+        stashToolbar.setPadding(new Insets(2, 0, 2, 0));
+
+        // Stash Tree View
+        stashTreeView.setShowRoot(false);
+        stashTreeView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: transparent;");
+        VBox.setVgrow(stashTreeView, Priority.ALWAYS);
+
+        stashTreeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: #1E1F22;");
+                } else if (item instanceof StashRepoNode repo) {
+                    Label name = new Label(repo.name());
+                    name.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-font-size: 12px;");
+                    Label badge = new Label(repo.count() + " files");
+                    badge.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+                    HBox box = new HBox(6, name, badge);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    setGraphic(box);
+                    setText(null);
+                    setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;"));
+                } else if (item instanceof StashDirNode dir) {
+                    Label icon = new Label("\uD83D\uDCC1");
+                    icon.setStyle("-fx-font-size: 11px;");
+                    Label name = new Label(dir.path());
+                    name.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    Label badge = new Label(dir.count() + " file" + (dir.count() == 1 ? "" : "s"));
+                    badge.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+                    HBox box = new HBox(6, icon, name, badge);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    setGraphic(box);
+                    setText(null);
+                    setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;"));
+                } else if (item instanceof GitService.StashFile file) {
+                    Node icon = createFileIcon(file.fileName(), ChangeType.MODIFIED);
+                    Label name = new Label(file.fileName());
+                    name.setStyle("-fx-text-fill: #56A8F5; -fx-font-size: 12px;");
+                    HBox box = new HBox(6, icon, name);
+                    box.setAlignment(Pos.CENTER_LEFT);
+                    setGraphic(box);
+                    setText(null);
+                    setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;"));
+                }
+            }
+        });
+
+        stashTreeView.setOnMouseClicked(e -> {
+            TreeItem<Object> sel = stashTreeView.getSelectionModel().getSelectedItem();
+            if (sel != null && sel.getValue() instanceof GitService.StashFile file) {
+                stashFooterLabel.setText(file.relativePath());
+                if (e.getClickCount() == 2) {
+                    openStashFileDiff(file);
+                }
+            }
+        });
+
+        stashTreeView.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.F4) {
+                openSelectedStashFileDiff();
+            }
+        });
+
+        // Split pane dividing stash list and stash file tree
+        SplitPane stashSplit = new SplitPane(stashListView, new VBox(stashToolbar, stashTreeView));
+        stashSplit.setOrientation(Orientation.VERTICAL);
+        stashSplit.setDividerPositions(0.38);
+        stashSplit.setStyle("-fx-background-color: #1E1F22; -fx-box-border: transparent;");
+        VBox.setVgrow(stashSplit, Priority.ALWAYS);
+
+        // Action Bar (Apply, Pop, ?)
+        Button applyBtn = new Button("Apply");
+        applyBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-padding: 4 16 4 16; -fx-background-radius: 4; -fx-cursor: hand;");
+        applyBtn.setOnAction(e -> doStashApply());
+
+        Button popBtn = new Button("Pop");
+        popBtn.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5; -fx-padding: 4 16 4 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
+        popBtn.setOnAction(e -> doStashPop());
+
+        Button helpBtn = createToolbarButton("?", "Apply keeps the stash in the list; Pop applies and removes it from the list.");
+
+        Region barSpacer = new Region();
+        HBox.setHgrow(barSpacer, Priority.ALWAYS);
+
+        HBox actionBar = new HBox(8, applyBtn, popBtn, helpBtn, barSpacer);
+        actionBar.setAlignment(Pos.CENTER_LEFT);
+        actionBar.setPadding(new Insets(6, 0, 4, 0));
+
+        stashFooterLabel.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+
+        stashContainer.getChildren().addAll(stashSplit, actionBar, stashFooterLabel);
     }
+
+    public void refreshStashView() {
+        Path dir = projectRoot.get();
+        if (dir == null || !GitService.isRepository(dir)) return;
+
+        List<GitService.StashEntry> stashes = GitService.stashListDetailed(dir);
+        stashListView.setItems(FXCollections.observableArrayList(stashes));
+        if (!stashes.isEmpty()) {
+            stashListView.getSelectionModel().select(0);
+            loadStashFiles(stashes.get(0).ref());
+        } else {
+            stashTreeView.setRoot(null);
+            stashFooterLabel.setText("No stashes available");
+        }
+    }
+
+    private void loadStashFiles(String stashRef) {
+        Path dir = projectRoot.get();
+        if (dir == null || !GitService.isRepository(dir)) return;
+
+        List<GitService.StashFile> files = GitService.stashFiles(dir, stashRef);
+        TreeItem<Object> root = new TreeItem<>("Root");
+
+        String repoName = dir.getFileName() != null ? dir.getFileName().toString() : "repository";
+        TreeItem<Object> repoItem = new TreeItem<>(new StashRepoNode(repoName, files.size()));
+        repoItem.setExpanded(true);
+
+        Map<String, List<GitService.StashFile>> dirMap = new LinkedHashMap<>();
+        for (GitService.StashFile f : files) {
+            dirMap.computeIfAbsent(f.dirPath(), k -> new ArrayList<>()).add(f);
+        }
+
+        for (Map.Entry<String, List<GitService.StashFile>> entry : dirMap.entrySet()) {
+            String d = entry.getKey();
+            if (d.isBlank()) {
+                for (GitService.StashFile f : entry.getValue()) {
+                    repoItem.getChildren().add(new TreeItem<>(f));
+                }
+            } else {
+                TreeItem<Object> dirItem = new TreeItem<>(new StashDirNode(d, entry.getValue().size()));
+                dirItem.setExpanded(true);
+                for (GitService.StashFile f : entry.getValue()) {
+                    dirItem.getChildren().add(new TreeItem<>(f));
+                }
+                repoItem.getChildren().add(dirItem);
+            }
+        }
+
+        root.getChildren().add(repoItem);
+        stashTreeView.setRoot(root);
+        stashTreeView.setShowRoot(false);
+    }
+
+    private void openSelectedStashFileDiff() {
+        TreeItem<Object> sel = stashTreeView.getSelectionModel().getSelectedItem();
+        if (sel != null && sel.getValue() instanceof GitService.StashFile file) {
+            openStashFileDiff(file);
+        }
+    }
+
+    private void openStashFileDiff(GitService.StashFile file) {
+        Path dir = projectRoot.get();
+        if (dir == null || file == null) return;
+        GitService.StashEntry selectedStash = stashListView.getSelectionModel().getSelectedItem();
+        String ref = selectedStash != null ? selectedStash.ref() : "stash@{0}";
+        Path localFile = dir.resolve(file.relativePath());
+
+        String currentContent = "";
+        try {
+            if (Files.exists(localFile)) {
+                currentContent = Files.readString(localFile);
+            }
+        } catch (Exception ignored) {}
+
+        String stashedContent = GitService.stashShowFile(dir, ref, file.relativePath());
+        int stashIdx = selectedStash != null ? selectedStash.index() : 0;
+        String tabTitle = "Stash@(" + stashIdx + "): " + file.fileName();
+
+        if (onOpenDiff != null) {
+            onOpenDiff.openDiff(tabTitle, ref, file.relativePath(), localFile, currentContent, stashedContent);
+        }
+        stashFooterLabel.setText(file.relativePath());
+    }
+
+    private void doStashApply() {
+        Path dir = projectRoot.get();
+        GitService.StashEntry sel = stashListView.getSelectionModel().getSelectedItem();
+        if (dir == null || sel == null) return;
+        new Thread(() -> {
+            GitService.Result r = GitService.stashApply(dir, sel.ref());
+            Platform.runLater(() -> {
+                if (r.ok()) {
+                    stashFooterLabel.setText("Applied " + sel.ref());
+                    if (log != null) log.accept("\u2713 Applied " + sel.ref() + ": " + sel.message());
+                } else {
+                    stashFooterLabel.setText("Apply failed: " + r.output().trim());
+                }
+                refresh();
+            });
+        }, "lumina-git-stash-apply").start();
+    }
+
+    private void doStashPop() {
+        Path dir = projectRoot.get();
+        GitService.StashEntry sel = stashListView.getSelectionModel().getSelectedItem();
+        if (dir == null || sel == null) return;
+        new Thread(() -> {
+            GitService.Result r = GitService.stashPop(dir, sel.ref());
+            Platform.runLater(() -> {
+                if (r.ok()) {
+                    stashFooterLabel.setText("Popped " + sel.ref());
+                    if (log != null) log.accept("\u2713 Popped " + sel.ref() + ": " + sel.message());
+                    refreshStashView();
+                } else {
+                    stashFooterLabel.setText("Pop failed: " + r.output().trim());
+                }
+                refresh();
+            });
+        }, "lumina-git-stash-pop").start();
+    }
+
+    private void expandAllStashTree(boolean expand) {
+        if (stashTreeView.getRoot() != null) {
+            stashTreeView.getRoot().setExpanded(true);
+            for (TreeItem<Object> child : stashTreeView.getRoot().getChildren()) {
+                setExpandedRecursive(child, expand);
+            }
+        }
+    }
+
+    private void showStashOptionsMenu(Button anchor) {
+        ContextMenu menu = new ContextMenu();
+        menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5;");
+
+        CheckMenuItem groupDirItem = new CheckMenuItem("Group By Directory");
+        groupDirItem.setSelected(stashGroupByDirectory);
+        groupDirItem.setOnAction(e -> {
+            stashGroupByDirectory = groupDirItem.isSelected();
+            GitService.StashEntry sel = stashListView.getSelectionModel().getSelectedItem();
+            if (sel != null) loadStashFiles(sel.ref());
+        });
+
+        menu.getItems().addAll(groupDirItem);
+        menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 0);
+    }
+
+    private void showToolWindowOptionsMenu(Button anchor) {
+        ContextMenu menu = new ContextMenu();
+        menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5;");
+
+        Menu showOnDblClick = new Menu("Show on Double-Click");
+        showOnDblClick.getItems().addAll(new MenuItem("Diff"), new MenuItem("Source"), new MenuItem("None"));
+
+        Menu configLocalChanges = new Menu("Configure Local Changes");
+        configLocalChanges.getItems().addAll(new MenuItem("Commit Checks\u2026"), new MenuItem("Ignored Files\u2026"));
+
+        MenuItem speedSearch = new MenuItem("Speed Search  Ctrl+F or any symbol");
+
+        SeparatorMenuItem sep1 = new SeparatorMenuItem();
+
+        CheckMenuItem showToolbar = new CheckMenuItem("Show Toolbar");
+        showToolbar.setSelected(true);
+
+        MenuItem groupTabs = new MenuItem("Group Tabs");
+
+        Menu viewMode = new Menu("View Mode");
+        viewMode.getItems().addAll(new MenuItem("Dock Pinned"), new MenuItem("Dock Unpinned"), new MenuItem("Undock"), new MenuItem("Float"), new MenuItem("Window"));
+
+        Menu moveTo = new Menu("Move to");
+        moveTo.getItems().addAll(new MenuItem("Left Top"), new MenuItem("Left Bottom"), new MenuItem("Right Top"), new MenuItem("Right Bottom"));
+
+        Menu resize = new Menu("Resize");
+        resize.getItems().addAll(new MenuItem("Stretch to Top"), new MenuItem("Stretch to Bottom"));
+
+        SeparatorMenuItem sep2 = new SeparatorMenuItem();
+
+        MenuItem removeFromSidebar = new MenuItem("Remove from Sidebar");
+
+        menu.getItems().addAll(
+                showOnDblClick, configLocalChanges, speedSearch, sep1,
+                showToolbar, groupTabs, viewMode, moveTo, resize, sep2,
+                removeFromSidebar
+        );
+        menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 0);
+    }
+
+    // ----------------------------------------------------------------- Commit Helpers
 
     private void openFileInEditor(FileItem file) {
         Path dir = projectRoot.get();
@@ -355,13 +766,13 @@ public final class CommitPanel extends VBox {
 
     /** Re-reads {@code git status} and rebuilds the tree. */
     public void refresh() {
-        Path dir = projectRoot.get();
         changesCategory.getFiles().clear();
         unversionedCategory.getFiles().clear();
         ignoredCategory.getFiles().clear();
 
+        Path dir = projectRoot.get();
         if (dir == null || !GitService.isRepository(dir)) {
-            status.setText("Not a git repository.");
+            status.setText("Not a git repository");
             buildTree();
             updateCommitButtonState();
             return;
@@ -644,54 +1055,43 @@ public final class CommitPanel extends VBox {
         }
 
         if (targets.isEmpty()) {
-            status.setText("No files selected to rollback.");
+            status.setText("Select files or check items to rollback.");
             return;
         }
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Rollback Changes");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Are you sure you want to rollback changes in " + targets.size() + " file(s)?");
+        confirm.setHeaderText("Rollback " + targets.size() + " file(s)?");
+        confirm.setContentText("This will discard local changes in the selected files.");
         confirm.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
-        Optional<ButtonType> res = confirm.showAndWait();
-        if (res.isEmpty() || res.get() != ButtonType.OK) return;
 
-        List<String> modifiedPaths = new ArrayList<>();
-        List<String> unversionedPaths = new ArrayList<>();
-        for (FileItem item : targets) {
-            if (item.isUnversioned()) {
-                unversionedPaths.add(item.getRelativePath());
-            } else {
-                modifiedPaths.add(item.getRelativePath());
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                List<String> paths = targets.stream().map(FileItem::getRelativePath).toList();
+                GitService.Result r = GitService.rollback(dir, paths);
+                if (r.ok()) {
+                    status.setText("Rollback successful for " + paths.size() + " file(s).");
+                    if (log != null) log.accept("\u2713 Rolled back: " + String.join(", ", paths));
+                } else {
+                    status.setText("Rollback failed: " + r.output().trim());
+                }
+                refresh();
             }
-        }
-
-        if (!modifiedPaths.isEmpty()) {
-            GitService.rollback(dir, modifiedPaths);
-        }
-        for (String p : unversionedPaths) {
-            try {
-                Files.deleteIfExists(dir.resolve(p));
-            } catch (Exception ignored) {}
-        }
-
-        refresh();
-        status.setText("Rolled back " + targets.size() + " file(s).");
+        });
     }
 
     private void doCommit(boolean push) {
         Path dir = projectRoot.get();
-        if (dir == null || !GitService.isRepository(dir)) {
-            status.setText("Not a git repository.");
-            return;
-        }
+        if (dir == null || !GitService.isRepository(dir)) return;
+
         String msg = message.getText().trim();
         if (msg.isEmpty()) {
-            status.setText("Enter a commit message first.");
+            status.setText("Please enter a commit message.");
             return;
         }
+
         List<String> selectedPaths = getCheckedPaths();
-        if (selectedPaths.isEmpty()) {
+        if (selectedPaths.isEmpty() && !amendCheck.isSelected()) {
             status.setText("Nothing selected to commit.");
             return;
         }
@@ -754,43 +1154,14 @@ public final class CommitPanel extends VBox {
         dialog.showAndWait().ifPresent(msg -> {
             new Thread(() -> {
                 GitService.stash(dir, msg);
-                Platform.runLater(this::refresh);
+                Platform.runLater(() -> {
+                    refresh();
+                    if (activeViewMode == ViewMode.STASH) {
+                        refreshStashView();
+                    }
+                });
             }, "lumina-git-stash").start();
         });
-    }
-
-    private void showStashMenu(Button anchor) {
-        Path dir = projectRoot.get();
-        if (dir == null || !GitService.isRepository(dir)) return;
-
-        ContextMenu menu = new ContextMenu();
-        menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5;");
-
-        MenuItem newStashItem = new MenuItem("+ Stash Changes\u2026");
-        newStashItem.setStyle("-fx-text-fill: #56A8F5; -fx-font-weight: bold;");
-        newStashItem.setOnAction(e -> doStashOrShelve());
-        menu.getItems().add(newStashItem);
-
-        GitService.Result r = GitService.stashList(dir);
-        if (r.ok() && !r.output().isBlank()) {
-            menu.getItems().add(new SeparatorMenuItem());
-            for (String line : r.output().split("\\R")) {
-                if (line.isBlank()) continue;
-                MenuItem item = new MenuItem(line.trim());
-                item.setStyle("-fx-text-fill: #DFE1E5;");
-                item.setOnAction(e -> {
-                    GitService.stashPop(dir);
-                    refresh();
-                });
-                menu.getItems().add(item);
-            }
-        } else {
-            MenuItem emptyItem = new MenuItem("No stashes saved");
-            emptyItem.setDisable(true);
-            emptyItem.setStyle("-fx-text-fill: #868A91;");
-            menu.getItems().addAll(new SeparatorMenuItem(), emptyItem);
-        }
-        menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 0);
     }
 
     private void showOptionsMenu(Button anchor) {
@@ -945,6 +1316,16 @@ public final class CommitPanel extends VBox {
         return sizedIcon(path);
     }
 
+    private static Node createDiffToggleIcon() {
+        SVGPath path = new SVGPath();
+        path.setContent("M 2 8 L 6 4 M 2 8 L 6 12 M 2 8 L 14 8 M 14 8 L 10 4 M 14 8 L 10 12");
+        path.setFill(Color.TRANSPARENT);
+        path.setStroke(Color.web("#AFB1B6"));
+        path.setStrokeWidth(1.3);
+        path.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+        return sizedIcon(path);
+    }
+
     private static Node createEyeIcon() {
         SVGPath eye = new SVGPath();
         eye.setContent("M 2 8 C 4 4.5, 12 4.5, 14 8 C 12 11.5, 4 11.5, 2 8 Z");
@@ -998,6 +1379,26 @@ public final class CommitPanel extends VBox {
         return sizedIcon(new StackPane(topChevron, bottomChevron));
     }
 
+    private static Node createDotsVerticalIcon() {
+        VBox box = new VBox(2.2);
+        box.setAlignment(Pos.CENTER);
+        for (int i = 0; i < 3; i++) {
+            Circle c = new Circle(1.4);
+            c.setFill(Color.web("#AFB1B6"));
+            box.getChildren().add(c);
+        }
+        return sizedIcon(box);
+    }
+
+    private static Node createTagIcon() {
+        SVGPath tag = new SVGPath();
+        tag.setContent("M 1 4 L 5 0 L 10 0 L 10 5 L 6 9 Z M 7.5 2.5 A 1 1 0 1 0 7.5 4.5 A 1 1 0 1 0 7.5 2.5");
+        tag.setFill(Color.web("#9D8431"));
+        StackPane sp = new StackPane(tag);
+        sp.setPrefSize(11, 11);
+        return sp;
+    }
+
     // Accessors for testing
     public TreeView<Object> getTreeView() { return treeView; }
     public TextArea getMessage() { return message; }
@@ -1007,4 +1408,7 @@ public final class CommitPanel extends VBox {
     public CategoryItem getChangesCategory() { return changesCategory; }
     public CategoryItem getUnversionedCategory() { return unversionedCategory; }
     public Label getStatusLabel() { return status; }
+    public ViewMode getActiveViewMode() { return activeViewMode; }
+    public ListView<GitService.StashEntry> getStashListView() { return stashListView; }
+    public TreeView<Object> getStashTreeView() { return stashTreeView; }
 }

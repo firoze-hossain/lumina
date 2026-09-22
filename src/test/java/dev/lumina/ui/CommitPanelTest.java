@@ -19,11 +19,13 @@ class CommitPanelTest {
     @BeforeAll
     static void initJavaFX() {
         try {
+            String display = System.getenv("DISPLAY");
+            if (display == null || display.isBlank() || java.awt.GraphicsEnvironment.isHeadless()) {
+                return;
+            }
             Platform.startup(() -> javaFxAvailable = true);
             javaFxAvailable = true;
-        } catch (Throwable ignored) {
-            javaFxAvailable = true;
-        }
+        } catch (Throwable ignored) {}
     }
 
     @Test
@@ -115,5 +117,27 @@ class CommitPanelTest {
         assertEquals("#629755", CommitPanel.getStatusColor(CommitPanel.ChangeType.ADDED));
         // Modified files must be cyan/blue (#56A8F5)
         assertEquals("#56A8F5", CommitPanel.getStatusColor(CommitPanel.ChangeType.MODIFIED));
+    }
+
+    @Test
+    void testStashFileParsing() {
+        dev.lumina.git.GitService.StashFile sf = dev.lumina.git.GitService.StashFile.fromLine("M\tsrc/main/java/dev/lumina/ui/FileExplorer.java");
+        assertNotNull(sf);
+        assertEquals("FileExplorer.java", sf.fileName());
+        assertEquals("src/main/java/dev/lumina/ui", sf.dirPath());
+        assertEquals("src/main/java/dev/lumina/ui/FileExplorer.java", sf.relativePath());
+        assertEquals("M", sf.statusPrefix());
+    }
+
+    @Test
+    void testStashEntry() {
+        dev.lumina.git.GitService.StashEntry entry = new dev.lumina.git.GitService.StashEntry(
+                0, "stash@{0}", "master", "added starter in pom and grade build", "2 hours ago"
+        );
+        assertEquals(0, entry.index());
+        assertEquals("stash@{0}", entry.ref());
+        assertEquals("master", entry.branch());
+        assertEquals("added starter in pom and grade build", entry.message());
+        assertEquals("2 hours ago", entry.date());
     }
 }
