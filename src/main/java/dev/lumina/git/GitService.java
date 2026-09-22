@@ -255,6 +255,13 @@ public final class GitService {
         return r.ok() ? r.output() : "";
     }
 
+    public static String headShowFile(Path dir, String relativePath) {
+        if (dir == null || relativePath == null || relativePath.isBlank()) return null;
+        String gitPath = relativePath.replace('\\', '/');
+        Result r = exec(dir, "show", "HEAD:" + gitPath);
+        return r.ok() ? r.output() : null;
+    }
+
     public static Result stashApply(Path dir) {
         return stashApply(dir, null);
     }

@@ -4837,6 +4837,19 @@ public class LuminaApp extends Application {
         tab.setContextMenu(buildEditorTabContextMenu(tab));
         wireAddStarters(tab);
         wireMavenSync(tab);
+        tab.setOnOpenDiff((title, baseText, curText) -> {
+            Path p = tab.getPath();
+            if (p != null) {
+                Path repoRoot = dev.lumina.git.GitStatusManager.findRepositoryRoot(p);
+                String rel = repoRoot != null ? repoRoot.relativize(p).toString() : p.getFileName().toString();
+                openDiffViewer(title, "HEAD", rel, p, curText, baseText);
+            }
+        });
+        tab.setOnOpenCommit(() -> {
+            toggleLeftPanel(true);
+            leftTabs.getSelectionModel().select(1);
+            if (commitPanel != null) commitPanel.refresh();
+        });
         // M2: completion — engine results plus keywords and live templates.
         tab.setCompletionProvider((file, text, caretLine, ctx) -> {
             if (file != null && isSpringConfigFile(file)) {

@@ -1,5 +1,9 @@
 package dev.lumina.ui;
 
+import dev.lumina.diff.DiffEngine;
+import dev.lumina.git.GitFileStatus;
+import dev.lumina.git.GitService;
+import dev.lumina.git.GitStatusManager;
 import dev.lumina.semantics.Docs;
 import dev.lumina.syntax.JavaSyntaxHighlighter;
 import javafx.application.Platform;
@@ -10,6 +14,7 @@ import org.fxmisc.richtext.LineNumberFactory;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.*;
 
 /** One open file: a syntax-highlighted CodeArea inside a closable tab. */
 public class EditorTab extends Tab {
@@ -52,6 +57,24 @@ public class EditorTab extends Tab {
 
     private final Runnable gitStatusListener = () -> javafx.application.Platform.runLater(this::updateGitStatus);
 
+    // Git line status tracking
+    private String headContent = null;
+    private boolean headLoaded = false;
+    private final Map<Integer, DiffEngine.DiffChunk> gitLineChunks = new java.util.concurrent.ConcurrentHashMap<>();
+    private final List<DiffEngine.DiffChunk> gitChunks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final javafx.scene.canvas.Canvas errorStripeCanvas = new javafx.scene.canvas.Canvas(12, 100);
+    private javafx.stage.Popup gitChangePopup;
+
+    @FunctionalInterface
+    public interface DiffOpenerCallback {
+        void openDiff(String title, String baseText, String currentText);
+    }
+    private DiffOpenerCallback onOpenDiff;
+    private Runnable onOpenCommit;
+
+    public void setOnOpenDiff(DiffOpenerCallback callback) { this.onOpenDiff = callback; }
+    public void setOnOpenCommit(Runnable callback) { this.onOpenCommit = callback; }
+
     public EditorTab(String name, Path path) {
         this.baseName = name;
         this.path = path;
@@ -59,6 +82,7 @@ public class EditorTab extends Tab {
 
         if (path != null) {
             dev.lumina.git.GitStatusManager.getInstance().addListener(gitStatusListener);
+            loadHeadContent();
             updateGitStatus();
         }
 
@@ -73,6 +97,9 @@ public class EditorTab extends Tab {
         ghostLabel.setMouseTransparent(true);
         ghostPopup.getContent().add(ghostLabel);
         setOnClosed(e -> {
+            if (gitChangePopup != null && gitChangePopup.isShowing()) {
+                gitChangePopup.hide();
+            }
             if (path != null) {
                 dev.lumina.git.GitStatusManager.getInstance().removeListener(gitStatusListener);
             }
@@ -277,6 +304,30 @@ public class EditorTab extends Tab {
                     return;
                 }
             }
+            if (e.isControlDown() && e.isAltDown() && e.getCode() == javafx.scene.input.KeyCode.Z) {
+                e.consume();
+                rollbackAtCaret();
+                return;
+            }
+            if (e.isControlDown() && e.isAltDown() && e.getCode() == javafx.scene.input.KeyCode.UP) {
+                e.consume();
+                navigateChange(-1);
+                return;
+            }
+            if (e.isControlDown() && e.isAltDown() && e.getCode() == javafx.scene.input.KeyCode.DOWN) {
+                e.consume();
+                navigateChange(1);
+                return;
+            }
+            if (e.isControlDown() && e.getCode() == javafx.scene.input.KeyCode.D) {
+                int line = codeArea.getCurrentParagraph() + 1;
+                DiffEngine.DiffChunk chunk = gitLineChunks.get(line);
+                if (chunk != null) {
+                    e.consume();
+                    showDiffForChunk(chunk);
+                    return;
+                }
+            }
             if (e.getCode() == javafx.scene.input.KeyCode.SPACE && e.isControlDown()) {
                 e.consume();
                 triggerCompletion();
@@ -403,10 +454,31 @@ public class EditorTab extends Tab {
         codeGuidesOverlay = new CodeGuidesOverlay(codeArea);
         hintOverlay = new javafx.scene.layout.Pane();
         hintOverlay.setPickOnBounds(false);   // only the hint labels catch clicks
+
+        errorStripeCanvas.widthProperty().set(12);
+        errorStripeCanvas.heightProperty().bind(scroll.heightProperty());
+        errorStripeCanvas.heightProperty().addListener((o, a, b) -> renderErrorStripe());
+        errorStripeCanvas.setPickOnBounds(true);
+        errorStripeCanvas.setOnMouseClicked(e -> {
+            double h = errorStripeCanvas.getHeight();
+            if (h > 0 && !codeArea.getParagraphs().isEmpty()) {
+                int targetLine = (int) ((e.getY() / h) * codeArea.getParagraphs().size()) + 1;
+                goToLine(Math.min(codeArea.getParagraphs().size(), Math.max(1, targetLine)));
+            }
+        });
+
+        dev.lumina.git.GitConfirmationManager.getInstance().addListener(() -> {
+            javafx.application.Platform.runLater(() -> {
+                refreshGutter();
+                renderErrorStripe();
+            });
+        });
+
         javafx.scene.layout.StackPane stack =
-                new javafx.scene.layout.StackPane(scroll, codeGuidesOverlay, hintOverlay);
+                new javafx.scene.layout.StackPane(scroll, codeGuidesOverlay, hintOverlay, errorStripeCanvas);
         javafx.scene.layout.StackPane.setAlignment(codeGuidesOverlay, javafx.geometry.Pos.TOP_LEFT);
         javafx.scene.layout.StackPane.setAlignment(hintOverlay, javafx.geometry.Pos.TOP_LEFT);
+        javafx.scene.layout.StackPane.setAlignment(errorStripeCanvas, javafx.geometry.Pos.TOP_RIGHT);
         codeGuidesOverlay.widthProperty().bind(scroll.widthProperty());
         codeGuidesOverlay.heightProperty().bind(scroll.heightProperty());
 
@@ -441,6 +513,7 @@ public class EditorTab extends Tab {
                 .subscribe(ignore -> {
                     refreshInlineHints();
                     updateCodeGuides();
+                    recomputeGitLineStatus();
                     if (onContentSettled != null) onContentSettled.run();
                 });
         setContent(stack);
@@ -550,6 +623,31 @@ public class EditorTab extends Tab {
             javafx.scene.Node num = lineNo.apply(i);
             num.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
 
+            DiffEngine.DiffChunk chunk = gitLineChunks.get(line);
+            javafx.scene.layout.Region gitStripe = new javafx.scene.layout.Region();
+            gitStripe.setPrefWidth(3.5);
+            gitStripe.setMinWidth(3.5);
+            gitStripe.setMaxWidth(3.5);
+            gitStripe.setMinHeight(16);
+
+            boolean showGutterStripe = dev.lumina.git.GitConfirmationManager.getInstance().isHighlightModifiedLinesInGutter();
+            if (chunk != null && showGutterStripe) {
+                String stripeColor = switch (chunk.type()) {
+                    case INSERTED -> "#59A869";
+                    case MODIFIED -> "#56A8F5";
+                    case DELETED -> "#E06C75";
+                };
+                gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-cursor: hand;");
+                gitStripe.setOnMouseClicked(e -> {
+                    e.consume();
+                    showGitChangePopup(line, chunk, gitStripe);
+                });
+                gitStripe.setOnMouseEntered(e -> gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-opacity: 0.8; -fx-cursor: hand;"));
+                gitStripe.setOnMouseExited(e -> gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-opacity: 1.0; -fx-cursor: hand;"));
+            } else {
+                gitStripe.setStyle("-fx-background-color: transparent;");
+            }
+
             javafx.scene.layout.HBox box;
             if (fullBlame && blameLines != null) {
                 String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
@@ -564,9 +662,9 @@ public class EditorTab extends Tab {
                                             + blameLines.get(i).date() + "\n"
                                             + blameLines.get(i).summary()));
                 }
-                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num);
+                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num, gitStripe);
             } else {
-                box = new javafx.scene.layout.HBox(2, dotBox, num);
+                box = new javafx.scene.layout.HBox(2, dotBox, num, gitStripe);
             }
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
@@ -1126,6 +1224,10 @@ public class EditorTab extends Tab {
         if (!dirty) {
             dirty = true;
             setText(DIRTY_MARK + baseName);
+            if (path != null) {
+                dev.lumina.git.GitStatusManager.getInstance().setStatus(path, dev.lumina.git.GitFileStatus.MODIFIED);
+                updateGitStatus();
+            }
         }
     }
 
@@ -1134,6 +1236,7 @@ public class EditorTab extends Tab {
         this.baseName = savedTo.getFileName().toString();
         dirty = false;
         setText(baseName);
+        loadHeadContent();
         updateGitStatus();
     }
 
@@ -1148,6 +1251,298 @@ public class EditorTab extends Tab {
         } else if (status == dev.lumina.git.GitFileStatus.MODIFIED) {
             getStyleClass().add("git-modified");
         }
+    }
+
+    public void loadHeadContent() {
+        if (path == null) return;
+        Path repoRoot = GitStatusManager.findRepositoryRoot(path);
+        if (repoRoot == null) return;
+        new Thread(() -> {
+            try {
+                String relPath = repoRoot.relativize(path).toString();
+                String text = GitService.headShowFile(repoRoot, relPath);
+                headContent = text;
+                headLoaded = true;
+                Platform.runLater(this::recomputeGitLineStatus);
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    public void recomputeGitLineStatus() {
+        if (path == null) return;
+        Path repoRoot = GitStatusManager.findRepositoryRoot(path);
+        if (repoRoot == null) return;
+        if (!headLoaded && headContent == null) {
+            loadHeadContent();
+            return;
+        }
+        String curText = codeArea.getText();
+        String base = headContent != null ? headContent : "";
+        DiffEngine.DiffResult diff = DiffEngine.diff(base, curText, false);
+
+        gitChunks.clear();
+        gitChunks.addAll(diff.chunks());
+
+        gitLineChunks.clear();
+        for (DiffEngine.DiffChunk c : diff.chunks()) {
+            if (c.type() == DiffEngine.DiffType.DELETED) {
+                int line = Math.min(codeArea.getParagraphs().size(), c.rightStart() + 1);
+                gitLineChunks.put(line, c);
+            } else {
+                for (int line = c.rightStart() + 1; line <= c.rightEnd(); line++) {
+                    gitLineChunks.put(line, c);
+                }
+            }
+        }
+
+        if (!diff.chunks().isEmpty()) {
+            GitStatusManager.getInstance().setStatus(path, GitFileStatus.MODIFIED);
+            updateGitStatus();
+        } else if (headLoaded) {
+            GitStatusManager.getInstance().setStatus(path, GitFileStatus.NORMAL);
+            updateGitStatus();
+        }
+
+        Platform.runLater(() -> {
+            refreshGutter();
+            renderErrorStripe();
+        });
+    }
+
+    public void rollbackAtCaret() {
+        int line = codeArea.getCurrentParagraph() + 1;
+        DiffEngine.DiffChunk chunk = gitLineChunks.get(line);
+        if (chunk != null) {
+            rollbackChunk(chunk);
+        }
+    }
+
+    public void navigateChange(int dir) {
+        if (gitChunks.isEmpty()) return;
+        int currentLine = codeArea.getCurrentParagraph();
+        DiffEngine.DiffChunk target = null;
+        if (dir > 0) {
+            for (DiffEngine.DiffChunk c : gitChunks) {
+                if (c.rightStart() > currentLine) {
+                    target = c;
+                    break;
+                }
+            }
+            if (target == null) target = gitChunks.get(0);
+        } else {
+            for (int i = gitChunks.size() - 1; i >= 0; i--) {
+                DiffEngine.DiffChunk c = gitChunks.get(i);
+                if (c.rightStart() < currentLine) {
+                    target = c;
+                    break;
+                }
+            }
+            if (target == null) target = gitChunks.get(gitChunks.size() - 1);
+        }
+        if (target != null) {
+            goToLine(target.rightStart() + 1);
+            showGitChangePopup(target.rightStart() + 1, target, null);
+        }
+    }
+
+    public void rollbackChunk(DiffEngine.DiffChunk chunk) {
+        if (chunk == null) return;
+        if (gitChangePopup != null && gitChangePopup.isShowing()) {
+            gitChangePopup.hide();
+        }
+        try {
+            String base = headContent != null ? headContent : "";
+            List<String> headLines = Arrays.asList(base.split("\\R", -1));
+
+            if (chunk.type() == DiffEngine.DiffType.INSERTED) {
+                int startPara = chunk.rightStart();
+                int endPara = chunk.rightEnd();
+                int totalParas = codeArea.getParagraphs().size();
+                if (startPara < totalParas) {
+                    int startPos = codeArea.getAbsolutePosition(startPara, 0);
+                    int endPos;
+                    if (endPara < totalParas) {
+                        endPos = codeArea.getAbsolutePosition(endPara, 0);
+                    } else {
+                        endPos = codeArea.getLength();
+                        if (startPos > 0) startPos--;
+                    }
+                    if (endPos > startPos) {
+                        codeArea.deleteText(startPos, endPos);
+                    }
+                }
+            } else if (chunk.type() == DiffEngine.DiffType.MODIFIED) {
+                int startPara = chunk.rightStart();
+                int endPara = chunk.rightEnd();
+                int totalParas = codeArea.getParagraphs().size();
+                if (startPara < totalParas) {
+                    int startPos = codeArea.getAbsolutePosition(startPara, 0);
+                    int endPos = endPara < totalParas
+                            ? codeArea.getAbsolutePosition(endPara, 0)
+                            : codeArea.getLength();
+
+                    int leftStart = Math.min(headLines.size(), chunk.leftStart());
+                    int leftEnd = Math.min(headLines.size(), chunk.leftEnd());
+                    List<String> replacementLines = headLines.subList(leftStart, leftEnd);
+                    String replacement = String.join("\n", replacementLines);
+                    if (endPara < totalParas) {
+                        replacement += "\n";
+                    }
+                    codeArea.replaceText(startPos, endPos, replacement);
+                }
+            } else if (chunk.type() == DiffEngine.DiffType.DELETED) {
+                int insertPara = Math.min(codeArea.getParagraphs().size() - 1, chunk.rightStart());
+                int insertPos = codeArea.getAbsolutePosition(insertPara, 0);
+                int leftStart = Math.min(headLines.size(), chunk.leftStart());
+                int leftEnd = Math.min(headLines.size(), chunk.leftEnd());
+                List<String> restoreLines = headLines.subList(leftStart, leftEnd);
+                String toInsert = String.join("\n", restoreLines) + "\n";
+                codeArea.insertText(insertPos, toInsert);
+            }
+            recomputeGitLineStatus();
+        } catch (Exception ex) {
+            recomputeGitLineStatus();
+        }
+    }
+
+    public void showDiffForChunk(DiffEngine.DiffChunk chunk) {
+        if (gitChangePopup != null && gitChangePopup.isShowing()) {
+            gitChangePopup.hide();
+        }
+        if (onOpenDiff != null && path != null) {
+            String base = headContent != null ? headContent : "";
+            String cur = codeArea.getText();
+            String title = "Diff: " + (baseName != null ? baseName : path.getFileName().toString());
+            onOpenDiff.openDiff(title, base, cur);
+        }
+    }
+
+    private void renderErrorStripe() {
+        javafx.scene.canvas.GraphicsContext gc = errorStripeCanvas.getGraphicsContext2D();
+        double w = errorStripeCanvas.getWidth();
+        double h = errorStripeCanvas.getHeight();
+        gc.clearRect(0, 0, w, h);
+        if (!dev.lumina.git.GitConfirmationManager.getInstance().isHighlightModifiedLinesInErrorStripe()) {
+            return;
+        }
+
+        int totalLines = Math.max(1, codeArea.getParagraphs().size());
+        for (DiffEngine.DiffChunk chunk : gitChunks) {
+            double y = ((double) chunk.rightStart() / totalLines) * h;
+            double markH = Math.max(3.0, ((double) Math.max(1, chunk.rightCount()) / totalLines) * h);
+
+            javafx.scene.paint.Color color = switch (chunk.type()) {
+                case INSERTED -> javafx.scene.paint.Color.web("#59A869");
+                case MODIFIED -> javafx.scene.paint.Color.web("#56A8F5");
+                case DELETED -> javafx.scene.paint.Color.web("#E06C75");
+            };
+            gc.setFill(color);
+            gc.fillRect(2, y, w - 4, markH);
+        }
+    }
+
+    public void showGitChangePopup(int line, DiffEngine.DiffChunk chunk, javafx.scene.Node anchor) {
+        if (gitChangePopup == null) {
+            gitChangePopup = new javafx.stage.Popup();
+            gitChangePopup.setAutoHide(true);
+            gitChangePopup.setAutoFix(true);
+        }
+        gitChangePopup.getContent().clear();
+        gitChangePopup.getContent().add(buildGitChangePopupContent(line, chunk));
+
+        if (anchor != null) {
+            javafx.geometry.Bounds b = anchor.localToScreen(anchor.getBoundsInLocal());
+            if (b != null) {
+                gitChangePopup.show(codeArea, b.getMaxX() + 6, b.getMinY() + 18);
+                return;
+            }
+        }
+        javafx.geometry.Bounds winB = codeArea.localToScreen(codeArea.getBoundsInLocal());
+        if (winB != null) {
+            double yOffset = Math.min(winB.getHeight() - 40, (line - 1) * 20.0 + 30);
+            gitChangePopup.show(codeArea, winB.getMinX() + 60, winB.getMinY() + yOffset);
+        }
+    }
+
+    private javafx.scene.Node buildGitChangePopupContent(int line, DiffEngine.DiffChunk chunk) {
+        javafx.scene.layout.HBox bar = new javafx.scene.layout.HBox(4);
+        bar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        bar.setPadding(new javafx.geometry.Insets(3, 6, 3, 6));
+        bar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; "
+                + "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.5), 8, 0, 0, 3);");
+
+        javafx.scene.control.Button prevBtn = createPopupIconButton("M 3 8 L 7 4 L 11 8", "Previous Change (Ctrl+Alt+Up)");
+        prevBtn.setOnAction(e -> navigateChange(-1));
+
+        javafx.scene.control.Button nextBtn = createPopupIconButton("M 3 4 L 7 8 L 11 4", "Next Change (Ctrl+Alt+Down)");
+        nextBtn.setOnAction(e -> navigateChange(1));
+
+        javafx.scene.control.Button rollbackBtn = createPopupIconButton("M 5 4 L 2 7 L 5 10 M 2 7 L 8 7 C 10 7 11 8.5 11 11", "Rollback Lines (Ctrl+Alt+Z)");
+        rollbackBtn.setOnAction(e -> rollbackChunk(chunk));
+
+        javafx.scene.control.Button diffBtn = createPopupIconButton("M 2 3 L 5 6 L 2 9 M 10 3 L 7 6 L 10 9 M 5 6 L 7 6", "Show Diff for Lines (Ctrl+D)");
+        diffBtn.setOnAction(e -> showDiffForChunk(chunk));
+
+        javafx.scene.control.Button copyBtn = createPopupIconButton("M 4 2 L 9 2 L 9 7 L 4 7 Z M 2 5 L 2 10 L 7 10", "Copy (Ctrl+C)");
+        copyBtn.setOnAction(e -> {
+            copyChunkText(chunk);
+            if (gitChangePopup != null) gitChangePopup.hide();
+        });
+
+        javafx.scene.control.Button changelistBtn = createPopupIconButton("M 2 3 L 10 3 L 10 9 L 2 9 Z M 5 3 L 5 9 M 2 6 L 10 6", "New Changelist...");
+        changelistBtn.setOnAction(e -> {
+            if (gitChangePopup != null) gitChangePopup.hide();
+        });
+
+        javafx.scene.control.Label commitLbl = new javafx.scene.control.Label("Commit This change");
+        commitLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 6 2 6; -fx-background-radius: 3;");
+        commitLbl.setOnMouseEntered(e -> commitLbl.setStyle("-fx-text-fill: #56A8F5; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 6 2 6; -fx-background-color: #393B40; -fx-background-radius: 3;"));
+        commitLbl.setOnMouseExited(e -> commitLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 6 2 6; -fx-background-radius: 3;"));
+        commitLbl.setOnMouseClicked(e -> {
+            if (gitChangePopup != null) gitChangePopup.hide();
+            if (onOpenCommit != null) onOpenCommit.run();
+        });
+
+        javafx.scene.control.Button closeBtn = createPopupIconButton("M 3 3 L 8 8 L 3 13", "Close");
+        closeBtn.setOnAction(e -> {
+            if (gitChangePopup != null) gitChangePopup.hide();
+        });
+
+        bar.getChildren().addAll(prevBtn, nextBtn, rollbackBtn, diffBtn, copyBtn, changelistBtn, commitLbl, closeBtn);
+        return bar;
+    }
+
+    private javafx.scene.control.Button createPopupIconButton(String svgPath, String tooltip) {
+        javafx.scene.shape.SVGPath path = new javafx.scene.shape.SVGPath();
+        path.setContent(svgPath);
+        path.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        path.setStroke(javafx.scene.paint.Color.web("#AFB1B6"));
+        path.setStrokeWidth(1.3);
+        path.setStrokeLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+
+        javafx.scene.control.Button btn = new javafx.scene.control.Button();
+        btn.setGraphic(path);
+        btn.setStyle("-fx-background-color: transparent; -fx-padding: 3 5 3 5; -fx-background-radius: 3; -fx-cursor: hand;");
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #393B40; -fx-padding: 3 5 3 5; -fx-background-radius: 3; -fx-cursor: hand;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: transparent; -fx-padding: 3 5 3 5; -fx-background-radius: 3; -fx-cursor: hand;"));
+        btn.setTooltip(new javafx.scene.control.Tooltip(tooltip));
+        return btn;
+    }
+
+    private void copyChunkText(DiffEngine.DiffChunk chunk) {
+        if (chunk == null) return;
+        try {
+            int startPara = chunk.rightStart();
+            int endPara = chunk.rightEnd();
+            List<String> lines = new ArrayList<>();
+            for (int p = startPara; p < endPara && p < codeArea.getParagraphs().size(); p++) {
+                lines.add(codeArea.getParagraph(p).getText());
+            }
+            String content = String.join("\n", lines);
+            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+            cc.putString(content);
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+        } catch (Exception ignored) {}
     }
 
     private void applyHighlighting() {

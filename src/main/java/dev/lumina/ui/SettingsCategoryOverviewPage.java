@@ -35,7 +35,7 @@ public class SettingsCategoryOverviewPage extends VBox {
         CATEGORY_DESCRIPTIONS.put("Languages & Frameworks",
                 "Configure language support, framework integrations, schemas, and language server protocols.");
         CATEGORY_DESCRIPTIONS.put("Version Control",
-                "Configure version control systems, commit settings, directory mappings, and repository options.");
+                "Configure the settings related to version control used in your project");
         CATEGORY_DESCRIPTIONS.put("Keymap",
                 "Configure keyboard shortcuts and keymap schemes for editor actions, tool windows, and menus.");
     }
