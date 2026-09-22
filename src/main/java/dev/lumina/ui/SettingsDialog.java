@@ -400,8 +400,15 @@ public class SettingsDialog {
     }
 
     private void buildKeymapPage() {
-        SettingsKeymapPage page = new SettingsKeymapPage();
-        wrapInScroll(page);
+        SettingsKeymapPage page = new SettingsKeymapPage(() -> {
+            TreeItem<String> pluginsItem = findItem(tree.getRoot(), "Plugins");
+            if (pluginsItem != null) {
+                expandAncestors(pluginsItem);
+                tree.getSelectionModel().select(pluginsItem);
+            }
+        });
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(page);
     }
 
     private void buildMenusToolbarsPage() {
