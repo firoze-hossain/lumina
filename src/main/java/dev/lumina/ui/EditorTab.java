@@ -50,10 +50,17 @@ public class EditorTab extends Tab {
         return null;
     }
 
+    private final Runnable gitStatusListener = this::updateGitStatus;
+
     public EditorTab(String name, Path path) {
         this.baseName = name;
         this.path = path;
         setText(name);
+
+        if (path != null) {
+            dev.lumina.git.GitStatusManager.getInstance().addListener(gitStatusListener);
+            updateGitStatus();
+        }
 
         codeArea.getStyleClass().add("code-area");
         diagPopup.setAutoFix(true);
@@ -66,6 +73,9 @@ public class EditorTab extends Tab {
         ghostLabel.setMouseTransparent(true);
         ghostPopup.getContent().add(ghostLabel);
         setOnClosed(e -> {
+            if (path != null) {
+                dev.lumina.git.GitStatusManager.getInstance().removeListener(gitStatusListener);
+            }
             hideDiagPopup();
             hideGhostSuggestion();
             contextActionsPopup.hide();
@@ -1124,6 +1134,20 @@ public class EditorTab extends Tab {
         this.baseName = savedTo.getFileName().toString();
         dirty = false;
         setText(baseName);
+        updateGitStatus();
+    }
+
+    public void updateGitStatus() {
+        if (path == null) return;
+        dev.lumina.git.GitFileStatus status = dev.lumina.git.GitStatusManager.getInstance().getStatus(path);
+        getStyleClass().removeAll("git-added", "git-untracked", "git-modified");
+        if (status == dev.lumina.git.GitFileStatus.ADDED) {
+            getStyleClass().add("git-added");
+        } else if (status == dev.lumina.git.GitFileStatus.UNTRACKED) {
+            getStyleClass().add("git-untracked");
+        } else if (status == dev.lumina.git.GitFileStatus.MODIFIED) {
+            getStyleClass().add("git-modified");
+        }
     }
 
     private void applyHighlighting() {

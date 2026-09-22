@@ -355,6 +355,8 @@ public class SettingsDialog {
             buildPresentationAssistantPage();
         } else if (isKeymapPage(pageName)) {
             buildKeymapPage();
+        } else if ("Confirmation".equals(pageName)) {
+            buildVcsConfirmationPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -430,6 +432,11 @@ public class SettingsDialog {
 
     private void buildTerminalSettingsPage() {
         SettingsTerminalPage page = new SettingsTerminalPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsConfirmationPage() {
+        SettingsVcsConfirmationPage page = new SettingsVcsConfirmationPage();
         wrapInScroll(page);
     }
 
@@ -700,6 +707,12 @@ public class SettingsDialog {
         // Additional root categories
         TreeItem<String> plugins = new TreeItem<>("Plugins");
         TreeItem<String> versionControl = new TreeItem<>("Version Control");
+        versionControl.getChildren().addAll(
+                new TreeItem<>("Confirmation"),
+                new TreeItem<>("Git"),
+                new TreeItem<>("GitHub"),
+                new TreeItem<>("Directory Mappings")
+        );
         TreeItem<String> build = new TreeItem<>("Build, Execution, Deployment");
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
 
