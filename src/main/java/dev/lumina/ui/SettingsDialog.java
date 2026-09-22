@@ -386,6 +386,12 @@ public class SettingsDialog {
             buildVcsShelfPage();
         } else if ("Git".equals(pageName)) {
             buildVcsGitPage();
+        } else if ("GitHub".equals(pageName)) {
+            buildVcsGitHubPage();
+        } else if ("GitLab".equals(pageName)) {
+            buildVcsGitLabPage();
+        } else if ("Mercurial".equals(pageName)) {
+            buildVcsMercurialPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -506,6 +512,21 @@ public class SettingsDialog {
 
     private void buildVcsGitPage() {
         SettingsVcsGitPage page = new SettingsVcsGitPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsGitHubPage() {
+        SettingsVcsGitHubPage page = new SettingsVcsGitHubPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsGitLabPage() {
+        SettingsVcsGitLabPage page = new SettingsVcsGitLabPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsMercurialPage() {
+        SettingsVcsMercurialPage page = new SettingsVcsMercurialPage();
         wrapInScroll(page);
     }
 
