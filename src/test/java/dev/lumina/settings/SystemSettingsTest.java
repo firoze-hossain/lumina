@@ -14,8 +14,10 @@ class SystemSettingsTest {
 
     @BeforeEach
     void setUp() {
+        dev.lumina.util.Settings.put("system.dateFormat.pattern", null);
+        dev.lumina.util.Settings.put("system.dateFormat.use24Hour", null);
         settings = SystemSettings.getInstance();
-        settings.load();
+        settings.resetToDefaults();
     }
 
     @Test

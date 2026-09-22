@@ -154,6 +154,50 @@ public final class SystemSettings {
         load();
     }
 
+    public synchronized void resetToDefaults() {
+        confirmExit = true;
+        processClosePolicy = ProcessClosePolicy.ASK;
+        reopenProjectsOnStartup = true;
+        openProjectMode = OpenProjectMode.ASK;
+        defaultProjectDirectory = System.getProperty("user.home") + File.separator + "projects";
+        idleAutosaveEnabled = false;
+        idleAutosaveSeconds = 15;
+        saveOnFocusLost = true;
+        backupFilesBeforeSaving = true;
+        syncExternalOnFocus = true;
+        syncExternalPeriodically = true;
+        overrideSystemDateFormat = false;
+        dateFormatPattern = "dd MMM yyyy";
+        use24HourTime = true;
+        usePrettyFormatting = true;
+        sendAnonymousStats = false;
+        sendDetailedData = false;
+        proxyType = ProxyType.AUTO_DETECT;
+        autoConfigUrlEnabled = false;
+        autoConfigUrl = "";
+        manualProtocol = ManualProtocol.HTTP;
+        proxyHost = "";
+        proxyPort = 80;
+        noProxyFor = "";
+        proxyAuthEnabled = false;
+        proxyLogin = "";
+        proxyPassword = "";
+        proxyRemember = false;
+        language = "English";
+        region = "Not specified";
+        passwordStoragePolicy = PasswordStoragePolicy.NATIVE_KEYCHAIN;
+        keepSudoAuth = false;
+        sudoTimeout = "15 min";
+        extendSudoTimeout = true;
+        acceptNonTrustedCerts = false;
+        checkIdeUpdates = true;
+        updateChannel = "Stable Releases";
+        checkPluginUpdates = true;
+        updatePluginsAutomatically = false;
+        showWhatsNewAfterUpdate = true;
+        checkJdkUpdates = true;
+    }
+
     /**
      * Loads settings from persistent store (lumina.properties).
      */
