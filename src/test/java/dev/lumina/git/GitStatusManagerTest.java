@@ -89,4 +89,73 @@ class GitStatusManagerTest {
 
         manager.removeListener(listener);
     }
+
+    @Test
+    void testDirectoryStatusAggregation(@TempDir Path tempDir) throws IOException {
+        Path entityDir = tempDir.resolve("order/entity");
+        Files.createDirectories(entityDir);
+        Path orderFile = entityDir.resolve("Order.java");
+        Files.createFile(orderFile);
+
+        // Before modification: NORMAL
+        assertEquals(GitFileStatus.NORMAL, manager.getStatus(entityDir));
+        assertEquals(GitFileStatus.NORMAL, manager.getStatus(orderFile));
+
+        // When Order.java is modified: both Order.java and entity package become MODIFIED
+        manager.setStatus(orderFile, GitFileStatus.MODIFIED);
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(orderFile));
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(entityDir));
+        assertEquals(GitFileStatus.MODIFIED, manager.getDirectoryStatus(entityDir));
+
+        // Parent package 'order' also reflects MODIFIED
+        Path orderDir = tempDir.resolve("order");
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(orderDir));
+
+        // When changes are committed / reverted back to NORMAL
+        manager.setStatus(orderFile, GitFileStatus.NORMAL);
+        assertEquals(GitFileStatus.NORMAL, manager.getStatus(orderFile));
+        assertEquals(GitFileStatus.NORMAL, manager.getStatus(entityDir));
+    }
+
+    @Test
+    void testDirectoryStatusPriority(@TempDir Path tempDir) throws IOException {
+        Path pkgDir = tempDir.resolve("service");
+        Files.createDirectories(pkgDir);
+        Path file1 = pkgDir.resolve("ServiceA.java");
+        Path file2 = pkgDir.resolve("ServiceB.java");
+        Files.createFile(file1);
+        Files.createFile(file2);
+
+        // One untracked, one normal -> UNTRACKED
+        manager.setStatus(file1, GitFileStatus.UNTRACKED);
+        assertEquals(GitFileStatus.UNTRACKED, manager.getStatus(pkgDir));
+
+        // One added, one untracked -> ADDED takes priority
+        manager.setStatus(file2, GitFileStatus.ADDED);
+        assertEquals(GitFileStatus.ADDED, manager.getStatus(pkgDir));
+
+        // One modified, one added -> MODIFIED takes highest priority
+        manager.setStatus(file1, GitFileStatus.MODIFIED);
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(pkgDir));
+    }
+
+    @Test
+    void testDirectoryHighlightToggle(@TempDir Path tempDir) throws IOException {
+        Path entityDir = tempDir.resolve("order/entity");
+        Files.createDirectories(entityDir);
+        Path orderFile = entityDir.resolve("Order.java");
+        Files.createFile(orderFile);
+
+        manager.setStatus(orderFile, GitFileStatus.MODIFIED);
+        GitConfirmationManager.getInstance().setHighlightDirectoriesWithModifiedFiles(true);
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(entityDir));
+
+        // When toggled off, directories are returned as NORMAL
+        GitConfirmationManager.getInstance().setHighlightDirectoriesWithModifiedFiles(false);
+        assertEquals(GitFileStatus.NORMAL, manager.getStatus(entityDir));
+
+        // Re-enable
+        GitConfirmationManager.getInstance().setHighlightDirectoriesWithModifiedFiles(true);
+        assertEquals(GitFileStatus.MODIFIED, manager.getStatus(entityDir));
+    }
 }

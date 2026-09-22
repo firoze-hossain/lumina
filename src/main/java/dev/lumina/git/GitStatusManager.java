@@ -18,7 +18,9 @@ public class GitStatusManager {
     private final Map<Path, GitFileStatus> statusCache = new ConcurrentHashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
 
-    private GitStatusManager() {}
+    private GitStatusManager() {
+        GitConfirmationManager.getInstance().addListener(this::notifyListeners);
+    }
 
     public static GitStatusManager getInstance() {
         return INSTANCE;
@@ -47,13 +49,46 @@ public class GitStatusManager {
     }
 
     /**
-     * Returns the Git status of the given file. Defaults to GitFileStatus.NORMAL.
+     * Returns the Git status of the given file or directory. Defaults to GitFileStatus.NORMAL.
      */
     public GitFileStatus getStatus(Path file) {
         if (file == null) return GitFileStatus.NORMAL;
         Path norm = file.toAbsolutePath().normalize();
+        if (Files.isDirectory(norm)) {
+            if (!GitConfirmationManager.getInstance().isHighlightDirectoriesWithModifiedFiles()) {
+                return GitFileStatus.NORMAL;
+            }
+            return getDirectoryStatus(norm);
+        }
         GitFileStatus status = statusCache.get(norm);
         return status != null ? status : GitFileStatus.NORMAL;
+    }
+
+    /**
+     * Aggregates the Git status for a directory based on child files in statusCache.
+     * Priority: MODIFIED > ADDED > UNTRACKED > NORMAL.
+     */
+    public GitFileStatus getDirectoryStatus(Path dir) {
+        if (dir == null) return GitFileStatus.NORMAL;
+        Path norm = dir.toAbsolutePath().normalize();
+        boolean hasAdded = false;
+        boolean hasUntracked = false;
+        for (Map.Entry<Path, GitFileStatus> entry : statusCache.entrySet()) {
+            Path filePath = entry.getKey();
+            if (filePath.startsWith(norm) && !filePath.equals(norm)) {
+                GitFileStatus s = entry.getValue();
+                if (s == GitFileStatus.MODIFIED) {
+                    return GitFileStatus.MODIFIED;
+                } else if (s == GitFileStatus.ADDED) {
+                    hasAdded = true;
+                } else if (s == GitFileStatus.UNTRACKED) {
+                    hasUntracked = true;
+                }
+            }
+        }
+        if (hasAdded) return GitFileStatus.ADDED;
+        if (hasUntracked) return GitFileStatus.UNTRACKED;
+        return GitFileStatus.NORMAL;
     }
 
     /**

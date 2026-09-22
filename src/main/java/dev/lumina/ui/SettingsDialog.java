@@ -2,11 +2,14 @@ package dev.lumina.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -235,6 +238,16 @@ public class SettingsDialog {
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
                     breadcrumbBox.getChildren().add(projectIcon);
                 }
+
+                if (isProjectSetting(item.getValue())) {
+                    SVGPath pIcon = new SVGPath();
+                    pIcon.setContent("M 1 2 L 11 2 L 11 10 L 1 10 Z M 1 4 L 11 4");
+                    pIcon.setFill(Color.TRANSPARENT);
+                    pIcon.setStroke(Color.web("#848BA3"));
+                    pIcon.setStrokeWidth(0.9);
+                    HBox.setMargin(pIcon, new Insets(0, 0, 0, 4));
+                    breadcrumbBox.getChildren().add(pIcon);
+                }
             }
         }
     }
@@ -355,8 +368,14 @@ public class SettingsDialog {
             buildPresentationAssistantPage();
         } else if (isKeymapPage(pageName)) {
             buildKeymapPage();
+        } else if ("Changelists".equals(pageName)) {
+            buildVcsChangelistsPage();
+        } else if ("Commit".equals(pageName)) {
+            buildVcsCommitPage();
         } else if ("Confirmation".equals(pageName)) {
             buildVcsConfirmationPage();
+        } else if ("File Status Colors".equals(pageName)) {
+            buildFileColorsPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -432,6 +451,16 @@ public class SettingsDialog {
 
     private void buildTerminalSettingsPage() {
         SettingsTerminalPage page = new SettingsTerminalPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsChangelistsPage() {
+        SettingsVcsChangelistsPage page = new SettingsVcsChangelistsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsCommitPage() {
+        SettingsVcsCommitPage page = new SettingsVcsCommitPage();
         wrapInScroll(page);
     }
 
@@ -707,11 +736,26 @@ public class SettingsDialog {
         // Additional root categories
         TreeItem<String> plugins = new TreeItem<>("Plugins");
         TreeItem<String> versionControl = new TreeItem<>("Version Control");
+        TreeItem<String> perforce = new TreeItem<>("Perforce");
+        perforce.getChildren().add(new TreeItem<>("Jobs"));
+        TreeItem<String> subversion = new TreeItem<>("Subversion");
+        subversion.getChildren().add(new TreeItem<>("General"));
+
         versionControl.getChildren().addAll(
+                new TreeItem<>("Changelists"),
+                new TreeItem<>("Commit"),
                 new TreeItem<>("Confirmation"),
+                new TreeItem<>("Directory Mappings"),
+                new TreeItem<>("File Status Colors"),
+                new TreeItem<>("Issue Navigation"),
+                new TreeItem<>("Log"),
+                new TreeItem<>("Shelf"),
                 new TreeItem<>("Git"),
                 new TreeItem<>("GitHub"),
-                new TreeItem<>("Directory Mappings")
+                new TreeItem<>("GitLab"),
+                new TreeItem<>("Mercurial"),
+                perforce,
+                subversion
         );
         TreeItem<String> build = new TreeItem<>("Build, Execution, Deployment");
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
@@ -746,7 +790,58 @@ public class SettingsDialog {
         TreeView<String> tv = new TreeView<>(root);
         tv.setShowRoot(false);
         tv.getStyleClass().add("settings-tree");
+
+        tv.setCellFactory(view -> new TreeCell<>() {
+            private final Label titleLabel = new Label();
+            private final Region spacer = new Region();
+            private final Label badgeLabel = new Label();
+            private final SVGPath projectIcon = new SVGPath();
+            private final HBox cellBox = new HBox(4, titleLabel, spacer);
+
+            {
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                cellBox.setAlignment(Pos.CENTER_LEFT);
+                projectIcon.setContent("M 1 2 L 11 2 L 11 10 L 1 10 Z M 1 4 L 11 4");
+                projectIcon.setFill(Color.TRANSPARENT);
+                projectIcon.setStroke(Color.web("#6F737A"));
+                projectIcon.setStrokeWidth(0.8);
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    titleLabel.setText(item);
+                    titleLabel.setStyle("-fx-text-fill: inherit; -fx-font-size: 13px;");
+                    cellBox.getChildren().setAll(titleLabel, spacer);
+
+                    if ("Plugins".equals(item)) {
+                        badgeLabel.setText("10");
+                        badgeLabel.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-padding: 1 6 1 6; -fx-background-radius: 8;");
+                        cellBox.getChildren().add(badgeLabel);
+                    } else if (isProjectSetting(item)) {
+                        cellBox.getChildren().add(projectIcon);
+                    }
+                    setText(null);
+                    setGraphic(cellBox);
+                }
+            }
+        });
+
         return tv;
+    }
+
+    private static final Set<String> PROJECT_SETTINGS = Set.of(
+            "Version Control", "Changelists", "Commit", "Confirmation",
+            "Directory Mappings", "Issue Navigation", "Log", "Shelf",
+            "Git", "GitHub", "GitLab", "Mercurial", "Perforce", "Subversion"
+    );
+
+    private static boolean isProjectSetting(String name) {
+        return name != null && PROJECT_SETTINGS.contains(name);
     }
 
     private TreeItem<String> searchTree(TreeItem<String> root, String query) {

@@ -586,7 +586,8 @@ public class FileExplorer extends BorderPane {
                 setGraphic(pathLabel);
                 setContentDisplay(ContentDisplay.RIGHT);
                 setStyle("");
-            } else if (!Files.isDirectory(item)) {
+            } else {
+                getStyleClass().removeAll("git-added", "git-untracked", "git-modified");
                 dev.lumina.git.GitFileStatus gitStatus = dev.lumina.git.GitStatusManager.getInstance().getStatus(item);
                 if (gitStatus != dev.lumina.git.GitFileStatus.NORMAL) {
                     setStyle("-fx-text-fill: " + gitStatus.getColorHex() + ";");
@@ -600,8 +601,6 @@ public class FileExplorer extends BorderPane {
                 } else {
                     setStyle("");
                 }
-            } else {
-                setStyle("");
             }
         }
 
