@@ -359,7 +359,7 @@ public final class GitService {
 
     public static Result exec(Path dir, String... args) {
         List<String> cmd = new ArrayList<>();
-        cmd.add("git");
+        cmd.add(GitSettingsManager.getInstance().getEffectiveGitExecutable());
         cmd.addAll(List.of(args));
         try {
             Process p = new ProcessBuilder(cmd)

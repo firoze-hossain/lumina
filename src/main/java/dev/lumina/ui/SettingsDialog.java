@@ -384,6 +384,8 @@ public class SettingsDialog {
             buildVcsLogPage();
         } else if ("Shelf".equals(pageName)) {
             buildVcsShelfPage();
+        } else if ("Git".equals(pageName)) {
+            buildVcsGitPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -499,6 +501,11 @@ public class SettingsDialog {
 
     private void buildVcsShelfPage() {
         SettingsVcsShelfPage page = new SettingsVcsShelfPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsGitPage() {
+        SettingsVcsGitPage page = new SettingsVcsGitPage();
         wrapInScroll(page);
     }
 
