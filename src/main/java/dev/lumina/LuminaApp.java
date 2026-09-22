@@ -4759,17 +4759,23 @@ public class LuminaApp extends Application {
     }
 
     private void openDiffViewer(String title, String stashRef, String relPath, Path localPath, String curText, String stashText) {
+        if (activeEditorGroup == null || !editorGroups.contains(activeEditorGroup)) {
+            activeEditorGroup = editorGroups.isEmpty() ? editorTabs : editorGroups.get(0);
+        }
         for (Tab t : allEditorTabs()) {
             if (t instanceof DiffViewerTab dvt
                     && java.util.Objects.equals(dvt.getStashRef(), stashRef)
                     && java.util.Objects.equals(dvt.getRelativePath(), relPath)) {
                 groupOf(t).getSelectionModel().select(t);
+                updateEditorVisibility();
                 return;
             }
         }
         DiffViewerTab tab = new DiffViewerTab(title, stashRef, relPath, localPath, curText, stashText);
+        tab.setOnClosed(e -> updateEditorVisibility());
         activeEditorGroup.getTabs().add(tab);
         activeEditorGroup.getSelectionModel().select(tab);
+        updateEditorVisibility();
     }
 
     private void addTab(EditorTab tab) {

@@ -198,6 +198,7 @@ public final class GitService {
                         msg = msg.substring(endColon + 1).trim();
                     }
                 }
+                msg = msg.replaceFirst("^[0-9a-fA-F]{7,40}\\s+", "").trim();
                 list.add(new StashEntry(idx, ref, branch, msg, ""));
                 idx++;
             }
@@ -222,6 +223,7 @@ public final class GitService {
                     msg = subject.substring(endColon + 1).trim();
                 }
             }
+            msg = msg.replaceFirst("^[0-9a-fA-F]{7,40}\\s+", "").trim();
             list.add(new StashEntry(index, ref, branch, msg, date));
             index++;
         }

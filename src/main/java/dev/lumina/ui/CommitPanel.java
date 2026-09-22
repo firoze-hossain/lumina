@@ -446,7 +446,22 @@ public final class CommitPanel extends VBox {
                     setGraphic(row);
                     setText(null);
                     setStyle("-fx-background-color: " + (isSelected() ? "#2E436E;" : "#1E1F22;"));
+
+                    String tooltipText = item.ref() + (!item.date().isBlank() ? " created on " + item.date() : "");
+                    setTooltip(new Tooltip(tooltipText));
                 }
+            }
+        });
+
+        stashListView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                openFirstStashFileDiff();
+            }
+        });
+
+        stashListView.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER || e.getCode() == KeyCode.F4) {
+                openFirstStashFileDiff();
             }
         });
 
@@ -601,31 +616,73 @@ public final class CommitPanel extends VBox {
             dirMap.computeIfAbsent(f.dirPath(), k -> new ArrayList<>()).add(f);
         }
 
+        TreeItem<Object> firstFileItem = null;
         for (Map.Entry<String, List<GitService.StashFile>> entry : dirMap.entrySet()) {
             String d = entry.getKey();
-            if (d.isBlank()) {
-                for (GitService.StashFile f : entry.getValue()) {
-                    repoItem.getChildren().add(new TreeItem<>(f));
-                }
-            } else {
+            if (!d.isBlank()) {
                 TreeItem<Object> dirItem = new TreeItem<>(new StashDirNode(d, entry.getValue().size()));
                 dirItem.setExpanded(true);
                 for (GitService.StashFile f : entry.getValue()) {
-                    dirItem.getChildren().add(new TreeItem<>(f));
+                    TreeItem<Object> fileItem = new TreeItem<>(f);
+                    dirItem.getChildren().add(fileItem);
+                    if (firstFileItem == null) firstFileItem = fileItem;
                 }
                 repoItem.getChildren().add(dirItem);
+            }
+        }
+
+        List<GitService.StashFile> rootFiles = dirMap.get("");
+        if (rootFiles != null) {
+            for (GitService.StashFile f : rootFiles) {
+                TreeItem<Object> fileItem = new TreeItem<>(f);
+                repoItem.getChildren().add(fileItem);
+                if (firstFileItem == null) firstFileItem = fileItem;
             }
         }
 
         root.getChildren().add(repoItem);
         stashTreeView.setRoot(root);
         stashTreeView.setShowRoot(false);
+
+        if (firstFileItem != null) {
+            stashTreeView.getSelectionModel().select(firstFileItem);
+            if (firstFileItem.getValue() instanceof GitService.StashFile sf) {
+                stashFooterLabel.setText(sf.relativePath());
+            }
+        }
+    }
+
+    private void openFirstStashFileDiff() {
+        TreeItem<Object> sel = stashTreeView.getSelectionModel().getSelectedItem();
+        if (sel != null && sel.getValue() instanceof GitService.StashFile file) {
+            openStashFileDiff(file);
+            return;
+        }
+        TreeItem<Object> root = stashTreeView.getRoot();
+        if (root != null) {
+            GitService.StashFile first = findFirstStashFile(root);
+            if (first != null) {
+                openStashFileDiff(first);
+            }
+        }
+    }
+
+    private GitService.StashFile findFirstStashFile(TreeItem<Object> item) {
+        if (item == null) return null;
+        if (item.getValue() instanceof GitService.StashFile file) return file;
+        for (TreeItem<Object> child : item.getChildren()) {
+            GitService.StashFile f = findFirstStashFile(child);
+            if (f != null) return f;
+        }
+        return null;
     }
 
     private void openSelectedStashFileDiff() {
         TreeItem<Object> sel = stashTreeView.getSelectionModel().getSelectedItem();
         if (sel != null && sel.getValue() instanceof GitService.StashFile file) {
             openStashFileDiff(file);
+        } else {
+            openFirstStashFileDiff();
         }
     }
 
@@ -645,7 +702,7 @@ public final class CommitPanel extends VBox {
 
         String stashedContent = GitService.stashShowFile(dir, ref, file.relativePath());
         int stashIdx = selectedStash != null ? selectedStash.index() : 0;
-        String tabTitle = "Stash@(" + stashIdx + "): " + file.fileName();
+        String tabTitle = "Stash@{" + stashIdx + "}: " + file.fileName();
 
         if (onOpenDiff != null) {
             onOpenDiff.openDiff(tabTitle, ref, file.relativePath(), localFile, currentContent, stashedContent);
