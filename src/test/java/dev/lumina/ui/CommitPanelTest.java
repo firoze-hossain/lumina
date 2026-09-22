@@ -140,4 +140,22 @@ class CommitPanelTest {
         assertEquals("added starter in pom and grade build", entry.message());
         assertEquals("2 hours ago", entry.date());
     }
+
+    @Test
+    void testStashMessageCommitHashStripping() {
+        String rawSubject = "WIP on master: 1597863 The compositor/Store port with bug";
+        String branch = "master";
+        String msg = rawSubject;
+        if (rawSubject.startsWith("WIP on ") || rawSubject.startsWith("On ")) {
+            int start = rawSubject.indexOf("on ") >= 0 ? rawSubject.indexOf("on ") + 3 : 3;
+            int endColon = rawSubject.indexOf(':', start);
+            if (endColon > start) {
+                branch = rawSubject.substring(start, endColon).trim();
+                msg = rawSubject.substring(endColon + 1).trim();
+            }
+        }
+        msg = msg.replaceFirst("^[0-9a-fA-F]{7,40}\\s+", "").trim();
+        assertEquals("master", branch);
+        assertEquals("The compositor/Store port with bug", msg);
+    }
 }
