@@ -511,8 +511,12 @@
 }
 .rail-button:hover { -fx-background-color: #1F2230; -fx-text-fill: #C9CDDC; }
 .rail-button:selected {
-    -fx-background-color: #3A3122;
-    -fx-text-fill: -lumen;
+    -fx-background-color: #3574F0;
+    -fx-text-fill: white;
+}
+.rail-button:selected Shape {
+    -fx-fill: white;
+    -fx-stroke: white;
 }
 .rail-run { -fx-text-fill: #8FCE8F; }
 

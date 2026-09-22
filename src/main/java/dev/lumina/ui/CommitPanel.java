@@ -162,9 +162,13 @@ public final class CommitPanel extends VBox {
     private ViewMode activeViewMode = ViewMode.COMMIT;
 
     // Tabs & Header
+    private final Label toolWindowTitle = new Label("Commit");
     private final Button commitTabBtn = new Button("Commit");
     private final Button stashTabBtn = new Button("Stash");
     private final Button optionsBtn = createToolbarIconButton(createDotsVerticalIcon(), "Options");
+    private final Label modifiedCountLabel = new Label();
+    private final Button userAvatarBtn = createToolbarIconButton(createUserIcon(), "Amend Author\u2026");
+    private Runnable onHide;
 
     // Containers
     private final VBox commitContainer = new VBox(6);
@@ -205,6 +209,8 @@ public final class CommitPanel extends VBox {
         setPadding(new Insets(4, 8, 8, 8));
 
         // 0. Top header with tabs & options menu
+        toolWindowTitle.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 0 4 0 0;");
+
         commitTabBtn.setOnAction(e -> switchViewMode(ViewMode.COMMIT));
         stashTabBtn.setOnAction(e -> switchViewMode(ViewMode.STASH));
 
@@ -213,9 +219,9 @@ public final class CommitPanel extends VBox {
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
 
-        HBox topTabs = new HBox(4, commitTabBtn, stashTabBtn, headerSpacer, optionsBtn);
+        HBox topTabs = new HBox(6, toolWindowTitle, commitTabBtn, stashTabBtn, headerSpacer, optionsBtn);
         topTabs.setAlignment(Pos.CENTER_LEFT);
-        topTabs.setPadding(new Insets(0, 0, 4, 0));
+        topTabs.setPadding(new Insets(2, 0, 4, 0));
 
         // 1. Build Commit Container
         buildCommitContainer();
@@ -228,6 +234,10 @@ public final class CommitPanel extends VBox {
 
         getChildren().addAll(topTabs, contentStack);
         switchViewMode(ViewMode.COMMIT);
+    }
+
+    public void setOnHide(Runnable onHide) {
+        this.onHide = onHide;
     }
 
     public void setOnOpenFile(Consumer<Path> onOpenFile) {
@@ -367,9 +377,15 @@ public final class CommitPanel extends VBox {
         Button recentBtn = createToolbarButton("\uD83D\uDD52", "Recent Commit Messages");
         recentBtn.setOnAction(e -> showRecentMessages(recentBtn));
 
-        HBox messageToolbar = new HBox(8, amendCheck, recentBtn);
+        userAvatarBtn.setOnAction(e -> showAuthorDialog());
+
+        modifiedCountLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px;");
+        Region messageToolbarSpacer = new Region();
+        HBox.setHgrow(messageToolbarSpacer, Priority.ALWAYS);
+
+        HBox messageToolbar = new HBox(8, amendCheck, recentBtn, userAvatarBtn, messageToolbarSpacer, modifiedCountLabel);
         messageToolbar.setAlignment(Pos.CENTER_LEFT);
-        messageToolbar.setPadding(new Insets(4, 0, 2, 0));
+        messageToolbar.setPadding(new Insets(6, 0, 4, 0));
 
         // 4. Commit message input
         message.setPromptText("Commit Message");
@@ -378,6 +394,13 @@ public final class CommitPanel extends VBox {
         message.getStyleClass().add("commit-message");
         message.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #868A91; -fx-font-size: 12px;");
         message.textProperty().addListener((obs, old, text) -> updateCommitButtonState());
+        message.focusedProperty().addListener((obs, old, focused) -> {
+            if (focused) {
+                message.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #3574F0; -fx-border-width: 1.5; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #868A91; -fx-font-size: 12px;");
+            } else {
+                message.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #43454A; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #868A91; -fx-font-size: 12px;");
+            }
+        });
 
         // 5. Commit action buttons
         commitBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-padding: 5 16 5 16; -fx-background-radius: 4; -fx-cursor: hand;");
@@ -776,6 +799,11 @@ public final class CommitPanel extends VBox {
         ContextMenu menu = new ContextMenu();
         menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-text-fill: #DFE1E5;");
 
+        MenuItem hideItem = new MenuItem("Hide  Shift+Escape");
+        hideItem.setOnAction(e -> {
+            if (onHide != null) onHide.run();
+        });
+
         Menu showOnDblClick = new Menu("Show on Double-Click");
         showOnDblClick.getItems().addAll(new MenuItem("Diff"), new MenuItem("Source"), new MenuItem("None"));
 
@@ -805,6 +833,7 @@ public final class CommitPanel extends VBox {
         MenuItem removeFromSidebar = new MenuItem("Remove from Sidebar");
 
         menu.getItems().addAll(
+                hideItem, new SeparatorMenuItem(),
                 showOnDblClick, configLocalChanges, speedSearch, sep1,
                 showToolbar, groupTabs, viewMode, moveTo, resize, sep2,
                 removeFromSidebar
@@ -878,6 +907,7 @@ public final class CommitPanel extends VBox {
         int changeCount = changesCategory.getFiles().size();
         int unversionedCount = unversionedCategory.getFiles().size();
         status.setText(changeCount + " file(s) changed" + (unversionedCount > 0 ? ", " + unversionedCount + " unversioned." : "."));
+        modifiedCountLabel.setText(changeCount + " modified");
         updateCommitButtonState();
     }
 
@@ -1456,6 +1486,64 @@ public final class CommitPanel extends VBox {
         return sp;
     }
 
+    private static Node createUserIcon() {
+        Circle head = new Circle(2.6);
+        head.setFill(Color.web("#AFB1B6"));
+        head.setTranslateY(-3.0);
+        SVGPath shoulders = new SVGPath();
+        shoulders.setContent("M -5 5 C -5 1.5 5 1.5 5 5 Z");
+        shoulders.setFill(Color.web("#AFB1B6"));
+        shoulders.setTranslateY(2.0);
+        return sizedIcon(new StackPane(head, shoulders));
+    }
+
+    private void showAuthorDialog() {
+        Path dir = projectRoot.get();
+        if (dir == null) return;
+        String currentName = "";
+        String currentEmail = "";
+        try {
+            GitService.Result r1 = GitService.exec(dir, "config", "user.name");
+            if (r1.ok()) currentName = r1.output().trim();
+            GitService.Result r2 = GitService.exec(dir, "config", "user.email");
+            if (r2.ok()) currentEmail = r2.output().trim();
+        } catch (Exception ignored) {}
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Set Author");
+        dialog.setHeaderText("Git Commit Author");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+
+        TextField nameField = new TextField(currentName);
+        nameField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4;");
+        TextField emailField = new TextField(currentEmail);
+        emailField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+        grid.addRow(0, new Label("Name:"), nameField);
+        grid.addRow(1, new Label("Email:"), emailField);
+        for (Node n : grid.getChildren()) {
+            if (n instanceof Label l) l.setStyle("-fx-text-fill: #DFE1E5;");
+        }
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            String newName = nameField.getText().trim();
+            String newEmail = emailField.getText().trim();
+            if (!newName.isBlank()) GitService.exec(dir, "config", "user.name", newName);
+            if (!newEmail.isBlank()) GitService.exec(dir, "config", "user.email", newEmail);
+        }
+    }
+
+    public void focusCommitMessage() {
+        Platform.runLater(message::requestFocus);
+    }
+
     // Accessors for testing
     public TreeView<Object> getTreeView() { return treeView; }
     public TextArea getMessage() { return message; }
@@ -1468,4 +1556,7 @@ public final class CommitPanel extends VBox {
     public ViewMode getActiveViewMode() { return activeViewMode; }
     public ListView<GitService.StashEntry> getStashListView() { return stashListView; }
     public TreeView<Object> getStashTreeView() { return stashTreeView; }
+    public Label getModifiedCountLabel() { return modifiedCountLabel; }
+    public Button getUserAvatarBtn() { return userAvatarBtn; }
+    public Label getToolWindowTitle() { return toolWindowTitle; }
 }
