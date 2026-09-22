@@ -374,8 +374,10 @@ public class SettingsDialog {
             buildVcsCommitPage();
         } else if ("Confirmation".equals(pageName)) {
             buildVcsConfirmationPage();
+        } else if ("Directory Mappings".equals(pageName)) {
+            buildVcsDirectoryMappingsPage();
         } else if ("File Status Colors".equals(pageName)) {
-            buildFileColorsPage();
+            buildVcsFileStatusColorsPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -466,6 +468,16 @@ public class SettingsDialog {
 
     private void buildVcsConfirmationPage() {
         SettingsVcsConfirmationPage page = new SettingsVcsConfirmationPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsDirectoryMappingsPage() {
+        SettingsVcsDirectoryMappingsPage page = new SettingsVcsDirectoryMappingsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsFileStatusColorsPage() {
+        SettingsVcsFileStatusColorsPage page = new SettingsVcsFileStatusColorsPage();
         wrapInScroll(page);
     }
 

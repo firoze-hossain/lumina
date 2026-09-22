@@ -2,6 +2,7 @@ package dev.lumina.git;
 
 /**
  * Git status representation and IntelliJ IDEA color mapping for files in project tree and editor tabs.
+ * Connects to VcsColorManager to support dynamic user customization in Settings > File Status Colors.
  */
 public enum GitFileStatus {
     NORMAL("#DFE1E5"),
@@ -11,14 +12,18 @@ public enum GitFileStatus {
     DELETED("#E06C75"),    // Red (Git deleted)
     IGNORED("#6F737A");    // Gray (Git ignored)
 
-    private final String colorHex;
+    private final String originalColorHex;
 
     GitFileStatus(String colorHex) {
-        this.colorHex = colorHex;
+        this.originalColorHex = colorHex;
+    }
+
+    public String getOriginalColorHex() {
+        return originalColorHex;
     }
 
     public String getColorHex() {
-        return colorHex;
+        return VcsColorManager.getInstance().getColorHex(this);
     }
 
     public boolean isModifiedOrNew() {

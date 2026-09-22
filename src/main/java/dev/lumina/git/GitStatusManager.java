@@ -20,6 +20,7 @@ public class GitStatusManager {
 
     private GitStatusManager() {
         GitConfirmationManager.getInstance().addListener(this::notifyListeners);
+        VcsColorManager.getInstance().addListener(this::notifyListeners);
     }
 
     public static GitStatusManager getInstance() {
