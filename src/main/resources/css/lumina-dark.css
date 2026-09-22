@@ -121,6 +121,23 @@
 .editor-tabs .tab:selected .tab-close-button { -fx-background-color: #C9CDDC; }
 .editor-tabs .tab-content-area { -fx-background-color: #1F2230; }
 
+/* Git status tab & tree cell colors (IntelliJ IDEA parity) */
+.editor-tabs .tab.git-added .tab-label,
+.editor-tabs .tab.git-added:hover .tab-label,
+.editor-tabs .tab.git-added:selected .tab-label { -fx-text-fill: #59A869 !important; }
+
+.editor-tabs .tab.git-untracked .tab-label,
+.editor-tabs .tab.git-untracked:hover .tab-label,
+.editor-tabs .tab.git-untracked:selected .tab-label { -fx-text-fill: #ED6C63 !important; }
+
+.editor-tabs .tab.git-modified .tab-label,
+.editor-tabs .tab.git-modified:hover .tab-label,
+.editor-tabs .tab.git-modified:selected .tab-label { -fx-text-fill: #56A8F5 !important; }
+
+.tree-cell.git-added { -fx-text-fill: #59A869 !important; }
+.tree-cell.git-untracked { -fx-text-fill: #ED6C63 !important; }
+.tree-cell.git-modified { -fx-text-fill: #56A8F5 !important; }
+
 /* ------------------------------------------------------------ code area */
 
 .code-area {

@@ -4661,10 +4661,57 @@ public class LuminaApp extends Application {
             }
             Files.createDirectories(file.getParent());
             Files.writeString(file, content);
+
+            // Handle Git confirmation policy if inside a git repository
+            handleGitFileCreation(file);
+
             fileExplorer.refresh(file);
             openFile(file);
+            if (commitPanel != null) {
+                commitPanel.refresh();
+            }
         } catch (IOException ex) {
             error("Could not create file", ex.getMessage());
+        }
+    }
+
+    private void handleGitFileCreation(Path file) {
+        Path repoRoot = dev.lumina.git.GitStatusManager.findRepositoryRoot(file);
+        if (repoRoot == null) return;
+
+        dev.lumina.git.GitConfirmationManager confirmMgr = dev.lumina.git.GitConfirmationManager.getInstance();
+        dev.lumina.git.GitConfirmationManager.FileCreationPolicy policy = confirmMgr.getFileCreationPolicy();
+
+        String relPath;
+        try {
+            relPath = repoRoot.relativize(file).toString().replace('\\', '/');
+        } catch (Exception e) {
+            relPath = file.getFileName().toString();
+        }
+
+        boolean shouldAdd = false;
+
+        if (policy == dev.lumina.git.GitConfirmationManager.FileCreationPolicy.ASK) {
+            AddFileToGitDialog dialog = new AddFileToGitDialog(stage, file, repoRoot);
+            AddFileToGitDialog.Decision decision = dialog.showAndGet();
+            shouldAdd = decision.add();
+
+            if (decision.doNotAskAgain()) {
+                confirmMgr.setFileCreationPolicy(shouldAdd
+                        ? dev.lumina.git.GitConfirmationManager.FileCreationPolicy.ADD_SILENTLY
+                        : dev.lumina.git.GitConfirmationManager.FileCreationPolicy.DO_NOT_ADD);
+            }
+        } else if (policy == dev.lumina.git.GitConfirmationManager.FileCreationPolicy.ADD_SILENTLY) {
+            shouldAdd = true;
+        } else {
+            shouldAdd = false;
+        }
+
+        if (shouldAdd) {
+            dev.lumina.git.GitService.add(repoRoot, List.of(relPath));
+            dev.lumina.git.GitStatusManager.getInstance().setStatus(file, dev.lumina.git.GitFileStatus.ADDED);
+        } else {
+            dev.lumina.git.GitStatusManager.getInstance().setStatus(file, dev.lumina.git.GitFileStatus.UNTRACKED);
         }
     }
 

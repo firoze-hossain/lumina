@@ -395,6 +395,7 @@ public class FileExplorer extends BorderPane {
         tree.getStyleClass().add("project-tree");
         tree.setShowRoot(true);
         tree.setCellFactory(tv -> new PathCell());
+        dev.lumina.git.GitStatusManager.getInstance().addListener(tree::refresh);
         tree.setOnMouseClicked(e -> {
             if (e.getTarget() instanceof javafx.scene.Node n) {
                 javafx.scene.control.TreeCell<?> cell = findParentTreeCell(n);
@@ -562,8 +563,10 @@ public class FileExplorer extends BorderPane {
         protected void updateItem(Path item, boolean empty) {
             super.updateItem(item, empty);
             setGraphic(null);
+            getStyleClass().removeAll("git-added", "git-untracked", "git-modified");
             if (empty || item == null) {
                 setText(null);
+                setStyle("");
                 return;
             }
             LazyPathItem node = (LazyPathItem) getTreeItem();
@@ -582,6 +585,23 @@ public class FileExplorer extends BorderPane {
                 pathLabel.getStyleClass().add("tree-root-path");
                 setGraphic(pathLabel);
                 setContentDisplay(ContentDisplay.RIGHT);
+                setStyle("");
+            } else if (!Files.isDirectory(item)) {
+                dev.lumina.git.GitFileStatus gitStatus = dev.lumina.git.GitStatusManager.getInstance().getStatus(item);
+                if (gitStatus != dev.lumina.git.GitFileStatus.NORMAL) {
+                    setStyle("-fx-text-fill: " + gitStatus.getColorHex() + ";");
+                    if (gitStatus == dev.lumina.git.GitFileStatus.ADDED) {
+                        getStyleClass().add("git-added");
+                    } else if (gitStatus == dev.lumina.git.GitFileStatus.UNTRACKED) {
+                        getStyleClass().add("git-untracked");
+                    } else if (gitStatus == dev.lumina.git.GitFileStatus.MODIFIED) {
+                        getStyleClass().add("git-modified");
+                    }
+                } else {
+                    setStyle("");
+                }
+            } else {
+                setStyle("");
             }
         }
 
