@@ -392,6 +392,18 @@ public class SettingsDialog {
             buildVcsGitLabPage();
         } else if ("Mercurial".equals(pageName)) {
             buildVcsMercurialPage();
+        } else if ("Perforce".equals(pageName)) {
+            buildVcsPerforcePage();
+        } else if ("Perforce MCP".equals(pageName)) {
+            buildVcsPerforceMcpPage();
+        } else if ("Subversion".equals(pageName)) {
+            buildVcsSubversionPage();
+        } else if ("Network".equals(pageName) && isUnderSubversion(selected)) {
+            buildVcsSubversionNetworkPage();
+        } else if ("Presentation".equals(pageName) && isUnderSubversion(selected)) {
+            buildVcsSubversionPresentationPage();
+        } else if ("SSH".equals(pageName) && isUnderSubversion(selected)) {
+            buildVcsSubversionSshPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -528,6 +540,45 @@ public class SettingsDialog {
     private void buildVcsMercurialPage() {
         SettingsVcsMercurialPage page = new SettingsVcsMercurialPage();
         wrapInScroll(page);
+    }
+
+    private void buildVcsPerforcePage() {
+        SettingsVcsPerforcePage page = new SettingsVcsPerforcePage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsPerforceMcpPage() {
+        SettingsVcsPerforceMcpPage page = new SettingsVcsPerforceMcpPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsSubversionPage() {
+        SettingsVcsSubversionPage page = new SettingsVcsSubversionPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsSubversionNetworkPage() {
+        SettingsVcsSubversionNetworkPage page = new SettingsVcsSubversionNetworkPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsSubversionPresentationPage() {
+        SettingsVcsSubversionPresentationPage page = new SettingsVcsSubversionPresentationPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsSubversionSshPage() {
+        SettingsVcsSubversionSshPage page = new SettingsVcsSubversionSshPage();
+        wrapInScroll(page);
+    }
+
+    private boolean isUnderSubversion(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Subversion".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
     }
 
     private void buildScopesPage() {
@@ -798,9 +849,13 @@ public class SettingsDialog {
         TreeItem<String> plugins = new TreeItem<>("Plugins");
         TreeItem<String> versionControl = new TreeItem<>("Version Control");
         TreeItem<String> perforce = new TreeItem<>("Perforce");
-        perforce.getChildren().add(new TreeItem<>("Jobs"));
+        perforce.getChildren().add(new TreeItem<>("Perforce MCP"));
         TreeItem<String> subversion = new TreeItem<>("Subversion");
-        subversion.getChildren().add(new TreeItem<>("General"));
+        subversion.getChildren().addAll(
+                new TreeItem<>("Network"),
+                new TreeItem<>("Presentation"),
+                new TreeItem<>("SSH")
+        );
 
         versionControl.getChildren().addAll(
                 new TreeItem<>("Changelists"),
@@ -898,7 +953,8 @@ public class SettingsDialog {
     private static final Set<String> PROJECT_SETTINGS = Set.of(
             "Version Control", "Changelists", "Commit", "Confirmation",
             "Directory Mappings", "Issue Navigation", "Log", "Shelf",
-            "Git", "GitHub", "GitLab", "Mercurial", "Perforce", "Subversion"
+            "Git", "GitHub", "GitLab", "Mercurial", "Perforce", "Subversion",
+            "Perforce MCP", "Network", "Presentation", "SSH"
     );
 
     private static boolean isProjectSetting(String name) {
