@@ -36,6 +36,7 @@ public class SettingsDialog {
     private final StackPane contentContainer = new StackPane();
     private SettingsIdeAppearancePage currentIdeAppearancePage;
     private SettingsMenusToolbarsPage currentMenusToolbarsPage;
+    private SettingsQuickListsPage currentQuickListsPage;
     private SettingsSystemPage currentSystemPage;
 
     public SettingsDialog(Stage owner) {
@@ -218,6 +219,21 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Quick Lists".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentQuickListsPage != null) {
+                            currentQuickListsPage.revert();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Required Plugins".equals(item.getValue())) {
+                    Label projectIcon = new Label("📦");
+                    projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
+                    breadcrumbBox.getChildren().add(projectIcon);
                 }
             }
         }
@@ -427,13 +443,15 @@ public class SettingsDialog {
     }
 
     private void buildQuickListsPage() {
-        SettingsQuickListsPage page = new SettingsQuickListsPage();
-        wrapInScroll(page);
+        currentQuickListsPage = new SettingsQuickListsPage();
+        VBox.setVgrow(currentQuickListsPage, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(currentQuickListsPage);
     }
 
     private void buildRequiredPluginsPage() {
         SettingsRequiredPluginsPage page = new SettingsRequiredPluginsPage();
-        wrapInScroll(page);
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(page);
     }
 
     private void buildTrustedLocationsPage() {
