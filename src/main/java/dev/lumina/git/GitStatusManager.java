@@ -142,21 +142,10 @@ public class GitStatusManager {
     }
 
     private void notifyListeners() {
-        Runnable task = () -> {
-            for (Runnable l : new ArrayList<>(listeners)) {
-                try {
-                    l.run();
-                } catch (Exception ignored) {}
-            }
-        };
-        try {
-            if (Platform.isFxApplicationThread()) {
-                task.run();
-            } else {
-                Platform.runLater(task);
-            }
-        } catch (Exception e) {
-            task.run();
+        for (Runnable l : new ArrayList<>(listeners)) {
+            try {
+                l.run();
+            } catch (Exception ignored) {}
         }
     }
 }

@@ -395,7 +395,7 @@ public class FileExplorer extends BorderPane {
         tree.getStyleClass().add("project-tree");
         tree.setShowRoot(true);
         tree.setCellFactory(tv -> new PathCell());
-        dev.lumina.git.GitStatusManager.getInstance().addListener(tree::refresh);
+        dev.lumina.git.GitStatusManager.getInstance().addListener(() -> javafx.application.Platform.runLater(tree::refresh));
         tree.setOnMouseClicked(e -> {
             if (e.getTarget() instanceof javafx.scene.Node n) {
                 javafx.scene.control.TreeCell<?> cell = findParentTreeCell(n);
