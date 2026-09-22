@@ -1,22 +1,31 @@
 package dev.lumina.ui;
 
 import dev.lumina.git.GitService;
+import dev.lumina.git.IssueNavigationManager;
+import dev.lumina.git.VcsLogSettingsManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
  * A flat {@code git log}, most-recent first, with the current branch shown
- * above it. IntelliJ's real Git tool window renders a full commit graph
- * with branch/merge lines; this is a simpler list view over the same data,
- * which is the practical two-thirds of what people actually use it for.
+ * above it. Incorporates dynamic issue navigation link resolution and VCS Log settings.
  */
 public final class GitLogPanel extends VBox {
 
@@ -31,6 +40,7 @@ public final class GitLogPanel extends VBox {
         setPadding(new Insets(8));
         branchLabel.getStyleClass().add("panel-header");
         VBox.setVgrow(log, Priority.ALWAYS);
+
         log.setCellFactory(v -> new ListCell<>() {
             @Override
             protected void updateItem(String[] c, boolean empty) {
@@ -40,16 +50,81 @@ public final class GitLogPanel extends VBox {
                     setGraphic(null);
                     return;
                 }
-                Label subject = new Label(c[3]);
-                subject.getStyleClass().add("git-log-subject");
-                Label meta = new Label(c[0] + "  \u00b7  " + c[1] + "  \u00b7  " + c[2]);
+
+                Node subjectNode = buildSubjectNode(c[3]);
+
+                VcsLogSettingsManager logSettings = VcsLogSettingsManager.getInstance();
+                List<String> metaParts = new ArrayList<>();
+                if (logSettings.isHashVisible()) {
+                    metaParts.add(c[0]);
+                }
+                if (logSettings.isAuthorVisible()) {
+                    metaParts.add(c[1]);
+                }
+                if (logSettings.isDateVisible()) {
+                    metaParts.add(c[2]);
+                }
+                if (metaParts.isEmpty()) {
+                    metaParts.add(c[1]);
+                    metaParts.add(c[2]);
+                }
+
+                Label meta = new Label(String.join("  \u00b7  ", metaParts));
                 meta.getStyleClass().add("side-subtle");
-                VBox box = new VBox(1, subject, meta);
+
+                VBox box = new VBox(2, subjectNode, meta);
                 setGraphic(box);
                 setText(null);
             }
         });
+
         getChildren().addAll(branchLabel, log);
+
+        // Listen for dynamic settings changes
+        IssueNavigationManager.getInstance().addListener(this::refresh);
+        VcsLogSettingsManager.getInstance().addListener(this::refresh);
+    }
+
+    private Node buildSubjectNode(String subjectText) {
+        if (subjectText == null) subjectText = "";
+        List<IssueNavigationManager.IssueMatch> matches = IssueNavigationManager.getInstance().findIssueMatches(subjectText);
+        if (matches.isEmpty()) {
+            Label subject = new Label(subjectText);
+            subject.getStyleClass().add("git-log-subject");
+            return subject;
+        }
+
+        TextFlow flow = new TextFlow();
+        int cursor = 0;
+        for (IssueNavigationManager.IssueMatch m : matches) {
+            if (m.start() > cursor) {
+                Text plain = new Text(subjectText.substring(cursor, m.start()));
+                plain.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 13px;");
+                flow.getChildren().add(plain);
+            }
+
+            Hyperlink link = new Hyperlink(m.issueKey());
+            link.setStyle("-fx-text-fill: #56A8F5; -fx-font-size: 13px; -fx-padding: 0; -fx-underline: false;");
+            link.setTooltip(new Tooltip(m.targetUrl()));
+            link.setOnAction(e -> {
+                try {
+                    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                        Desktop.getDesktop().browse(URI.create(m.targetUrl()));
+                    }
+                } catch (Exception ignored) {}
+            });
+            flow.getChildren().add(link);
+
+            cursor = Math.max(cursor, m.end());
+        }
+
+        if (cursor < subjectText.length()) {
+            Text tail = new Text(subjectText.substring(cursor));
+            tail.setStyle("-fx-fill: #DFE1E5; -fx-font-size: 13px;");
+            flow.getChildren().add(tail);
+        }
+
+        return flow;
     }
 
     public void refresh() {

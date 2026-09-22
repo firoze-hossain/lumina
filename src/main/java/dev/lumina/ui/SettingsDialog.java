@@ -378,6 +378,12 @@ public class SettingsDialog {
             buildVcsDirectoryMappingsPage();
         } else if ("File Status Colors".equals(pageName)) {
             buildVcsFileStatusColorsPage();
+        } else if ("Issue Navigation".equals(pageName)) {
+            buildVcsIssueNavigationPage();
+        } else if ("Log".equals(pageName)) {
+            buildVcsLogPage();
+        } else if ("Shelf".equals(pageName)) {
+            buildVcsShelfPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
         } else {
@@ -478,6 +484,21 @@ public class SettingsDialog {
 
     private void buildVcsFileStatusColorsPage() {
         SettingsVcsFileStatusColorsPage page = new SettingsVcsFileStatusColorsPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsIssueNavigationPage() {
+        SettingsVcsIssueNavigationPage page = new SettingsVcsIssueNavigationPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsLogPage() {
+        SettingsVcsLogPage page = new SettingsVcsLogPage();
+        wrapInScroll(page);
+    }
+
+    private void buildVcsShelfPage() {
+        SettingsVcsShelfPage page = new SettingsVcsShelfPage();
         wrapInScroll(page);
     }
 
