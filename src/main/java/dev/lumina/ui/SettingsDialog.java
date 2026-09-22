@@ -395,7 +395,13 @@ public class SettingsDialog {
     }
 
     private void buildFileColorsPage() {
-        SettingsFileColorsPage page = new SettingsFileColorsPage();
+        SettingsFileColorsPage page = new SettingsFileColorsPage(() -> {
+            TreeItem<String> scopesItem = findItem(tree.getRoot(), "Scopes");
+            if (scopesItem != null) {
+                expandAncestors(scopesItem);
+                tree.getSelectionModel().select(scopesItem);
+            }
+        });
         wrapInScroll(page);
     }
 
@@ -406,7 +412,8 @@ public class SettingsDialog {
 
     private void buildScopesPage() {
         SettingsScopesPage page = new SettingsScopesPage();
-        wrapInScroll(page);
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(page);
     }
 
     private void buildNotificationsPage() {
