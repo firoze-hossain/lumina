@@ -456,12 +456,14 @@ public class SettingsDialog {
 
     private void buildTrustedLocationsPage() {
         SettingsTrustedLocationsPage page = new SettingsTrustedLocationsPage();
-        wrapInScroll(page);
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(page);
     }
 
     private void buildPathVariablesPage() {
         SettingsPathVariablesPage page = new SettingsPathVariablesPage();
-        wrapInScroll(page);
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(page);
     }
 
     private void buildPresentationAssistantPage() {
