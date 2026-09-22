@@ -50,7 +50,7 @@ public class EditorTab extends Tab {
         return null;
     }
 
-    private final Runnable gitStatusListener = this::updateGitStatus;
+    private final Runnable gitStatusListener = () -> javafx.application.Platform.runLater(this::updateGitStatus);
 
     public EditorTab(String name, Path path) {
         this.baseName = name;
