@@ -203,6 +203,7 @@ public class LuminaApp extends Application {
         commitPanel.setOnOpenFile(this::openFile);
         commitPanel.setOnOpenDiff(this::openDiffViewer);
         commitPanel.setOnHide(() -> toggleLeftPanel(false));
+        commitPanel.setOnPush(this::showPushDialog);
         pullRequestsPanel = new PullRequestsPanel(() -> projectRoot,
                 () -> Settings.get(Settings.GITHUB_TOKEN),
                 () -> Settings.get(Settings.GITHUB_USER),
@@ -892,7 +893,7 @@ public class LuminaApp extends Application {
         Menu git = new Menu("Git");
         git.getItems().addAll(
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
-                item("Push…", "Shortcut+Shift+K", e -> gitRun("Push", "push")), placeholder("Update Project…", null),
+                item("Push\u2026", "Shortcut+Shift+K", e -> showPushDialog()), placeholder("Update Project…", null),
                 item("Pull…", null, e -> gitRun("Pull", "pull")),
                 item("Fetch", null, e -> gitRun("Fetch", "fetch")),
                 new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
@@ -1171,6 +1172,19 @@ public class LuminaApp extends Application {
             commitPanel.refresh();
             commitPanel.focusCommitMessage();
         }
+    }
+
+    private void showPushDialog() {
+        if (!requireProject()) return;
+        int problems = 0;
+        EditorTab et = currentEditor();
+        if (et != null && et.getDiagnostics() != null) {
+            problems = et.getDiagnostics().size();
+        }
+        PushCommitsDialog dialog = new PushCommitsDialog(stage, projectRoot, console::println, problems);
+        dialog.setOnReviewCodeAnalysis(() -> onBottomRailSelect(5));
+        dialog.setOnOpenDiff(this::openDiffViewer);
+        dialog.show();
     }
 
     private void gitRun(String label, String subcommand) {
@@ -1919,7 +1933,7 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Clean Project", this::cleanProject),
                 new SearchEverywhereDialog.Action("Terminal", this::showTerminal),
                 new SearchEverywhereDialog.Action("Git: Commit\u2026", this::gitCommit),
-                new SearchEverywhereDialog.Action("Git: Push", () -> gitRun("Push", "push")),
+                new SearchEverywhereDialog.Action("Git: Push\u2026", this::showPushDialog),
                 new SearchEverywhereDialog.Action("Git: Pull", () -> gitRun("Pull", "pull")),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),

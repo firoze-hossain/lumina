@@ -1,6 +1,9 @@
 package dev.lumina.ui;
 
 import dev.lumina.git.GitService;
+import dev.lumina.notification.Notification;
+import dev.lumina.notification.NotificationService;
+import dev.lumina.notification.NotificationType;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -169,6 +172,7 @@ public final class CommitPanel extends VBox {
     private final Label modifiedCountLabel = new Label();
     private final Button userAvatarBtn = createToolbarIconButton(createUserIcon(), "Amend Author\u2026");
     private Runnable onHide;
+    private Runnable onPush;
 
     // Containers
     private final VBox commitContainer = new VBox(6);
@@ -238,6 +242,10 @@ public final class CommitPanel extends VBox {
 
     public void setOnHide(Runnable onHide) {
         this.onHide = onHide;
+    }
+
+    public void setOnPush(Runnable onPush) {
+        this.onPush = onPush;
     }
 
     public void setOnOpenFile(Consumer<Path> onOpenFile) {
@@ -1196,18 +1204,26 @@ public final class CommitPanel extends VBox {
                 Platform.runLater(() -> status.setText("Commit failed: " + commit.output().trim()));
                 return;
             }
-            String pushMsg = "";
-            if (push) {
-                GitService.Result pushRes = GitService.push(dir);
-                pushMsg = pushRes.ok() ? " and pushed" : " (push failed: " + pushRes.output().trim() + ")";
-            }
-            String finalPushMsg = pushMsg;
+            int count = selectedPaths.size();
             Platform.runLater(() -> {
                 if (!isAmend) message.clear();
                 amendCheck.setSelected(false);
                 refresh();
-                status.setText((isAmend ? "Amend successful" : "Commit successful") + finalPushMsg);
-                if (log != null) log.accept("\u2713 " + (isAmend ? "Amended" : "Committed") + finalPushMsg + ": " + msg);
+                status.setText(isAmend ? "Amend successful" : "Commit successful");
+                if (log != null) log.accept("\u2713 " + (isAmend ? "Amended" : "Committed") + ": " + msg);
+
+                // Emits IntelliJ-style notification toast matching screenshots
+                Notification commitNotif = new Notification(
+                        "Git",
+                        count + " file" + (count == 1 ? "" : "s") + " committed",
+                        msg,
+                        NotificationType.INFORMATION
+                );
+                NotificationService.getInstance().notify(commitNotif);
+
+                if (push && onPush != null) {
+                    onPush.run();
+                }
             });
         }, "lumina-git-commit").start();
     }
