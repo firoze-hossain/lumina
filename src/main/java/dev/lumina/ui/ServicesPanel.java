@@ -13,18 +13,16 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /**
- * The Services tool window, laid out like IntelliJ's: a list of service
- * connections on the left (just "Docker", since that's the only kind
- * IntelliJ shows out of the box without other plugins) and a detail pane
- * on the right. There's no real Docker connection behind this \u2014 double-
- * clicking shows the same "connect" prompt IntelliJ itself shows before
- * you've actually configured anything, which happens to be an honest
- * description of this panel's actual state too.
+ * The Services tool window: provides a standard tool window header with options
+ * and hide controls, a list of service connections on the left, and a detail pane on the right.
  */
-public final class ServicesPanel extends HBox {
+public final class ServicesPanel extends VBox {
+
+    private final ToolWindowHeader header = new ToolWindowHeader("Services");
 
     public ServicesPanel() {
         getStyleClass().add("services-panel");
+        setStyle("-fx-background-color: #1E1F22;");
 
         Button add = toolbarButton("+", "Add Service");
         Button toggleView = toolbarButton("\u25CE", "Show Services Details");
@@ -57,14 +55,27 @@ public final class ServicesPanel extends HBox {
 
         list.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
-                // Real IntelliJ would connect here; there's no Docker
-                // integration behind this panel, so the same prompt just
-                // stays up \u2014 no fake "connected" state.
                 prompt.setText("Double-click on the server node to connect");
             }
         });
 
-        getChildren().addAll(left, detail);
+        HBox body = new HBox(left, detail);
+        body.setStyle("-fx-background-color: #1E1F22;");
+        VBox.setVgrow(body, Priority.ALWAYS);
+
+        getChildren().addAll(header, body);
+    }
+
+    public void setOnHideToolWindow(Runnable onHide) {
+        header.setOnHide(onHide);
+    }
+
+    public void setOnMaximizeToolWindow(Runnable onMaximize) {
+        header.setOnMaximize(onMaximize);
+    }
+
+    public ToolWindowHeader getHeader() {
+        return header;
     }
 
     private static Button toolbarButton(String glyph, String tip) {

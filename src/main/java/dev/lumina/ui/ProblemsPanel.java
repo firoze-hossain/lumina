@@ -13,24 +13,28 @@ import java.util.List;
 import java.util.function.IntConsumer;
 
 /**
- * M3 — the Problems tool window: live compiler diagnostics for the current
- * editor. Clicking a row jumps to its line.
+ * The Problems tool window: live compiler diagnostics for the current
+ * editor with standard tool window header, tabs, options, and hide controls.
  */
 public class ProblemsPanel extends BorderPane {
 
     private final ListView<JavaDiagnostics.Diag> list = new ListView<>();
     private final Label summary = new Label("No problems");
+    private final ToolWindowHeader header = new ToolWindowHeader("Problems");
     private IntConsumer onJump;
 
     public ProblemsPanel() {
         getStyleClass().add("problems-panel");
+        setStyle("-fx-background-color: #1E1F22;");
 
-        summary.getStyleClass().add("problems-summary");
-        HBox top = new HBox(summary);
-        top.setAlignment(Pos.CENTER_LEFT);
-        top.getStyleClass().add("problems-bar");
+        header.addTab("Current File", false, null, null);
+        header.addTab("Project Errors", false, null, null);
+
+        summary.setStyle("-fx-text-fill: #7CB87C; -fx-font-size: 11px; -fx-padding: 2 8;");
+        header.addRightActionButton(summary.getText(), null, null);
 
         list.getStyleClass().add("problems-list");
+        list.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22;");
         list.setPlaceholder(new Label("No problems in the current file"));
         list.setCellFactory(lv -> new DiagCell());
         list.setOnMouseClicked(e -> {
@@ -38,8 +42,20 @@ public class ProblemsPanel extends BorderPane {
             if (diag != null && onJump != null) onJump.accept(diag.line());
         });
 
-        setTop(top);
+        setTop(header);
         setCenter(list);
+    }
+
+    public void setOnHideToolWindow(Runnable onHide) {
+        header.setOnHide(onHide);
+    }
+
+    public void setOnMaximizeToolWindow(Runnable onMaximize) {
+        header.setOnMaximize(onMaximize);
+    }
+
+    public ToolWindowHeader getHeader() {
+        return header;
     }
 
     public void setOnJump(IntConsumer onJump) {
@@ -56,12 +72,12 @@ public class ProblemsPanel extends BorderPane {
             long warnings = list.getItems().size() - errors;
             if (list.getItems().isEmpty()) {
                 summary.setText("No problems");
-                summary.setStyle("-fx-text-fill: #7CB87C;");
+                summary.setStyle("-fx-text-fill: #7CB87C; -fx-font-size: 11px; -fx-padding: 2 8;");
             } else {
                 summary.setText(errors + (errors == 1 ? " error" : " errors")
                         + ", " + warnings + (warnings == 1 ? " warning" : " warnings"));
-                summary.setStyle(errors > 0 ? "-fx-text-fill: #E5534B;"
-                        : "-fx-text-fill: #D8A657;");
+                summary.setStyle((errors > 0 ? "-fx-text-fill: #E5534B;"
+                        : "-fx-text-fill: #D8A657;") + " -fx-font-size: 11px; -fx-padding: 2 8;");
             }
         };
         if (Platform.isFxApplicationThread()) apply.run();

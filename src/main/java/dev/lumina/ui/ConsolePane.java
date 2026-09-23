@@ -1,15 +1,9 @@
 package dev.lumina.ui;
 
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,18 +13,20 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Run output console. Executes single commands or sequences (e.g. compile
- * then run) on a background thread, streaming combined stdout/stderr.
+ * Output console for Run and Build tool windows. Executes single commands or sequences
+ * (e.g. compile then run) on a background thread, streaming combined stdout/stderr.
  */
 public class ConsolePane extends BorderPane {
 
     private final TextArea output = new TextArea();
-    private final Label title = new Label("RUN");
+    private final ToolWindowHeader toolWindowHeader;
+    private final Button outputTabButton;
+    private final String toolWindowTitle;
     private volatile Process process;
     private volatile boolean cancelled;
     private java.util.function.Consumer<Boolean> runningListener;
 
-    // last run, so the IDE can offer an IntelliJ-style Rerun button
+    // last run, so the IDE can offer a Rerun button
     private String lastHeader;
     private List<List<String>> lastCommands;
     private Path lastWorkDir;
@@ -58,34 +54,48 @@ public class ConsolePane extends BorderPane {
     }
 
     public ConsolePane() {
+        this("Run");
+    }
+
+    public ConsolePane(String windowTitle) {
+        this.toolWindowTitle = windowTitle != null ? windowTitle : "Run";
         getStyleClass().add("console-pane");
+        setStyle("-fx-background-color: #1E1F22;");
 
-        title.getStyleClass().add("panel-header");
+        toolWindowHeader = new ToolWindowHeader(this.toolWindowTitle);
+        String defaultTab = "Build".equalsIgnoreCase(this.toolWindowTitle) ? "Build Output" : "Output";
+        outputTabButton = toolWindowHeader.addTab(defaultTab, false, null, null);
 
-        Button stop = new Button("Stop");
-        stop.getStyleClass().add("console-button");
-        stop.setOnAction(e -> stopProcess());
-
-        Button clear = new Button("Clear");
-        clear.getStyleClass().add("console-button");
-        clear.setOnAction(e -> clear());
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        HBox header = new HBox(8, title, spacer, stop, clear);
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(6, 12, 6, 12));
-        header.getStyleClass().add("console-header");
+        if ("Run".equalsIgnoreCase(this.toolWindowTitle)) {
+            toolWindowHeader.addRightActionButton("Stop", "Stop Process", this::stopProcess);
+            toolWindowHeader.addRightActionButton("Clear", "Clear Console", this::clear);
+        } else {
+            toolWindowHeader.addRightActionButton("Clear", "Clear Output", this::clear);
+        }
 
         output.setEditable(false);
         output.setWrapText(true);
         output.getStyleClass().add("console-output");
-        output.setPromptText("Run a file or project to see output here  (\u2318R / Ctrl+R)");
+        output.setStyle("-fx-control-inner-background: #1E1F22; -fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-font-family: monospace;");
+        output.setPromptText("Build".equalsIgnoreCase(this.toolWindowTitle)
+                ? "Build a project to see compilation output here"
+                : "Run a file or project to see output here  (\u2318R / Ctrl+R)");
 
-        setTop(header);
+        setTop(toolWindowHeader);
         setCenter(output);
         setMinHeight(120);
+    }
+
+    public void setOnHideToolWindow(Runnable onHide) {
+        toolWindowHeader.setOnHide(onHide);
+    }
+
+    public void setOnMaximizeToolWindow(Runnable onMaximize) {
+        toolWindowHeader.setOnMaximize(onMaximize);
+    }
+
+    public ToolWindowHeader getToolWindowHeader() {
+        return toolWindowHeader;
     }
 
     /** Compile & run a single Java source file using the source launcher. */
@@ -201,7 +211,6 @@ public class ConsolePane extends BorderPane {
 
     private void setBusy(boolean busy) {
         Platform.runLater(() -> {
-            title.setText(busy ? "RUN \u2014 running" : "RUN");
             if (runningListener != null) runningListener.accept(busy);
         });
     }

@@ -60,6 +60,9 @@ public class LuminaApp extends Application {
     private ConsolePane buildConsole;
     private ServicesPanel servicesPanel;
     private McpLogPanel mcpLogPanel;
+    private Tab mcpBottomTab;
+    private Tab mcpRightTab;
+    private Tab mcpLeftTab;
     private TerminalToolWindow terminal;
     private TabPane bottomTabs;
     private TabPane rightTabs;
@@ -152,13 +155,29 @@ public class LuminaApp extends Application {
         editorArea = new StackPane(welcomeView, editorRoot);
 
         // bottom tool windows: Run + Terminal
-        console = new ConsolePane();
-        buildConsole = new ConsolePane();
+        console = new ConsolePane("Run");
+        buildConsole = new ConsolePane("Build");
         servicesPanel = new ServicesPanel();
         mcpLogPanel = new McpLogPanel(() -> showComingSoon("Edit Config"));
         terminal = new TerminalToolWindow(() -> projectRoot, this::openTerminalSettings,
                 this::hideTerminalPanel, this::hideTerminalPanel,
                 this::moveTerminalTabToEditor);
+        terminal.setOnMaximize(this::toggleMaximizeBottomPanel);
+
+        console.setOnHideToolWindow(() -> toggleBottomPanel(false));
+        console.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+
+        buildConsole.setOnHideToolWindow(() -> toggleBottomPanel(false));
+        buildConsole.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+
+        servicesPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
+        servicesPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+
+        mcpBottomTab = toolTab("GitHub Copilot MCP Log", mcpLogPanel);
+        mcpLogPanel.setOnHideToolWindow(this::hideMcpPanel);
+        mcpLogPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+        mcpLogPanel.setOnMoveToToolWindow(this::moveMcpPanel);
+
         testsPanel = new TestResultsPanel();
         testsPanel.setNavigator(this::openTestSource);
         testsPanel.setHandlers(
@@ -172,13 +191,19 @@ public class LuminaApp extends Application {
                 toolTab("Git", gitLogPanel = new GitLogPanel(() -> projectRoot)),
                 toolTab("Build", buildConsole),
                 toolTab("Services", servicesPanel),
-                toolTab("GitHub Copilot MCP Log", mcpLogPanel));
+                mcpBottomTab);
         gitLogPanel.setOnOpenFileDiff(this::openGitCommitFileDiff);
+        gitLogPanel.setOnOpenFileInEditor(this::openFile);
+        gitLogPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
+        gitLogPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+
+        problemsPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
+        problemsPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
         problemsPanel.setOnJump(line -> {
             EditorTab editor = currentEditor();
             if (editor != null) editor.goToLine(line);
         });
-        // IntelliJ-style button states: stop is red only while running, and
+        // Modern IDE button states: stop is red only while running, and
         // the Run button turns into Rerun in the exact same toolbar slot
         // while something from this session is already running.
         console.setOnRunningChanged(running -> {
@@ -279,21 +304,38 @@ public class LuminaApp extends Application {
         rightToolTitle = new Label();
         rightToolTitle.getStyleClass().add("right-tool-title");
 
-        Button rightToolOptions = new Button("…");
+        Button rightToolOptions = new Button("⋮");
         rightToolOptions.getStyleClass().add("right-tool-close");
         rightToolOptions.setTooltip(new Tooltip("Options"));
         rightToolOptions.setOnAction(e -> {
             ContextMenu optMenu = new ContextMenu();
-            MenuItem viewMode = new MenuItem("View Mode: Docked Pinned");
-            MenuItem floatMode = new MenuItem("Floating Mode");
-            MenuItem windowMode = new MenuItem("Windowed Mode");
-            optMenu.getItems().addAll(viewMode, floatMode, windowMode);
-            optMenu.show(rightToolOptions, javafx.geometry.Side.BOTTOM, 0, 0);
+            optMenu.getStyleClass().add("git-tool-options-menu");
+            optMenu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-padding: 4 0;");
+
+            Menu viewModeMenu = new Menu("View Mode");
+            for (String mode : new String[]{"Dock Pinned", "Dock Unpinned", "Undock", "Float", "Window"}) {
+                CheckMenuItem mi = new CheckMenuItem(mode);
+                mi.setSelected("Dock Pinned".equals(mode));
+                viewModeMenu.getItems().add(mi);
+            }
+
+            Menu moveToMenu = new Menu("Move to");
+            for (String pos : new String[]{"Right", "Left", "Bottom"}) {
+                CheckMenuItem mi = new CheckMenuItem(pos);
+                mi.setSelected("Right".equals(pos));
+                moveToMenu.getItems().add(mi);
+            }
+
+            MenuItem removeSidebar = new MenuItem("Remove from Sidebar");
+            removeSidebar.setOnAction(ev -> toggleRightPanel(false));
+
+            optMenu.getItems().addAll(viewModeMenu, moveToMenu, new SeparatorMenuItem(), removeSidebar);
+            optMenu.show(rightToolOptions, javafx.geometry.Side.BOTTOM, -100, 0);
         });
 
-        Button rightToolClose = new Button("−");
+        Button rightToolClose = new Button("—");
         rightToolClose.getStyleClass().add("right-tool-close");
-        rightToolClose.setTooltip(new Tooltip("Hide"));
+        rightToolClose.setTooltip(new Tooltip("Hide ⇧⎋"));
         rightToolClose.setOnAction(e -> toggleRightPanel(false));
         Region rightTitleSpacer = new Region();
         HBox.setHgrow(rightTitleSpacer, Priority.ALWAYS);
@@ -3572,6 +3614,13 @@ public class LuminaApp extends Application {
         }
     }
 
+    private void toggleMaximizeBottomPanel() {
+        if (verticalSplit != null && !verticalSplit.getDividers().isEmpty()) {
+            double current = verticalSplit.getDividerPositions()[0];
+            verticalSplit.setDividerPositions(current < 0.20 ? 0.70 : 0.05);
+        }
+    }
+
     /** Bottom rail: 0=Run, 1=Build, 2=GitHub Copilot MCP Log, 3=Services,
      *  4=Terminal, 5=Problems, 6=Git \u2014 mapped onto the bottom dock's
      *  actual tab indices. */
@@ -3579,12 +3628,35 @@ public class LuminaApp extends Application {
         int tabIndex = switch (railIndex) {
             case 0 -> 0;   // Run
             case 1 -> 5;   // Build
-            case 2 -> 7;   // GitHub Copilot MCP Log
+            case 2 -> mcpBottomTab != null ? bottomTabs.getTabs().indexOf(mcpBottomTab) : 7;   // GitHub Copilot MCP Log
             case 3 -> 6;   // Services
             case 4 -> 3;   // Terminal
             case 5 -> 2;   // Problems
             default -> 4;  // Git
         };
+        if (railIndex == 2 && tabIndex < 0) {
+            String pos = mcpLogPanel.getActiveMoveToPosition();
+            if ("Right".equalsIgnoreCase(pos)) {
+                boolean alreadyShowing = outerSplit.getItems().contains(rightDock)
+                        && rightTabs.getSelectionModel().getSelectedItem() == mcpRightTab;
+                if (alreadyShowing) {
+                    toggleRightPanel(false);
+                } else {
+                    toggleRightPanel(true);
+                    rightTabs.getSelectionModel().select(mcpRightTab);
+                }
+            } else if ("Left".equalsIgnoreCase(pos)) {
+                boolean alreadyShowing = horizontalSplit.getItems().contains(leftDock)
+                        && leftTabs.getSelectionModel().getSelectedItem() == mcpLeftTab;
+                if (alreadyShowing) {
+                    toggleLeftPanel(false);
+                } else {
+                    toggleLeftPanel(true);
+                    leftTabs.getSelectionModel().select(mcpLeftTab);
+                }
+            }
+            return;
+        }
         boolean alreadyShowingThis = verticalSplit.getItems().contains(bottomTabs)
                 && bottomTabs.getSelectionModel().getSelectedIndex() == tabIndex;
         if (alreadyShowingThis) {
@@ -3599,6 +3671,64 @@ public class LuminaApp extends Application {
             terminal.focusInput();
         }
         if (railIndex == 6) gitLogPanel.refresh();
+    }
+
+    private void hideMcpPanel() {
+        String pos = mcpLogPanel.getActiveMoveToPosition();
+        if ("Right".equalsIgnoreCase(pos)) {
+            toggleRightPanel(false);
+        } else if ("Left".equalsIgnoreCase(pos)) {
+            toggleLeftPanel(false);
+        } else {
+            toggleBottomPanel(false);
+        }
+    }
+
+    private void moveMcpPanel(String position) {
+        if ("Right".equalsIgnoreCase(position)) {
+            bottomTabs.getTabs().remove(mcpBottomTab);
+            if (mcpLeftTab != null) leftTabs.getTabs().remove(mcpLeftTab);
+
+            if (mcpRightTab == null) {
+                mcpRightTab = toolTab("GitHub Copilot MCP Log", mcpLogPanel);
+            }
+            if (!rightTabs.getTabs().contains(mcpRightTab)) {
+                rightTabs.getTabs().add(mcpRightTab);
+            }
+            mcpLogPanel.setActiveMoveToPosition("Right");
+            toggleRightPanel(true);
+            rightTabs.getSelectionModel().select(mcpRightTab);
+            if (bottomTabs.getTabs().isEmpty() || bottomTabs.getSelectionModel().getSelectedItem() == mcpBottomTab) {
+                toggleBottomPanel(false);
+            }
+        } else if ("Left".equalsIgnoreCase(position)) {
+            bottomTabs.getTabs().remove(mcpBottomTab);
+            if (mcpRightTab != null) rightTabs.getTabs().remove(mcpRightTab);
+
+            if (mcpLeftTab == null) {
+                mcpLeftTab = toolTab("GitHub Copilot MCP Log", mcpLogPanel);
+            }
+            if (!leftTabs.getTabs().contains(mcpLeftTab)) {
+                leftTabs.getTabs().add(mcpLeftTab);
+            }
+            mcpLogPanel.setActiveMoveToPosition("Left");
+            toggleLeftPanel(true);
+            leftTabs.getSelectionModel().select(mcpLeftTab);
+            if (bottomTabs.getTabs().isEmpty() || bottomTabs.getSelectionModel().getSelectedItem() == mcpBottomTab) {
+                toggleBottomPanel(false);
+            }
+        } else { // "Bottom"
+            if (mcpRightTab != null) rightTabs.getTabs().remove(mcpRightTab);
+            if (mcpLeftTab != null) leftTabs.getTabs().remove(mcpLeftTab);
+
+            if (!bottomTabs.getTabs().contains(mcpBottomTab)) {
+                bottomTabs.getTabs().add(mcpBottomTab);
+            }
+            mcpLogPanel.setActiveMoveToPosition("Bottom");
+            toggleBottomPanel(true);
+            bottomTabs.getSelectionModel().select(mcpBottomTab);
+            iconRail.selectBottom(2);
+        }
     }
 
     /** Reopening the Terminal tool window after every session tab was

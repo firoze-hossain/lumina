@@ -80,6 +80,68 @@ class GitLogPanelTest {
     }
 
     @Test
+    void testToolWindowHeaderButtonsAndOptions() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                GitLogPanel panel = new GitLogPanel(() -> Path.of("."));
+
+                // Header buttons
+                assertNotNull(panel.getOptionsButton(), "Options button should not be null");
+                assertEquals("⋮", panel.getOptionsButton().getText());
+                assertEquals("Options", panel.getOptionsButton().getTooltip().getText());
+
+                assertNotNull(panel.getHideButton(), "Hide button should not be null");
+                assertEquals("—", panel.getHideButton().getText());
+                assertTrue(panel.getHideButton().getTooltip().getText().contains("Hide"));
+
+                // Hide callback
+                boolean[] hideCalled = {false};
+                panel.setOnHideToolWindow(() -> hideCalled[0] = true);
+                panel.getHideButton().fire();
+                assertTrue(hideCalled[0], "Firing hide button should invoke onHideToolWindow");
+
+                // Dynamic toolbar toggle
+                assertTrue(panel.isShowCenterToolbar(), "Center toolbar should initially be shown");
+                panel.setShowCenterToolbar(false);
+                assertFalse(panel.isShowCenterToolbar());
+                assertFalse(panel.getCenterToolbar().isVisible());
+                assertFalse(panel.getCenterToolbar().isManaged());
+
+                panel.setShowCenterToolbar(true);
+                assertTrue(panel.isShowCenterToolbar());
+                assertTrue(panel.getCenterToolbar().isVisible());
+                assertTrue(panel.getCenterToolbar().isManaged());
+
+                // Double-click mode toggle
+                assertTrue(panel.isOpenDiffOnDoubleClick(), "Default double click should be diff");
+                panel.setOpenDiffOnDoubleClick(false);
+                assertFalse(panel.isOpenDiffOnDoubleClick());
+                panel.setOpenDiffOnDoubleClick(true);
+                assertTrue(panel.isOpenDiffOnDoubleClick());
+
+                // Speed search unhides toolbar if hidden
+                panel.setShowCenterToolbar(false);
+                panel.focusSpeedSearch();
+                assertTrue(panel.isShowCenterToolbar(), "Speed search should unhide toolbar");
+
+                // Tab close
+                panel.selectConsoleTab();
+                panel.closeConsoleTab();
+                panel.closeAllTabs();
+
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Path gitLogPanelPath = Path.of("src/main/java/dev/lumina/ui/GitLogPanel.java");
         Path gitLogCommitPath = Path.of("src/main/java/dev/lumina/git/GitLogCommit.java");
