@@ -230,4 +230,65 @@ public final class GitIcons {
     public static Node searchIcon() {
         return searchIcon(14, "#8C919D");
     }
+
+    /** Commit node icon for VCS popup and tool windows. */
+    public static Node commitIcon(double size, String colorHex) {
+        Circle c = new Circle(size * 0.22);
+        c.setFill(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        Line l1 = new Line(-size * 0.45, 0, -size * 0.22, 0);
+        l1.setStroke(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        l1.setStrokeWidth(1.4);
+        Line l2 = new Line(size * 0.22, 0, size * 0.45, 0);
+        l2.setStroke(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        l2.setStrokeWidth(1.4);
+        StackPane sp = new StackPane(l1, c, l2);
+        sp.setAlignment(Pos.CENTER);
+        return box((int) size, sp);
+    }
+
+    public static Node commitIcon() {
+        return commitIcon(14, "#DFE1E5");
+    }
+
+    /** Rollback curved arrow icon. */
+    public static Node rollbackIcon(double size, String colorHex) {
+        SVGPath p = new SVGPath();
+        p.setContent("M 12 5 L 8 1 L 8 4 C 4 4 1 7 1 11 C 1 12.5 1.5 13.8 2.3 15 L 3.8 13.5 C 3.3 12.8 3 11.9 3 11 C 3 8.2 5.2 6 8 6 L 8 9 Z");
+        p.setFill(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        p.setScaleX(size / 16.0);
+        p.setScaleY(size / 16.0);
+        return box((int) size, p);
+    }
+
+    public static Node rollbackIcon() {
+        return rollbackIcon(14, "#DFE1E5");
+    }
+
+    /** Push diagonal arrow up-right icon. */
+    public static Node pushIcon(double size, String colorHex) {
+        SVGPath p = new SVGPath();
+        p.setContent("M 4 12 L 10.5 5.5 L 7 5.5 L 7 4 L 13 4 L 13 10 L 11.5 10 L 11.5 6.5 L 5 13 Z");
+        p.setFill(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        p.setScaleX(size / 16.0);
+        p.setScaleY(size / 16.0);
+        return box((int) size, p);
+    }
+
+    public static Node pushIcon() {
+        return pushIcon(14, "#DFE1E5");
+    }
+
+    /** Copy document icon for Copy Branch Name. */
+    public static Node copyIcon(double size, String colorHex) {
+        SVGPath p = new SVGPath();
+        p.setContent("M 2 2 C 1.4 2 1 2.4 1 3 L 1 10 L 2.2 10 L 2.2 3.2 L 9 3.2 L 9 2 Z M 3.5 4 C 2.9 4 2.5 4.4 2.5 5 L 2.5 13 C 2.5 13.6 2.9 14 3.5 14 L 11.5 14 C 12.1 14 12.5 13.6 12.5 13 L 12.5 5 C 12.5 4.4 12.1 4 11.5 4 Z M 3.8 5.3 L 11.2 5.3 L 11.2 12.7 L 3.8 12.7 Z");
+        p.setFill(Color.web(colorHex != null ? colorHex : "#DFE1E5"));
+        p.setScaleX(size / 14.0);
+        p.setScaleY(size / 14.0);
+        return box((int) size, p);
+    }
+
+    public static Node copyIcon() {
+        return copyIcon(14, "#DFE1E5");
+    }
 }

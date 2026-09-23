@@ -31,6 +31,17 @@ public class CustomActionsSchema {
         return rootGroups;
     }
 
+    public synchronized CustomActionItem getGroup(String id) {
+        if (id == null) return null;
+        for (CustomActionItem item : rootGroups) {
+            if (id.equals(item.getId())) return item;
+        }
+        for (CustomActionItem item : defaultRootGroups) {
+            if (id.equals(item.getId())) return item;
+        }
+        return null;
+    }
+
     public synchronized boolean isModified() {
         return modified;
     }
@@ -215,13 +226,33 @@ public class CustomActionsSchema {
         defaultRootGroups.add(CustomActionItem.group("VcsLogToolbar", "VCS Log Toolbar"));
 
         // 27. VCS Operations Popup
-        defaultRootGroups.add(CustomActionItem.group("VcsOperationsPopup", "VCS Operations Popup"));
+        defaultRootGroups.add(buildVcsOperationsPopupGroup());
 
         // Populate active rootGroups from default
         rootGroups.clear();
         for (CustomActionItem item : defaultRootGroups) {
             rootGroups.add(item.deepCopy());
         }
+    }
+
+    private CustomActionItem buildVcsOperationsPopupGroup() {
+        CustomActionItem group = CustomActionItem.group("VcsOperationsPopup", "VCS Operations Popup");
+        group.addChild(CustomActionItem.action("CheckinProject", "Commit...", "commit"));
+        group.addChild(CustomActionItem.action("CheckinFiles", "Commit...", "commit"));
+        group.addChild(CustomActionItem.action("ChangesView.Revert", "Rollback...", "rollback"));
+        group.addChild(CustomActionItem.separator());
+        group.addChild(CustomActionItem.action("Vcs.ShowTabbedFileHistory", "Show History", "clock"));
+        group.addChild(CustomActionItem.action("Annotate", "Annotate", ""));
+        group.addChild(CustomActionItem.action("Diff.ShowDiff", "Show Diff", "diff"));
+        group.addChild(CustomActionItem.separator());
+        group.addChild(CustomActionItem.action("Git.Branches", "Branches...", "branch"));
+        group.addChild(CustomActionItem.action("Vcs.Push", "Push...", "push"));
+        group.addChild(CustomActionItem.action("Git.Stash", "Stash Changes...", ""));
+        group.addChild(CustomActionItem.action("Git.Unstash", "Unstash Changes...", ""));
+        group.addChild(CustomActionItem.action("Git.CopyBranchName", "Copy Branch Name", "copy"));
+        group.addChild(CustomActionItem.separator());
+        group.addChild(CustomActionItem.action("LocalHistory.ShowHistory", "Show Local History...", ""));
+        return group;
     }
 
     private CustomActionItem buildFileMenu() {
