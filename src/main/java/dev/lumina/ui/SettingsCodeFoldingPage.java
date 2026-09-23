@@ -17,12 +17,15 @@ public class SettingsCodeFoldingPage extends VBox {
         setPadding(new Insets(8, 0, 8, 0));
         setSpacing(14);
 
+        dev.lumina.folding.CodeFoldingSettings foldingSettings = dev.lumina.folding.CodeFoldingSettings.getInstance();
+
         // ============================================================
         // Show code folding arrows
         // ============================================================
         CheckBox showFoldingArrows = new CheckBox("Show code folding arrows");
-        showFoldingArrows.setSelected(true);
+        showFoldingArrows.setSelected(foldingSettings.isShowFoldingArrows());
         showFoldingArrows.getStyleClass().add("settings-check");
+        showFoldingArrows.selectedProperty().addListener((obs, old, val) -> foldingSettings.setShowFoldingArrows(val));
 
         HBox hoverRow = new HBox(8);
         hoverRow.setPadding(new Insets(4, 0, 8, 20));
@@ -32,8 +35,9 @@ public class SettingsCodeFoldingPage extends VBox {
         hoverRow.getChildren().add(hoverLabel);
 
         CheckBox showBottomArrows = new CheckBox("Show bottom arrows");
-        showBottomArrows.setSelected(true);
+        showBottomArrows.setSelected(foldingSettings.isShowBottomArrows());
         showBottomArrows.getStyleClass().add("settings-check");
+        showBottomArrows.selectedProperty().addListener((obs, old, val) -> foldingSettings.setShowBottomArrows(val));
 
         VBox arrowsBox = new VBox(4);
         arrowsBox.setPadding(new Insets(4, 0, 8, 20));
@@ -53,19 +57,24 @@ public class SettingsCodeFoldingPage extends VBox {
         fileHeader.getStyleClass().add("settings-check");
 
         CheckBox imports = new CheckBox("Imports");
-        imports.setSelected(true);
+        imports.setSelected(foldingSettings.isFoldImportsByDefault());
         imports.getStyleClass().add("settings-check");
+        imports.selectedProperty().addListener((obs, old, val) -> foldingSettings.setFoldImportsByDefault(val));
 
         CheckBox docComments = new CheckBox("Documentation comments");
-        docComments.setSelected(true);
+        docComments.setSelected(foldingSettings.isFoldDocCommentsByDefault());
         docComments.getStyleClass().add("settings-check");
+        docComments.selectedProperty().addListener((obs, old, val) -> foldingSettings.setFoldDocCommentsByDefault(val));
 
         CheckBox methodBodies = new CheckBox("Method bodies");
+        methodBodies.setSelected(foldingSettings.isFoldMethodBodiesByDefault());
         methodBodies.getStyleClass().add("settings-check");
+        methodBodies.selectedProperty().addListener((obs, old, val) -> foldingSettings.setFoldMethodBodiesByDefault(val));
 
         CheckBox customFolding = new CheckBox("Custom folding regions");
-        customFolding.setSelected(true);
+        customFolding.setSelected(foldingSettings.isFoldCustomRegionsByDefault());
         customFolding.getStyleClass().add("settings-check");
+        customFolding.selectedProperty().addListener((obs, old, val) -> foldingSettings.setFoldCustomRegionsByDefault(val));
 
         foldDefaultBox.getChildren().addAll(
             fileHeader, imports, docComments, methodBodies, customFolding
@@ -133,7 +142,12 @@ public class SettingsCodeFoldingPage extends VBox {
 
         for (String item : javaItems) {
             CheckBox cb = new CheckBox(item);
-            cb.setSelected(true);
+            if ("Annotations".equals(item)) {
+                cb.setSelected(foldingSettings.isFoldAnnotationsByDefault());
+                cb.selectedProperty().addListener((obs, old, val) -> foldingSettings.setFoldAnnotationsByDefault(val));
+            } else {
+                cb.setSelected(true);
+            }
             cb.getStyleClass().add("settings-check");
             javaBox.getChildren().add(cb);
         }
