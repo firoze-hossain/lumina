@@ -130,7 +130,116 @@ public final class GitService {
     }
 
     public static Result push(Path dir) {
-        return exec(dir, "push");
+        return push(dir, false, false, "All");
+    }
+
+    public static Result push(Path dir, boolean forceWithLease, boolean pushTags, String tagMode) {
+        List<String> args = new ArrayList<>();
+        args.add("push");
+        if (forceWithLease) {
+            args.add("--force-with-lease");
+        }
+        if (pushTags) {
+            if ("All".equalsIgnoreCase(tagMode)) {
+                args.add("--tags");
+            } else {
+                args.add("--follow-tags");
+            }
+        }
+        String upstream = getUpstreamBranch(dir);
+        if (upstream == null) {
+            String branch = currentBranch(dir);
+            if (branch != null && !branch.isBlank()) {
+                args.add("-u");
+                args.add("origin");
+                args.add(branch);
+            }
+        }
+        return exec(dir, args.toArray(new String[0]));
+    }
+
+    public static String getUpstreamBranch(Path dir) {
+        if (!isRepository(dir)) return null;
+        Result r = exec(dir, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}");
+        if (r.ok() && !r.output().isBlank()) {
+            return r.output().trim();
+        }
+        return null;
+    }
+
+    public record CommitFile(String relativePath, String fileName, String dirPath, String statusPrefix) {
+        public static CommitFile fromLine(String line) {
+            if (line == null || line.isBlank()) return null;
+            String status = "M";
+            String path = line.trim();
+            if (line.contains("\t")) {
+                int tabIdx = line.indexOf('\t');
+                status = line.substring(0, tabIdx).trim();
+                path = line.substring(tabIdx + 1).trim();
+            } else if (line.length() >= 2 && Character.isLetter(line.charAt(0)) && Character.isWhitespace(line.charAt(1))) {
+                status = line.substring(0, 1);
+                path = line.substring(1).trim();
+            }
+            if (path.startsWith("\"") && path.endsWith("\"") && path.length() >= 2) {
+                path = path.substring(1, path.length() - 1);
+            }
+            if (path.contains(" -> ")) {
+                path = path.substring(path.indexOf(" -> ") + 4).trim();
+            }
+            int slash = path.lastIndexOf('/');
+            String fName = slash >= 0 ? path.substring(slash + 1) : path;
+            String dPath = slash >= 0 ? path.substring(0, slash) : "";
+            return new CommitFile(path, fName, dPath, status);
+        }
+    }
+
+    public record OutgoingCommit(String hash, String shortHash, String subject, String author, String date, List<CommitFile> files) {}
+
+    public static List<OutgoingCommit> outgoingCommits(Path dir) {
+        List<OutgoingCommit> commits = new ArrayList<>();
+        if (!isRepository(dir)) return commits;
+
+        String currentBranch = currentBranch(dir);
+        if (currentBranch == null) return commits;
+
+        String upstream = getUpstreamBranch(dir);
+        Result logResult;
+        if (upstream != null) {
+            logResult = exec(dir, "log", upstream + "..HEAD", "--pretty=format:%H%x00%h%x00%s%x00%an%x00%cr");
+        } else {
+            Result check = exec(dir, "rev-parse", "--verify", "origin/" + currentBranch);
+            if (check.ok()) {
+                logResult = exec(dir, "log", "origin/" + currentBranch + "..HEAD", "--pretty=format:%H%x00%h%x00%s%x00%an%x00%cr");
+            } else {
+                logResult = exec(dir, "log", "-10", "--pretty=format:%H%x00%h%x00%s%x00%an%x00%cr");
+            }
+        }
+
+        if (logResult.ok() && !logResult.output().isBlank()) {
+            for (String line : logResult.output().split("\\R")) {
+                if (line.isBlank()) continue;
+                String[] parts = line.split("\0");
+                if (parts.length >= 3) {
+                    String hash = parts[0].trim();
+                    String shortHash = parts[1].trim();
+                    String subject = parts[2].trim();
+                    String author = parts.length > 3 ? parts[3].trim() : "";
+                    String date = parts.length > 4 ? parts[4].trim() : "";
+
+                    List<CommitFile> files = new ArrayList<>();
+                    Result diffTree = exec(dir, "diff-tree", "--no-commit-id", "--name-status", "-r", hash);
+                    if (diffTree.ok() && !diffTree.output().isBlank()) {
+                        for (String fLine : diffTree.output().split("\\R")) {
+                            CommitFile cf = CommitFile.fromLine(fLine);
+                            if (cf != null) files.add(cf);
+                        }
+                    }
+                    commits.add(new OutgoingCommit(hash, shortHash, subject, author, date, files));
+                }
+            }
+        }
+
+        return commits;
     }
 
     public record StashEntry(int index, String ref, String branch, String message, String date) {}
