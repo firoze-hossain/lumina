@@ -6,7 +6,9 @@ import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
 import dev.lumina.project.RecentProjectsManager;
 import dev.lumina.run.RunConfiguration;
+import dev.lumina.notification.Notification;
 import dev.lumina.notification.NotificationService;
+import dev.lumina.notification.NotificationType;
 import dev.lumina.semantics.Docs;
 import dev.lumina.settings.SystemSettings;
 import dev.lumina.ui.*;
@@ -75,7 +77,8 @@ public class LuminaApp extends Application {
     private SplitPane horizontalSplit;
     private IconRail iconRail;
     private Label projectChip;
-    private MenuButton branchButton;
+    private Button branchButton;
+    private GitBranchesPopup gitBranchesPopup;
     private Button githubButton;
     private ComboBox<RunConfiguration> runConfigBox;
     private Button runButton;
@@ -893,7 +896,8 @@ public class LuminaApp extends Application {
         Menu git = new Menu("Git");
         git.getItems().addAll(
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
-                item("Push\u2026", "Shortcut+Shift+K", e -> showPushDialog()), placeholder("Update Project…", null),
+                item("Push\u2026", "Shortcut+Shift+K", e -> showPushDialog()),
+                item("Update Project\u2026", "Shortcut+T", e -> showUpdateProjectDialog()),
                 item("Pull…", null, e -> gitRun("Pull", "pull")),
                 item("Fetch", null, e -> gitRun("Fetch", "fetch")),
                 new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
@@ -904,7 +908,7 @@ public class LuminaApp extends Application {
 
         // ---- Tools
         Menu tasks = new Menu("Tasks & Contexts"); tasks.getItems().add(placeholder("Open Task…", null));
-        Menu services = new Menu("Services"); services.getItems().add(item("Terminal", "Shortcut+T", e -> showTerminal()));
+        Menu services = new Menu("Services"); services.getItems().add(item("Terminal", "Alt+F12", e -> showTerminal()));
         Menu xml = new Menu("XML Actions"); xml.getItems().add(placeholder("Validate XML", null));
         Menu markdown = new Menu("Markdown"); markdown.getItems().add(placeholder("Preview", null));
         Menu security = new Menu("Security Analysis"); security.getItems().add(placeholder("Inspect", null));
@@ -1011,9 +1015,21 @@ public class LuminaApp extends Application {
         projectChip = new Label("No project");
         projectChip.getStyleClass().add("project-chip");
 
-        branchButton = new MenuButton("\u2387 no vcs");
+        branchButton = new Button("no vcs \u25BE");
         branchButton.getStyleClass().add("branch-chip");
-        branchButton.setOnShowing(e -> populateBranchMenu());
+        branchButton.setOnAction(e -> {
+            if (gitBranchesPopup == null) {
+                gitBranchesPopup = new GitBranchesPopup(() -> projectRoot, console::println, new GitBranchesPopup.BranchCallbacks() {
+                    @Override public void onUpdateProject() { showUpdateProjectDialog(); }
+                    @Override public void onCommit() { gitCommit(); }
+                    @Override public void onPush() { showPushDialog(); }
+                    @Override public void onNewBranch() { gitNewBranch(); }
+                    @Override public void onCheckoutTag() { showComingSoon("Checkout Tag or Revision"); }
+                    @Override public void onBranchChanged() { refreshGitInfo(); fileExplorer.refresh(); }
+                });
+            }
+            gitBranchesPopup.toggleBelow(branchButton);
+        });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1109,26 +1125,57 @@ public class LuminaApp extends Application {
 
     private void refreshGitInfo() {
         String branch = projectRoot != null ? GitService.currentBranch(projectRoot) : null;
-        branchButton.setText(branch != null ? "\u2387 " + branch : "\u2387 no vcs");
+        if (branch != null) {
+            int outgoing = GitService.unpushedCommitsCount(projectRoot, branch);
+            String outgoingText = outgoing > 0 ? " \u2197" + outgoing : "";
+            branchButton.setText(branch + outgoingText + " \u25BE");
+            branchButton.setTooltip(new Tooltip("Git Branch: " + branch + (outgoing > 0 ? "\n" + outgoing + " outgoing commit" + (outgoing == 1 ? "" : "s") : "")));
+        } else {
+            branchButton.setText("no vcs \u25BE");
+            branchButton.setTooltip(new Tooltip("No Git repository"));
+        }
     }
 
-    private void populateBranchMenu() {
-        branchButton.getItems().clear();
-        if (projectRoot == null || !GitService.isRepository(projectRoot)) {
-            MenuItem none = new MenuItem(projectRoot == null
-                    ? "Open a project first" : "Not a git repository \u2014 Git \u2192 Init");
-            none.setDisable(true);
-            branchButton.getItems().add(none);
+    private void showUpdateProjectDialog() {
+        if (!requireProject()) return;
+        boolean dontShow = "true".equalsIgnoreCase(Settings.get(UpdateProjectDialog.PREF_DONT_SHOW));
+        if (dontShow) {
+            boolean isRebase = "rebase".equalsIgnoreCase(Settings.get(UpdateProjectDialog.PREF_STRATEGY));
+            new Thread(() -> {
+                GitService.Result r = GitService.updateProject(projectRoot, isRebase);
+                Platform.runLater(() -> {
+                    String branch = GitService.currentBranch(projectRoot);
+                    if (branch == null) branch = "master";
+                    if (r.ok()) {
+                        console.println("\u2713 Updated project on branch " + branch + (isRebase ? " (rebase)" : ""));
+                        Notification notif = new Notification(
+                                "Git",
+                                "Updated project",
+                                r.output().isBlank() ? "Already up to date on " + branch : r.output().trim(),
+                                NotificationType.INFORMATION
+                        );
+                        NotificationService.getInstance().notify(notif);
+                        refreshGitInfo();
+                        fileExplorer.refresh();
+                    } else {
+                        console.println("Update project failed: " + r.output().trim());
+                        Alert err = new Alert(Alert.AlertType.ERROR);
+                        err.setTitle("Update Failed");
+                        err.setHeaderText("Git Update Project Failed");
+                        err.setContentText(r.output().trim());
+                        err.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+                        err.showAndWait();
+                    }
+                });
+            }, "lumina-git-update-project").start();
             return;
         }
-        String current = GitService.currentBranch(projectRoot);
-        for (String b : GitService.localBranches(projectRoot)) {
-            MenuItem mi = new MenuItem((b.equals(current) ? "\u2713 " : "    ") + b);
-            mi.setOnAction(e -> checkout(b));
-            branchButton.getItems().add(mi);
-        }
-        branchButton.getItems().addAll(new SeparatorMenuItem(),
-                item("New Branch\u2026", null, e -> gitNewBranch()));
+
+        UpdateProjectDialog dialog = new UpdateProjectDialog(stage, projectRoot, console::println, () -> {
+            refreshGitInfo();
+            fileExplorer.refresh();
+        });
+        dialog.show();
     }
 
     private void checkout(String branch) {
@@ -1934,6 +1981,7 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Terminal", this::showTerminal),
                 new SearchEverywhereDialog.Action("Git: Commit\u2026", this::gitCommit),
                 new SearchEverywhereDialog.Action("Git: Push\u2026", this::showPushDialog),
+                new SearchEverywhereDialog.Action("Git: Update Project\u2026", this::showUpdateProjectDialog),
                 new SearchEverywhereDialog.Action("Git: Pull", () -> gitRun("Pull", "pull")),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
