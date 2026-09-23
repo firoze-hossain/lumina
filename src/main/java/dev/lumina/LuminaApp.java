@@ -202,6 +202,8 @@ public class LuminaApp extends Application {
         gitLogPanel.setOnOpenFileInEditor(this::openFile);
         gitLogPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
         gitLogPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
+        gitLogPanel.setOnMergeBranch(this::showMergeDialog);
+        gitLogPanel.setOnRebaseBranch(this::showRebaseDialog);
 
         problemsPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
         problemsPanel.setOnMaximizeToolWindow(this::toggleMaximizeBottomPanel);
@@ -949,7 +951,7 @@ public class LuminaApp extends Application {
                 item("Update Project\u2026", "Shortcut+T", e -> showUpdateProjectDialog()),
                 item("Pull\u2026", null, e -> showPullDialog()),
                 item("Fetch", null, e -> gitFetch()),
-                new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
+                new SeparatorMenuItem(), item("Merge\u2026", null, e -> showMergeDialog()), item("Rebase\u2026", null, e -> showRebaseDialog()), new SeparatorMenuItem(),
                 placeholder("Branches…", null), item("New Branch…", "Shortcut+Alt+N", e -> gitNewBranch()),
                 placeholder("New Tag…", null), placeholder("Reset HEAD…", null), new SeparatorMenuItem(),
                 item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
@@ -2034,6 +2036,8 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Update Project\u2026", this::showUpdateProjectDialog),
                 new SearchEverywhereDialog.Action("Git: Pull\u2026", this::showPullDialog),
                 new SearchEverywhereDialog.Action("Git: Fetch", this::gitFetch),
+                new SearchEverywhereDialog.Action("Git: Merge\u2026", this::showMergeDialog),
+                new SearchEverywhereDialog.Action("Git: Rebase\u2026", this::showRebaseDialog),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
@@ -4078,6 +4082,153 @@ public class LuminaApp extends Application {
                 });
             }
         }, "lumina-git-pull");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showMergeDialog() {
+        showMergeDialog(null);
+    }
+
+    private void showMergeDialog(String preselectedBranch) {
+        if (!requireProject()) return;
+        MergeDialog dialog = new MergeDialog(stage, projectRoot, preselectedBranch, this::gitMerge);
+        dialog.show();
+    }
+
+    private void gitMerge(String branch, List<String> options, String commitMessage) {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Merging\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                List<String> args = new ArrayList<>();
+                args.add("merge");
+                if (options != null) {
+                    for (String opt : options) {
+                        if (opt != null && !opt.isBlank()) args.add(opt.trim());
+                    }
+                }
+                if (commitMessage != null && !commitMessage.isBlank()) {
+                    args.add("-m");
+                    args.add(commitMessage.trim());
+                }
+                if (branch != null && !branch.isBlank()) {
+                    args.add(branch.trim());
+                }
+
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), args.toArray(new String[0]));
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    String message = out.isBlank() ? "Merge successful" : out.trim();
+                    Notification notif = new Notification(
+                            "git.merge",
+                            "Git Merge",
+                            ok ? message : ("Merge failed:\n" + out),
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                        refreshGitInfo();
+                        if (fileExplorer != null) fileExplorer.refresh();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.merge",
+                            "Git Merge",
+                            "Merge error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-merge");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showRebaseDialog() {
+        showRebaseDialog(null);
+    }
+
+    private void showRebaseDialog(String preselectedTarget) {
+        if (!requireProject()) return;
+        RebaseDialog dialog = new RebaseDialog(stage, projectRoot, preselectedTarget, this::gitRebase);
+        dialog.show();
+    }
+
+    private void gitRebase(String branchOrHash, String ontoBranch, String branchToRebase, List<String> options) {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Rebasing\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                List<String> args = new ArrayList<>();
+                args.add("rebase");
+                if (options != null) {
+                    for (String opt : options) {
+                        if (opt != null && !opt.isBlank()) args.add(opt.trim());
+                    }
+                }
+                if (ontoBranch != null && !ontoBranch.isBlank()) {
+                    args.add("--onto");
+                    args.add(ontoBranch.trim());
+                }
+                if (branchOrHash != null && !branchOrHash.isBlank()) {
+                    args.add(branchOrHash.trim());
+                }
+                if (branchToRebase != null && !branchToRebase.isBlank()) {
+                    args.add(branchToRebase.trim());
+                }
+
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), args.toArray(new String[0]));
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    String message = out.isBlank() ? "Rebase successful" : out.trim();
+                    Notification notif = new Notification(
+                            "git.rebase",
+                            "Git Rebase",
+                            ok ? message : ("Rebase failed:\n" + out),
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                        refreshGitInfo();
+                        if (fileExplorer != null) fileExplorer.refresh();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.rebase",
+                            "Git Rebase",
+                            "Rebase error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-rebase");
         t.setDaemon(true);
         t.start();
     }

@@ -745,6 +745,57 @@ public final class GitService {
         return execWithEnv(dir, env, args.toArray(new String[0]));
     }
 
+    public static List<String> allBranches(Path dir) {
+        List<String> list = new ArrayList<>();
+        for (String b : localBranches(dir)) {
+            if (!b.isBlank() && !list.contains(b)) {
+                list.add(b);
+            }
+        }
+        for (String rb : remoteBranches(dir)) {
+            if (!rb.isBlank() && !list.contains(rb)) {
+                list.add(rb);
+            }
+        }
+        return list;
+    }
+
+    public static Result merge(Path dir, String branch, List<String> options, String commitMessage, Map<String, String> env) {
+        List<String> args = new ArrayList<>();
+        args.add("merge");
+        if (options != null) {
+            for (String opt : options) {
+                if (opt != null && !opt.isBlank()) args.add(opt.trim());
+            }
+        }
+        if (commitMessage != null && !commitMessage.isBlank()) {
+            args.add("-m");
+            args.add(commitMessage.trim());
+        }
+        if (branch != null && !branch.isBlank()) {
+            args.add(branch.trim());
+        }
+        return execWithEnv(dir, env, args.toArray(new String[0]));
+    }
+
+    public static Result rebase(Path dir, String branchOrHash, String ontoBranch, List<String> options, Map<String, String> env) {
+        List<String> args = new ArrayList<>();
+        args.add("rebase");
+        if (options != null) {
+            for (String opt : options) {
+                if (opt != null && !opt.isBlank()) args.add(opt.trim());
+            }
+        }
+        if (ontoBranch != null && !ontoBranch.isBlank()) {
+            args.add("--onto");
+            args.add(ontoBranch.trim());
+        }
+        if (branchOrHash != null && !branchOrHash.isBlank()) {
+            args.add(branchOrHash.trim());
+        }
+        return execWithEnv(dir, env, args.toArray(new String[0]));
+    }
+
     public static Result exec(Path dir, String... args) {
         return execWithEnv(dir, null, args);
     }
