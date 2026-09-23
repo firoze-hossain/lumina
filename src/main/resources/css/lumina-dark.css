@@ -1102,6 +1102,14 @@
 .tool-tabs .tab:selected .tab-label { -fx-text-fill: #EDEFF6; }
 .tool-tabs .tab-content-area { -fx-background-color: #14161E; }
 
+/* Hide redundant TabPane header in TerminalToolWindow since ToolWindowHeader manages session tabs */
+.terminal-tool-window .terminal-tabs .tab-header-area {
+    -fx-padding: 0;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+    visibility: hidden;
+}
+
 /* --------------------------------------------------------------- terminal */
 
 .terminal-pane { -fx-background-color: #101219; }
@@ -4289,5 +4297,41 @@
 
 .menus-toolbars-tree .tree-cell .tree-disclosure-node {
     -fx-padding: 2px 4px 2px 0px;
+}
+
+/* ------------------------------------------------ Git Tool Options Menu */
+
+.git-tool-options-menu {
+    -fx-background-color: #2B2D30;
+    -fx-background-radius: 6;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 6;
+    -fx-padding: 4 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 16, 0.2, 0, 4);
+}
+.git-tool-options-menu .menu-item {
+    -fx-background-radius: 0;
+    -fx-padding: 4 16 4 16;
+}
+.git-tool-options-menu .menu-item .label {
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+}
+.git-tool-options-menu .menu-item:focused {
+    -fx-background-color: #3574F0;
+}
+.git-tool-options-menu .menu-item:focused .label {
+    -fx-text-fill: #FFFFFF;
+}
+.git-tool-options-menu .menu-item .accelerator-text {
+    -fx-text-fill: #8C8E94;
+    -fx-font-size: 11px;
+}
+.git-tool-options-menu .menu-item:focused .accelerator-text {
+    -fx-text-fill: #FFFFFF;
+}
+.git-tool-options-menu .separator .line {
+    -fx-border-color: #393B40;
+    -fx-border-width: 0.5;
 }
 

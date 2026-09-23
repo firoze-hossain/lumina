@@ -4,44 +4,38 @@ import dev.lumina.util.Settings;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
-import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * The Terminal tool window as IntelliJ actually lays it out: a strip of
- * session tabs ("Local", "Local (2)", ...) plus a "+" to add another and a
- * "\u25be" dropdown next to it listing available shells, an (unimplemented,
- * honestly disabled) SSH session entry, and a Settings shortcut straight to
- * Settings &gt; Tools &gt; Terminal. Right-clicking a session tab opens a
- * full context menu matching IntelliJ's own \u2014 see
- * {@link #buildSessionContextMenu} for what's real vs. shown-but-disabled.
+ * The Terminal tool window: a strip of session tabs ("Local", "Local (2)", ...)
+ * plus a standard tool window header with title, "+" to add another session,
+ * "▾" dropdown listing available shells, settings shortcut, options menu, and hide control.
  *
  * <p>Exposes the same {@code start}/{@code stop}/{@code focusInput}/
  * {@code sendCommand} API a single {@link TerminalPane} did, delegating to
- * whichever session tab is currently active, so the rest of the app (which
- * only ever drove one terminal) didn't need to change to gain multiple
- * sessions.
+ * whichever session tab is currently active.
  */
 public final class TerminalToolWindow extends BorderPane {
 
+    private final ToolWindowHeader header;
     private final TabPane tabs = new TabPane();
     private final Supplier<Path> projectRoot;
     private final Runnable onOpenSettings;
@@ -51,6 +45,7 @@ public final class TerminalToolWindow extends BorderPane {
     private int sessionCounter = 0;
     private boolean everHadSession = false;
     private boolean toolbarVisible = true;
+    private final Map<Tab, Button> tabButtons = new HashMap<>();
 
     public TerminalToolWindow(Supplier<Path> projectRoot, Runnable onOpenSettings,
                                Runnable onAllSessionsClosed, Runnable onHideRequested,
@@ -61,27 +56,46 @@ public final class TerminalToolWindow extends BorderPane {
         this.onHideRequested = onHideRequested;
         this.onMoveToEditor = onMoveToEditor;
         getStyleClass().add("terminal-tool-window");
+
+        this.header = new ToolWindowHeader("Terminal");
+        header.setOnHide(onHideRequested);
+
+        header.addLeftIconButton("+", "New Session", () -> addSessionTab(null));
+        Button shellDropdown = header.addLeftIconButton("▾", "Select Shell", null);
+        shellDropdown.setOnAction(e -> showShellMenu(shellDropdown));
+
+        MenuItem settingsItem = new MenuItem("Settings");
+        settingsItem.setOnAction(e -> onOpenSettings.run());
+        header.addOptionsMenuItem(settingsItem);
+
+        header.setOnToolbarToggle(show -> {
+            toolbarVisible = show;
+            for (Tab t : tabs.getTabs()) {
+                if (t.getContent() instanceof TerminalPane tp) {
+                    tp.setToolbarVisible(toolbarVisible);
+                }
+            }
+        });
+
         tabs.getStyleClass().addAll("tool-tabs", "terminal-tabs");
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         tabs.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel == null) return;
-            if (sel.getStyleClass().contains("new-tab-sentinel")) {
-                if (everHadSession && tabs.getTabs().size() == 1) {
-                    handleAllSessionsClosed();
-                } else {
-                    addSessionTab(null);
-                }
-            } else if (sel.getContent() instanceof TerminalPane tp) {
+            if (sel.getContent() instanceof TerminalPane tp) {
                 tp.focusInput();
             }
         });
-        // No session tab yet \u2014 the caller drives the first one via start(),
-        // once it actually knows the directory to start in (home dir at app
-        // launch, then the real project dir once one's opened). Starting a
-        // shell here too would just mean spawning and immediately killing
-        // one the moment start() is called moments later.
-        ensureSentinel();
+
+        setTop(header);
         setCenter(tabs);
+    }
+
+    public ToolWindowHeader getHeader() {
+        return header;
+    }
+
+    public void setOnMaximize(Runnable onMaximize) {
+        header.setOnMaximize(onMaximize);
     }
 
     // ------------------------------------------------------------ public API
@@ -106,16 +120,12 @@ public final class TerminalToolWindow extends BorderPane {
         if (active != null) active.focusInput();
     }
 
-    /** True if a real session tab is currently active (as opposed to the
-     *  "+/\u25be" sentinel being the only thing left, e.g. right after the
-     *  last session tab was closed). */
+    /** True if a real session tab is currently active. */
     public boolean hasSession() {
         return activePane() != null;
     }
 
-    /** Always opens a brand-new session in the given directory (used by
-     *  "Open In &gt; Terminal" from a file/tab's right-click menu), rather
-     *  than restarting whatever's already active. */
+    /** Always opens a brand-new session in the given directory. */
     public void openNewSessionIn(Path dir) {
         addSessionTabIn(dir, null);
     }
@@ -146,7 +156,16 @@ public final class TerminalToolWindow extends BorderPane {
         Tab tab = new Tab(name, pane);
         tab.setContextMenu(buildSessionContextMenu(tab, pane));
         tab.setOnCloseRequest(e -> pane.stop());
-        tabs.getTabs().add(sentinelIndex(), tab);
+
+        Button tabBtn = header.addTab(name, true, () -> tabs.getSelectionModel().select(tab), () -> {
+            pane.stop();
+            tabs.getTabs().remove(tab);
+            tabButtons.remove(tab);
+            if (realSessionTabs().isEmpty()) handleAllSessionsClosed();
+        });
+        tabButtons.put(tab, tabBtn);
+
+        tabs.getTabs().add(tab);
         tabs.getSelectionModel().select(tab);
         if (shellOverride != null) {
             pane.startWithShell(dir, shellOverride);
@@ -154,14 +173,10 @@ public final class TerminalToolWindow extends BorderPane {
             pane.start(dir);
         }
         pane.focusInput();
-        ensureSentinel();
         return tab;
     }
 
-    /** Reset when every session tab is closed \u2014 shared by the sentinel-
-     *  reselection path and "Close All Tabs" from the context menu, so
-     *  numbering resets to "Local" again either way instead of only when
-     *  tabs are closed one at a time. */
+    /** Reset when every session tab is closed. */
     private void handleAllSessionsClosed() {
         everHadSession = false;
         sessionCounter = 0;
@@ -169,40 +184,7 @@ public final class TerminalToolWindow extends BorderPane {
     }
 
     private List<Tab> realSessionTabs() {
-        List<Tab> real = new ArrayList<>(tabs.getTabs());
-        real.removeIf(t -> t.getStyleClass().contains("new-tab-sentinel"));
-        return real;
-    }
-
-    private int sentinelIndex() {
-        for (int i = 0; i < tabs.getTabs().size(); i++) {
-            if (tabs.getTabs().get(i).getStyleClass().contains("new-tab-sentinel")) return i;
-        }
-        return tabs.getTabs().size();
-    }
-
-    /** Re-adds the trailing "+ / \u25be" pseudo-tab, since real session tabs
-     *  are always inserted before it. */
-    private void ensureSentinel() {
-        tabs.getTabs().removeIf(t -> t.getStyleClass().contains("new-tab-sentinel"));
-        Tab plus = new Tab();
-        plus.getStyleClass().add("new-tab-sentinel");
-        plus.setClosable(false);
-
-        Label plusLabel = new Label("+");
-        plusLabel.getStyleClass().add("terminal-tab-plus");
-        Button dropdown = new Button("\u25BE");
-        dropdown.getStyleClass().add("terminal-tab-dropdown");
-        dropdown.setOnMouseClicked(ev -> {
-            ev.consume();   // don't also trigger the sentinel's own selection
-            showShellMenu(dropdown);
-        });
-        HBox graphic = new HBox(2, plusLabel, dropdown);
-        graphic.getStyleClass().add("terminal-tab-new-session");
-        graphic.setAlignment(Pos.CENTER);
-        plus.setGraphic(graphic);
-        plus.setContent(new Region());
-        tabs.getTabs().add(plus);
+        return new ArrayList<>(tabs.getTabs());
     }
 
     private void showShellMenu(Node anchor) {
@@ -219,7 +201,7 @@ public final class TerminalToolWindow extends BorderPane {
             menu.getItems().add(def);
         }
         MenuItem ssh = new MenuItem("New SSH Session\u2026");
-        ssh.setDisable(true);   // no SSH transport implemented \u2014 shown, not faked
+        ssh.setDisable(true);
         menu.getItems().add(ssh);
         menu.getItems().add(new SeparatorMenuItem());
         MenuItem settings = new MenuItem("Settings");
@@ -231,13 +213,7 @@ public final class TerminalToolWindow extends BorderPane {
     // ------------------------------------------------- session tab right-click
 
     /**
-     * Matches IntelliJ's own terminal-tab menu item-for-item. Real:
-     * rename, move-to-editor, close (tab/all/others), next/previous/list
-     * tab navigation, Settings, and Show Toolbar. Shown but honestly
-     * disabled, since the subsystems behind them don't exist here: Split
-     * (terminal splitting is a separate feature from editor splitting,
-     * not built), Group Tabs, View Mode, Move to, Resize, Remove from
-     * Sidebar. Terminal Engine lists the one engine there is.
+     * Standard terminal-tab context menu.
      */
     private ContextMenu buildSessionContextMenu(Tab tab, TerminalPane pane) {
         ContextMenu menu = new ContextMenu();
@@ -256,6 +232,8 @@ public final class TerminalToolWindow extends BorderPane {
         close.setOnAction(e -> {
             pane.stop();
             tabs.getTabs().remove(tab);
+            tabButtons.remove(tab);
+            if (realSessionTabs().isEmpty()) handleAllSessionsClosed();
         });
 
         MenuItem closeAllTabs = new MenuItem("Close All Tabs");
@@ -336,7 +314,11 @@ public final class TerminalToolWindow extends BorderPane {
         dialog.setHeaderText(null);
         dialog.setContentText("Session name:");
         dialog.showAndWait().ifPresent(name -> {
-            if (!name.isBlank()) tab.setText(name.trim());
+            if (!name.isBlank()) {
+                tab.setText(name.trim());
+                Button btn = tabButtons.get(tab);
+                if (btn != null) btn.setText(name.trim());
+            }
         });
     }
 
@@ -344,6 +326,7 @@ public final class TerminalToolWindow extends BorderPane {
         if (toClose.isEmpty()) return;
         for (Tab t : toClose) {
             if (t.getContent() instanceof TerminalPane tp) tp.stop();
+            tabButtons.remove(t);
         }
         tabs.getTabs().removeAll(toClose);
         if (realSessionTabs().isEmpty()) handleAllSessionsClosed();

@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -42,12 +43,29 @@ public final class GitLogPanel extends VBox {
 
     private final Supplier<Path> projectRoot;
     private BiConsumer<String, String> onOpenFileDiff; // (commitHash, relativePath)
+    private Consumer<Path> onOpenFileInEditor;
+    private Runnable onHideToolWindow;
+    private Runnable onMaximizeToolWindow;
+
+    // Dynamic configuration states
+    private boolean openDiffOnDoubleClick = true;
+    private boolean showCenterToolbar = true;
+    private boolean consoleTabVisible = true;
+    private boolean groupTabs = false;
+    private String activeViewMode = "Dock Pinned";
+    private String activeMoveToPosition = "Bottom";
 
     // Sub-tabs at top of Git tool window
     private final HBox subTabBar = new HBox(4);
     private final StackPane contentStack = new StackPane();
     private final SplitPane mainSplit = new SplitPane();
     private final TextArea consoleArea = new TextArea();
+
+    // Top tool window header buttons
+    private Button optionsButton;
+    private Button hideButton;
+    private final HBox consoleTabContainer = new HBox(2);
+    private final Button consoleCloseButton = new Button("✕");
 
     // Left pane: Toolbar + Branch tree
     private final HBox leftBranchPane = new HBox();
@@ -60,6 +78,7 @@ public final class GitLogPanel extends VBox {
     private final Set<String> favoriteBranches = new HashSet<>();
 
     // Center pane: Toolbar & Commit table
+    private final HBox centerToolbar = new HBox(6);
     private final TextField searchField = new TextField();
     private final ToggleButton matchCaseToggle = new ToggleButton("Cc");
     private final MenuButton branchMenuButton = new MenuButton("Branch");
@@ -123,6 +142,19 @@ public final class GitLogPanel extends VBox {
 
         wireFilterEvents();
 
+        // Keyboard shortcuts: Shift+Escape hides bottom window; Shortcut+F focuses search
+        addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isShiftDown() && e.getCode() == KeyCode.ESCAPE) {
+                if (onHideToolWindow != null) {
+                    onHideToolWindow.run();
+                    e.consume();
+                }
+            } else if (e.isShortcutDown() && e.getCode() == KeyCode.F) {
+                focusSpeedSearch();
+                e.consume();
+            }
+        });
+
         // Listen for dynamic settings changes
         IssueNavigationManager.getInstance().addListener(this::refresh);
         VcsLogSettingsManager.getInstance().addListener(this::refresh);
@@ -132,41 +164,287 @@ public final class GitLogPanel extends VBox {
         this.onOpenFileDiff = handler;
     }
 
+    public void setOnOpenFileInEditor(Consumer<Path> handler) {
+        this.onOpenFileInEditor = handler;
+    }
+
+    public void setOnHideToolWindow(Runnable handler) {
+        this.onHideToolWindow = handler;
+    }
+
+    public void setOnMaximizeToolWindow(Runnable handler) {
+        this.onMaximizeToolWindow = handler;
+    }
+
+    public boolean isOpenDiffOnDoubleClick() {
+        return openDiffOnDoubleClick;
+    }
+
+    public void setOpenDiffOnDoubleClick(boolean diff) {
+        this.openDiffOnDoubleClick = diff;
+    }
+
+    public boolean isShowCenterToolbar() {
+        return showCenterToolbar;
+    }
+
+    public void setShowCenterToolbar(boolean show) {
+        this.showCenterToolbar = show;
+        centerToolbar.setVisible(show);
+        centerToolbar.setManaged(show);
+    }
+
+    public Button getOptionsButton() {
+        return optionsButton;
+    }
+
+    public Button getHideButton() {
+        return hideButton;
+    }
+
+    public HBox getCenterToolbar() {
+        return centerToolbar;
+    }
+
     public void selectLogTab() {
-        logTabButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0; -fx-padding: 4 12;");
-        consoleTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 12;");
+        logTabButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0; -fx-padding: 4 12; -fx-cursor: hand;");
+        consoleTabContainer.setStyle("-fx-background-color: transparent; -fx-border-width: 0;");
+        consoleTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 4 4 10; -fx-cursor: hand;");
         mainSplit.setVisible(true);
         consoleArea.setVisible(false);
     }
 
     public void selectConsoleTab() {
-        consoleTabButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0; -fx-padding: 4 12;");
-        logTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 12;");
+        if (!consoleTabVisible) {
+            consoleTabVisible = true;
+            consoleTabContainer.setVisible(true);
+            consoleTabContainer.setManaged(true);
+        }
+        consoleTabContainer.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0;");
+        consoleTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-padding: 4 4 4 10; -fx-cursor: hand;");
+        logTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 12; -fx-border-width: 0; -fx-cursor: hand;");
         mainSplit.setVisible(false);
         consoleArea.setVisible(true);
     }
 
+    public void closeConsoleTab() {
+        consoleTabVisible = false;
+        consoleTabContainer.setVisible(false);
+        consoleTabContainer.setManaged(false);
+        selectLogTab();
+    }
+
+    public void closeAllTabs() {
+        closeConsoleTab();
+        selectLogTab();
+    }
+
+    public void focusSpeedSearch() {
+        if (!showCenterToolbar) {
+            setShowCenterToolbar(true);
+        }
+        searchField.requestFocus();
+        searchField.selectAll();
+    }
+
     private void buildTopTabBar() {
-        subTabBar.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0; -fx-padding: 2 8 0 8;");
+        subTabBar.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0; -fx-padding: 0 8 0 8; -fx-min-height: 28px; -fx-pref-height: 28px; -fx-max-height: 28px;");
         subTabBar.setAlignment(Pos.CENTER_LEFT);
 
-        logTabButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0; -fx-padding: 4 12;");
-        consoleTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 12;");
+        Label toolWindowTitle = new Label("Git");
+        toolWindowTitle.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-font-size: 12px; -fx-padding: 2 8 2 2;");
+
+        logTabButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-border-color: #3574F0; -fx-border-width: 0 0 2 0; -fx-padding: 4 12; -fx-cursor: hand;");
+
+        consoleTabContainer.setAlignment(Pos.CENTER);
+        consoleTabContainer.setStyle("-fx-background-color: transparent; -fx-border-width: 0;");
+
+        consoleTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-padding: 4 4 4 10; -fx-cursor: hand;");
+        consoleCloseButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-font-size: 10px; -fx-cursor: hand; -fx-padding: 2 4;");
+        consoleCloseButton.setTooltip(new Tooltip("Close"));
+        consoleCloseButton.setOnMouseEntered(e -> consoleCloseButton.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-cursor: hand; -fx-padding: 2 4; -fx-background-radius: 3;"));
+        consoleCloseButton.setOnMouseExited(e -> consoleCloseButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-font-size: 10px; -fx-cursor: hand; -fx-padding: 2 4;"));
+        consoleCloseButton.setOnAction(e -> closeConsoleTab());
+
+        consoleTabContainer.getChildren().addAll(consoleTabButton, consoleCloseButton);
 
         logTabButton.setOnAction(e -> selectLogTab());
         consoleTabButton.setOnAction(e -> selectConsoleTab());
 
-        Button addTabButton = new Button("+");
-        addTabButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-font-size: 13px; -fx-cursor: hand;");
+        Button addTabButton = createToolbarIconButton("+", "New Tab", () -> {
+            if (!consoleTabVisible) {
+                consoleTabVisible = true;
+                consoleTabContainer.setVisible(true);
+                consoleTabContainer.setManaged(true);
+                selectConsoleTab();
+            }
+        });
+
+        Button tabActionsButton = createToolbarIconButton("▾", "Tab Actions", null);
+        tabActionsButton.setOnAction(e -> showTabActionsMenu(tabActionsButton));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button tabActionsButton = new Button("▾");
-        tabActionsButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-cursor: hand;");
+        optionsButton = createToolbarIconButton("⋮", "Options", null);
+        optionsButton.setOnAction(e -> showOptionsMenu(optionsButton));
+        hideButton = createToolbarIconButton("—", "Hide ⇧⎋", () -> {
+            if (onHideToolWindow != null) {
+                onHideToolWindow.run();
+            }
+        });
 
-        subTabBar.getChildren().addAll(logTabButton, consoleTabButton, addTabButton, spacer, tabActionsButton);
+        subTabBar.getChildren().addAll(
+                toolWindowTitle,
+                logTabButton,
+                consoleTabContainer,
+                addTabButton,
+                tabActionsButton,
+                spacer,
+                optionsButton,
+                hideButton
+        );
     }
+
+    private void showTabActionsMenu(Button anchor) {
+        ContextMenu menu = new ContextMenu();
+        menu.getStyleClass().add("git-tool-options-menu");
+        menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-padding: 4 0;");
+
+        MenuItem reopenConsole = new MenuItem("Console");
+        reopenConsole.setOnAction(e -> selectConsoleTab());
+
+        MenuItem closeCurTab = new MenuItem("Close Tab");
+        closeCurTab.setOnAction(e -> {
+            if (consoleArea.isVisible()) {
+                closeConsoleTab();
+            }
+        });
+
+        menu.getItems().addAll(reopenConsole, closeCurTab);
+        menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 2);
+    }
+
+    private void showOptionsMenu(Button anchor) {
+        ContextMenu menu = new ContextMenu();
+        menu.getStyleClass().add("git-tool-options-menu");
+        menu.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-padding: 4 0;");
+
+        // 1. Show on Double-Click >
+        Menu showOnDblClickMenu = new Menu("Show on Double-Click");
+        CheckMenuItem diffItem = new CheckMenuItem("Diff");
+        CheckMenuItem sourceItem = new CheckMenuItem("Source");
+        diffItem.setSelected(openDiffOnDoubleClick);
+        sourceItem.setSelected(!openDiffOnDoubleClick);
+
+        diffItem.setOnAction(e -> {
+            setOpenDiffOnDoubleClick(true);
+            diffItem.setSelected(true);
+            sourceItem.setSelected(false);
+        });
+        sourceItem.setOnAction(e -> {
+            setOpenDiffOnDoubleClick(false);
+            diffItem.setSelected(false);
+            sourceItem.setSelected(true);
+        });
+        showOnDblClickMenu.getItems().addAll(diffItem, sourceItem);
+
+        // 2. Speed Search
+        HBox speedSearchGraphic = new HBox(8);
+        speedSearchGraphic.setAlignment(Pos.CENTER_LEFT);
+        Label speedIcon = new Label("🔍");
+        speedIcon.setStyle("-fx-font-size: 10px; -fx-text-fill: #8C8E94;");
+        Label speedText = new Label("Speed Search");
+        speedText.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Region speedSpacer = new Region();
+        speedSpacer.setMinWidth(28);
+        HBox.setHgrow(speedSpacer, Priority.ALWAYS);
+        boolean isMac = System.getProperty("os.name", "").toLowerCase().contains("mac");
+        Label speedKey = new Label(isMac ? "⌘F or any symbol" : "Ctrl+F or any symbol");
+        speedKey.setStyle("-fx-text-fill: #8C8E94; -fx-font-size: 11px;");
+        speedSearchGraphic.getChildren().addAll(speedIcon, speedText, speedSpacer, speedKey);
+
+        MenuItem speedSearchItem = new MenuItem("", speedSearchGraphic);
+        speedSearchItem.setOnAction(e -> focusSpeedSearch());
+
+        // 3. Close All
+        MenuItem closeAllItem = new MenuItem("Close All");
+        closeAllItem.setOnAction(e -> closeAllTabs());
+
+        // 4. Show Toolbar
+        CheckMenuItem showToolbarItem = new CheckMenuItem("Show Toolbar");
+        showToolbarItem.setSelected(showCenterToolbar);
+        showToolbarItem.setOnAction(e -> setShowCenterToolbar(showToolbarItem.isSelected()));
+
+        // 5. Group Tabs
+        CheckMenuItem groupTabsItem = new CheckMenuItem("Group Tabs");
+        groupTabsItem.setSelected(groupTabs);
+        groupTabsItem.setOnAction(e -> groupTabs = groupTabsItem.isSelected());
+
+        // 6. View Mode >
+        Menu viewModeMenu = new Menu("View Mode");
+        String[] viewModes = {"Dock Pinned", "Dock Unpinned", "Undock", "Float", "Window"};
+        for (String mode : viewModes) {
+            CheckMenuItem mi = new CheckMenuItem(mode);
+            mi.setSelected(mode.equals(activeViewMode));
+            mi.setOnAction(e -> {
+                for (MenuItem itm : viewModeMenu.getItems()) {
+                    if (itm instanceof CheckMenuItem cmi) cmi.setSelected(cmi == mi);
+                }
+                activeViewMode = mode;
+            });
+            viewModeMenu.getItems().add(mi);
+        }
+
+        // 7. Move to >
+        Menu moveToMenu = new Menu("Move to");
+        String[] positions = {"Bottom", "Left", "Right"};
+        for (String pos : positions) {
+            CheckMenuItem mi = new CheckMenuItem(pos);
+            mi.setSelected(pos.equals(activeMoveToPosition));
+            mi.setOnAction(e -> {
+                for (MenuItem itm : moveToMenu.getItems()) {
+                    if (itm instanceof CheckMenuItem cmi) cmi.setSelected(cmi == mi);
+                }
+                activeMoveToPosition = pos;
+            });
+            moveToMenu.getItems().add(mi);
+        }
+
+        // 8. Resize >
+        Menu resizeMenu = new Menu("Resize");
+        MenuItem maximizeItem = new MenuItem("Maximize Tool Window");
+        maximizeItem.setOnAction(e -> {
+            if (onMaximizeToolWindow != null) onMaximizeToolWindow.run();
+        });
+        MenuItem stretchLeftItem = new MenuItem("Stretch to Left");
+        MenuItem stretchRightItem = new MenuItem("Stretch to Right");
+        resizeMenu.getItems().addAll(maximizeItem, stretchLeftItem, stretchRightItem);
+
+        // 9. Remove from Sidebar
+        MenuItem removeFromSidebarItem = new MenuItem("Remove from Sidebar");
+        removeFromSidebarItem.setOnAction(e -> {
+            if (onHideToolWindow != null) onHideToolWindow.run();
+        });
+
+        menu.getItems().addAll(
+                showOnDblClickMenu,
+                new SeparatorMenuItem(),
+                speedSearchItem,
+                new SeparatorMenuItem(),
+                closeAllItem,
+                showToolbarItem,
+                groupTabsItem,
+                viewModeMenu,
+                moveToMenu,
+                resizeMenu,
+                new SeparatorMenuItem(),
+                removeFromSidebarItem
+        );
+
+        menu.show(anchor, javafx.geometry.Side.BOTTOM, -120, 2);
+    }
+
 
     private Button createToolbarIconButton(String icon, String tooltipText, Runnable action) {
         Button btn = new Button(icon);
@@ -440,10 +718,9 @@ public final class GitLogPanel extends VBox {
         VBox.setVgrow(centerBox, Priority.ALWAYS);
 
         // Filter Toolbar
-        HBox toolbar = new HBox(6);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setPadding(new Insets(4, 8, 4, 8));
-        toolbar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0;");
+        centerToolbar.setAlignment(Pos.CENTER_LEFT);
+        centerToolbar.setPadding(new Insets(4, 8, 4, 8));
+        centerToolbar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-width: 0 0 1 0;");
 
         searchField.setPromptText("Text or hash");
         searchField.setMinWidth(110);
@@ -507,7 +784,8 @@ public final class GitLogPanel extends VBox {
             }
         });
 
-        toolbar.getChildren().addAll(
+        centerToolbar.getChildren().clear();
+        centerToolbar.getChildren().addAll(
                 searchField, matchCaseToggle,
                 branchMenuButton, userMenuButton, dateMenuButton, pathsMenuButton,
                 sortOrderButton, spacer,
@@ -517,7 +795,7 @@ public final class GitLogPanel extends VBox {
         setupCommitTable();
         VBox.setVgrow(commitTable, Priority.ALWAYS);
 
-        centerBox.getChildren().addAll(toolbar, commitTable);
+        centerBox.getChildren().addAll(centerToolbar, commitTable);
         return centerBox;
     }
 
@@ -611,12 +889,26 @@ public final class GitLogPanel extends VBox {
         dateCol.setPrefWidth(130);
         dateCol.setMaxWidth(180);
 
+        commitTable.getColumns().clear();
         commitTable.getColumns().addAll(List.of(graphMsgCol, authorCol, dateCol));
         commitTable.setItems(sortedCommitList);
 
         // Selection listener to update right pane
         commitTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, commit) -> {
             updateRightPane(commit);
+        });
+
+        // Speed search typing on commit table
+        commitTable.setOnKeyTyped(e -> {
+            String ch = e.getCharacter();
+            if (ch != null && !ch.isEmpty() && !Character.isISOControl(ch.charAt(0)) && !e.isShortcutDown() && !e.isAltDown()) {
+                if (!showCenterToolbar) {
+                    setShowCenterToolbar(true);
+                }
+                searchField.requestFocus();
+                searchField.setText(searchField.getText() + ch);
+                searchField.positionCaret(searchField.getText().length());
+            }
         });
     }
 
@@ -786,7 +1078,11 @@ public final class GitLogPanel extends VBox {
 
         changedFilesTree.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
-                openSelectedFileDiff();
+                if (openDiffOnDoubleClick) {
+                    openSelectedFileDiff();
+                } else {
+                    openSelectedFileInEditor();
+                }
             }
         });
 
@@ -795,6 +1091,14 @@ public final class GitLogPanel extends VBox {
                 expandAllChangedFiles();
             } else if (e.getCode() == KeyCode.MINUS && e.isShortcutDown()) {
                 collapseAllChangedFiles();
+            } else if (e.getCode() == KeyCode.ENTER) {
+                if (openDiffOnDoubleClick) {
+                    openSelectedFileDiff();
+                } else {
+                    openSelectedFileInEditor();
+                }
+            } else if (e.getCode() == KeyCode.F4) {
+                openSelectedFileInEditor();
             }
         });
 
@@ -962,6 +1266,17 @@ public final class GitLogPanel extends VBox {
             GitLogCommit commit = commitTable.getSelectionModel().getSelectedItem();
             if (commit != null && onOpenFileDiff != null) {
                 onOpenFileDiff.accept(commit.hash(), cf.relativePath());
+            }
+        }
+    }
+
+    private void openSelectedFileInEditor() {
+        TreeItem<Object> selected = changedFilesTree.getSelectionModel().getSelectedItem();
+        if (selected != null && selected.getValue() instanceof GitService.CommitFile cf) {
+            Path root = projectRoot != null ? projectRoot.get() : null;
+            if (root != null && onOpenFileInEditor != null) {
+                Path filePath = root.resolve(cf.relativePath());
+                onOpenFileInEditor.accept(filePath);
             }
         }
     }
