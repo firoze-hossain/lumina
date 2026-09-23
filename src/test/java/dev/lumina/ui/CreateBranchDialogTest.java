@@ -53,7 +53,12 @@ class CreateBranchDialogTest {
             try {
                 CreateBranchDialog dlg = new CreateBranchDialog(null, Path.of("."), "origin/feature_test");
                 assertNotNull(dlg);
-                assertEquals("Create Branch from origin/feature_test", dlg.getTitle());
+                assertEquals("Create New Branch", dlg.getTitle());
+                assertEquals("feature_test", dlg.getNameField().getText());
+                assertTrue(dlg.getCheckoutBox().isSelected());
+                assertFalse(dlg.getOverwriteBox().isSelected());
+                assertNotNull(dlg.getCreateButton());
+                assertNotNull(dlg.getCancelButton());
                 dialogRef.set(dlg);
             } finally {
                 latch.countDown();
