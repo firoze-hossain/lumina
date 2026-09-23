@@ -46,6 +46,8 @@ public final class GitLogPanel extends VBox {
     private Consumer<Path> onOpenFileInEditor;
     private Runnable onHideToolWindow;
     private Runnable onMaximizeToolWindow;
+    private Consumer<String> onMergeBranch;
+    private Consumer<String> onRebaseBranch;
 
     // Dynamic configuration states
     private boolean openDiffOnDoubleClick = true;
@@ -174,6 +176,14 @@ public final class GitLogPanel extends VBox {
 
     public void setOnMaximizeToolWindow(Runnable handler) {
         this.onMaximizeToolWindow = handler;
+    }
+
+    public void setOnMergeBranch(Consumer<String> handler) {
+        this.onMergeBranch = handler;
+    }
+
+    public void setOnRebaseBranch(Consumer<String> handler) {
+        this.onRebaseBranch = handler;
     }
 
     public boolean isOpenDiffOnDoubleClick() {
@@ -535,6 +545,53 @@ public final class GitLogPanel extends VBox {
                 }
             };
             cell.selectedProperty().addListener((obs, was, is) -> updateBranchCellStyle(cell));
+            cell.setOnContextMenuRequested(e -> {
+                String item = cell.getItem();
+                if (item == null || item.equals("Local") || item.equals("Remote") || item.equals("origin") || item.startsWith("HEAD")) {
+                    return;
+                }
+                TreeItem<String> treeItem = cell.getTreeItem();
+                String branchRef = item;
+                if (treeItem != null && treeItem.getParent() != null && "origin".equals(treeItem.getParent().getValue())) {
+                    branchRef = "origin/" + item;
+                }
+                final String finalBranchRef = branchRef;
+
+                ContextMenu cm = new ContextMenu();
+                cm.getStyleClass().add("git-tool-options-menu");
+                cm.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-padding: 4 0;");
+
+                MenuItem checkoutMi = new MenuItem("Checkout '" + item + "'");
+                checkoutMi.setOnAction(ev -> {
+                    branchTree.getSelectionModel().select(treeItem);
+                    checkoutSelectedBranch();
+                });
+
+                MenuItem mergeMi = new MenuItem("Merge into Current\u2026");
+                mergeMi.setOnAction(ev -> {
+                    if (onMergeBranch != null) onMergeBranch.accept(finalBranchRef);
+                });
+
+                MenuItem rebaseMi = new MenuItem("Rebase Current onto '" + item + "'\u2026");
+                rebaseMi.setOnAction(ev -> {
+                    if (onRebaseBranch != null) onRebaseBranch.accept(finalBranchRef);
+                });
+
+                MenuItem compareMi = new MenuItem("Compare with Current");
+                compareMi.setOnAction(ev -> {
+                    branchTree.getSelectionModel().select(treeItem);
+                    compareSelectedBranch();
+                });
+
+                MenuItem deleteMi = new MenuItem("Delete\u2026");
+                deleteMi.setOnAction(ev -> {
+                    branchTree.getSelectionModel().select(treeItem);
+                    deleteSelectedBranch();
+                });
+
+                cm.getItems().addAll(checkoutMi, new SeparatorMenuItem(), mergeMi, rebaseMi, new SeparatorMenuItem(), compareMi, deleteMi);
+                cm.show(cell, e.getScreenX(), e.getScreenY());
+            });
             return cell;
         });
         VBox.setVgrow(branchTree, Priority.ALWAYS);
