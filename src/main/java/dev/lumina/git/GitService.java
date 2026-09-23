@@ -57,6 +57,78 @@ public final class GitService {
         return exec(dir, "checkout", "-b", branch);
     }
 
+    public static List<String> remoteBranches(Path dir) {
+        List<String> branches = new ArrayList<>();
+        Result r = exec(dir, "branch", "-r", "--format=%(refname:short)");
+        if (r.ok()) {
+            for (String line : r.output().split("\\R")) {
+                line = line.trim();
+                if (!line.isBlank() && !line.contains("->") && !line.endsWith("/HEAD")) {
+                    branches.add(line);
+                }
+            }
+        }
+        return branches;
+    }
+
+    public static int unpushedCommitsCount(Path dir, String branch) {
+        if (!isRepository(dir)) return 0;
+        String upstream = getUpstreamBranch(dir);
+        Result r;
+        if (upstream != null) {
+            r = exec(dir, "rev-list", upstream + "..HEAD", "--count");
+        } else {
+            r = exec(dir, "rev-list", "origin/" + branch + "..HEAD", "--count");
+        }
+        if (r.ok()) {
+            try {
+                return Integer.parseInt(r.output().trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        return 0;
+    }
+
+    public static Result updateProject(Path dir, boolean rebase) {
+        if (rebase) {
+            return exec(dir, "pull", "--rebase");
+        } else {
+            return exec(dir, "pull", "--no-rebase");
+        }
+    }
+
+    public static Result renameBranch(Path dir, String oldName, String newName) {
+        return exec(dir, "branch", "-m", oldName, newName);
+    }
+
+    public static Result deleteBranch(Path dir, String branch, boolean force) {
+        return exec(dir, "branch", force ? "-D" : "-d", branch);
+    }
+
+    public static Result deleteRemoteBranch(Path dir, String remote, String branch) {
+        return exec(dir, "push", remote, "--delete", branch);
+    }
+
+    public static Result mergeIntoCurrent(Path dir, String branch) {
+        return exec(dir, "merge", branch);
+    }
+
+    public static Result rebaseOnto(Path dir, String branch) {
+        return exec(dir, "rebase", branch);
+    }
+
+    public static Result pullIntoCurrent(Path dir, String remoteBranch, boolean rebase) {
+        if (remoteBranch.contains("/")) {
+            String remote = remoteBranch.substring(0, remoteBranch.indexOf('/'));
+            String branch = remoteBranch.substring(remoteBranch.indexOf('/') + 1);
+            if (rebase) {
+                return exec(dir, "pull", "--rebase", remote, branch);
+            } else {
+                return exec(dir, "pull", "--no-rebase", remote, branch);
+            }
+        }
+        return exec(dir, "pull", remoteBranch);
+    }
+
     public static Result init(Path dir) {
         return exec(dir, "init");
     }
