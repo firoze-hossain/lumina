@@ -953,7 +953,7 @@ public class LuminaApp extends Application {
                 item("Fetch", null, e -> gitFetch()),
                 new SeparatorMenuItem(), item("Merge\u2026", null, e -> showMergeDialog()), item("Rebase\u2026", null, e -> showRebaseDialog()), new SeparatorMenuItem(),
                 item("Branches\u2026", null, e -> showBranchesPopup()), item("New Branch\u2026", "Shortcut+Alt+N", e -> showCreateBranchDialog()),
-                placeholder("New Tag…", null), placeholder("Reset HEAD…", null), new SeparatorMenuItem(),
+                item("New Tag\u2026", null, e -> showNewTagDialog()), item("Reset HEAD\u2026", null, e -> showResetHeadDialog()), new SeparatorMenuItem(),
                 item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
                 gitLab, github, placeholder("Manage Remotes…", null), item("Clone…", null, e -> gitClone()),
                 new SeparatorMenuItem(), placeholder("VCS Operations Popup…", null));
@@ -2065,6 +2065,8 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Rebase\u2026", this::showRebaseDialog),
                 new SearchEverywhereDialog.Action("Git: Branches\u2026", this::showBranchesPopup),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
+                new SearchEverywhereDialog.Action("Git: New Tag\u2026", this::showNewTagDialog),
+                new SearchEverywhereDialog.Action("Git: Reset HEAD\u2026", this::showResetHeadDialog),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
                 new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(3)),
@@ -4255,6 +4257,148 @@ public class LuminaApp extends Application {
                 });
             }
         }, "lumina-git-rebase");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showNewTagDialog() {
+        showNewTagDialog(null, null);
+    }
+
+    private void showNewTagDialog(String prefilledCommit, String prefilledTag) {
+        if (!requireProject()) return;
+        TagDialog dialog = new TagDialog(stage, projectRoot, prefilledCommit, prefilledTag, this::gitCreateTag);
+        dialog.show();
+    }
+
+    private void gitCreateTag(String tagName, String commit, String message, boolean force) {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Creating Tag\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                List<String> args = new ArrayList<>();
+                args.add("tag");
+                if (force) {
+                    args.add("-f");
+                }
+                if (message != null && !message.isBlank()) {
+                    args.add("-a");
+                    args.add("-m");
+                    args.add(message.trim());
+                }
+                if (tagName != null && !tagName.isBlank()) {
+                    args.add(tagName.trim());
+                }
+                if (commit != null && !commit.isBlank()) {
+                    args.add(commit.trim());
+                }
+
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), args.toArray(new String[0]));
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    String msg = ok ? ("Created tag '" + tagName + "'") : ("Create tag failed:\n" + out);
+                    Notification notif = new Notification(
+                            "git.tag",
+                            "Git Tag",
+                            msg,
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.tag",
+                            "Git Tag",
+                            "Create tag error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-tag");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showResetHeadDialog() {
+        showResetHeadDialog(null);
+    }
+
+    private void showResetHeadDialog(String targetCommit) {
+        if (!requireProject()) return;
+        ResetHeadDialog dialog = new ResetHeadDialog(stage, projectRoot, targetCommit, this::gitResetHead);
+        dialog.show();
+    }
+
+    private void gitResetHead(String resetType, String commit) {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Resetting HEAD\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                List<String> args = new ArrayList<>();
+                args.add("reset");
+                String type = (resetType != null && !resetType.isBlank()) ? resetType.trim().toLowerCase() : "mixed";
+                if ("hard".equals(type)) {
+                    args.add("--hard");
+                } else if ("soft".equals(type)) {
+                    args.add("--soft");
+                } else {
+                    args.add("--mixed");
+                }
+                String target = (commit != null && !commit.isBlank()) ? commit.trim() : "HEAD";
+                args.add(target);
+
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), args.toArray(new String[0]));
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    String msg = ok ? ("Reset HEAD to '" + target + "' (" + resetType + ")") : ("Reset HEAD failed:\n" + out);
+                    Notification notif = new Notification(
+                            "git.reset",
+                            "Git Reset HEAD",
+                            msg,
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                        refreshGitInfo();
+                        if (fileExplorer != null) fileExplorer.refresh();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.reset",
+                            "Git Reset HEAD",
+                            "Reset HEAD error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-reset");
         t.setDaemon(true);
         t.start();
     }

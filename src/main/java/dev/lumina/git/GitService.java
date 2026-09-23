@@ -796,6 +796,57 @@ public final class GitService {
         return execWithEnv(dir, env, args.toArray(new String[0]));
     }
 
+    public static Result validateRevision(Path dir, String revision) {
+        if (dir == null || revision == null || revision.isBlank()) {
+            return new Result(-1, "Revision cannot be blank");
+        }
+        return exec(dir, "rev-parse", "--verify", revision.trim());
+    }
+
+    public static Result createTag(Path dir, String tagName, String commit, String message, boolean force) {
+        return createTag(dir, tagName, commit, message, force, null);
+    }
+
+    public static Result createTag(Path dir, String tagName, String commit, String message, boolean force, Map<String, String> env) {
+        List<String> args = new ArrayList<>();
+        args.add("tag");
+        if (force) {
+            args.add("-f");
+        }
+        if (message != null && !message.isBlank()) {
+            args.add("-a");
+            args.add("-m");
+            args.add(message.trim());
+        }
+        if (tagName != null && !tagName.isBlank()) {
+            args.add(tagName.trim());
+        }
+        if (commit != null && !commit.isBlank()) {
+            args.add(commit.trim());
+        }
+        return execWithEnv(dir, env, args.toArray(new String[0]));
+    }
+
+    public static Result resetHead(Path dir, String resetType, String commit) {
+        return resetHead(dir, resetType, commit, null);
+    }
+
+    public static Result resetHead(Path dir, String resetType, String commit, Map<String, String> env) {
+        List<String> args = new ArrayList<>();
+        args.add("reset");
+        String type = (resetType != null && !resetType.isBlank()) ? resetType.trim().toLowerCase() : "mixed";
+        if ("hard".equals(type)) {
+            args.add("--hard");
+        } else if ("soft".equals(type)) {
+            args.add("--soft");
+        } else {
+            args.add("--mixed");
+        }
+        String target = (commit != null && !commit.isBlank()) ? commit.trim() : "HEAD";
+        args.add(target);
+        return execWithEnv(dir, env, args.toArray(new String[0]));
+    }
+
     public static Result exec(Path dir, String... args) {
         return execWithEnv(dir, null, args);
     }
