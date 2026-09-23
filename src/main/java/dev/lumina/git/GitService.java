@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Thin wrapper around the git CLI (uses the user's installed git + credentials). */
 public final class GitService {
@@ -668,15 +669,47 @@ public final class GitService {
         return url.startsWith("http") ? url : null;
     }
 
-    public static Result exec(Path dir, String... args) {
+    public static List<String> remotes(Path dir) {
+        List<String> list = new ArrayList<>();
+        Result r = exec(dir, "remote");
+        if (r.ok()) {
+            for (String line : r.output().split("\\R")) {
+                line = line.trim();
+                if (!line.isBlank()) list.add(line);
+            }
+        }
+        return list;
+    }
+
+    public static List<String> remoteBranchesForRemote(Path dir, String remote) {
+        List<String> branches = new ArrayList<>();
+        String prefix = (remote != null && !remote.isBlank()) ? remote + "/" : "";
+        for (String rb : remoteBranches(dir)) {
+            if (prefix.isEmpty()) {
+                branches.add(rb);
+            } else if (rb.startsWith(prefix)) {
+                branches.add(rb.substring(prefix.length()));
+            }
+        }
+        return branches;
+    }
+
+    public static Process startProcess(Path dir, Map<String, String> env, String... args) throws IOException {
         List<String> cmd = new ArrayList<>();
         cmd.add(GitSettingsManager.getInstance().getEffectiveGitExecutable());
         cmd.addAll(List.of(args));
+        ProcessBuilder pb = new ProcessBuilder(cmd)
+                .directory(dir.toFile())
+                .redirectErrorStream(true);
+        if (env != null && !env.isEmpty()) {
+            pb.environment().putAll(env);
+        }
+        return pb.start();
+    }
+
+    public static Result execWithEnv(Path dir, Map<String, String> env, String... args) {
         try {
-            Process p = new ProcessBuilder(cmd)
-                    .directory(dir.toFile())
-                    .redirectErrorStream(true)
-                    .start();
+            Process p = startProcess(dir, env, args);
             String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             int code = p.waitFor();
             return new Result(code, out);
@@ -686,5 +719,33 @@ public final class GitService {
             Thread.currentThread().interrupt();
             return new Result(-1, "interrupted");
         }
+    }
+
+    public static Result fetch(Path dir, String remote, Map<String, String> env) {
+        if (remote != null && !remote.isBlank()) {
+            return execWithEnv(dir, env, "fetch", remote);
+        }
+        return execWithEnv(dir, env, "fetch", "--all", "--prune");
+    }
+
+    public static Result pull(Path dir, String remote, String branch, List<String> options, Map<String, String> env) {
+        List<String> args = new ArrayList<>();
+        args.add("pull");
+        if (options != null) {
+            for (String opt : options) {
+                if (opt != null && !opt.isBlank()) args.add(opt.trim());
+            }
+        }
+        if (remote != null && !remote.isBlank()) {
+            args.add(remote.trim());
+        }
+        if (branch != null && !branch.isBlank()) {
+            args.add(branch.trim());
+        }
+        return execWithEnv(dir, env, args.toArray(new String[0]));
+    }
+
+    public static Result exec(Path dir, String... args) {
+        return execWithEnv(dir, null, args);
     }
 }

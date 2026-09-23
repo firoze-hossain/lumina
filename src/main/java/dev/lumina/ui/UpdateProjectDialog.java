@@ -20,7 +20,7 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 
 /**
- * IntelliJ IDEA-styled "Update Project" dialog matching media_1790123461604.png:
+ * Modern "Update Project" dialog:
  * - Radio: (•) Merge incoming changes into the current branch
  * - Radio: ( ) Rebase the current branch on top of incoming changes
  * - Bottom: ? Help, [ ] Don't show again, [ OK ], [ Cancel ]
