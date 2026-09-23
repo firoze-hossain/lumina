@@ -2131,11 +2131,22 @@ public final class SemanticEngine {
                 String containerFqcn = fqcnForFile(file);
                 String kind = "method";
                 Node p = md.getParentNode().orElse(null);
+                String specifiedBy = null;
                 if (p instanceof ClassOrInterfaceDeclaration cd) {
                     kind = cd.isInterface() ? "interface" : "class";
+                    if (!cd.isInterface()) {
+                        for (var iface : cd.getImplementedTypes()) {
+                            specifiedBy = "Specified by: " + md.getNameAsString() + " in interface " + iface.getNameAsString();
+                            break;
+                        }
+                        if (specifiedBy == null && !cd.getExtendedTypes().isEmpty()) {
+                            specifiedBy = "Overrides: " + md.getNameAsString() + " in class " + cd.getExtendedTypes(0).getNameAsString();
+                        }
+                    }
                 }
                 List<String> annotations = new ArrayList<>();
                 for (var ann : md.getAnnotations()) {
+                    if (ann.getNameAsString().equals("Override")) continue;
                     annotations.add(ann.toString());
                 }
                 List<String> params = new ArrayList<>();
@@ -2144,12 +2155,16 @@ public final class SemanticEngine {
                     for (var pa : param.getAnnotations()) {
                         paramStr.append(pa.toString()).append(" ");
                     }
-                    paramStr.append(cleanType(param.getType().asString())).append(" ").append(param.getNameAsString());
-                    params.add(paramStr.toString());
+                    String pType = cleanType(param.getType().asString());
+                    paramStr.append(pType).append(" ").append(param.getNameAsString());
+                    params.add(paramStr.toString().trim());
                 }
+                String ret = (md.getAccessSpecifier() != null && md.getAccessSpecifier() != com.github.javaparser.ast.AccessSpecifier.NONE
+                        ? md.getAccessSpecifier().asString() + " " : "") + cleanType(md.getType().asString());
                 String javadoc = Docs.javadocAbove(text.lines().toList(), beginLine(md));
-                return new Docs.SymbolDoc(kind, containerFqcn, cleanType(md.getType().asString()),
-                        md.getNameAsString(), params, annotations, moduleName, javadoc, file, beginLine(md));
+                return new Docs.SymbolDoc(kind, containerFqcn, ret,
+                        md.getNameAsString(), params, annotations, specifiedBy, moduleName, javadoc, file,
+                        md.getName().getBegin().map(pos -> pos.line).orElse(beginLine(md)));
             }
 
             // Case 2: Class/Interface/Record/Enum Declaration in current file
@@ -2664,4 +2679,122 @@ public final class SemanticEngine {
             "LocalDate", "java.time.LocalDate",
             "LocalDateTime", "java.time.LocalDateTime",
     };
+
+    private static final Set<String> PRIMITIVES = Set.of(
+            "int", "long", "boolean", "double", "float", "char", "byte", "short", "void"
+    );
+
+    private static boolean isPrimitive(String type) {
+        return type != null && PRIMITIVES.contains(type.trim());
+    }
+
+    /**
+     * Standalone AST symbol doc extractor that parses the in-memory Java text directly.
+     * Guaranteed to work even while semantic engine is still indexing or if semantics is null.
+     */
+    public static Docs.SymbolDoc standaloneSymbolDocAt(Path file, String text, int line, int column, String moduleName) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            com.github.javaparser.ParserConfiguration config = new com.github.javaparser.ParserConfiguration();
+            config.setLanguageLevel(com.github.javaparser.ParserConfiguration.LanguageLevel.JAVA_21);
+            com.github.javaparser.JavaParser parser = new com.github.javaparser.JavaParser(config);
+            var result = parser.parse(text);
+            if (!result.isSuccessful() || result.getResult().isEmpty()) return null;
+            CompilationUnit cu = result.getResult().get();
+
+            SimpleName target = null;
+            int bestWidth = Integer.MAX_VALUE;
+            for (SimpleName name : cu.findAll(SimpleName.class)) {
+                var r = name.getRange();
+                if (r.isEmpty()) continue;
+                var range = r.get();
+                if (range.begin.line != line || range.end.line != line) continue;
+                if (column < range.begin.column || column > range.end.column + 1) continue;
+                int width = range.end.column - range.begin.column;
+                if (width < bestWidth) {
+                    bestWidth = width;
+                    target = name;
+                }
+            }
+
+            if (target == null) {
+                for (SimpleName name : cu.findAll(SimpleName.class)) {
+                    var r = name.getRange();
+                    if (r.isEmpty()) continue;
+                    if (r.get().begin.line == line) {
+                        target = name;
+                        break;
+                    }
+                }
+            }
+
+            if (target == null) return null;
+            Node parent = target.getParentNode().orElse(null);
+            if (parent == null) return null;
+
+            String pkg = cu.getPackageDeclaration().map(pd -> pd.getName().asString()).orElse("");
+
+            if (parent instanceof MethodDeclaration md && md.getName() == target) {
+                String kind = "method";
+                String containerFqcn = pkg;
+                String specifiedBy = null;
+                Node p = md.getParentNode().orElse(null);
+                if (p instanceof ClassOrInterfaceDeclaration cd) {
+                    kind = cd.isInterface() ? "interface" : "class";
+                    containerFqcn = pkg.isEmpty() ? cd.getNameAsString() : pkg + "." + cd.getNameAsString();
+                    if (!cd.isInterface()) {
+                        for (var iface : cd.getImplementedTypes()) {
+                            specifiedBy = "Specified by: " + md.getNameAsString() + " in interface " + iface.getNameAsString();
+                            break;
+                        }
+                        if (specifiedBy == null && !cd.getExtendedTypes().isEmpty()) {
+                            specifiedBy = "Overrides: " + md.getNameAsString() + " in class " + cd.getExtendedTypes(0).getNameAsString();
+                        }
+                    }
+                }
+                List<String> annotations = new ArrayList<>();
+                for (var ann : md.getAnnotations()) {
+                    if (ann.getNameAsString().equals("Override")) continue;
+                    annotations.add(ann.toString());
+                }
+                List<String> params = new ArrayList<>();
+                for (Parameter param : md.getParameters()) {
+                    StringBuilder paramStr = new StringBuilder();
+                    for (var pa : param.getAnnotations()) {
+                        paramStr.append(pa.toString()).append(" ");
+                    }
+                    String pType = cleanType(param.getType().asString());
+                    paramStr.append(pType).append(" ").append(param.getNameAsString());
+                    params.add(paramStr.toString().trim());
+                }
+                String ret = (md.getAccessSpecifier() != null && md.getAccessSpecifier() != com.github.javaparser.ast.AccessSpecifier.NONE
+                        ? md.getAccessSpecifier().asString() + " " : "") + cleanType(md.getType().asString());
+                String javadoc = Docs.javadocAbove(text.lines().toList(), md.getBegin().map(pos -> pos.line).orElse(line));
+                return new Docs.SymbolDoc(kind, containerFqcn, ret,
+                        md.getNameAsString(), params, annotations, specifiedBy, moduleName != null ? moduleName : "", javadoc, file,
+                        md.getName().getBegin().map(pos -> pos.line).orElse(line));
+            }
+
+            if (parent instanceof ClassOrInterfaceDeclaration cd && cd.getName() == target) {
+                String kind = cd.isInterface() ? "interface" : "class";
+                String containerFqcn = pkg.isEmpty() ? cd.getNameAsString() : pkg + "." + cd.getNameAsString();
+                String javadoc = Docs.javadocAbove(text.lines().toList(), cd.getBegin().map(pos -> pos.line).orElse(line));
+                return new Docs.SymbolDoc(kind, containerFqcn, null, cd.getNameAsString(),
+                        null, List.of(), null, moduleName != null ? moduleName : "", javadoc, file,
+                        cd.getName().getBegin().map(pos -> pos.line).orElse(line));
+            }
+
+            if (parent instanceof VariableDeclarator vd && vd.getName() == target) {
+                String containerFqcn = pkg;
+                Node p = vd.getParentNode().map(Node::getParentNode).flatMap(java.util.function.Function.identity()).orElse(null);
+                if (p instanceof ClassOrInterfaceDeclaration cd) {
+                    containerFqcn = pkg.isEmpty() ? cd.getNameAsString() : pkg + "." + cd.getNameAsString();
+                }
+                String typeName = cleanType(vd.getType().asString());
+                return new Docs.SymbolDoc("field", containerFqcn, typeName, vd.getNameAsString(),
+                        null, List.of(), null, moduleName != null ? moduleName : "", null, file, line);
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
 }

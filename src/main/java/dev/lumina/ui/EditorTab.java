@@ -76,6 +76,45 @@ public class EditorTab extends Tab {
     private String fullDocumentText = "";
     private boolean isApplyingFolding = false;
 
+    // Gutter markers state (IntelliJ line marker provider parity)
+    private final Map<Integer, List<dev.lumina.gutter.GutterMarker>> lineMarkers = new java.util.concurrent.ConcurrentHashMap<>();
+    private java.util.function.BiConsumer<Path, Integer> onNavigateLocation;
+    private java.util.function.BiConsumer<javafx.scene.Node, List<dev.lumina.gutter.GutterMarker.NavigationTarget>> onShowImplementationList;
+    private javafx.stage.Popup markerHoverPopup;
+
+    public void setGutterMarkers(Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers) {
+        this.lineMarkers.clear();
+        if (markers != null) {
+            this.lineMarkers.putAll(markers);
+        }
+        javafx.application.Platform.runLater(this::refreshGutter);
+    }
+
+    public void setOnNavigateLocation(java.util.function.BiConsumer<Path, Integer> handler) {
+        this.onNavigateLocation = handler;
+    }
+
+    public void setOnShowImplementationList(java.util.function.BiConsumer<javafx.scene.Node, List<dev.lumina.gutter.GutterMarker.NavigationTarget>> handler) {
+        this.onShowImplementationList = handler;
+    }
+
+    public Map<Integer, List<dev.lumina.gutter.GutterMarker>> getLineMarkers() {
+        return Collections.unmodifiableMap(lineMarkers);
+    }
+
+    public List<dev.lumina.gutter.GutterMarker> getLineMarkersForLine(int line) {
+        return lineMarkers.getOrDefault(line, List.of());
+    }
+
+    public javafx.scene.Node getNode() {
+        return getContent();
+    }
+
+    private Runnable onContentEdited;
+    private final javafx.animation.PauseTransition gutterMarkerDebounce =
+            new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
+    public void setOnContentEdited(Runnable r) { this.onContentEdited = r; }
+
     @FunctionalInterface
     public interface DiffOpenerCallback {
         void openDiff(String title, String baseText, String currentText);
@@ -182,7 +221,8 @@ public class EditorTab extends Tab {
                         final dev.lumina.diagnostics.JavaDiagnostics.Diag activeDiag = hitDiag;
                         quickDocDebounce.setOnFinished(ev -> {
                             if (quickDocPopup.isMouseOver()) return;
-                            int line = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
+                            int visLine = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
+                            int line = getRealLineNumber(visLine);
                             int col = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMinor() + 1;
                             Docs.SymbolDoc doc = quickDocProvider.apply(line, col);
                             if (doc != null) {
@@ -254,11 +294,17 @@ public class EditorTab extends Tab {
                     .subscribe(ignore -> applyHighlighting());
         }
 
+        gutterMarkerDebounce.setOnFinished(e -> {
+            if (onContentEdited != null) {
+                onContentEdited.run();
+            }
+        });
         codeArea.textProperty().addListener((obs, old, txt) -> {
             if (isApplyingFolding) return;
             syncFullDocumentFromUserEdit();
             editGeneration++;
             markDirty();
+            gutterMarkerDebounce.playFromStart();
         });
         codeArea.caretPositionProperty().addListener((obs, old, pos) -> {
             notifyCaret();
@@ -465,7 +511,7 @@ public class EditorTab extends Tab {
                 if (word != null) {
                     e.consume();
                     quickDocPopup.hide();
-                    int line = codeArea.getCurrentParagraph() + 1;
+                    int line = getRealLineNumber(codeArea.getCurrentParagraph() + 1);
                     int col = codeArea.getCaretColumn() + 1;
                     javafx.geometry.Bounds b = getWordBoundsOnScreen(charIdx);
                     if (navigationCoordinatesHandler != null) {
@@ -712,6 +758,21 @@ public class EditorTab extends Tab {
                 gitStripe.setStyle("-fx-background-color: transparent;");
             }
 
+            javafx.scene.layout.HBox markersBox = new javafx.scene.layout.HBox(2);
+            markersBox.setAlignment(javafx.geometry.Pos.CENTER);
+            List<dev.lumina.gutter.GutterMarker> markers = lineMarkers.get(line);
+            if (markers != null && !markers.isEmpty()) {
+                for (dev.lumina.gutter.GutterMarker marker : markers) {
+                    javafx.scene.Node iconNode = dev.lumina.gutter.GutterMarkerIcons.getIcon(marker.type());
+                    iconNode.setOnMouseClicked(e -> {
+                        e.consume();
+                        handleMarkerClicked(iconNode, marker);
+                    });
+                    attachMarkerTooltip(iconNode, marker);
+                    markersBox.getChildren().add(iconNode);
+                }
+            }
+
             javafx.scene.layout.HBox box;
             if (fullBlame && blameLines != null) {
                 String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
@@ -726,14 +787,75 @@ public class EditorTab extends Tab {
                                             + blameLines.get(i).date() + "\n"
                                             + blameLines.get(i).summary()));
                 }
-                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num, foldBox, gitStripe);
+                box = new javafx.scene.layout.HBox(4, annotation, dotBox, num, markersBox, foldBox, gitStripe);
             } else {
-                box = new javafx.scene.layout.HBox(2, dotBox, num, foldBox, gitStripe);
+                box = new javafx.scene.layout.HBox(3, dotBox, num, markersBox, foldBox, gitStripe);
             }
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
             return box;
         });
+    }
+
+    private void handleMarkerClicked(javafx.scene.Node iconNode, dev.lumina.gutter.GutterMarker marker) {
+        if (marker.targets().isEmpty()) return;
+        if (marker.targets().size() == 1) {
+            var target = marker.targets().get(0);
+            if (onNavigateLocation != null) {
+                onNavigateLocation.accept(target.file(), target.line());
+            }
+        } else if (onShowImplementationList != null) {
+            onShowImplementationList.accept(iconNode, marker.targets());
+        }
+    }
+
+    private void attachMarkerTooltip(javafx.scene.Node node, dev.lumina.gutter.GutterMarker marker) {
+        node.setOnMouseEntered(e -> {
+            if (markerHoverPopup == null) {
+                markerHoverPopup = new javafx.stage.Popup();
+                markerHoverPopup.setAutoHide(true);
+            }
+            markerHoverPopup.getContent().clear();
+            markerHoverPopup.getContent().add(buildMarkerTooltipContent(marker));
+            javafx.geometry.Bounds b = node.localToScreen(node.getBoundsInLocal());
+            if (b != null) {
+                markerHoverPopup.show(node, b.getMaxX() + 6, b.getMinY() - 4);
+            }
+        });
+        node.setOnMouseExited(e -> {
+            if (markerHoverPopup != null && markerHoverPopup.isShowing()) {
+                markerHoverPopup.hide();
+            }
+        });
+    }
+
+    private javafx.scene.Node buildMarkerTooltipContent(dev.lumina.gutter.GutterMarker marker) {
+        javafx.scene.layout.VBox box = new javafx.scene.layout.VBox(4);
+        box.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 6; "
+                + "-fx-background-radius: 6; -fx-padding: 8 12 8 12; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 3);");
+
+        if (marker.signaturePreview() != null && !marker.signaturePreview().isBlank()) {
+            javafx.scene.control.Label title = new javafx.scene.control.Label(marker.tooltipTitle());
+            title.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 11.5px; -fx-font-style: italic;");
+
+            javafx.scene.control.Label sig = new javafx.scene.control.Label(marker.signaturePreview());
+            sig.setStyle("-fx-text-fill: #56A8F5; -fx-font-family: monospace; -fx-font-size: 11px; "
+                    + "-fx-background-color: #1E1F22; -fx-padding: 6 8 6 8; -fx-border-radius: 4; -fx-background-radius: 4;");
+
+            box.getChildren().addAll(title, sig);
+        } else {
+            javafx.scene.control.Label title = new javafx.scene.control.Label(marker.tooltipTitle());
+            title.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            box.getChildren().add(title);
+
+            if (marker.tooltipSubtitle() != null && !marker.tooltipSubtitle().isBlank()) {
+                javafx.scene.control.Label sub = new javafx.scene.control.Label(marker.tooltipSubtitle());
+                sub.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11px;");
+                box.getChildren().add(sub);
+            }
+        }
+        return box;
     }
 
     private Runnable onHintClicked;   // set by LuminaApp to toggle full blame
@@ -1184,7 +1306,7 @@ public class EditorTab extends Tab {
                     javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
                     pt.setOnFinished(e -> {
                         int col = codeArea.getCaretColumn() + 1;
-                        Docs.SymbolDoc doc = quickDocProvider.apply(fParagraph + 1, col);
+                        Docs.SymbolDoc doc = quickDocProvider.apply(getRealLineNumber(fParagraph + 1), col);
                         if (doc != null) {
                             javafx.geometry.Bounds b = getWordBoundsOnScreen(fStart);
                             if (b != null) {
