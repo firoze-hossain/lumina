@@ -366,10 +366,19 @@ public final class GitService {
     }
 
     public static Result stash(Path dir, String message) {
-        if (message == null || message.isBlank()) {
-            return exec(dir, "stash");
+        return stash(dir, message, false);
+    }
+
+    public static Result stash(Path dir, String message, boolean keepIndex) {
+        List<String> args = new ArrayList<>(List.of("stash", "push", "-u"));
+        if (keepIndex) {
+            args.add("--keep-index");
         }
-        return exec(dir, "stash", "push", "-u", "-m", message);
+        if (message != null && !message.isBlank()) {
+            args.add("-m");
+            args.add(message.trim());
+        }
+        return exec(dir, args.toArray(new String[0]));
     }
 
     public static Result stashList(Path dir) {
@@ -491,6 +500,84 @@ public final class GitService {
     public static Result stashDrop(Path dir, String stashRef) {
         if (stashRef == null || stashRef.isBlank()) return exec(dir, "stash", "drop");
         return exec(dir, "stash", "drop", stashRef);
+    }
+
+    public static Result createPatch(Path dir, Path patchFile, boolean reverse) {
+        List<String> args = new ArrayList<>(List.of("diff", "HEAD"));
+        if (reverse) {
+            args.add("-R");
+        }
+        Result r = exec(dir, args.toArray(new String[0]));
+        if (!r.ok()) return r;
+        try {
+            if (patchFile.getParent() != null) {
+                Files.createDirectories(patchFile.getParent());
+            }
+            Files.writeString(patchFile, r.output(), StandardCharsets.UTF_8);
+            return new Result(0, "Patch created at " + patchFile.toAbsolutePath());
+        } catch (IOException e) {
+            return new Result(-1, "Failed to write patch: " + e.getMessage());
+        }
+    }
+
+    public static Result applyPatch(Path dir, Path patchFile) {
+        if (!Files.isRegularFile(patchFile)) {
+            return new Result(-1, "Patch file not found: " + patchFile);
+        }
+        return exec(dir, "apply", "--ignore-space-change", "--whitespace=nowarn", patchFile.toAbsolutePath().toString());
+    }
+
+    public static Result applyPatchFromText(Path dir, String patchContent) {
+        if (patchContent == null || patchContent.isBlank()) {
+            return new Result(-1, "Clipboard does not contain patch content.");
+        }
+        try {
+            Path tmp = Files.createTempFile("lumina-patch-", ".patch");
+            Files.writeString(tmp, patchContent, StandardCharsets.UTF_8);
+            Result r = applyPatch(dir, tmp);
+            try {
+                Files.deleteIfExists(tmp);
+            } catch (IOException ignored) {}
+            return r;
+        } catch (IOException e) {
+            return new Result(-1, "Failed to apply clipboard patch: " + e.getMessage());
+        }
+    }
+
+    public static Result rollbackAll(Path dir) {
+        exec(dir, "restore", "--staged", ".");
+        Result r = exec(dir, "restore", ".");
+        if (!r.ok()) {
+            r = exec(dir, "checkout", "--", ".");
+        }
+        return r;
+    }
+
+    public static Result shelve(Path dir, String shelfName) {
+        Path shelfDir = VcsShelfSettingsManager.getInstance().getShelfDir(dir);
+        try {
+            Files.createDirectories(shelfDir);
+            String safeName = shelfName.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (safeName.isBlank()) safeName = "shelf_" + System.currentTimeMillis();
+            Path patchFile = shelfDir.resolve(safeName + ".patch");
+            Result r = createPatch(dir, patchFile, false);
+            if (!r.ok()) return r;
+            rollbackAll(dir);
+            return new Result(0, "Shelved changes to " + safeName);
+        } catch (IOException e) {
+            return new Result(-1, "Failed to create shelf: " + e.getMessage());
+        }
+    }
+
+    public static List<Path> shelfList(Path dir) {
+        Path shelfDir = VcsShelfSettingsManager.getInstance().getShelfDir(dir);
+        List<Path> list = new ArrayList<>();
+        if (Files.isDirectory(shelfDir)) {
+            try (var stream = Files.list(shelfDir)) {
+                stream.filter(p -> p.toString().endsWith(".patch")).forEach(list::add);
+            } catch (IOException ignored) {}
+        }
+        return list;
     }
 
     /** {@code git log}, one line per commit, most recent first. */
