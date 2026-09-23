@@ -4347,3 +4347,90 @@
     -fx-border-width: 0.5;
 }
 
+/* ------------------------------------------------ Clone Repository Dialog */
+
+.clone-repo-dialog {
+    -fx-background-color: #1E1F22;
+}
+
+.clone-repo-dialog .list-view,
+.clone-repo-list {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-control-inner-background-alt: #1E1F22;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: #2B2D30;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.clone-repo-dialog .list-view:focused,
+.clone-repo-list:focused {
+    -fx-border-color: #3574F0;
+}
+
+.clone-repo-dialog .list-view .list-cell,
+.clone-repo-list .list-cell {
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 13px;
+    -fx-padding: 4 10;
+    -fx-background-radius: 0;
+}
+
+.clone-repo-dialog .list-view .list-cell:empty,
+.clone-repo-list .list-cell:empty {
+    -fx-background-color: #1E1F22;
+}
+
+.clone-repo-dialog .list-view .list-cell:filled:hover,
+.clone-repo-list .list-cell:filled:hover {
+    -fx-background-color: #2B2D30;
+    -fx-text-fill: #DFE1E5;
+}
+
+.clone-repo-dialog .list-view .list-cell:filled:selected,
+.clone-repo-list .list-cell:filled:selected {
+    -fx-background-color: #2B3C58;
+    -fx-text-fill: #FFFFFF;
+}
+
+.clone-repo-dialog .list-view .placeholder .label,
+.clone-repo-list .placeholder .label {
+    -fx-text-fill: #8C919D;
+    -fx-font-size: 13px;
+}
+
+.clone-repo-dialog .scroll-bar:vertical,
+.clone-repo-list .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10px;
+}
+
+.clone-repo-dialog .scroll-bar:vertical .thumb,
+.clone-repo-list .scroll-bar:vertical .thumb {
+    -fx-background-color: #393B40;
+    -fx-background-radius: 4px;
+}
+
+.clone-repo-dialog .scroll-bar:vertical .thumb:hover,
+.clone-repo-list .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #4E5157;
+}
+
+.clone-repo-dialog .scroll-bar .track,
+.clone-repo-list .scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.clone-repo-dialog .scroll-bar .increment-button,
+.clone-repo-dialog .scroll-bar .decrement-button,
+.clone-repo-list .scroll-bar .increment-button,
+.clone-repo-list .scroll-bar .decrement-button {
+    -fx-pref-height: 0;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+

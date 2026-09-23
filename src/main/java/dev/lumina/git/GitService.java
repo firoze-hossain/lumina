@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -759,6 +760,135 @@ public final class GitService {
     public static List<String> remotes(Path dir) {
         List<String> list = new ArrayList<>();
         Result r = exec(dir, "remote");
+        if (r.ok()) {
+            for (String line : r.output().split("\\R")) {
+                line = line.trim();
+                if (!line.isBlank()) list.add(line);
+            }
+        }
+        return list;
+    }
+
+    public record RemoteEntry(String name, String fetchUrl, String pushUrl) {
+        public String getDisplayUrl() {
+            if (fetchUrl != null && !fetchUrl.isBlank()) return fetchUrl;
+            return pushUrl != null ? pushUrl : "";
+        }
+    }
+
+    public static List<RemoteEntry> remoteEntries(Path dir) {
+        List<RemoteEntry> list = new ArrayList<>();
+        if (!isRepository(dir)) return list;
+        Result r = exec(dir, "remote", "-v");
+        if (!r.ok()) return list;
+        Map<String, String[]> map = new LinkedHashMap<>();
+        for (String line : r.output().split("\\R")) {
+            line = line.trim();
+            if (line.isBlank()) continue;
+            String[] parts = line.split("\\s+");
+            if (parts.length >= 2) {
+                String name = parts[0];
+                String url = parts[1];
+                String type = parts.length >= 3 ? parts[2].toLowerCase() : "";
+                String[] urls = map.computeIfAbsent(name, k -> new String[2]);
+                if (type.contains("fetch")) {
+                    urls[0] = url;
+                } else if (type.contains("push")) {
+                    urls[1] = url;
+                } else {
+                    if (urls[0] == null) urls[0] = url;
+                    if (urls[1] == null) urls[1] = url;
+                }
+            }
+        }
+        for (Map.Entry<String, String[]> entry : map.entrySet()) {
+            String name = entry.getKey();
+            String fetchUrl = entry.getValue()[0];
+            String pushUrl = entry.getValue()[1];
+            if (fetchUrl == null) fetchUrl = pushUrl;
+            if (pushUrl == null) pushUrl = fetchUrl;
+            list.add(new RemoteEntry(name, fetchUrl, pushUrl));
+        }
+        return list;
+    }
+
+    public static Result addRemote(Path dir, String name, String url) {
+        if (name == null || name.isBlank() || url == null || url.isBlank()) {
+            return new Result(-1, "Remote name and URL cannot be empty");
+        }
+        return exec(dir, "remote", "add", name.trim(), url.trim());
+    }
+
+    public static Result removeRemote(Path dir, String name) {
+        if (name == null || name.isBlank()) {
+            return new Result(-1, "Remote name cannot be empty");
+        }
+        return exec(dir, "remote", "remove", name.trim());
+    }
+
+    public static Result setRemoteUrl(Path dir, String name, String newUrl) {
+        if (name == null || name.isBlank() || newUrl == null || newUrl.isBlank()) {
+            return new Result(-1, "Remote name and URL cannot be empty");
+        }
+        return exec(dir, "remote", "set-url", name.trim(), newUrl.trim());
+    }
+
+    public static Result renameRemote(Path dir, String oldName, String newName) {
+        if (oldName == null || oldName.isBlank() || newName == null || newName.isBlank()) {
+            return new Result(-1, "Remote names cannot be empty");
+        }
+        return exec(dir, "remote", "rename", oldName.trim(), newName.trim());
+    }
+
+    public static Result cloneRepo(Path targetParentDir, String url, String dirName, Integer depth, Map<String, String> env) {
+        if (url == null || url.isBlank()) {
+            return new Result(-1, "Repository URL cannot be empty");
+        }
+        List<String> args = new ArrayList<>();
+        args.add("clone");
+        if (depth != null && depth > 0) {
+            args.add("--depth");
+            args.add(depth.toString());
+        }
+        args.add(url.trim());
+        if (dirName != null && !dirName.isBlank()) {
+            args.add(dirName.trim());
+        }
+        return execWithEnv(targetParentDir, env, args.toArray(new String[0]));
+    }
+
+    public record FileRevision(String hash, String author, String date, String subject) {}
+
+    public static List<FileRevision> fileRevisions(Path dir, String relPath, int limit) {
+        List<FileRevision> list = new ArrayList<>();
+        if (!isRepository(dir) || relPath == null || relPath.isBlank()) return list;
+        int max = limit > 0 ? limit : 100;
+        Result r = exec(dir, "log", "-n", String.valueOf(max), "--pretty=format:%h%x09%an%x09%ad%x09%s", "--date=short", "--", relPath.replace('\\', '/'));
+        if (r.ok()) {
+            for (String line : r.output().split("\\R")) {
+                if (line.isBlank()) continue;
+                String[] parts = line.split("\t", 4);
+                if (parts.length >= 4) {
+                    list.add(new FileRevision(parts[0], parts[1], parts[2], parts[3]));
+                } else if (parts.length > 0) {
+                    list.add(new FileRevision(parts[0], "", "", parts.length > 1 ? parts[1] : ""));
+                }
+            }
+        }
+        return list;
+    }
+
+    public static Result fileContentAtRevision(Path dir, String revision, String relPath) {
+        if (!isRepository(dir) || revision == null || revision.isBlank() || relPath == null) {
+            return new Result(-1, "Invalid repository, revision, or file path");
+        }
+        return exec(dir, "show", revision.trim() + ":" + relPath.replace('\\', '/'));
+    }
+
+    public static List<String> tags(Path dir) {
+        List<String> list = new ArrayList<>();
+        if (!isRepository(dir)) return list;
+        Result r = exec(dir, "tag", "-l");
         if (r.ok()) {
             for (String line : r.output().split("\\R")) {
                 line = line.trim();
