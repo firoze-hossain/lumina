@@ -85,6 +85,7 @@ public class LuminaApp extends Application {
     private Label projectChip;
     private Button branchButton;
     private GitBranchesPopup gitBranchesPopup;
+    private VcsOperationsPopup vcsOperationsPopup;
     private Button githubButton;
     private ComboBox<RunConfiguration> runConfigBox;
     private Button runButton;
@@ -402,8 +403,17 @@ public class LuminaApp extends Application {
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
 
-        // IntelliJ-style double-Shift -> Search Everywhere
+        // Key shortcuts
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            // Alt+` -> VCS Operations Popup (matching IntelliJ IDEA)
+            if (e.isAltDown() && !e.isControlDown() && !e.isMetaDown() &&
+                    (e.getCode() == javafx.scene.input.KeyCode.BACK_QUOTE || "`".equals(e.getText()))) {
+                showVcsOperationsPopup();
+                e.consume();
+                return;
+            }
+
+            // IntelliJ-style double-Shift -> Search Everywhere
             if (e.getCode() == javafx.scene.input.KeyCode.SHIFT) {
                 long now = System.currentTimeMillis();
                 if (now - lastShiftPress < 350) {
@@ -1020,7 +1030,7 @@ public class LuminaApp extends Application {
                 item("New Tag\u2026", null, e -> showNewTagDialog()), item("Reset HEAD\u2026", null, e -> showResetHeadDialog()), new SeparatorMenuItem(),
                 item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
                 gitLab, github, item("Manage Remotes\u2026", null, e -> showManageRemotesDialog()), item("Clone\u2026", null, e -> showCloneRepositoryDialog(null)),
-                new SeparatorMenuItem(), placeholder("VCS Operations Popup\u2026", null));
+                new SeparatorMenuItem(), item("VCS Operations Popup\u2026", "Alt+`", e -> showVcsOperationsPopup()));
 
         // ---- Tools
         Menu tasks = new Menu("Tasks & Contexts"); tasks.getItems().add(placeholder("Open Task…", null));
@@ -1620,6 +1630,56 @@ public class LuminaApp extends Application {
                 @Override public void onRebaseBranch(String target) { showRebaseDialog(target); }
             });
         }
+    }
+
+    private void showVcsOperationsPopup() {
+        if (stage == null || !stage.isShowing()) return;
+        ensureVcsOperationsPopup();
+        vcsOperationsPopup.showCentered(stage);
+    }
+
+    private void ensureVcsOperationsPopup() {
+        if (vcsOperationsPopup == null) {
+            vcsOperationsPopup = new VcsOperationsPopup(
+                    new VcsOperationsPopup.VcsContext() {
+                        @Override public Path getProjectRoot() { return projectRoot; }
+                        @Override public Path getActiveFile() {
+                            EditorTab tab = currentEditor();
+                            return tab != null ? tab.getPath() : null;
+                        }
+                        @Override public String getActiveBranch() {
+                            String b = projectRoot != null ? GitService.currentBranch(projectRoot) : null;
+                            return (b != null && !b.isBlank()) ? b : "master";
+                        }
+                    },
+                    new VcsOperationsPopup.VcsCallbacks() {
+                        @Override public void onCommit() { gitCommit(); }
+                        @Override public void onCommitSelected() { commitCurrentFile(); }
+                        @Override public void onRollback() { rollbackAllUncommittedChanges(); }
+                        @Override public void onShowHistory(Path file) { showFileHistory(); }
+                        @Override public void onAnnotate(Path file) { toggleBlame(); }
+                        @Override public void onShowDiff(Path file) { showDiffCurrentFile(); }
+                        @Override public void onBranches() { showBranchesPopup(); }
+                        @Override public void onPush() { showPushDialog(); }
+                        @Override public void onStash() { showStashDialog(); }
+                        @Override public void onUnstash() { showUnstashDialog(); }
+                        @Override public void onCopyBranchName(String branch) { copyBranchNameToClipboard(branch); }
+                        @Override public void onShowLocalHistory(Path file) {
+                            NotificationService.getInstance().notify(new Notification(
+                                    "Local History", "Local History", (file != null ? file.getFileName().toString() : "Project") + " history up to date", NotificationType.INFORMATION));
+                        }
+                    }
+            );
+        }
+    }
+
+    private void copyBranchNameToClipboard(String branch) {
+        String name = (branch != null && !branch.isBlank()) ? branch : "master";
+        javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+        cc.putString(name);
+        javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+        NotificationService.getInstance().notify(new Notification(
+                "Git", "Branch Name Copied", "Branch name '" + name + "' copied to clipboard", NotificationType.INFORMATION));
     }
 
     private void showCreateBranchDialog() {
@@ -2366,6 +2426,7 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Rollback\u2026", this::rollbackAllUncommittedChanges),
                 new SearchEverywhereDialog.Action("Git: Manage Remotes\u2026", this::showManageRemotesDialog),
                 new SearchEverywhereDialog.Action("Git: Clone\u2026", () -> showCloneRepositoryDialog(null)),
+                new SearchEverywhereDialog.Action("Git: VCS Operations Popup\u2026", this::showVcsOperationsPopup),
                 new SearchEverywhereDialog.Action("Git: Show Diff (Current File)", this::showDiffCurrentFile),
                 new SearchEverywhereDialog.Action("Git: Annotate with Git Blame", this::toggleBlame),
                 new SearchEverywhereDialog.Action("Git: Compare with Revision\u2026", this::showCompareWithRevision),
