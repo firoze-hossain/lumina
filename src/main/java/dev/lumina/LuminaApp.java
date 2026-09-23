@@ -82,7 +82,8 @@ public class LuminaApp extends Application {
     private SplitPane verticalSplit;
     private SplitPane horizontalSplit;
     private IconRail iconRail;
-    private Label projectChip;
+    private Button projectChip;
+    private dev.lumina.ui.ProjectWidgetPopup projectWidgetPopup;
     private Button branchButton;
     private GitBranchesPopup gitBranchesPopup;
     private VcsOperationsPopup vcsOperationsPopup;
@@ -120,6 +121,14 @@ public class LuminaApp extends Application {
     private Path pendingProjectToOpen;
     private int untitledCounter = 1;
     private long lastShiftPress;
+
+    public Path getProjectRoot() {
+        return projectRoot;
+    }
+
+    public Stage getStage() {
+        return stage;
+    }
 
     @Override
     public void start(Stage stage) {
@@ -1145,8 +1154,9 @@ public class LuminaApp extends Application {
     // --------------------------------------------------------------- toolbar
 
     private HBox buildToolBar() {
-        projectChip = new Label("No project");
+        projectChip = new Button("No project \u25BE");
         projectChip.getStyleClass().add("project-chip");
+        projectChip.setOnAction(e -> toggleProjectWidgetPopup());
 
         branchButton = new Button("no vcs \u25BE");
         branchButton.getStyleClass().add("branch-chip");
@@ -1680,6 +1690,62 @@ public class LuminaApp extends Application {
         javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
         NotificationService.getInstance().notify(new Notification(
                 "Git", "Branch Name Copied", "Branch name '" + name + "' copied to clipboard", NotificationType.INFORMATION));
+    }
+
+    private void toggleProjectWidgetPopup() {
+        ensureProjectWidgetPopup();
+        if (projectChip != null && projectChip.getScene() != null && projectChip.isVisible()) {
+            projectWidgetPopup.toggleBelow(projectChip);
+        } else if (projectChip != null) {
+            projectWidgetPopup.showBelow(projectChip);
+        }
+    }
+
+    private void ensureProjectWidgetPopup() {
+        if (projectWidgetPopup == null) {
+            projectWidgetPopup = new dev.lumina.ui.ProjectWidgetPopup(
+                    () -> {
+                        List<dev.lumina.ui.ProjectWidgetPopup.OpenProject> list = new ArrayList<>();
+                        for (LuminaApp app : ACTIVE_INSTANCES) {
+                            if (app != null && app.projectRoot != null) {
+                                Path root = app.projectRoot;
+                                String name = root.getFileName() != null ? root.getFileName().toString() : root.toString();
+                                list.add(new dev.lumina.ui.ProjectWidgetPopup.OpenProject(root, name, app.stage, () -> {
+                                    if (app.stage != null) {
+                                        app.stage.toFront();
+                                        app.stage.requestFocus();
+                                    }
+                                }));
+                            }
+                        }
+                        return list;
+                    },
+                    () -> dev.lumina.project.RecentProjectsManager.getInstance().getRecentProjects(),
+                    new dev.lumina.ui.ProjectWidgetPopup.ProjectWidgetCallbacks() {
+                        @Override public void onNewProject() { showNewProjectDialog(); }
+                        @Override public void onOpenFolder() { openFolderDialog(); }
+                        @Override public void onCloneRepository() { showCloneRepositoryDialog(null); }
+                        @Override public void onOpenProject(Path projectDir) { openProjectInteractive(projectDir); }
+                        @Override public void onRemoveRecentProject(String projectPath) {
+                            dev.lumina.project.RecentProjectsManager.getInstance().removeProject(projectPath);
+                        }
+                    }
+            );
+        }
+    }
+
+    private void updateProjectChip(Path dir) {
+        if (projectChip == null) return;
+        if (dir != null) {
+            String name = dir.getFileName() != null ? dir.getFileName().toString() : dir.toString();
+            projectChip.setText(name + " \u25BE");
+            projectChip.setGraphic(dev.lumina.ui.ProjectWidgetPopup.createMonogramBadge(name, 16));
+            projectChip.setTooltip(new Tooltip(dir.toString()));
+        } else {
+            projectChip.setText("No project \u25BE");
+            projectChip.setGraphic(null);
+            projectChip.setTooltip(new Tooltip("No project open"));
+        }
     }
 
     private void showCreateBranchDialog() {
@@ -5100,7 +5166,7 @@ public class LuminaApp extends Application {
         projectRoot = dir;
         dev.lumina.project.LuminaFolderGenerator.ensure(dir, dir.getFileName().toString());
         fileExplorer.setRoot(dir);
-        projectChip.setText("\uD83D\uDCC1 " + dir.getFileName());
+        updateProjectChip(dir);
         stage.setTitle("Lumina \u2014 " + dir.getFileName());
         updateBreadcrumbs(null, null);
         refreshRunConfigs();
@@ -5198,7 +5264,7 @@ public class LuminaApp extends Application {
         closeEditorTabsWhere(t -> true);
         collapseAllSplits();
         fileExplorer.setRoot(null);
-        projectChip.setText("No project");
+        updateProjectChip(null);
         stage.setTitle("Lumina");
         refreshRunConfigs();
         refreshGitInfo();

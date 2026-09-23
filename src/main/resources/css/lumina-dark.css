@@ -323,12 +323,19 @@
     -fx-border-width: 0 0 1 0;
 }
 .project-chip {
-    -fx-background-color: #1F2230;
-    -fx-text-fill: #C9CDDC;
-    -fx-background-radius: 8;
-    -fx-padding: 4 14 4 14;
-    -fx-font-weight: bold;
-    -fx-font-size: 12px;
+    -fx-background-color: transparent;
+    -fx-text-fill: #DFE1E5;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 6;
+    -fx-font-weight: normal;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-graphic-text-gap: 6;
+}
+.project-chip:hover, .project-chip:showing, .project-chip.active {
+    -fx-background-color: #2B2D30;
+    -fx-text-fill: #FFFFFF;
 }
 .tool-button {
     -fx-background-color: transparent;
