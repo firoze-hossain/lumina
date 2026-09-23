@@ -3297,6 +3297,18 @@
 .maven-progress-row .label { -fx-text-fill: #B9BECF; -fx-font-size: 11px; }
 .maven-progress-bar .bar { -fx-background-color: -lumen; -fx-background-insets: 0; }
 .maven-progress-bar .track { -fx-background-color: #262A3A; }
+.git-status-progress-bar {
+    -fx-pref-height: 4px;
+    -fx-max-height: 4px;
+}
+.git-status-progress-bar .bar {
+    -fx-background-color: #3574F0;
+    -fx-background-insets: 0;
+}
+.git-status-progress-bar .track {
+    -fx-background-color: #2B2D30;
+    -fx-background-insets: 0;
+}
 .maven-progress-cancel {
     -fx-background-color: transparent;
     -fx-text-fill: #7A8199;

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -103,6 +104,11 @@ public class LuminaApp extends Application {
     private HBox mavenProgressRow;
     private Label mavenProgressLabel;
     private ProgressBar mavenProgressBarNode;
+    private HBox gitProgressBox;
+    private Label gitProgressLabel;
+    private ProgressBar gitProgressBar;
+    private Button gitProgressCancel;
+    private Process activeGitTaskProcess;
     /** pom.xml/build.gradle text as of the last successful dependency
      *  resolve; every open build-file tab is compared against this live. */
     private volatile String mavenSyncBaselineText;
@@ -941,8 +947,8 @@ public class LuminaApp extends Application {
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
                 item("Push\u2026", "Shortcut+Shift+K", e -> showPushDialog()),
                 item("Update Project\u2026", "Shortcut+T", e -> showUpdateProjectDialog()),
-                item("Pull…", null, e -> gitRun("Pull", "pull")),
-                item("Fetch", null, e -> gitRun("Fetch", "fetch")),
+                item("Pull\u2026", null, e -> showPullDialog()),
+                item("Fetch", null, e -> gitFetch()),
                 new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
                 placeholder("Branches…", null), item("New Branch…", "Shortcut+Alt+N", e -> gitNewBranch()),
                 placeholder("New Tag…", null), placeholder("Reset HEAD…", null), new SeparatorMenuItem(),
@@ -2026,7 +2032,8 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Commit\u2026", this::gitCommit),
                 new SearchEverywhereDialog.Action("Git: Push\u2026", this::showPushDialog),
                 new SearchEverywhereDialog.Action("Git: Update Project\u2026", this::showUpdateProjectDialog),
-                new SearchEverywhereDialog.Action("Git: Pull", () -> gitRun("Pull", "pull")),
+                new SearchEverywhereDialog.Action("Git: Pull\u2026", this::showPullDialog),
+                new SearchEverywhereDialog.Action("Git: Fetch", this::gitFetch),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
@@ -3926,14 +3933,153 @@ public class LuminaApp extends Application {
         Label brand = new Label("Lumina 1.24");
         brand.getStyleClass().add("status-brand");
 
+        gitProgressLabel = new Label("Fetching\u2026");
+        gitProgressLabel.setStyle("-fx-text-fill: #A8ADBD; -fx-font-size: 11px;");
+
+        gitProgressBar = new ProgressBar();
+        gitProgressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+        gitProgressBar.setPrefWidth(110);
+        gitProgressBar.setPrefHeight(4);
+        gitProgressBar.setMaxHeight(4);
+        gitProgressBar.getStyleClass().add("git-status-progress-bar");
+
+        gitProgressCancel = new Button("✕");
+        gitProgressCancel.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-font-size: 10px; -fx-padding: 0 4; -fx-cursor: hand;");
+        gitProgressCancel.setTooltip(new Tooltip("Cancel"));
+        gitProgressCancel.setOnMouseEntered(e -> gitProgressCancel.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-padding: 0 4; -fx-cursor: hand; -fx-background-radius: 3;"));
+        gitProgressCancel.setOnMouseExited(e -> gitProgressCancel.setStyle("-fx-background-color: transparent; -fx-text-fill: #8C8E94; -fx-font-size: 10px; -fx-padding: 0 4; -fx-cursor: hand;"));
+
+        gitProgressBox = new HBox(6, gitProgressLabel, gitProgressBar, gitProgressCancel);
+        gitProgressBox.setAlignment(Pos.CENTER_LEFT);
+        gitProgressBox.setVisible(false);
+        gitProgressBox.setManaged(false);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(16, breadcrumbBar, spacer, statusProblems, statusCaret, brand);
+        HBox bar = new HBox(16, breadcrumbBar, spacer, gitProgressBox, statusProblems, statusCaret, brand);
         bar.getStyleClass().add("status-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(3, 12, 3, 12));
         return bar;
+    }
+
+    private void showGitProgress(boolean show, String text, Runnable onCancel) {
+        Platform.runLater(() -> {
+            if (gitProgressBox == null) return;
+            gitProgressBox.setVisible(show);
+            gitProgressBox.setManaged(show);
+            if (show) {
+                gitProgressLabel.setText(text != null ? text : "Working\u2026");
+                gitProgressCancel.setOnAction(e -> {
+                    if (onCancel != null) onCancel.run();
+                });
+            }
+        });
+    }
+
+    private void gitFetch() {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Fetching\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), "fetch", "--all", "--prune");
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    Notification notif = new Notification(
+                            "git.fetch",
+                            "Git Fetch",
+                            ok ? "Fetch successful" : ("Fetch failed:\n" + out),
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                        refreshGitInfo();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.fetch",
+                            "Git Fetch",
+                            "Fetch error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-fetch");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void showPullDialog() {
+        if (!requireProject()) return;
+        PullDialog dialog = new PullDialog(stage, projectRoot, this::gitPull);
+        dialog.show();
+    }
+
+    private void gitPull(String remote, String branch, List<String> options) {
+        if (!requireProject()) return;
+        Thread t = new Thread(() -> {
+            try {
+                showGitProgress(true, "Pulling\u2026", () -> {
+                    if (activeGitTaskProcess != null && activeGitTaskProcess.isAlive()) {
+                        activeGitTaskProcess.destroyForcibly();
+                    }
+                    showGitProgress(false, null, null);
+                });
+                List<String> args = new ArrayList<>();
+                args.add("pull");
+                if (options != null) args.addAll(options);
+                if (remote != null && !remote.isBlank()) args.add(remote);
+                if (branch != null && !branch.isBlank()) args.add(branch);
+
+                activeGitTaskProcess = GitService.startProcess(projectRoot, gitEnv(), args.toArray(new String[0]));
+                String out = new String(activeGitTaskProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                int code = activeGitTaskProcess.waitFor();
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    boolean ok = code == 0;
+                    String message = out.isBlank() ? "Pull successful" : out.trim();
+                    Notification notif = new Notification(
+                            "git.pull",
+                            "Git Pull",
+                            ok ? message : ("Pull failed:\n" + out),
+                            ok ? NotificationType.INFORMATION : NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (ok) {
+                        if (gitLogPanel != null) gitLogPanel.refresh();
+                        refreshGitInfo();
+                        if (fileExplorer != null) fileExplorer.refresh();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    showGitProgress(false, null, null);
+                    Notification notif = new Notification(
+                            "git.pull",
+                            "Git Pull",
+                            "Pull error: " + ex.getMessage(),
+                            NotificationType.ERROR
+                    );
+                    NotificationService.getInstance().notify(notif);
+                });
+            }
+        }, "lumina-git-pull");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void updateBreadcrumbs(Path filePath, String fallback) {
