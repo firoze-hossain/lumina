@@ -461,10 +461,61 @@
 .pr-row { -fx-padding: 4 0 4 0; }
 .pr-link { -fx-text-fill: #6FA8E0; -fx-font-size: 12px; }
 .pr-link:hover { -fx-text-fill: #8FC0F0; }
-.git-log-subject { -fx-text-fill: #C9CDDC; -fx-font-size: 12px; }
 .structure-panel .tree-view, .git-log-panel .list-view {
     -fx-background-color: transparent;
     -fx-control-inner-background: #14161E;
+}
+.git-log-panel .tree-view {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-border-width: 0;
+}
+.git-log-panel .tree-cell {
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-padding: 3 6;
+}
+.git-log-panel .tree-cell:filled:hover {
+    -fx-background-color: #2B2D30;
+}
+.git-log-panel .tree-cell:filled:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+.git-log-panel .tree-cell .arrow {
+    -fx-background-color: #8C8E94;
+}
+.git-log-panel .tree-cell:selected .arrow {
+    -fx-background-color: #DFE1E5;
+}
+.git-log-panel .table-view {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-table-cell-border-color: transparent;
+}
+.git-log-panel .table-row-cell {
+    -fx-background-color: #1E1F22;
+    -fx-border-color: transparent;
+}
+.git-log-panel .table-row-cell:filled:hover {
+    -fx-background-color: #2B2D30;
+}
+.git-log-panel .table-row-cell:filled:selected {
+    -fx-background-color: #2E436E;
+}
+.git-log-panel .menu-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+}
+.git-log-panel .menu-button .label {
+    -fx-text-fill: #DFE1E5;
+}
+.git-log-panel .menu-button .arrow {
+    -fx-background-color: #8C8E94;
+}
+.git-log-panel .menu-button:hover .arrow {
+    -fx-background-color: #DFE1E5;
 }
 
 /* ---------------------------------------------- bottom tool windows: Build/Services/MCP Log */

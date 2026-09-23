@@ -173,6 +173,7 @@ public class LuminaApp extends Application {
                 toolTab("Build", buildConsole),
                 toolTab("Services", servicesPanel),
                 toolTab("GitHub Copilot MCP Log", mcpLogPanel));
+        gitLogPanel.setOnOpenFileDiff(this::openGitCommitFileDiff);
         problemsPanel.setOnJump(line -> {
             EditorTab editor = currentEditor();
             if (editor != null) editor.goToLine(line);
@@ -902,7 +903,8 @@ public class LuminaApp extends Application {
                 item("Fetch", null, e -> gitRun("Fetch", "fetch")),
                 new SeparatorMenuItem(), placeholder("Merge…", null), placeholder("Rebase…", null), new SeparatorMenuItem(),
                 placeholder("Branches…", null), item("New Branch…", "Shortcut+Alt+N", e -> gitNewBranch()),
-                placeholder("New Tag…", null), placeholder("Reset HEAD…", null), placeholder("Show Git Log", null), patch, changes, currentFile,
+                placeholder("New Tag…", null), placeholder("Reset HEAD…", null), new SeparatorMenuItem(),
+                item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
                 gitLab, github, placeholder("Manage Remotes…", null), item("Clone…", null, e -> gitClone()),
                 new SeparatorMenuItem(), placeholder("VCS Operations Popup…", null));
 
@@ -3529,6 +3531,35 @@ public class LuminaApp extends Application {
         iconRail.selectBottom(4);
         ensureTerminalSession();
         terminal.focusInput();
+    }
+
+    public void showGitLog() {
+        toggleBottomPanel(true);
+        bottomTabs.getSelectionModel().select(4);
+        iconRail.selectBottom(6);
+        if (gitLogPanel != null) {
+            gitLogPanel.selectLogTab();
+            gitLogPanel.refresh();
+        }
+    }
+
+    private void openGitCommitFileDiff(String hash, String relPath) {
+        Path root = projectRoot;
+        if (root == null || hash == null || relPath == null) return;
+        Path localPath = root.resolve(relPath);
+        String shortHash = hash.length() > 7 ? hash.substring(0, 7) : hash;
+        String fileName = localPath.getFileName() != null ? localPath.getFileName().toString() : relPath;
+        String title = fileName + " (" + shortHash + ")";
+
+        Thread t = new Thread(() -> {
+            String commitText = GitService.getFileContentAtCommit(root, hash, relPath);
+            String parentText = GitService.getFileContentAtCommit(root, hash + "^1", relPath);
+            Platform.runLater(() -> {
+                openDiffViewer(title, hash, relPath, localPath, parentText, commitText);
+            });
+        }, "lumina-git-diff-loader");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void toggleBottomPanel(boolean show) {

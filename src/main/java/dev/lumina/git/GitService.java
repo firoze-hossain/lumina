@@ -57,6 +57,28 @@ public final class GitService {
         return exec(dir, "checkout", "-b", branch);
     }
 
+    public static Result createBranch(Path dir, String branch, String startPoint, boolean checkout, boolean overwrite) {
+        List<String> args = new ArrayList<>();
+        if (checkout) {
+            args.add("checkout");
+            args.add(overwrite ? "-B" : "-b");
+            args.add(branch);
+            if (startPoint != null && !startPoint.isBlank() && !"HEAD".equalsIgnoreCase(startPoint)) {
+                args.add(startPoint);
+            }
+        } else {
+            args.add("branch");
+            if (overwrite) {
+                args.add("-f");
+            }
+            args.add(branch);
+            if (startPoint != null && !startPoint.isBlank() && !"HEAD".equalsIgnoreCase(startPoint)) {
+                args.add(startPoint);
+            }
+        }
+        return exec(dir, args.toArray(new String[0]));
+    }
+
     public static List<String> remoteBranches(Path dir) {
         List<String> branches = new ArrayList<>();
         Result r = exec(dir, "branch", "-r", "--format=%(refname:short)");
@@ -474,6 +496,114 @@ public final class GitService {
     public static Result log(Path dir, int maxCount) {
         return exec(dir, "log", "-" + maxCount,
                 "--date=relative", "--pretty=format:%h\u0001%an\u0001%ad\u0001%s");
+    }
+
+    public static List<GitLogCommit> getLogCommits(Path dir, int maxCount, String branchFilter) {
+        List<GitLogCommit> list = new ArrayList<>();
+        if (!isRepository(dir)) return list;
+
+        List<String> args = new ArrayList<>();
+        args.add("log");
+        if (maxCount > 0) {
+            args.add("-" + maxCount);
+        }
+        // format: hash, shortHash, parents, authorName, authorEmail, timestamp(sec), subject, fullBody, refNames
+        args.add("--pretty=format:%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%B%x1f%D%x1e");
+
+        if (branchFilter != null && !branchFilter.isBlank() && !"All".equalsIgnoreCase(branchFilter)) {
+            if ("HEAD".equalsIgnoreCase(branchFilter) || branchFilter.startsWith("HEAD")) {
+                args.add("HEAD");
+            } else {
+                args.add(branchFilter);
+            }
+        } else {
+            args.add("--all");
+        }
+
+        Result r = exec(dir, args.toArray(new String[0]));
+        if (!r.ok() || r.output().isBlank()) {
+            if (args.contains("--all")) {
+                args.remove("--all");
+                r = exec(dir, args.toArray(new String[0]));
+            }
+        }
+
+        if (r.ok() && !r.output().isBlank()) {
+            String[] records = r.output().split("\u001e");
+            for (String rec : records) {
+                if (rec == null || rec.isBlank()) continue;
+                String[] fields = rec.split("\u001f", -1);
+                if (fields.length >= 7) {
+                    String hash = fields[0].trim();
+                    String shortHash = fields[1].trim();
+                    String parentsStr = fields[2].trim();
+                    List<String> parents = parentsStr.isEmpty() ? List.of() : List.of(parentsStr.split("\\s+"));
+                    String authorName = fields[3].trim();
+                    String authorEmail = fields[4].trim();
+                    long timestamp = 0;
+                    try {
+                        timestamp = Long.parseLong(fields[5].trim());
+                    } catch (NumberFormatException ignored) {}
+                    String subject = fields[6].trim();
+                    String fullBody = fields.length > 7 ? fields[7].trim() : subject;
+                    String refStr = fields.length > 8 ? fields[8].trim() : "";
+                    List<String> refs = GitLogCommit.parseRefs(refStr);
+
+                    list.add(new GitLogCommit(
+                            hash, shortHash, parents, authorName, authorEmail,
+                            timestamp, subject, fullBody, refs, 0
+                    ));
+                }
+            }
+        }
+
+        return list;
+    }
+
+    public static List<CommitFile> getCommitFiles(Path dir, String hash) {
+        List<CommitFile> files = new ArrayList<>();
+        if (!isRepository(dir) || hash == null || hash.isBlank()) return files;
+
+        Result diffTree = exec(dir, "diff-tree", "--no-commit-id", "--name-status", "-r", hash);
+        if (diffTree.ok() && !diffTree.output().isBlank()) {
+            for (String fLine : diffTree.output().split("\\R")) {
+                CommitFile cf = CommitFile.fromLine(fLine);
+                if (cf != null) files.add(cf);
+            }
+        }
+        return files;
+    }
+
+    public static String getFileContentAtCommit(Path dir, String hash, String relPath) {
+        if (!isRepository(dir) || hash == null || hash.isBlank() || relPath == null || relPath.isBlank()) {
+            return "";
+        }
+        String cleanPath = relPath.replace('\\', '/');
+        Result r = exec(dir, "show", hash + ":" + cleanPath);
+        return r.ok() ? r.output() : "";
+    }
+
+    public static List<String> getBranchesContaining(Path dir, String hash) {
+        List<String> branches = new ArrayList<>();
+        if (!isRepository(dir) || hash == null || hash.isBlank()) return branches;
+
+        Result r = exec(dir, "branch", "-a", "--contains", hash);
+        if (r.ok() && !r.output().isBlank()) {
+            for (String line : r.output().split("\\R")) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.contains("->")) continue;
+                if (trimmed.startsWith("* ")) {
+                    trimmed = trimmed.substring(2).trim();
+                }
+                if (trimmed.startsWith("remotes/")) {
+                    trimmed = trimmed.substring(8).trim();
+                }
+                if (!branches.contains(trimmed)) {
+                    branches.add(trimmed);
+                }
+            }
+        }
+        return branches;
     }
 
     // ----------------------------------------------------------------- blame
