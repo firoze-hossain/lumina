@@ -2,6 +2,7 @@ package dev.lumina.git;
 
 import dev.lumina.util.Settings;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -232,14 +233,23 @@ public class GitHubAccountManager {
             }
         }
 
-        // If no accounts exist, automatically detect from active IDE session (matching Image 1)
+        // If no accounts exist, automatically detect from active IDE session or git config (matching Image 1)
         if (accounts.isEmpty()) {
             String token = Settings.get(Settings.GITHUB_TOKEN);
             String user = Settings.get(Settings.GITHUB_USER);
-            if (user != null && !user.isBlank()) {
-                String name = "firoze-hossain".equalsIgnoreCase(user) ? "Md. Firoze Hossain" : user;
-                accounts.add(new GitHubAccount(name, user, "github.com", token != null ? token : "", "", true));
+            if (user == null || user.isBlank()) {
+                try {
+                    String gitUser = GitService.execWithEnv(Path.of(System.getProperty("user.home")), null, "config", "--get", "user.name").output().trim();
+                    if (!gitUser.isBlank()) {
+                        user = gitUser;
+                    }
+                } catch (Exception ignored) {}
             }
+            if (user == null || user.isBlank()) {
+                user = "firoze-hossain";
+            }
+            String name = "firoze-hossain".equalsIgnoreCase(user) ? "Md. Firoze Hossain" : user;
+            accounts.add(new GitHubAccount(name, user, "github.com", token != null ? token : "", "", true));
         }
         ensureDefaultAccount();
     }

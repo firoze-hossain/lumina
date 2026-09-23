@@ -1,6 +1,8 @@
 package dev.lumina;
 
+import dev.lumina.git.GitHubAccountManager;
 import dev.lumina.git.GitHubAuth;
+import dev.lumina.git.GitLabAccountManager;
 import dev.lumina.git.GitService;
 import dev.lumina.project.ProjectGenerator;
 import dev.lumina.project.ProjectSpec;
@@ -956,9 +958,56 @@ public class LuminaApp extends Application {
                 item("Rollback\u2026", "Shortcut+Alt+Z", e -> rollbackAllUncommittedChanges()),
                 item("Show Local Changes as UML", "Shortcut+Alt+Shift+D", e -> showLocalChangesUml())
         );
-        Menu currentFile = new Menu("Current File"); currentFile.getItems().add(item("Toggle Blame Annotations", "Shortcut+Alt+B", e -> toggleBlame()));
-        Menu gitLab = new Menu("GitLab"); gitLab.getItems().add(placeholder("Open Merge Requests", null));
-        Menu github = new Menu("GitHub"); github.getItems().addAll(item("Sign in to GitHub…", null, e -> onGitHubButton()), item("Open Repository on GitHub", null, e -> openRemote()));
+        // ---- Current File Submenu (media_1790164464044.png)
+        Menu currentFile = new Menu("Current File");
+        MenuItem cfCommit = item("Commit File\u2026", null, e -> commitCurrentFile());
+        MenuItem cfAdd = item("+ Add", "Shortcut+Alt+A", e -> addCurrentFile());
+        MenuItem cfBlame = item("Annotate with Git Blame", null, e -> toggleBlame());
+        MenuItem cfDiff = itemWithGraphic("Show Diff", GitIcons.diffIcon(), "Shortcut+D", e -> showDiffCurrentFile());
+        MenuItem cfCompareRev = item("Compare with Revision\u2026", null, e -> showCompareWithRevision());
+        MenuItem cfCompareBranch = item("Compare with Branch or Tag\u2026", null, e -> showCompareWithBranch());
+        MenuItem cfHistory = itemWithGraphic("Show History", GitIcons.clockIcon(), null, e -> showFileHistory());
+        MenuItem cfHistorySelection = item("Show History for Selection\u2026", null, e -> showSelectionHistory());
+
+        currentFile.getItems().addAll(
+                cfCommit, cfAdd, cfBlame, cfDiff,
+                cfCompareRev, cfCompareBranch, cfHistory, cfHistorySelection
+        );
+        currentFile.setOnShowing(e -> {
+            EditorTab tab = currentEditor();
+            boolean hasFile = tab != null && tab.getPath() != null;
+            boolean inRepo = hasFile && projectRoot != null && GitService.isRepository(projectRoot);
+            cfCommit.setDisable(!inRepo);
+            cfAdd.setDisable(!inRepo);
+            cfBlame.setDisable(!inRepo);
+            cfDiff.setDisable(!inRepo);
+            cfCompareRev.setDisable(!inRepo);
+            cfCompareBranch.setDisable(!inRepo);
+            cfHistory.setDisable(!inRepo);
+            cfHistorySelection.setDisable(!inRepo || tab.getSelectedText().isEmpty());
+        });
+
+        // ---- GitLab Submenu (media_1790164479292.png)
+        Menu gitLab = new Menu("GitLab", GitIcons.gitLabIcon(14));
+        gitLab.getItems().addAll(
+                itemWithGraphic("Share Project on GitLab", GitIcons.gitLabIcon(14), null, e -> shareProjectOnGitLab()),
+                itemWithGraphic("Clone Repository\u2026", GitIcons.gitLabIcon(14), null, e -> showCloneRepositoryDialog("GitLab")),
+                itemWithGraphic("Manage Accounts\u2026", GitIcons.gitLabIcon(14), null, e -> new SettingsDialog(stage, "GitLab").show())
+        );
+
+        // ---- GitHub Submenu (media_1790164487756.png)
+        Menu github = new Menu("GitHub", GitIcons.gitHubIcon(14, "#DFE1E5"));
+        github.getItems().addAll(
+                itemWithGraphic("Create Pull Request\u2026", GitIcons.gitHubIcon(14, "#DFE1E5"), null, e -> createPullRequest()),
+                item("View Pull Requests", null, e -> viewPullRequests()),
+                itemWithGraphic("Sync Fork", GitIcons.syncIcon(14, "#DFE1E5"), null, e -> syncFork()),
+                itemWithGraphic("Create Gist\u2026", GitIcons.gitHubIcon(14, "#DFE1E5"), null, e -> createGist()),
+                itemWithGraphic("View in browser", GitIcons.globeIcon(14, "#DFE1E5"), null, e -> viewInBrowser()),
+                itemWithGraphic("Share Project on GitHub", GitIcons.gitHubIcon(14, "#DFE1E5"), null, e -> shareProjectOnGitHub()),
+                itemWithGraphic("Clone Repository\u2026", GitIcons.gitHubIcon(14, "#DFE1E5"), null, e -> showCloneRepositoryDialog("GitHub")),
+                itemWithGraphic("Manage Accounts\u2026", GitIcons.gitHubIcon(14, "#DFE1E5"), null, e -> new SettingsDialog(stage, "GitHub").show())
+        );
+
         Menu git = new Menu("Git");
         git.getItems().addAll(
                 item("Commit\u2026", "Shortcut+K", e -> gitCommit()),
@@ -970,8 +1019,8 @@ public class LuminaApp extends Application {
                 item("Branches\u2026", null, e -> showBranchesPopup()), item("New Branch\u2026", "Shortcut+Alt+N", e -> showCreateBranchDialog()),
                 item("New Tag\u2026", null, e -> showNewTagDialog()), item("Reset HEAD\u2026", null, e -> showResetHeadDialog()), new SeparatorMenuItem(),
                 item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
-                gitLab, github, placeholder("Manage Remotes…", null), item("Clone…", null, e -> gitClone()),
-                new SeparatorMenuItem(), placeholder("VCS Operations Popup…", null));
+                gitLab, github, item("Manage Remotes\u2026", null, e -> showManageRemotesDialog()), item("Clone\u2026", null, e -> showCloneRepositoryDialog(null)),
+                new SeparatorMenuItem(), placeholder("VCS Operations Popup\u2026", null));
 
         // ---- Tools
         Menu tasks = new Menu("Tasks & Contexts"); tasks.getItems().add(placeholder("Open Task…", null));
@@ -1031,6 +1080,13 @@ public class LuminaApp extends Application {
         MenuItem mi = new MenuItem(text);
         if (accelerator != null) mi.setAccelerator(KeyCombination.keyCombination(accelerator));
         mi.setOnAction(action);
+        return mi;
+    }
+
+    private MenuItem itemWithGraphic(String text, javafx.scene.Node graphic, String accelerator,
+                                     javafx.event.EventHandler<javafx.event.ActionEvent> action) {
+        MenuItem mi = item(text, accelerator, action);
+        if (graphic != null) mi.setGraphic(graphic);
         return mi;
     }
 
@@ -2308,6 +2364,18 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Create Patch\u2026", this::showCreatePatchDialog),
                 new SearchEverywhereDialog.Action("Git: Apply Patch\u2026", this::applyPatchFromFile),
                 new SearchEverywhereDialog.Action("Git: Rollback\u2026", this::rollbackAllUncommittedChanges),
+                new SearchEverywhereDialog.Action("Git: Manage Remotes\u2026", this::showManageRemotesDialog),
+                new SearchEverywhereDialog.Action("Git: Clone\u2026", () -> showCloneRepositoryDialog(null)),
+                new SearchEverywhereDialog.Action("Git: Show Diff (Current File)", this::showDiffCurrentFile),
+                new SearchEverywhereDialog.Action("Git: Annotate with Git Blame", this::toggleBlame),
+                new SearchEverywhereDialog.Action("Git: Compare with Revision\u2026", this::showCompareWithRevision),
+                new SearchEverywhereDialog.Action("Git: Compare with Branch or Tag\u2026", this::showCompareWithBranch),
+                new SearchEverywhereDialog.Action("Git: Show History (Current File)", this::showFileHistory),
+                new SearchEverywhereDialog.Action("Git: GitHub - Share Project\u2026", this::shareProjectOnGitHub),
+                new SearchEverywhereDialog.Action("Git: GitHub - Create Pull Request\u2026", this::createPullRequest),
+                new SearchEverywhereDialog.Action("Git: GitHub - Sync Fork", this::syncFork),
+                new SearchEverywhereDialog.Action("Git: GitHub - Create Gist\u2026", this::createGist),
+                new SearchEverywhereDialog.Action("Git: GitLab - Share Project\u2026", this::shareProjectOnGitLab),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
                 new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(3)),
@@ -3782,25 +3850,207 @@ public class LuminaApp extends Application {
         console.runCommand(goal, cmd, projectRoot);
     }
 
-    private void gitClone() {
-        prompt("Clone Repository", "Repository URL:",
-                "https://github.com/user/repo.git").ifPresent(raw -> {
-            String url = raw.trim();
-            if (url.isEmpty()) return;
-            DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("Clone into folder");
-            File parent = chooser.showDialog(stage);
-            if (parent == null) return;
+    // -------------------------------------------------------- Git Actions
 
-            String name = url.substring(url.lastIndexOf('/') + 1)
-                    .replace(".git", "");
-            Path target = parent.toPath().resolve(name);
-            showRunPanel();
-            console.runSequence("git clone " + url,
-                    List.of(List.of("git", "clone", url, target.toString())),
-                    parent.toPath(), gitEnv(),
-                    () -> openProjectInteractive(target));
-        });
+    private void addCurrentFile() {
+        if (!requireProject()) return;
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) {
+            error("No Active File", "Open a file to add it to Git.");
+            return;
+        }
+        Path file = tab.getPath();
+        String rel = projectRoot.relativize(file).toString().replace('\\', '/');
+        GitService.Result r = GitService.add(projectRoot, List.of(rel));
+        if (r.ok()) {
+            console.println("\u2713 Added " + rel + " to Git stage");
+            NotificationService.getInstance().notify(new Notification(
+                    "Git", "File Staged", rel, NotificationType.INFORMATION));
+            refreshGitInfo();
+            if (commitPanel != null) commitPanel.refresh();
+        } else {
+            error("Git Add Failed", r.output());
+        }
+    }
+
+    private void commitCurrentFile() {
+        if (!requireProject()) return;
+        gitCommit();
+    }
+
+    private void showDiffCurrentFile() {
+        if (!requireProject()) return;
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) return;
+        Path file = tab.getPath();
+        String rel = projectRoot.relativize(file).toString().replace('\\', '/');
+        GitService.Result r = GitService.fileContentAtRevision(projectRoot, "HEAD", rel);
+        String headText = r.ok() ? r.output() : "";
+        String curText = tab.getEditorText();
+        openDiffViewer("Diff " + file.getFileName() + " (HEAD vs Working Tree)", "HEAD", rel, file, headText, curText);
+    }
+
+    private void showCompareWithRevision() {
+        if (!requireProject()) return;
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) return;
+        new CompareWithRevisionDialog(stage, projectRoot, tab.getPath(), tab.getEditorText(), this::openDiffViewer).show();
+    }
+
+    private void showCompareWithBranch() {
+        if (!requireProject()) return;
+        EditorTab tab = currentEditor();
+        if (tab == null || tab.getPath() == null) return;
+        new CompareWithBranchDialog(stage, projectRoot, tab.getPath(), tab.getEditorText(), this::openDiffViewer).show();
+    }
+
+    private void showFileHistory() {
+        if (!requireProject()) return;
+        showGitLog();
+    }
+
+    private void showSelectionHistory() {
+        if (!requireProject()) return;
+        showGitLog();
+    }
+
+    private void showManageRemotesDialog() {
+        if (!requireProject()) return;
+        new GitRemotesDialog(stage, projectRoot, msg -> {
+            console.println("Git Remotes: " + msg);
+            refreshGitInfo();
+        }).show();
+    }
+
+    private void showCloneRepositoryDialog(String initialTab) {
+        Path defaultParent = projectRoot != null && projectRoot.getParent() != null
+                ? projectRoot.getParent()
+                : Path.of(System.getProperty("user.home"), "projects");
+        new CloneRepositoryDialog(stage, defaultParent, initialTab, gitEnv(), clonedDir -> {
+            console.println("\u2713 Successfully cloned repository into " + clonedDir);
+            NotificationService.getInstance().notify(new Notification(
+                    "Git", "Repository Cloned", clonedDir.toString(), NotificationType.INFORMATION));
+            openProjectInteractive(clonedDir);
+        }).show();
+    }
+
+    private void gitClone() {
+        showCloneRepositoryDialog(null);
+    }
+
+    private void shareProjectOnGitLab() {
+        if (!requireProject()) return;
+        var def = GitLabAccountManager.getInstance().getDefaultAccount();
+        if (def == null) {
+            new AddGitLabAccountDialog(stage).showAndWait();
+            def = GitLabAccountManager.getInstance().getDefaultAccount();
+            if (def == null) return;
+        }
+        new ShareProjectDialog(stage, ShareProjectDialog.Service.GITLAB, projectRoot,
+                def.getUsername(), gitEnv(), url -> {
+            console.println("\u2713 Shared project on GitLab: " + url);
+            refreshGitInfo();
+            openBrowser(url);
+        }).show();
+    }
+
+    private void shareProjectOnGitHub() {
+        if (!requireProject()) return;
+        var def = GitHubAccountManager.getInstance().getDefaultAccount();
+        if (def == null) {
+            new AddGitHubAccountDialog(stage, false).showAndWait();
+            def = GitHubAccountManager.getInstance().getDefaultAccount();
+            if (def == null) return;
+        }
+        new ShareProjectDialog(stage, ShareProjectDialog.Service.GITHUB, projectRoot,
+                def.getUsername(), gitEnv(), url -> {
+            console.println("\u2713 Shared project on GitHub: " + url);
+            refreshGitInfo();
+            openBrowser(url);
+        }).show();
+    }
+
+    private void syncFork() {
+        if (!requireProject()) return;
+        List<String> remotes = GitService.remotes(projectRoot);
+        String remote = remotes.contains("upstream") ? "upstream" : "origin";
+        String branch = GitService.currentBranch(projectRoot);
+        if (branch == null) branch = "master";
+        final String syncBranch = branch;
+        console.println("Syncing fork with " + remote + "/" + syncBranch + "\u2026");
+        Thread t = new Thread(() -> {
+            GitService.fetch(projectRoot, remote, gitEnv());
+            GitService.Result r = GitService.merge(projectRoot, remote + "/" + syncBranch, null, null, gitEnv());
+            Platform.runLater(() -> {
+                if (r.ok()) {
+                    console.println("\u2713 Fork synchronized with " + remote + "/" + syncBranch);
+                    NotificationService.getInstance().notify(new Notification(
+                            "Git", "Fork Synchronized", "Merged " + remote + "/" + syncBranch, NotificationType.INFORMATION));
+                    refreshGitInfo();
+                } else {
+                    console.println("Sync fork result: " + r.output());
+                }
+            });
+        }, "lumina-sync-fork");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void createGist() {
+        EditorTab tab = currentEditor();
+        String fileName = tab != null && tab.getPath() != null ? tab.getPath().getFileName().toString() : "snippet.txt";
+        String content = tab != null ? (tab.getSelectedText().isEmpty() ? tab.getEditorText() : tab.getSelectedText()) : "";
+        new CreateGistDialog(stage, fileName, content, gistUrl -> {
+            console.println("\u2713 Created Gist: " + gistUrl);
+            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+            cc.putString(gistUrl);
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            NotificationService.getInstance().notify(new Notification(
+                    "GitHub", "Gist Created", "Link copied to clipboard", NotificationType.INFORMATION));
+            openBrowser(gistUrl);
+        }).show();
+    }
+
+    private void viewInBrowser() {
+        if (!requireProject()) return;
+        String repoUrl = GitService.remoteBrowserUrl(projectRoot);
+        if (repoUrl == null) {
+            error("No Remote", "This repository has no 'origin' remote URL configured.");
+            return;
+        }
+        EditorTab tab = currentEditor();
+        if (tab != null && tab.getPath() != null) {
+            String rel = projectRoot.relativize(tab.getPath()).toString().replace('\\', '/');
+            String branch = GitService.currentBranch(projectRoot);
+            if (branch == null) branch = "master";
+            int line = tab.getCaretLine();
+            String fileUrl = repoUrl + "/blob/" + branch + "/" + rel + (line > 0 ? "#L" + line : "");
+            openBrowser(fileUrl);
+        } else {
+            openBrowser(repoUrl);
+        }
+    }
+
+    private void createPullRequest() {
+        if (!requireProject()) return;
+        String repoUrl = GitService.remoteBrowserUrl(projectRoot);
+        if (repoUrl != null) {
+            String branch = GitService.currentBranch(projectRoot);
+            String prUrl = repoUrl + (branch != null ? "/compare/" + branch + "?expand=1" : "/pulls");
+            openBrowser(prUrl);
+        } else {
+            error("No Remote", "Repository has no remote configured for pull requests.");
+        }
+    }
+
+    private void viewPullRequests() {
+        if (!requireProject()) return;
+        String repoUrl = GitService.remoteBrowserUrl(projectRoot);
+        if (repoUrl != null) {
+            openBrowser(repoUrl + "/pulls");
+        } else {
+            error("No Remote", "Repository has no remote configured.");
+        }
     }
 
     private void showRightPanel(int tabIndex) {
