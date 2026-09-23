@@ -5,6 +5,7 @@ import dev.lumina.semantics.Docs;
 import javafx.animation.PauseTransition;
 import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
@@ -57,6 +58,7 @@ public class QuickDocPopup {
 
     // Signature & Javadoc
     private final VBox signatureBox = new VBox();
+    private final HBox specifiedByBox = new HBox(4);
     private final VBox javadocBox = new VBox(4);
     private final Label javadocLabel = new Label();
     private final ScrollPane javadocScroll = new ScrollPane(javadocLabel);
@@ -183,9 +185,12 @@ public class QuickDocPopup {
         pinIcon.getStyleClass().add("quick-doc-action-icon");
         menuIcon.getStyleClass().add("quick-doc-action-icon");
 
-        footer.getChildren().addAll(moduleIcon, moduleLabel, spacer, pinIcon, menuIcon);
+        specifiedByBox.setAlignment(Pos.CENTER_LEFT);
+        specifiedByBox.setPadding(new Insets(6, 12, 4, 12));
+        specifiedByBox.setVisible(false);
+        specifiedByBox.setManaged(false);
 
-        root.getChildren().addAll(inspectionBox, header, signatureBox, javadocBox, footer);
+        root.getChildren().addAll(inspectionBox, header, signatureBox, specifiedByBox, javadocBox, footer);
         popup.getContent().add(root);
 
         // Mouse hover persistence: allow moving mouse into popup
@@ -442,6 +447,62 @@ public class QuickDocPopup {
             }
         }
         signatureBox.getChildren().add(sigFlow);
+
+        // 3b. Specified by / Overrides row
+        if (doc.specifiedBy() != null && !doc.specifiedBy().isBlank()) {
+            specifiedByBox.getChildren().clear();
+            String s = doc.specifiedBy();
+            if (s.contains(" in interface ")) {
+                int inIdx = s.indexOf(" in interface ");
+                String pfx = s.substring(0, inIdx);
+                String iface = s.substring(inIdx + " in interface ".length());
+                String pfxTitle = pfx.startsWith("Specified by: ") ? "Specified by: " : "Overrides: ";
+                String mName = pfx.substring(pfxTitle.length());
+
+                Label pfxLbl = new Label(pfxTitle);
+                pfxLbl.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11.5px;");
+
+                Label mPill = new Label(mName);
+                mPill.setStyle("-fx-background-color: #393B40; -fx-text-fill: #56A8F5; -fx-background-radius: 3; -fx-padding: 1 5 1 5; -fx-font-size: 11px;");
+
+                Label inLbl = new Label(" in interface ");
+                inLbl.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11.5px;");
+
+                Label ifacePill = new Label(iface);
+                ifacePill.setStyle("-fx-background-color: #393B40; -fx-text-fill: #56A8F5; -fx-background-radius: 3; -fx-padding: 1 5 1 5; -fx-font-size: 11px;");
+
+                specifiedByBox.getChildren().addAll(pfxLbl, mPill, inLbl, ifacePill);
+            } else if (s.contains(" in class ")) {
+                int inIdx = s.indexOf(" in class ");
+                String pfx = s.substring(0, inIdx);
+                String cls = s.substring(inIdx + " in class ".length());
+                String pfxTitle = pfx.startsWith("Overrides: ") ? "Overrides: " : "Specified by: ";
+                String mName = pfx.substring(pfxTitle.length());
+
+                Label pfxLbl = new Label(pfxTitle);
+                pfxLbl.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11.5px;");
+
+                Label mPill = new Label(mName);
+                mPill.setStyle("-fx-background-color: #393B40; -fx-text-fill: #56A8F5; -fx-background-radius: 3; -fx-padding: 1 5 1 5; -fx-font-size: 11px;");
+
+                Label inLbl = new Label(" in class ");
+                inLbl.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11.5px;");
+
+                Label clsPill = new Label(cls);
+                clsPill.setStyle("-fx-background-color: #393B40; -fx-text-fill: #56A8F5; -fx-background-radius: 3; -fx-padding: 1 5 1 5; -fx-font-size: 11px;");
+
+                specifiedByBox.getChildren().addAll(pfxLbl, mPill, inLbl, clsPill);
+            } else {
+                Label lbl = new Label(s);
+                lbl.setStyle("-fx-text-fill: #80848B; -fx-font-size: 11.5px;");
+                specifiedByBox.getChildren().add(lbl);
+            }
+            specifiedByBox.setVisible(true);
+            specifiedByBox.setManaged(true);
+        } else {
+            specifiedByBox.setVisible(false);
+            specifiedByBox.setManaged(false);
+        }
 
         // 4. Javadoc section
         if (doc.javadoc() != null && !doc.javadoc().isBlank()) {

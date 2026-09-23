@@ -98,6 +98,8 @@ public class LuminaApp extends Application {
     private long testRunStart;
     private Runnable lastTestRun;
     private volatile dev.lumina.semantics.SemanticEngine semantics;
+    private volatile dev.lumina.gutter.GutterMarkerService gutterMarkerService;
+    private dev.lumina.gutter.ImplementationChooserPopup implChooserPopup;
     private final ProblemsPanel problemsPanel = new ProblemsPanel();
     private final DocPopup docPopup = new DocPopup();
     private final ParamInfoPopup paramPopup = new ParamInfoPopup();
@@ -883,6 +885,8 @@ public class LuminaApp extends Application {
                         e -> quickDocAtCaret()),
                 item("Parameter Info", "Shortcut+Shift+P",
                         e -> showParameterInfo()),
+                item("Super Method", "Shortcut+U",
+                        e -> goToSuperMethod()),
                 item("Go to Implementation(s)", "Shortcut+Alt+B",
                         e -> goToImplementation()),
                 item("Find Usages", "Alt+F7", e -> {
@@ -1945,10 +1949,70 @@ public class LuminaApp extends Application {
         }
 
         if (isDecl) {
+            // In IntelliJ IDEA, Ctrl+Click on an overriding/implementing method declaration
+            // jumps directly to the interface / superclass method declaration!
+            dev.lumina.gutter.GutterMarker marker = findSuperOrImplMarker(tab, line);
+            if (marker != null && !marker.targets().isEmpty()) {
+                if (marker.targets().size() == 1) {
+                    var target = marker.targets().get(0);
+                    openFileAtLine(target.file(), target.line());
+                } else {
+                    getImplChooserPopup().show(tab.getNode(), marker.targets());
+                }
+                return;
+            }
             showUsagesPopup(tab, word, line, col, screenBounds);
         } else {
             goToDeclaration(word);
         }
+    }
+
+    private dev.lumina.gutter.GutterMarker findSuperOrImplMarker(EditorTab tab, int line) {
+        if (tab == null) return null;
+        Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers = tab.getLineMarkers();
+        if (markers.containsKey(line)) {
+            for (dev.lumina.gutter.GutterMarker m : markers.get(line)) {
+                if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                    return m;
+                }
+            }
+        }
+        for (int offset = -4; offset <= 4; offset++) {
+            if (offset == 0) continue;
+            int l = line + offset;
+            if (markers.containsKey(l)) {
+                for (dev.lumina.gutter.GutterMarker m : markers.get(l)) {
+                    if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                        return m;
+                    }
+                }
+            }
+        }
+        if (gutterMarkerService != null && tab.getPath() != null) {
+            try {
+                var fresh = gutterMarkerService.analyzeFile(tab.getPath(), tab.getEditorText());
+                if (fresh.containsKey(line)) {
+                    for (dev.lumina.gutter.GutterMarker m : fresh.get(line)) {
+                        if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                            return m;
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+        return null;
     }
 
     private void showUsagesPopup(EditorTab editor, String word, int line, int column, javafx.geometry.Bounds screenBounds) {
@@ -2860,6 +2924,47 @@ public class LuminaApp extends Application {
         }
     }
 
+    private dev.lumina.gutter.ImplementationChooserPopup getImplChooserPopup() {
+        if (implChooserPopup == null) {
+            implChooserPopup = new dev.lumina.gutter.ImplementationChooserPopup(this::openFileAtLine);
+        }
+        return implChooserPopup;
+    }
+
+    /** Re-scans and updates gutter markers on all open Java tabs. */
+    private void refreshGutterMarkersForOpenTabs() {
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof EditorTab et) {
+                scheduleGutterMarkerScan(et);
+            }
+        }
+    }
+
+    /** Background scanner for gutter line markers on an editor tab. */
+    private void scheduleGutterMarkerScan(EditorTab tab) {
+        if (tab == null) return;
+        Path p = tab.getPath();
+        if (p == null || !p.toString().endsWith(".java")) return;
+        String text = tab.getEditorText();
+        dev.lumina.gutter.GutterMarkerService service = gutterMarkerService;
+        if (service == null && projectRoot != null) {
+            service = new dev.lumina.gutter.GutterMarkerService(projectRoot, null);
+            gutterMarkerService = service;
+        }
+        if (service == null) return;
+        final dev.lumina.gutter.GutterMarkerService markerService = service;
+        Thread t = new Thread(() -> {
+            try {
+                markerService.indexContent(p, text);
+                Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers = markerService.analyzeFile(p, text);
+                Platform.runLater(() -> tab.setGutterMarkers(markers));
+            } catch (Throwable ignored) {
+            }
+        }, "lumina-gutter-scan");
+        t.setDaemon(true);
+        t.start();
+    }
+
     /**
      * Runs when the user clicks the "Load Maven Changes" icon: saves the
      * build file first (Maven/Gradle only ever read it from disk, so an
@@ -3242,7 +3347,12 @@ public class LuminaApp extends Application {
     private void initSemanticEngine(Path dir) {
         semantics = null;
         springProperties = List.of();
+        gutterMarkerService = null;
         Thread t = new Thread(() -> {
+            try {
+                gutterMarkerService = new dev.lumina.gutter.GutterMarkerService(dir, null);
+                Platform.runLater(this::refreshGutterMarkersForOpenTabs);
+            } catch (Throwable ignored) {}
             console.println("Semantic engine: indexing project\u2026");
             String classpath = ensureClasspath();   // cached in target/lumina.cp
             dev.lumina.semantics.SemanticEngine engine =
@@ -3272,7 +3382,10 @@ public class LuminaApp extends Application {
             // Maven Changes" hint isn't left showing (or missing).
             if (projectRoot != null && projectRoot.equals(dir)) {
                 loadMavenSyncBaseline(dir);
-                Platform.runLater(this::refreshMavenSyncForOpenTabs);
+                Platform.runLater(() -> {
+                    refreshMavenSyncForOpenTabs();
+                    refreshGutterMarkersForOpenTabs();
+                });
             }
         }, "lumina-semantics-init");
         t.setDaemon(true);
@@ -3348,6 +3461,16 @@ public class LuminaApp extends Application {
                             return;
                         }
                         case DECLARATION -> {
+                            dev.lumina.gutter.GutterMarker marker = findSuperOrImplMarker(currentEditor(), caretLine);
+                            if (marker != null && !marker.targets().isEmpty()) {
+                                if (marker.targets().size() == 1) {
+                                    var target = marker.targets().get(0);
+                                    Platform.runLater(() -> openFileAtLine(target.file(), target.line()));
+                                } else {
+                                    Platform.runLater(() -> getImplChooserPopup().show(currentEditor().getNode(), marker.targets()));
+                                }
+                                return;
+                            }
                             Platform.runLater(() -> showUsagesPopup(currentEditor(), word, caretLine, caretColumn, null));
                             return;
                         }
@@ -5833,24 +5956,71 @@ public class LuminaApp extends Application {
         return s.length() > 90 ? s.substring(0, 90) + "\u2026" : s;
     }
 
-    /** IntelliJ's Ctrl+Alt+B: @Autowired field/interface \u2192 its concrete
+    /** IntelliJ's Ctrl+Alt+B: @Autowired field/interface → its concrete
      *  Spring-annotated implementation, not just the contract. */
     private void goToImplementation() {
         EditorTab editor = currentEditor();
-        dev.lumina.semantics.SemanticEngine engine = semantics;
         if (editor == null || editor.getPath() == null) return;
+        final int line = editor.getCaretLine();
+
+        // 1. Check dynamic gutter markers on caret line or enclosing method
+        Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers = editor.getLineMarkers();
+        dev.lumina.gutter.GutterMarker implMarker = null;
+        if (markers.containsKey(line)) {
+            for (dev.lumina.gutter.GutterMarker m : markers.get(line)) {
+                if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                    implMarker = m;
+                    break;
+                }
+            }
+        }
+        if (implMarker == null) {
+            int bestLine = -1;
+            for (Map.Entry<Integer, List<dev.lumina.gutter.GutterMarker>> entry : markers.entrySet()) {
+                int l = entry.getKey();
+                if (l <= line && (bestLine == -1 || l > bestLine)) {
+                    for (dev.lumina.gutter.GutterMarker m : entry.getValue()) {
+                        if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                            bestLine = l;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (bestLine != -1) {
+                for (dev.lumina.gutter.GutterMarker m : markers.get(bestLine)) {
+                    if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTED_INTERFACE) {
+                        implMarker = m;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (implMarker != null && !implMarker.targets().isEmpty()) {
+            if (implMarker.targets().size() == 1) {
+                dev.lumina.gutter.GutterMarker.NavigationTarget target = implMarker.targets().get(0);
+                openFileAtLine(target.file(), target.line());
+            } else {
+                getImplChooserPopup().show(editor.getNode(), implMarker.targets());
+            }
+            return;
+        }
+
+        // 2. Fallback to semantic engine
+        dev.lumina.semantics.SemanticEngine engine = semantics;
         if (engine == null) {
-            console.println("Go to Implementation needs the semantic engine "
-                    + "(still indexing\u2026)");
+            console.println("Go to Implementation needs the semantic engine (still indexing…)");
             return;
         }
         final Path file = editor.getPath();
         final String text = editor.getEditorText();
-        final int line = editor.getCaretLine();
         final int column = editor.getCaretColumn();
         Thread t = new Thread(() -> {
-            List<dev.lumina.semantics.SemanticEngine.Location> impls =
-                    List.of();
+            List<dev.lumina.semantics.SemanticEngine.Location> impls = List.of();
             try {
                 impls = engine.findImplementations(file, text, line, column);
             } catch (Throwable ignored) {
@@ -5858,8 +6028,7 @@ public class LuminaApp extends Application {
             final List<dev.lumina.semantics.SemanticEngine.Location> found = impls;
             Platform.runLater(() -> {
                 if (found.isEmpty()) {
-                    console.println("No Spring-annotated implementation found "
-                            + "for the symbol at the caret.");
+                    console.println("No Spring-annotated implementation found for the symbol at the caret.");
                 } else if (found.size() == 1) {
                     openFileAtLine(found.get(0).file(), found.get(0).line());
                 } else {
@@ -5874,6 +6043,70 @@ public class LuminaApp extends Application {
         }, "lumina-goto-impl");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** IntelliJ's Ctrl+U: Super Method / Super Class navigation. */
+    private void goToSuperMethod() {
+        EditorTab editor = currentEditor();
+        if (editor == null || editor.getPath() == null) return;
+        int caretLine = editor.getCaretLine();
+
+        Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers = editor.getLineMarkers();
+        List<dev.lumina.gutter.GutterMarker> matching = new ArrayList<>();
+
+        if (markers.containsKey(caretLine)) {
+            for (dev.lumina.gutter.GutterMarker m : markers.get(caretLine)) {
+                if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                        || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE) {
+                    matching.add(m);
+                }
+            }
+        }
+
+        if (matching.isEmpty()) {
+            int bestLine = -1;
+            for (Map.Entry<Integer, List<dev.lumina.gutter.GutterMarker>> entry : markers.entrySet()) {
+                int l = entry.getKey();
+                if (l <= caretLine && (bestLine == -1 || l > bestLine)) {
+                    for (dev.lumina.gutter.GutterMarker m : entry.getValue()) {
+                        if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                                || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE) {
+                            bestLine = l;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (bestLine != -1) {
+                for (dev.lumina.gutter.GutterMarker m : markers.get(bestLine)) {
+                    if (m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.OVERRIDES_METHOD
+                            || m.type() == dev.lumina.gutter.GutterMarker.MarkerType.IMPLEMENTS_INTERFACE) {
+                        matching.add(m);
+                    }
+                }
+            }
+        }
+
+        if (matching.isEmpty()) {
+            console.println("No super method or interface found at current position.");
+            return;
+        }
+
+        dev.lumina.gutter.GutterMarker marker = matching.get(0);
+        if (marker.targets().isEmpty()) {
+            console.println("No super method navigation target found.");
+            return;
+        }
+
+        if (marker.targets().size() == 1) {
+            dev.lumina.gutter.GutterMarker.NavigationTarget target = marker.targets().get(0);
+            openFileAtLine(target.file(), target.line());
+        } else {
+            getImplChooserPopup().show(editor.getNode(), "Choose Super Method", marker.targets());
+        }
     }
 
     private void renameSelectedFile() {
@@ -6274,8 +6507,16 @@ public class LuminaApp extends Application {
         tab.setParamInfoTrigger(this::showParameterInfo);
         loadAuthorHints(tab);
         tab.setQuickDocProvider((line, col) -> {
-            if (semantics == null || tab.getPath() == null) return null;
-            return semantics.symbolDocAt(tab.getPath(), tab.getEditorText(), line, col);
+            if (tab.getPath() == null) return null;
+            if (semantics != null) {
+                try {
+                    var doc = semantics.symbolDocAt(tab.getPath(), tab.getEditorText(), line, col);
+                    if (doc != null) return doc;
+                } catch (Throwable ignored) {}
+            }
+            return dev.lumina.semantics.SemanticEngine.standaloneSymbolDocAt(
+                    tab.getPath(), tab.getEditorText(), line, col,
+                    projectRoot != null ? projectRoot.getFileName().toString() : "");
         });
         tab.setNavigationCoordinatesHandler((word, line, col, screenBounds) -> {
             handleNavigationOrUsages(tab, word, line, col, screenBounds);
@@ -6283,6 +6524,12 @@ public class LuminaApp extends Application {
         tab.setNavigationHandler(word -> {
             handleNavigationOrUsages(tab, word, tab.getCaretLine(), tab.getCaretColumn(), null);
         });
+        tab.setOnNavigateLocation(this::openFileAtLine);
+        tab.setOnShowImplementationList((anchor, targets) -> {
+            getImplChooserPopup().show(anchor, targets);
+        });
+        tab.setOnContentEdited(() -> scheduleGutterMarkerScan(tab));
+        scheduleGutterMarkerScan(tab);
         group.getTabs().add(tab);
         group.getSelectionModel().select(tab);
         tab.focusEditor();
