@@ -952,7 +952,7 @@ public class LuminaApp extends Application {
                 item("Pull\u2026", null, e -> showPullDialog()),
                 item("Fetch", null, e -> gitFetch()),
                 new SeparatorMenuItem(), item("Merge\u2026", null, e -> showMergeDialog()), item("Rebase\u2026", null, e -> showRebaseDialog()), new SeparatorMenuItem(),
-                placeholder("Branches…", null), item("New Branch…", "Shortcut+Alt+N", e -> gitNewBranch()),
+                item("Branches\u2026", null, e -> showBranchesPopup()), item("New Branch\u2026", "Shortcut+Alt+N", e -> showCreateBranchDialog()),
                 placeholder("New Tag…", null), placeholder("Reset HEAD…", null), new SeparatorMenuItem(),
                 item("Show Git Log", null, e -> showGitLog()), patch, changes, currentFile,
                 gitLab, github, placeholder("Manage Remotes…", null), item("Clone…", null, e -> gitClone()),
@@ -1069,19 +1069,7 @@ public class LuminaApp extends Application {
 
         branchButton = new Button("no vcs \u25BE");
         branchButton.getStyleClass().add("branch-chip");
-        branchButton.setOnAction(e -> {
-            if (gitBranchesPopup == null) {
-                gitBranchesPopup = new GitBranchesPopup(() -> projectRoot, console::println, new GitBranchesPopup.BranchCallbacks() {
-                    @Override public void onUpdateProject() { showUpdateProjectDialog(); }
-                    @Override public void onCommit() { gitCommit(); }
-                    @Override public void onPush() { showPushDialog(); }
-                    @Override public void onNewBranch() { gitNewBranch(); }
-                    @Override public void onCheckoutTag() { showComingSoon("Checkout Tag or Revision"); }
-                    @Override public void onBranchChanged() { refreshGitInfo(); fileExplorer.refresh(); }
-                });
-            }
-            gitBranchesPopup.toggleBelow(branchButton);
-        });
+        branchButton.setOnAction(e -> showBranchesPopup());
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1092,7 +1080,7 @@ public class LuminaApp extends Application {
 
         // Run occupies one toolbar slot for its whole life: it reads "Run"
         // until something starts, then becomes "Rerun" in that exact same
-        // spot (matching IntelliJ's new-UI run widget) instead of showing a
+        // spot (matching modern IDE new-UI run widget) instead of showing a
         // second, separate restart button next to it.
         runButton = toolButton("\u25B6", "Run selected configuration (Ctrl/Cmd+R)");
         runButton.getStyleClass().add("tool-run");
@@ -1314,15 +1302,52 @@ public class LuminaApp extends Application {
         console.println("\u25B6 git status\n" + r.output());
     }
 
-    private void gitNewBranch() {
+    private void showBranchesPopup() {
         if (!requireProject()) return;
-        prompt("New Branch", "Branch name:", "feature/").ifPresent(name -> {
-            if (name.isBlank()) return;
-            GitService.Result r = GitService.createBranch(projectRoot, name.trim());
-            console.println(r.output().isBlank()
-                    ? "Created and switched to '" + name.trim() + "'" : r.output().trim());
+        ensureGitBranchesPopup();
+        if (branchButton != null && branchButton.getScene() != null && branchButton.isVisible()) {
+            gitBranchesPopup.toggleBelow(branchButton);
+        } else {
+            gitBranchesPopup.showCentered(stage);
+        }
+    }
+
+    private void ensureGitBranchesPopup() {
+        if (gitBranchesPopup == null) {
+            gitBranchesPopup = new GitBranchesPopup(() -> projectRoot, console::println, new GitBranchesPopup.BranchCallbacks() {
+                @Override public void onUpdateProject() { showUpdateProjectDialog(); }
+                @Override public void onCommit() { gitCommit(); }
+                @Override public void onPush() { showPushDialog(); }
+                @Override public void onNewBranch() { showCreateBranchDialog(); }
+                @Override public void onCheckoutTag() { showComingSoon("Checkout Tag or Revision"); }
+                @Override public void onBranchChanged() {
+                    refreshGitInfo();
+                    if (fileExplorer != null) fileExplorer.refresh();
+                    if (gitLogPanel != null) gitLogPanel.refresh();
+                }
+                @Override public void onMergeBranch(String branch) { showMergeDialog(branch); }
+                @Override public void onRebaseBranch(String target) { showRebaseDialog(target); }
+            });
+        }
+    }
+
+    private void showCreateBranchDialog() {
+        showCreateBranchDialog(null);
+    }
+
+    private void showCreateBranchDialog(String startPoint) {
+        if (!requireProject()) return;
+        CreateBranchDialog dlg = new CreateBranchDialog(stage, projectRoot, startPoint, newBranch -> {
+            console.println("Created branch '" + newBranch + "'");
             refreshGitInfo();
+            if (fileExplorer != null) fileExplorer.refresh();
+            if (gitLogPanel != null) gitLogPanel.refresh();
         });
+        dlg.show();
+    }
+
+    private void gitNewBranch() {
+        showCreateBranchDialog();
     }
 
     private void openRemote() {
@@ -2038,6 +2063,7 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: Fetch", this::gitFetch),
                 new SearchEverywhereDialog.Action("Git: Merge\u2026", this::showMergeDialog),
                 new SearchEverywhereDialog.Action("Git: Rebase\u2026", this::showRebaseDialog),
+                new SearchEverywhereDialog.Action("Git: Branches\u2026", this::showBranchesPopup),
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),

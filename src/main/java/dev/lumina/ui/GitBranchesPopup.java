@@ -10,9 +10,6 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Polygon;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
 import javafx.stage.Window;
@@ -22,8 +19,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * IntelliJ IDEA-styled "Git Branches" popup widget and window matching
- * media_1790123620446.png, media_1790126228101.png, and media_1790126255413.png:
+ * Modern IDE "Git Branches" popup widget and window matching reference design:
  * - Search bar: "Search for branches and actions"
  * - Actions: Update Project... (Ctrl+T), Commit... (Ctrl+K), Push... (Ctrl+Shift+K)
  * - Branch creation: + New Branch... (Ctrl+Alt+N), Checkout Tag or Revision...
@@ -39,6 +35,8 @@ public class GitBranchesPopup extends Popup {
         void onNewBranch();
         void onCheckoutTag();
         void onBranchChanged();
+        default void onMergeBranch(String branch) {}
+        default void onRebaseBranch(String target) {}
     }
 
     private final java.util.function.Supplier<Path> projectRootSupplier;
@@ -52,6 +50,8 @@ public class GitBranchesPopup extends Popup {
     private String currentBranch = "master";
     private final List<String> localBranches = new ArrayList<>();
     private final List<String> remoteBranches = new ArrayList<>();
+    private final Set<String> recentBranches = new LinkedHashSet<>();
+    private final Set<String> favoriteBranches = new HashSet<>();
     private final Map<String, Integer> outgoingCounts = new HashMap<>();
 
     // Submenu popup
@@ -66,8 +66,8 @@ public class GitBranchesPopup extends Popup {
         setHideOnEscape(true);
 
         VBox root = new VBox(4);
-        root.setPrefWidth(340);
-        root.setMaxHeight(480);
+        root.setPrefWidth(360);
+        root.setMaxHeight(500);
         root.setPadding(new Insets(6, 6, 6, 6));
         root.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #2B2D30; -fx-border-width: 1; -fx-border-radius: 6; -fx-background-radius: 6; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 12, 0, 0, 4);");
 
@@ -105,12 +105,37 @@ public class GitBranchesPopup extends Popup {
     }
 
     public void showBelow(Node anchor) {
+        loadGitData();
+        searchField.clear();
+        populateList("");
+
+        Window window = anchor.getScene() != null ? anchor.getScene().getWindow() : null;
+        if (window != null) {
+            javafx.geometry.Point2D p = anchor.localToScreen(0, anchor.getBoundsInLocal().getHeight() + 4);
+            show(window, p.getX(), p.getY());
+        }
+        Platform.runLater(searchField::requestFocus);
+    }
+
+    public void showCentered(Window window) {
+        loadGitData();
+        searchField.clear();
+        populateList("");
+
+        if (window != null) {
+            double x = window.getX() + Math.max(10, (window.getWidth() - 360) / 2.0);
+            double y = window.getY() + Math.max(60, (window.getHeight() - 500) / 3.0);
+            show(window, x, y);
+        }
+        Platform.runLater(searchField::requestFocus);
+    }
+
+    private void loadGitData() {
         Path root = getProjectRoot();
         if (root == null || !GitService.isRepository(root)) return;
 
-        // Query dynamic Git data
         currentBranch = GitService.currentBranch(root);
-        if (currentBranch == null) currentBranch = "master";
+        if (currentBranch == null || currentBranch.isBlank()) currentBranch = "master";
 
         localBranches.clear();
         localBranches.addAll(GitService.localBranches(root));
@@ -125,13 +150,14 @@ public class GitBranchesPopup extends Popup {
             if (count > 0) outgoingCounts.put(b, count);
         }
 
-        searchField.clear();
-        populateList("");
-
-        Window window = anchor.getScene().getWindow();
-        javafx.geometry.Point2D p = anchor.localToScreen(0, anchor.getBoundsInLocal().getHeight() + 4);
-        show(window, p.getX(), p.getY());
-        Platform.runLater(searchField::requestFocus);
+        if (!recentBranches.contains(currentBranch)) {
+            recentBranches.add(currentBranch);
+        }
+        for (String b : localBranches) {
+            if (recentBranches.size() < 4) {
+                recentBranches.add(b);
+            }
+        }
     }
 
     // ----------------------------------------------------------------- Search Bar
@@ -144,10 +170,13 @@ public class GitBranchesPopup extends Popup {
         searchField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #868A91; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px; -fx-padding: 4 6 4 6;");
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        Button settingsBtn = new Button("⚙");
-        settingsBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 2 4 2 4; -fx-cursor: hand;");
+        Button resizeBtn = new Button("\u2922");
+        resizeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 11px; -fx-padding: 2 4; -fx-cursor: hand;");
 
-        HBox box = new HBox(6, searchIcon, searchField, settingsBtn);
+        Button settingsBtn = new Button("⚙");
+        settingsBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 12px; -fx-padding: 2 4; -fx-cursor: hand;");
+
+        HBox box = new HBox(6, searchIcon, searchField, resizeBtn, settingsBtn);
         box.setAlignment(Pos.CENTER_LEFT);
         box.setPadding(new Insets(2, 4, 6, 4));
         box.setStyle("-fx-border-color: transparent transparent #2B2D30 transparent; -fx-border-width: 0 0 1 0;");
@@ -159,25 +188,25 @@ public class GitBranchesPopup extends Popup {
     private void populateList(String filter) {
         contentBox.getChildren().clear();
 
-        // Top Actions
+        // 1. Top Actions
         boolean matchUpdate = filter.isEmpty() || "update project".contains(filter);
         boolean matchCommit = filter.isEmpty() || "commit".contains(filter);
         boolean matchPush = filter.isEmpty() || "push".contains(filter);
 
         if (matchUpdate) {
-            contentBox.getChildren().add(buildActionRow("✓", "Update Project\u2026", "Ctrl+T", e -> {
+            contentBox.getChildren().add(buildActionRow("⤓", "Update Project\u2026", "⌘T", e -> {
                 hide();
                 if (callbacks != null) callbacks.onUpdateProject();
             }));
         }
         if (matchCommit) {
-            contentBox.getChildren().add(buildActionRow("\u2014\u2022\u2014", "Commit\u2026", "Ctrl+K", e -> {
+            contentBox.getChildren().add(buildActionRow("✓", "Commit\u2026", "⌘K", e -> {
                 hide();
                 if (callbacks != null) callbacks.onCommit();
             }));
         }
         if (matchPush) {
-            contentBox.getChildren().add(buildActionRow("\u2197", "Push\u2026", "Ctrl+Shift+K", e -> {
+            contentBox.getChildren().add(buildActionRow("⤉", "Push\u2026", "⇧⌘K", e -> {
                 hide();
                 if (callbacks != null) callbacks.onPush();
             }));
@@ -187,12 +216,12 @@ public class GitBranchesPopup extends Popup {
             contentBox.getChildren().add(createSeparator());
         }
 
-        // Branch creation
+        // 2. Branch creation
         boolean matchNewBranch = filter.isEmpty() || "new branch".contains(filter);
         boolean matchTag = filter.isEmpty() || "tag".contains(filter) || "revision".contains(filter) || "checkout".contains(filter);
 
         if (matchNewBranch) {
-            contentBox.getChildren().add(buildActionRow("+", "New Branch\u2026", "Ctrl+Alt+N", e -> {
+            contentBox.getChildren().add(buildActionRow("+", "New Branch\u2026", "⌥⌘N", e -> {
                 hide();
                 if (callbacks != null) callbacks.onNewBranch();
             }));
@@ -208,19 +237,23 @@ public class GitBranchesPopup extends Popup {
             contentBox.getChildren().add(createSeparator());
         }
 
-        // Recent Section
-        List<String> matchingLocal = localBranches.stream()
+        // 3. Recent Section
+        List<String> matchingRecent = recentBranches.stream()
                 .filter(b -> filter.isEmpty() || b.toLowerCase().contains(filter))
                 .toList();
 
-        if (!matchingLocal.isEmpty()) {
+        if (!matchingRecent.isEmpty()) {
             contentBox.getChildren().add(createCategoryHeader("Recent"));
-            for (String b : matchingLocal) {
+            for (String b : matchingRecent) {
                 contentBox.getChildren().add(buildLocalBranchRow(b));
             }
         }
 
-        // Local Section
+        // 4. Local Section
+        List<String> matchingLocal = localBranches.stream()
+                .filter(b -> filter.isEmpty() || b.toLowerCase().contains(filter))
+                .toList();
+
         if (!matchingLocal.isEmpty()) {
             contentBox.getChildren().add(createCategoryHeader("Local"));
             for (String b : matchingLocal) {
@@ -228,7 +261,7 @@ public class GitBranchesPopup extends Popup {
             }
         }
 
-        // Remote Section
+        // 5. Remote Section
         List<String> matchingRemote = remoteBranches.stream()
                 .filter(b -> filter.isEmpty() || b.toLowerCase().contains(filter))
                 .toList();
@@ -281,7 +314,7 @@ public class GitBranchesPopup extends Popup {
         btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
         btn.setMaxWidth(Double.MAX_VALUE);
 
-        Node icon = isCurrent ? createCurrentBranchIcon() : createTagIcon();
+        Node icon = isCurrent ? createCurrentBranchCheckIcon() : createBranchForkIcon();
 
         Label name = new Label(branch);
         name.setStyle("-fx-text-fill: " + (isCurrent ? "#FFFFFF; -fx-font-weight: bold;" : "#DFE1E5;") + " -fx-font-size: 12px;");
@@ -322,12 +355,14 @@ public class GitBranchesPopup extends Popup {
 
     private HBox buildRemoteBranchRow(String remote, String branchName, String fullRemoteBranch) {
         boolean isMaster = "master".equals(branchName) || "main".equals(branchName);
+        boolean isFav = favoriteBranches.contains(fullRemoteBranch) || isMaster;
+
         Button btn = new Button();
         btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4 8 4 20;");
         btn.setMaxWidth(Double.MAX_VALUE);
 
-        Label icon = new Label(isMaster ? "★" : "🏷");
-        icon.setStyle("-fx-text-fill: " + (isMaster ? "#E8B450;" : "#9D8431;") + " -fx-font-size: 11px;");
+        Label icon = new Label(isFav ? "★" : "⑂");
+        icon.setStyle("-fx-text-fill: " + (isFav ? "#E8B450;" : "#868A91;") + " -fx-font-size: 11px;");
 
         Label name = new Label(branchName);
         name.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
@@ -356,7 +391,7 @@ public class GitBranchesPopup extends Popup {
         return wrapper;
     }
 
-    // ----------------------------------------------------------------- Submenus (Image 4 & 5)
+    // ----------------------------------------------------------------- Submenus
 
     private void showLocalBranchMenu(Button anchor, String branch) {
         subMenu.hide();
@@ -407,26 +442,18 @@ public class GitBranchesPopup extends Popup {
         rebaseOntoItem.setDisable(isCurrent);
         rebaseOntoItem.setOnAction(e -> {
             hide();
-            new Thread(() -> {
-                GitService.Result r = GitService.rebaseOnto(getProjectRoot(), branch);
-                Platform.runLater(() -> {
-                    notifyResult("Rebase", r);
-                    if (r.ok() && callbacks != null) callbacks.onBranchChanged();
-                });
-            }, "lumina-git-rebase").start();
+            if (callbacks != null) {
+                callbacks.onRebaseBranch(branch);
+            }
         });
 
         MenuItem mergeItem = new MenuItem("Merge '" + branch + "' into '" + currentBranch + "'");
         mergeItem.setDisable(isCurrent);
         mergeItem.setOnAction(e -> {
             hide();
-            new Thread(() -> {
-                GitService.Result r = GitService.mergeIntoCurrent(getProjectRoot(), branch);
-                Platform.runLater(() -> {
-                    notifyResult("Merge", r);
-                    if (r.ok() && callbacks != null) callbacks.onBranchChanged();
-                });
-            }, "lumina-git-merge").start();
+            if (callbacks != null) {
+                callbacks.onMergeBranch(branch);
+            }
         });
 
         MenuItem updateItem = new MenuItem("Update");
@@ -441,10 +468,7 @@ public class GitBranchesPopup extends Popup {
             if (callbacks != null) callbacks.onPush();
         });
 
-        Menu trackedMenu = new Menu("Tracked Branch 'origin/" + branch + "'");
-        trackedMenu.getItems().addAll(new MenuItem("Set Tracking\u2026"), new MenuItem("Unset Tracking"));
-
-        MenuItem renameItem = new MenuItem("Rename\u2026  F2");
+        MenuItem renameItem = new MenuItem("Rename\u2026");
         renameItem.setOnAction(e -> promptRenameBranch(branch));
 
         MenuItem deleteItem = new MenuItem("Delete");
@@ -458,7 +482,7 @@ public class GitBranchesPopup extends Popup {
                 new SeparatorMenuItem(),
                 rebaseOntoItem, mergeItem,
                 new SeparatorMenuItem(),
-                updateItem, pushItem, trackedMenu,
+                updateItem, pushItem,
                 new SeparatorMenuItem(),
                 renameItem, deleteItem
         );
@@ -509,25 +533,17 @@ public class GitBranchesPopup extends Popup {
         MenuItem rebaseOntoItem = new MenuItem("Rebase '" + currentBranch + "' onto '" + fullRemoteBranch + "'");
         rebaseOntoItem.setOnAction(e -> {
             hide();
-            new Thread(() -> {
-                GitService.Result r = GitService.rebaseOnto(getProjectRoot(), fullRemoteBranch);
-                Platform.runLater(() -> {
-                    notifyResult("Rebase", r);
-                    if (r.ok() && callbacks != null) callbacks.onBranchChanged();
-                });
-            }, "lumina-git-rebase").start();
+            if (callbacks != null) {
+                callbacks.onRebaseBranch(fullRemoteBranch);
+            }
         });
 
         MenuItem mergeItem = new MenuItem("Merge '" + fullRemoteBranch + "' into '" + currentBranch + "'");
         mergeItem.setOnAction(e -> {
             hide();
-            new Thread(() -> {
-                GitService.Result r = GitService.mergeIntoCurrent(getProjectRoot(), fullRemoteBranch);
-                Platform.runLater(() -> {
-                    notifyResult("Merge", r);
-                    if (r.ok() && callbacks != null) callbacks.onBranchChanged();
-                });
-            }, "lumina-git-merge").start();
+            if (callbacks != null) {
+                callbacks.onMergeBranch(fullRemoteBranch);
+            }
         });
 
         MenuItem pullRebaseItem = new MenuItem("Pull into '" + currentBranch + "' Using Rebase");
@@ -591,19 +607,12 @@ public class GitBranchesPopup extends Popup {
 
     private void promptNewBranchFrom(String baseBranch) {
         hide();
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("New Branch");
-        dialog.setHeaderText("Create new branch from " + baseBranch);
-        dialog.setContentText("Branch name:");
-        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
-        dialog.showAndWait().ifPresent(name -> {
-            name = name.trim();
-            if (!name.isBlank()) {
-                GitService.Result r = GitService.createBranch(getProjectRoot(), name);
-                notifyResult("Create Branch", r);
-                if (r.ok() && callbacks != null) callbacks.onBranchChanged();
-            }
+        Window owner = getOwnerWindow();
+        CreateBranchDialog dialog = new CreateBranchDialog(owner, getProjectRoot(), baseBranch, newBranch -> {
+            if (log != null) log.accept("\u2713 Created branch '" + newBranch + "' from '" + baseBranch + "'");
+            if (callbacks != null) callbacks.onBranchChanged();
         });
+        dialog.show();
     }
 
     private void promptRenameBranch(String oldName) {
@@ -689,22 +698,16 @@ public class GitBranchesPopup extends Popup {
         return l;
     }
 
-    private Node createTagIcon() {
-        SVGPath tag = new SVGPath();
-        tag.setContent("M 1 4 L 5 0 L 10 0 L 10 5 L 6 9 Z");
-        tag.setFill(Color.web("#9D8431"));
-        StackPane sp = new StackPane(tag);
-        sp.setPrefSize(11, 11);
-        return sp;
+    private Node createBranchForkIcon() {
+        Label l = new Label("⑂");
+        l.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+        return l;
     }
 
-    private Node createCurrentBranchIcon() {
-        SVGPath tag = new SVGPath();
-        tag.setContent("M 1 4 L 5 0 L 10 0 L 10 5 L 6 9 Z");
-        tag.setFill(Color.web("#E8B450"));
-        StackPane sp = new StackPane(tag);
-        sp.setPrefSize(11, 11);
-        return sp;
+    private Node createCurrentBranchCheckIcon() {
+        Label l = new Label("✓");
+        l.setStyle("-fx-text-fill: #3574F0; -fx-font-weight: bold; -fx-font-size: 11px;");
+        return l;
     }
 
     // Accessors for testing
@@ -713,5 +716,7 @@ public class GitBranchesPopup extends Popup {
     public String getCurrentBranch() { return currentBranch; }
     public List<String> getLocalBranches() { return localBranches; }
     public List<String> getRemoteBranches() { return remoteBranches; }
+    public Set<String> getRecentBranches() { return recentBranches; }
     public Map<String, Integer> getOutgoingCounts() { return outgoingCounts; }
+    public ContextMenu getSubMenu() { return subMenu; }
 }

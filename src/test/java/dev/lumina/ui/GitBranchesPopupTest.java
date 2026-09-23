@@ -6,6 +6,7 @@ import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +58,8 @@ class GitBranchesPopupTest {
         AtomicBoolean commitCalled = new AtomicBoolean(false);
         AtomicBoolean pushCalled = new AtomicBoolean(false);
         AtomicBoolean newBranchCalled = new AtomicBoolean(false);
+        AtomicReference<String> mergedBranch = new AtomicReference<>();
+        AtomicReference<String> rebasedTarget = new AtomicReference<>();
 
         AtomicReference<GitBranchesPopup> ref = new AtomicReference<>();
         CountDownLatch latch = new CountDownLatch(1);
@@ -70,6 +73,8 @@ class GitBranchesPopupTest {
                     @Override public void onNewBranch() { newBranchCalled.set(true); }
                     @Override public void onCheckoutTag() {}
                     @Override public void onBranchChanged() {}
+                    @Override public void onMergeBranch(String branch) { mergedBranch.set(branch); }
+                    @Override public void onRebaseBranch(String target) { rebasedTarget.set(target); }
                 });
                 ref.set(popup);
             } finally {
@@ -83,39 +88,16 @@ class GitBranchesPopupTest {
         assertNotNull(popup.getSearchField());
         assertNotNull(popup.getContentBox());
         assertEquals("Search for branches and actions", popup.getSearchField().getPromptText());
+        assertNotNull(popup.getSubMenu());
     }
 
     @Test
-    void testSearchFilter() throws Exception {
-        if (!javaFxAvailable) return;
-
-        AtomicReference<GitBranchesPopup> ref = new AtomicReference<>();
-        CountDownLatch latch = new CountDownLatch(1);
-
-        Platform.runLater(() -> {
-            try {
-                VBox anchor = new VBox();
-                javafx.scene.Scene scene = new javafx.scene.Scene(anchor, 100, 100);
-                javafx.stage.Stage stage = new javafx.stage.Stage();
-                stage.setScene(scene);
-
-                GitBranchesPopup popup = new GitBranchesPopup(Path.of("."), msg -> {}, new GitBranchesPopup.BranchCallbacks() {
-                    @Override public void onUpdateProject() {}
-                    @Override public void onCommit() {}
-                    @Override public void onPush() {}
-                    @Override public void onNewBranch() {}
-                    @Override public void onCheckoutTag() {}
-                    @Override public void onBranchChanged() {}
-                });
-                ref.set(popup);
-            } finally {
-                latch.countDown();
-            }
-        });
-        assertTrue(latch.await(3, TimeUnit.SECONDS));
-
-        GitBranchesPopup popup = ref.get();
-        assertNotNull(popup);
-        assertNotNull(popup.getSearchField());
+    void testBrandIsolation() throws Exception {
+        Path p = Path.of("src/main/java/dev/lumina/ui/GitBranchesPopup.java");
+        if (Files.exists(p)) {
+            String content = Files.readString(p);
+            assertFalse(content.contains("JetBrains"), "Found JetBrains in " + p);
+            assertFalse(content.contains("IntelliJ"), "Found IntelliJ in " + p);
+        }
     }
 }

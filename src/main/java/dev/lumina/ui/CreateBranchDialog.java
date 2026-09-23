@@ -16,30 +16,39 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 /**
- * Modal dialog for creating a new Git branch from a base reference or HEAD,
- * with checkout and overwrite options.
+ * Modern modal dialog for creating a new Git branch matching the reference design,
+ * with checkout branch and overwrite existing branch options.
  */
 public class CreateBranchDialog extends Stage {
 
     private final Path projectRoot;
     private final String startPoint;
+    private final Consumer<String> onBranchCreated;
     private String createdBranchName = null;
 
     private final TextField nameField = new TextField();
     private final CheckBox checkoutBox = new CheckBox("Checkout branch");
     private final CheckBox overwriteBox = new CheckBox("Overwrite existing branch");
     private final Label errorLabel = new Label();
+    private final Button cancelBtn = new Button("Cancel");
+    private final Button createBtn = new Button("Create");
 
     public CreateBranchDialog(Window owner, Path projectRoot, String startPoint) {
+        this(owner, projectRoot, startPoint, null);
+    }
+
+    public CreateBranchDialog(Window owner, Path projectRoot, String startPoint, Consumer<String> onBranchCreated) {
         this.projectRoot = projectRoot;
         this.startPoint = (startPoint != null && !startPoint.isBlank()) ? startPoint.trim() : "HEAD";
+        this.onBranchCreated = onBranchCreated;
 
         initOwner(owner);
         initModality(Modality.APPLICATION_MODAL);
         initStyle(StageStyle.DECORATED);
-        setTitle("Create Branch from " + this.startPoint);
+        setTitle("Create New Branch");
         setResizable(false);
 
         VBox root = new VBox(12);
@@ -52,25 +61,30 @@ public class CreateBranchDialog extends Stage {
         nameRow.setAlignment(Pos.CENTER_LEFT);
         Label nameLabel = new Label("Branch Name:");
         nameLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-        nameLabel.setPrefWidth(100);
+        nameLabel.setPrefWidth(90);
 
-        // Default suggested name: if startPoint is origin/feature, suggest feature
+        // Default suggested name: if startPoint is origin/feature, suggest feature, or current branch name
         String suggestedName = "";
         if (this.startPoint.contains("/")) {
             suggestedName = this.startPoint.substring(this.startPoint.lastIndexOf('/') + 1);
         } else if (!"HEAD".equalsIgnoreCase(this.startPoint)) {
             suggestedName = this.startPoint;
+        } else if (projectRoot != null) {
+            String cur = GitService.currentBranch(projectRoot);
+            if (cur != null && !cur.isBlank()) {
+                suggestedName = cur;
+            }
         }
 
         nameField.setText(suggestedName);
-        nameField.setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-border-color: #3574F0; -fx-border-radius: 3; -fx-padding: 5 8; -fx-font-size: 13px;");
+        nameField.setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-border-color: #3574F0; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 5 8; -fx-font-size: 13px;");
         HBox.setHgrow(nameField, Priority.ALWAYS);
         nameRow.getChildren().addAll(nameLabel, nameField);
 
         // Checkboxes row
-        HBox optionsRow = new HBox(16);
+        HBox optionsRow = new HBox(20);
         optionsRow.setAlignment(Pos.CENTER_LEFT);
-        optionsRow.setPadding(new Insets(0, 0, 0, 110));
+        optionsRow.setPadding(new Insets(2, 0, 2, 100));
 
         checkoutBox.setSelected(true);
         checkoutBox.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
@@ -89,26 +103,28 @@ public class CreateBranchDialog extends Stage {
         buttonBar.setAlignment(Pos.CENTER_RIGHT);
         buttonBar.setPadding(new Insets(8, 0, 0, 0));
 
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-padding: 5 14; -fx-cursor: hand;");
+        cancelBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 5 14; -fx-cursor: hand; -fx-font-size: 12px;");
         cancelBtn.setOnAction(e -> close());
 
-        Button createBtn = new Button("Create");
         createBtn.setDefaultButton(true);
-        createBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-background-radius: 3; -fx-padding: 5 18; -fx-cursor: hand;");
+        createBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-background-radius: 4; -fx-border-radius: 4; -fx-padding: 5 18; -fx-cursor: hand; -fx-font-size: 12px;");
         createBtn.setOnAction(e -> doCreate());
 
         buttonBar.getChildren().addAll(cancelBtn, createBtn);
 
         root.getChildren().addAll(nameRow, optionsRow, errorLabel, buttonBar);
 
-        root.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ESCAPE) {
+        Scene scene = new Scene(root);
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                doCreate();
+                e.consume();
+            } else if (e.getCode() == KeyCode.ESCAPE) {
                 close();
+                e.consume();
             }
         });
 
-        Scene scene = new Scene(root);
         setScene(scene);
 
         setOnShown(e -> {
@@ -139,6 +155,9 @@ public class CreateBranchDialog extends Stage {
 
         this.createdBranchName = name;
         close();
+        if (onBranchCreated != null) {
+            onBranchCreated.accept(name);
+        }
     }
 
     private void showError(String msg) {
@@ -148,5 +167,25 @@ public class CreateBranchDialog extends Stage {
 
     public String getCreatedBranchName() {
         return createdBranchName;
+    }
+
+    public TextField getNameField() {
+        return nameField;
+    }
+
+    public CheckBox getCheckoutBox() {
+        return checkoutBox;
+    }
+
+    public CheckBox getOverwriteBox() {
+        return overwriteBox;
+    }
+
+    public Button getCreateButton() {
+        return createBtn;
+    }
+
+    public Button getCancelButton() {
+        return cancelBtn;
     }
 }
