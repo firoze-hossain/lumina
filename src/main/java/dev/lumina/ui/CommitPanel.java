@@ -23,6 +23,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.Window;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -1249,22 +1250,14 @@ public final class CommitPanel extends VBox {
         Path dir = projectRoot.get();
         if (dir == null || !GitService.isRepository(dir)) return;
 
-        TextInputDialog dialog = new TextInputDialog("Stash on " + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        dialog.setTitle("Stash Changes");
-        dialog.setHeaderText("Save changes to Git stash");
-        dialog.setContentText("Stash message:");
-        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
-        dialog.showAndWait().ifPresent(msg -> {
-            new Thread(() -> {
-                GitService.stash(dir, msg);
-                Platform.runLater(() -> {
-                    refresh();
-                    if (activeViewMode == ViewMode.STASH) {
-                        refreshStashView();
-                    }
-                });
-            }, "lumina-git-stash").start();
+        Window owner = getScene() != null ? getScene().getWindow() : null;
+        StashDialog dialog = new StashDialog(owner, dir, log, () -> {
+            refresh();
+            if (activeViewMode == ViewMode.STASH) {
+                refreshStashView();
+            }
         });
+        dialog.show();
     }
 
     private void showOptionsMenu(Button anchor) {

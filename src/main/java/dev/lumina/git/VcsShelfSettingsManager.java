@@ -79,6 +79,13 @@ public class VcsShelfSettingsManager {
         return getDefaultShelvesLocation();
     }
 
+    public synchronized Path getShelfDir(Path dir) {
+        if (dir != null) {
+            setCurrentProjectPath(dir);
+        }
+        return getCurrentShelvesLocation();
+    }
+
     public synchronized boolean isCustomLocationConfigured() {
         return customShelvesLocation != null && !customShelvesLocation.isBlank();
     }

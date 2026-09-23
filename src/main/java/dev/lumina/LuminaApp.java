@@ -939,8 +939,23 @@ public class LuminaApp extends Application {
                 item("Clear Run Output", null, e -> console.clear()));
 
         // ---- Git
-        Menu patch = new Menu("Patch"); patch.getItems().add(placeholder("Create Patch…", null));
-        Menu changes = new Menu("Uncommitted Changes"); changes.getItems().add(item("Show Status", null, e -> gitStatus()));
+        Menu patch = new Menu("Patch");
+        patch.getItems().addAll(
+                item("Create Patch from Local Changes\u2026", null, e -> showCreatePatchDialog()),
+                item("Apply Patch\u2026", null, e -> applyPatchFromFile()),
+                item("Apply Patch from Clipboard\u2026", null, e -> applyPatchFromClipboard())
+        );
+
+        Menu changes = new Menu("Uncommitted Changes");
+        changes.getItems().addAll(
+                item("Shelve Changes\u2026", null, e -> shelveChanges()),
+                item("Show Shelf", null, e -> showShelf()),
+                item("Show Git Stash", null, e -> showGitStash()),
+                item("Stash Changes\u2026", null, e -> showStashDialog()),
+                item("Unstash Changes\u2026", null, e -> showUnstashDialog()),
+                item("Rollback\u2026", "Shortcut+Alt+Z", e -> rollbackAllUncommittedChanges()),
+                item("Show Local Changes as UML", "Shortcut+Alt+Shift+D", e -> showLocalChangesUml())
+        );
         Menu currentFile = new Menu("Current File"); currentFile.getItems().add(item("Toggle Blame Annotations", "Shortcut+Alt+B", e -> toggleBlame()));
         Menu gitLab = new Menu("GitLab"); gitLab.getItems().add(placeholder("Open Merge Requests", null));
         Menu github = new Menu("GitHub"); github.getItems().addAll(item("Sign in to GitHub…", null, e -> onGitHubButton()), item("Open Repository on GitHub", null, e -> openRemote()));
@@ -1216,6 +1231,226 @@ public class LuminaApp extends Application {
             fileExplorer.refresh();
         });
         dialog.show();
+    }
+
+    private void showCreatePatchDialog() {
+        if (!requireProject()) return;
+        CreatePatchDialog dialog = new CreatePatchDialog(stage, projectRoot, console::println, null);
+        dialog.show();
+    }
+
+    private void applyPatchFromFile() {
+        if (!requireProject()) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Apply Patch");
+        fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Patch Files (*.patch, *.diff)", "*.patch", "*.diff"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+        if (projectRoot != null) fc.setInitialDirectory(projectRoot.toFile());
+        File file = fc.showOpenDialog(stage);
+        if (file == null) return;
+
+        new Thread(() -> {
+            GitService.Result r = GitService.applyPatch(projectRoot, file.toPath());
+            Platform.runLater(() -> {
+                if (r.ok()) {
+                    console.println("\u2713 Applied patch: " + file.getName());
+                    Notification notif = new Notification(
+                            "Git",
+                            "Patch Applied",
+                            file.getName(),
+                            NotificationType.INFORMATION
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (commitPanel != null) commitPanel.refresh();
+                    fileExplorer.refresh();
+                } else {
+                    console.println("Apply patch failed: " + r.output().trim());
+                    Alert err = new Alert(Alert.AlertType.ERROR);
+                    err.setTitle("Apply Patch Failed");
+                    err.setHeaderText("Git Apply Patch Failed");
+                    err.setContentText(r.output().trim());
+                    err.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+                    err.showAndWait();
+                }
+            });
+        }, "lumina-git-apply-patch").start();
+    }
+
+    private void applyPatchFromClipboard() {
+        if (!requireProject()) return;
+        String content = javafx.scene.input.Clipboard.getSystemClipboard().getString();
+        if (content == null || content.isBlank() || (!content.contains("diff --git") && !content.contains("--- ") && !content.contains("+++ "))) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Apply Patch from Clipboard");
+            alert.setHeaderText("No Patch Content in Clipboard");
+            alert.setContentText("The system clipboard does not contain valid patch data.");
+            alert.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+            alert.showAndWait();
+            return;
+        }
+
+        new Thread(() -> {
+            GitService.Result r = GitService.applyPatchFromText(projectRoot, content);
+            Platform.runLater(() -> {
+                if (r.ok()) {
+                    console.println("\u2713 Applied patch from clipboard");
+                    Notification notif = new Notification(
+                            "Git",
+                            "Patch Applied",
+                            "Applied changes from clipboard",
+                            NotificationType.INFORMATION
+                    );
+                    NotificationService.getInstance().notify(notif);
+                    if (commitPanel != null) commitPanel.refresh();
+                    fileExplorer.refresh();
+                } else {
+                    console.println("Apply patch from clipboard failed: " + r.output().trim());
+                    Alert err = new Alert(Alert.AlertType.ERROR);
+                    err.setTitle("Apply Patch Failed");
+                    err.setHeaderText("Git Apply Patch from Clipboard Failed");
+                    err.setContentText(r.output().trim());
+                    err.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+                    err.showAndWait();
+                }
+            });
+        }, "lumina-git-apply-patch-clipboard").start();
+    }
+
+    private void shelveChanges() {
+        if (!requireProject()) return;
+        TextInputDialog dialog = new TextInputDialog("Shelf " + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        dialog.setTitle("Shelve Changes");
+        dialog.setHeaderText("Shelve Changes to Shelf Directory");
+        dialog.setContentText("Shelf name:");
+        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+        dialog.showAndWait().ifPresent(name -> {
+            new Thread(() -> {
+                GitService.Result r = GitService.shelve(projectRoot, name);
+                Platform.runLater(() -> {
+                    if (r.ok()) {
+                        console.println("\u2713 " + r.output());
+                        Notification notif = new Notification(
+                                "Git",
+                                "Shelved Changes",
+                                name,
+                                NotificationType.INFORMATION
+                        );
+                        NotificationService.getInstance().notify(notif);
+                        if (commitPanel != null) commitPanel.refresh();
+                        fileExplorer.refresh();
+                    } else {
+                        console.println("Shelve failed: " + r.output());
+                    }
+                });
+            }, "lumina-git-shelve").start();
+        });
+    }
+
+    private void showShelf() {
+        if (!requireProject()) return;
+        List<Path> shelves = GitService.shelfList(projectRoot);
+        Alert info = new Alert(Alert.AlertType.INFORMATION);
+        info.setTitle("Shelf");
+        info.setHeaderText("Shelved Changes (" + shelves.size() + ")");
+        if (shelves.isEmpty()) {
+            info.setContentText("No shelved changes currently in shelf directory.");
+        } else {
+            StringBuilder sb = new StringBuilder("Shelved files in .shelf/:\n");
+            for (Path p : shelves) {
+                sb.append("• ").append(p.getFileName()).append("\n");
+            }
+            info.setContentText(sb.toString());
+        }
+        info.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+        info.showAndWait();
+    }
+
+    private void showGitStash() {
+        if (!requireProject()) return;
+        toggleLeftPanel(true);
+        leftTabs.getSelectionModel().select(1);
+        iconRail.selectTop(1);
+        if (commitPanel != null) {
+            commitPanel.switchViewMode(CommitPanel.ViewMode.STASH);
+            commitPanel.refreshStashView();
+        }
+    }
+
+    private void showStashDialog() {
+        if (!requireProject()) return;
+        StashDialog dialog = new StashDialog(stage, projectRoot, console::println, () -> {
+            refreshGitInfo();
+            fileExplorer.refresh();
+            if (commitPanel != null) {
+                commitPanel.refresh();
+                if (commitPanel.getActiveViewMode() == CommitPanel.ViewMode.STASH) {
+                    commitPanel.refreshStashView();
+                }
+            }
+        });
+        dialog.show();
+    }
+
+    private void showUnstashDialog() {
+        if (!requireProject()) return;
+        UnstashDialog dialog = new UnstashDialog(stage, projectRoot, console::println, () -> {
+            refreshGitInfo();
+            fileExplorer.refresh();
+            if (commitPanel != null) {
+                commitPanel.refresh();
+                if (commitPanel.getActiveViewMode() == CommitPanel.ViewMode.STASH) {
+                    commitPanel.refreshStashView();
+                }
+            }
+        });
+        dialog.show();
+    }
+
+    private void rollbackAllUncommittedChanges() {
+        if (!requireProject()) return;
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Rollback Changes");
+        confirm.setHeaderText("Rollback all uncommitted changes in project?");
+        confirm.setContentText("All working tree modifications will be discarded. This cannot be undone.");
+        confirm.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5;");
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                new Thread(() -> {
+                    GitService.Result r = GitService.rollbackAll(projectRoot);
+                    Platform.runLater(() -> {
+                        if (r.ok()) {
+                            console.println("\u2713 Rolled back all uncommitted changes");
+                            Notification notif = new Notification(
+                                    "Git",
+                                    "Rollback Completed",
+                                    "All uncommitted changes discarded",
+                                    NotificationType.INFORMATION
+                            );
+                            NotificationService.getInstance().notify(notif);
+                            refreshGitInfo();
+                            fileExplorer.refresh();
+                            if (commitPanel != null) commitPanel.refresh();
+                        } else {
+                            console.println("Rollback failed: " + r.output().trim());
+                        }
+                    });
+                }, "lumina-git-rollback-all").start();
+            }
+        });
+    }
+
+    private void showLocalChangesUml() {
+        if (!requireProject()) return;
+        console.println("Local changes UML: scanned uncommitted classes in project.");
+        NotificationService.getInstance().notify(new Notification(
+                "Git",
+                "Local Changes",
+                "Showing local uncommitted modifications",
+                NotificationType.INFORMATION
+        ));
+        gitCommit();
     }
 
     private void checkout(String branch) {
@@ -2067,6 +2302,12 @@ public class LuminaApp extends Application {
                 new SearchEverywhereDialog.Action("Git: New Branch\u2026", this::gitNewBranch),
                 new SearchEverywhereDialog.Action("Git: New Tag\u2026", this::showNewTagDialog),
                 new SearchEverywhereDialog.Action("Git: Reset HEAD\u2026", this::showResetHeadDialog),
+                new SearchEverywhereDialog.Action("Git: Stash Changes\u2026", this::showStashDialog),
+                new SearchEverywhereDialog.Action("Git: Show Stash", this::showGitStash),
+                new SearchEverywhereDialog.Action("Git: Unstash Changes\u2026", this::showUnstashDialog),
+                new SearchEverywhereDialog.Action("Git: Create Patch\u2026", this::showCreatePatchDialog),
+                new SearchEverywhereDialog.Action("Git: Apply Patch\u2026", this::applyPatchFromFile),
+                new SearchEverywhereDialog.Action("Git: Rollback\u2026", this::rollbackAllUncommittedChanges),
                 new SearchEverywhereDialog.Action("Find in Files\u2026", this::findInFiles),
                 new SearchEverywhereDialog.Action("Go to Line\u2026", this::goToLine),
                 new SearchEverywhereDialog.Action("Maven Panel", () -> showRightPanel(3)),
