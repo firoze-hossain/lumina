@@ -1,6 +1,9 @@
 package dev.lumina.ui;
 
 import dev.lumina.diff.DiffEngine;
+import dev.lumina.folding.CodeFoldingScanner;
+import dev.lumina.folding.CodeFoldingSettings;
+import dev.lumina.folding.FoldRegion;
 import dev.lumina.git.GitFileStatus;
 import dev.lumina.git.GitService;
 import dev.lumina.git.GitStatusManager;
@@ -64,6 +67,14 @@ public class EditorTab extends Tab {
     private final List<DiffEngine.DiffChunk> gitChunks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final javafx.scene.canvas.Canvas errorStripeCanvas = new javafx.scene.canvas.Canvas(12, 100);
     private javafx.stage.Popup gitChangePopup;
+
+    // Code folding state
+    private final List<FoldRegion> foldRegions = new ArrayList<>();
+    private final Map<Integer, Integer> visibleLineToFullLine = new HashMap<>();
+    private final Map<Integer, Integer> fullLineToVisibleLine = new HashMap<>();
+    private final Map<Integer, FoldRegion> visibleLineToFoldedRegion = new HashMap<>();
+    private String fullDocumentText = "";
+    private boolean isApplyingFolding = false;
 
     @FunctionalInterface
     public interface DiffOpenerCallback {
@@ -244,12 +255,28 @@ public class EditorTab extends Tab {
         }
 
         codeArea.textProperty().addListener((obs, old, txt) -> {
+            if (isApplyingFolding) return;
+            syncFullDocumentFromUserEdit();
             editGeneration++;
             markDirty();
         });
         codeArea.caretPositionProperty().addListener((obs, old, pos) -> {
             notifyCaret();
             highlightCurrentLine();
+        });
+
+        // Click on folded placeholder (e.g. import [...], @{...}, { ... }) to unfold
+        codeArea.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
+            if (e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                var hit = codeArea.hit(e.getX(), e.getY());
+                int charIdx = hit.getInsertionIndex();
+                int visibleLine = codeArea.offsetToPosition(charIdx, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor() + 1;
+                FoldRegion folded = visibleLineToFoldedRegion.get(visibleLine);
+                if (folded != null && folded.isFolded()) {
+                    toggleFoldRegion(folded);
+                    e.consume();
+                }
+            }
         });
 
         // Completion popup keys, Ctrl+Space trigger, then auto-indent.
@@ -462,8 +489,9 @@ public class EditorTab extends Tab {
         errorStripeCanvas.setOnMouseClicked(e -> {
             double h = errorStripeCanvas.getHeight();
             if (h > 0 && !codeArea.getParagraphs().isEmpty()) {
-                int targetLine = (int) ((e.getY() / h) * codeArea.getParagraphs().size()) + 1;
-                goToLine(Math.min(codeArea.getParagraphs().size(), Math.max(1, targetLine)));
+                int totalLines = Math.max(1, getRealLineCount());
+                int targetLine = (int) ((e.getY() / h) * totalLines) + 1;
+                goToLine(Math.min(totalLines, Math.max(1, targetLine)));
             }
         });
 
@@ -589,10 +617,9 @@ public class EditorTab extends Tab {
     }
 
     private void refreshGutter() {
-        java.util.function.IntFunction<javafx.scene.Node> lineNo =
-                LineNumberFactory.get(codeArea);
         codeArea.setParagraphGraphicFactory(i -> {
-            final int line = i + 1;
+            final int visibleLine = i + 1;
+            final int line = getRealLineNumber(visibleLine);
             dev.lumina.diagnostics.JavaDiagnostics.Diag diagOnLine = diagAtLine(line);
             javafx.scene.control.Label bulb = null;
             if (diagOnLine != null && diagOnLine.quickFix() != null && !breakpoints.contains(line)) {
@@ -620,10 +647,46 @@ public class EditorTab extends Tab {
             dotBox.setCursor(javafx.scene.Cursor.DEFAULT);
             dotBox.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
 
-            javafx.scene.Node num = lineNo.apply(i);
+            javafx.scene.control.Label num = new javafx.scene.control.Label(String.valueOf(line));
+            num.getStyleClass().add("lineno");
+            num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+            int maxLine = Math.max(10, getRealLineCount());
+            int digits = Math.max(2, String.valueOf(maxLine).length());
+            double w = digits * 8.5 + 16.0;
+            num.setPrefWidth(w);
+            num.setMinWidth(w);
             num.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
 
+            javafx.scene.layout.StackPane foldBox = new javafx.scene.layout.StackPane();
+            foldBox.setPrefWidth(12);
+            foldBox.setMinWidth(12);
+            foldBox.setMaxWidth(12);
+            foldBox.setAlignment(javafx.geometry.Pos.CENTER);
+
+            boolean showFoldingArrows = CodeFoldingSettings.getInstance().isShowFoldingArrows();
+            FoldRegion region = getFoldRegionAtStartLine(line);
+            if (region != null && showFoldingArrows) {
+                javafx.scene.control.Label chevron = new javafx.scene.control.Label(region.isFolded() ? "\u203A" : "\u2304");
+                chevron.getStyleClass().add("fold-chevron");
+                chevron.setCursor(javafx.scene.Cursor.HAND);
+                chevron.setOnMouseClicked(e -> {
+                    toggleFoldRegion(region);
+                    e.consume();
+                });
+                foldBox.getChildren().add(chevron);
+            }
+
             DiffEngine.DiffChunk chunk = gitLineChunks.get(line);
+            if (chunk == null && region != null && region.isFolded()) {
+                for (int k = region.getStartLine(); k <= region.getEndLine(); k++) {
+                    DiffEngine.DiffChunk sub = gitLineChunks.get(k);
+                    if (sub != null) {
+                        chunk = sub;
+                        break;
+                    }
+                }
+            }
+
             javafx.scene.layout.Region gitStripe = new javafx.scene.layout.Region();
             gitStripe.setPrefWidth(3.5);
             gitStripe.setMinWidth(3.5);
@@ -638,9 +701,10 @@ public class EditorTab extends Tab {
                     case DELETED -> "#E06C75";
                 };
                 gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-cursor: hand;");
+                final DiffEngine.DiffChunk activeChunk = chunk;
                 gitStripe.setOnMouseClicked(e -> {
                     e.consume();
-                    showGitChangePopup(line, chunk, gitStripe);
+                    showGitChangePopup(line, activeChunk, gitStripe);
                 });
                 gitStripe.setOnMouseEntered(e -> gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-opacity: 0.8; -fx-cursor: hand;"));
                 gitStripe.setOnMouseExited(e -> gitStripe.setStyle("-fx-background-color: " + stripeColor + "; -fx-opacity: 1.0; -fx-cursor: hand;"));
@@ -662,9 +726,9 @@ public class EditorTab extends Tab {
                                             + blameLines.get(i).date() + "\n"
                                             + blameLines.get(i).summary()));
                 }
-                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num, gitStripe);
+                box = new javafx.scene.layout.HBox(6, annotation, dotBox, num, foldBox, gitStripe);
             } else {
-                box = new javafx.scene.layout.HBox(2, dotBox, num, gitStripe);
+                box = new javafx.scene.layout.HBox(2, dotBox, num, foldBox, gitStripe);
             }
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
@@ -921,7 +985,7 @@ public class EditorTab extends Tab {
 
     /** 1-based caret line, matching the semantic engine's convention. */
     public int getCaretLine() {
-        return codeArea.getCurrentParagraph() + 1;
+        return getRealLineNumber(codeArea.getCurrentParagraph() + 1);
     }
 
     /** 1-based caret column. */
@@ -1172,7 +1236,9 @@ public class EditorTab extends Tab {
     // ---------------------------------------------------------------- state
 
     public void setEditorText(String text) {
-        codeArea.replaceText(text);
+        this.fullDocumentText = text != null ? text : "";
+        rescanFoldRegions();
+        applyFoldingView(false);
         codeArea.getUndoManager().forgetHistory();
         codeArea.moveTo(0);
         codeArea.requestFollowCaret();
@@ -1182,7 +1248,10 @@ public class EditorTab extends Tab {
     }
 
     public String getEditorText() {
-        return codeArea.getText();
+        if (foldRegions.isEmpty() || visibleLineToFoldedRegion.isEmpty()) {
+            return codeArea.getText();
+        }
+        return reconstructFullDocumentText();
     }
 
     public Path getPath() {
@@ -1276,7 +1345,7 @@ public class EditorTab extends Tab {
             loadHeadContent();
             return;
         }
-        String curText = codeArea.getText();
+        String curText = getEditorText();
         String base = headContent != null ? headContent : "";
         DiffEngine.DiffResult diff = DiffEngine.diff(base, curText, false);
 
@@ -1286,7 +1355,7 @@ public class EditorTab extends Tab {
         gitLineChunks.clear();
         for (DiffEngine.DiffChunk c : diff.chunks()) {
             if (c.type() == DiffEngine.DiffType.DELETED) {
-                int line = Math.min(codeArea.getParagraphs().size(), c.rightStart() + 1);
+                int line = c.rightStart() + 1;
                 gitLineChunks.put(line, c);
             } else {
                 for (int line = c.rightStart() + 1; line <= c.rightEnd(); line++) {
@@ -1310,7 +1379,7 @@ public class EditorTab extends Tab {
     }
 
     public void rollbackAtCaret() {
-        int line = codeArea.getCurrentParagraph() + 1;
+        int line = getRealLineNumber(codeArea.getCurrentParagraph() + 1);
         DiffEngine.DiffChunk chunk = gitLineChunks.get(line);
         if (chunk != null) {
             rollbackChunk(chunk);
@@ -1319,11 +1388,11 @@ public class EditorTab extends Tab {
 
     public void navigateChange(int dir) {
         if (gitChunks.isEmpty()) return;
-        int currentLine = codeArea.getCurrentParagraph();
+        int currentLine = getRealLineNumber(codeArea.getCurrentParagraph() + 1);
         DiffEngine.DiffChunk target = null;
         if (dir > 0) {
             for (DiffEngine.DiffChunk c : gitChunks) {
-                if (c.rightStart() > currentLine) {
+                if (c.rightStart() + 1 > currentLine) {
                     target = c;
                     break;
                 }
@@ -1332,7 +1401,7 @@ public class EditorTab extends Tab {
         } else {
             for (int i = gitChunks.size() - 1; i >= 0; i--) {
                 DiffEngine.DiffChunk c = gitChunks.get(i);
-                if (c.rightStart() < currentLine) {
+                if (c.rightStart() + 1 < currentLine) {
                     target = c;
                     break;
                 }
@@ -1353,52 +1422,30 @@ public class EditorTab extends Tab {
         try {
             String base = headContent != null ? headContent : "";
             List<String> headLines = Arrays.asList(base.split("\\R", -1));
+            List<String> curLines = new ArrayList<>(Arrays.asList(getEditorText().split("\\R", -1)));
 
             if (chunk.type() == DiffEngine.DiffType.INSERTED) {
-                int startPara = chunk.rightStart();
-                int endPara = chunk.rightEnd();
-                int totalParas = codeArea.getParagraphs().size();
-                if (startPara < totalParas) {
-                    int startPos = codeArea.getAbsolutePosition(startPara, 0);
-                    int endPos;
-                    if (endPara < totalParas) {
-                        endPos = codeArea.getAbsolutePosition(endPara, 0);
-                    } else {
-                        endPos = codeArea.getLength();
-                        if (startPos > 0) startPos--;
-                    }
-                    if (endPos > startPos) {
-                        codeArea.deleteText(startPos, endPos);
-                    }
+                int start = Math.min(curLines.size(), chunk.rightStart());
+                int count = chunk.rightCount();
+                for (int i = 0; i < count && start < curLines.size(); i++) {
+                    curLines.remove(start);
                 }
             } else if (chunk.type() == DiffEngine.DiffType.MODIFIED) {
-                int startPara = chunk.rightStart();
-                int endPara = chunk.rightEnd();
-                int totalParas = codeArea.getParagraphs().size();
-                if (startPara < totalParas) {
-                    int startPos = codeArea.getAbsolutePosition(startPara, 0);
-                    int endPos = endPara < totalParas
-                            ? codeArea.getAbsolutePosition(endPara, 0)
-                            : codeArea.getLength();
-
-                    int leftStart = Math.min(headLines.size(), chunk.leftStart());
-                    int leftEnd = Math.min(headLines.size(), chunk.leftEnd());
-                    List<String> replacementLines = headLines.subList(leftStart, leftEnd);
-                    String replacement = String.join("\n", replacementLines);
-                    if (endPara < totalParas) {
-                        replacement += "\n";
-                    }
-                    codeArea.replaceText(startPos, endPos, replacement);
+                int start = Math.min(curLines.size(), chunk.rightStart());
+                int count = chunk.rightCount();
+                for (int i = 0; i < count && start < curLines.size(); i++) {
+                    curLines.remove(start);
                 }
-            } else if (chunk.type() == DiffEngine.DiffType.DELETED) {
-                int insertPara = Math.min(codeArea.getParagraphs().size() - 1, chunk.rightStart());
-                int insertPos = codeArea.getAbsolutePosition(insertPara, 0);
                 int leftStart = Math.min(headLines.size(), chunk.leftStart());
                 int leftEnd = Math.min(headLines.size(), chunk.leftEnd());
-                List<String> restoreLines = headLines.subList(leftStart, leftEnd);
-                String toInsert = String.join("\n", restoreLines) + "\n";
-                codeArea.insertText(insertPos, toInsert);
+                curLines.addAll(start, headLines.subList(leftStart, leftEnd));
+            } else if (chunk.type() == DiffEngine.DiffType.DELETED) {
+                int start = Math.min(curLines.size(), chunk.rightStart());
+                int leftStart = Math.min(headLines.size(), chunk.leftStart());
+                int leftEnd = Math.min(headLines.size(), chunk.leftEnd());
+                curLines.addAll(start, headLines.subList(leftStart, leftEnd));
             }
+            setEditorText(String.join("\n", curLines));
             recomputeGitLineStatus();
         } catch (Exception ex) {
             recomputeGitLineStatus();
@@ -1411,7 +1458,7 @@ public class EditorTab extends Tab {
         }
         if (onOpenDiff != null && path != null) {
             String base = headContent != null ? headContent : "";
-            String cur = codeArea.getText();
+            String cur = getEditorText();
             String title = "Diff: " + (baseName != null ? baseName : path.getFileName().toString());
             onOpenDiff.openDiff(title, base, cur);
         }
@@ -1426,7 +1473,7 @@ public class EditorTab extends Tab {
             return;
         }
 
-        int totalLines = Math.max(1, codeArea.getParagraphs().size());
+        int totalLines = Math.max(1, getRealLineCount());
         for (DiffEngine.DiffChunk chunk : gitChunks) {
             double y = ((double) chunk.rightStart() / totalLines) * h;
             double markH = Math.max(3.0, ((double) Math.max(1, chunk.rightCount()) / totalLines) * h);
@@ -1459,7 +1506,8 @@ public class EditorTab extends Tab {
         }
         javafx.geometry.Bounds winB = codeArea.localToScreen(codeArea.getBoundsInLocal());
         if (winB != null) {
-            double yOffset = Math.min(winB.getHeight() - 40, (line - 1) * 20.0 + 30);
+            int visLine = getVisibleLineNumber(line);
+            double yOffset = Math.min(winB.getHeight() - 40, Math.max(0, (visLine - 1) * 20.0 + 30));
             gitChangePopup.show(codeArea, winB.getMinX() + 60, winB.getMinY() + yOffset);
         }
     }
@@ -1610,7 +1658,7 @@ public class EditorTab extends Tab {
 
     private void notifyCaret() {
         if (caretListener != null) {
-            caretListener.caretMoved(codeArea.getCurrentParagraph() + 1,
+            caretListener.caretMoved(getRealLineNumber(codeArea.getCurrentParagraph() + 1),
                     codeArea.getCaretColumn() + 1);
         }
     }
@@ -1741,19 +1789,21 @@ public class EditorTab extends Tab {
             String methodName = methodSig;
             int paren = methodSig.indexOf('(');
             if (paren > 0) methodName = methodSig.substring(0, paren);
-            String full = codeArea.getText();
+            String full = getEditorText();
             String updated = dev.lumina.codegen.JavaCodeGenerator.removeMethod(full, methodName);
             if (!updated.equals(full)) {
-                codeArea.replaceText(0, full.length(), updated);
+                setEditorText(updated);
+                markDirty();
                 applyHighlighting();
                 scheduleDiagnostics();
             }
         } else if (id.startsWith("unused-field:")) {
             String fieldName = id.substring("unused-field:".length()).trim();
-            String full = codeArea.getText();
+            String full = getEditorText();
             String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(full, fieldName);
             if (!updated.equals(full)) {
-                codeArea.replaceText(0, full.length(), updated);
+                setEditorText(updated);
+                markDirty();
                 applyHighlighting();
                 scheduleDiagnostics();
             }
@@ -1832,7 +1882,7 @@ public class EditorTab extends Tab {
             return;
         }
         final int generation = editGeneration;
-        final String text = codeArea.getText();
+        final String text = getEditorText();
         Thread worker = new Thread(() -> {
             java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> found;
             try {
@@ -1866,23 +1916,39 @@ public class EditorTab extends Tab {
 
     private org.fxmisc.richtext.model.StyleSpans<java.util.Collection<String>>
             diagnosticSpans(int length) {
-        java.util.List<dev.lumina.diagnostics.JavaDiagnostics.Diag> sorted =
-                diagnostics.stream()
-                        .filter(d -> d.start() < length)
-                        .sorted(java.util.Comparator
-                                .comparingInt(dev.lumina.diagnostics.JavaDiagnostics.Diag::start)
-                                .thenComparingInt(d -> d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR ? 0 : 1))
-                        .toList();
         var builder = new org.fxmisc.richtext.model.StyleSpansBuilder<
                 java.util.Collection<String>>();
         int last = 0;
-        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : sorted) {
-            int start = Math.max(d.start(), last);
-            int end = Math.min(Math.max(d.end(), start + 1), length);
+
+        record VisDiag(int start, int end, dev.lumina.diagnostics.JavaDiagnostics.Diag diag) implements Comparable<VisDiag> {
+            @Override
+            public int compareTo(VisDiag o) {
+                int cmp = Integer.compare(this.start, o.start);
+                if (cmp != 0) return cmp;
+                return Integer.compare(this.end, o.end);
+            }
+        }
+
+        List<VisDiag> visibleDiags = new ArrayList<>();
+        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
+            if (isLineHiddenByFold(d.line())) continue;
+            int[] range = mapDiagnosticToVisibleRange(d);
+            if (range != null && range[0] < length) {
+                int s = Math.max(0, range[0]);
+                int e = Math.min(length, Math.max(s + 1, range[1]));
+                visibleDiags.add(new VisDiag(s, e, d));
+            }
+        }
+        Collections.sort(visibleDiags);
+
+        for (VisDiag vd : visibleDiags) {
+            int start = Math.max(vd.start(), last);
+            int end = Math.min(vd.end(), length);
             if (start >= end) continue;
             if (start > last) {
                 builder.add(java.util.List.of(), start - last);
             }
+            dev.lumina.diagnostics.JavaDiagnostics.Diag d = vd.diag();
             boolean isUnusedField = d.quickFix() != null && d.quickFix().startsWith("unused-field:");
             boolean isUnusedMethod = d.quickFix() != null && d.quickFix().startsWith("unused-method:");
             java.util.List<String> classes = new java.util.ArrayList<>();
@@ -1906,21 +1972,61 @@ public class EditorTab extends Tab {
         return builder.create();
     }
 
-    private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAt(int offset) {
-        dev.lumina.diagnostics.JavaDiagnostics.Diag best = null;
-        for (dev.lumina.diagnostics.JavaDiagnostics.Diag d : diagnostics) {
-            if (offset >= d.start() && offset <= d.end()) {
-                if (best == null) {
-                    best = d;
-                } else if (best.severity() != dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR
-                        && d.severity() == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR) {
-                    best = d;
-                } else if (best.quickFix() == null && d.quickFix() != null) {
-                    best = d;
-                }
+    private int[] mapDiagnosticToVisibleRange(dev.lumina.diagnostics.JavaDiagnostics.Diag d) {
+        if (d.line() <= 0) return null;
+        if (isLineHiddenByFold(d.line())) {
+            return null;
+        }
+        int visLine = getVisibleLineNumber(d.line());
+        int paraIdx = visLine - 1;
+        if (paraIdx < 0 || paraIdx >= codeArea.getParagraphs().size()) {
+            return null;
+        }
+
+        FoldRegion region = visibleLineToFoldedRegion.get(visLine);
+        if (region != null && region.isFolded()) {
+            if (region.getType() == FoldRegion.RegionType.IMPORTS
+                    || region.getType() == FoldRegion.RegionType.COMMENT
+                    || region.getType() == FoldRegion.RegionType.CUSTOM) {
+                return null;
             }
         }
-        return best;
+
+        int colStart = 0;
+        int colEnd = 0;
+        if (fullDocumentText != null) {
+            String[] fullLines = fullDocumentText.split("\r?\n", -1);
+            if (d.line() - 1 < fullLines.length) {
+                int lineStartOffset = 0;
+                for (int i = 0; i < d.line() - 1; i++) {
+                    lineStartOffset += fullLines[i].length() + 1;
+                }
+                colStart = Math.max(0, d.start() - lineStartOffset);
+                colEnd = Math.max(colStart + 1, d.end() - lineStartOffset);
+            }
+        }
+
+        int paraLen = codeArea.getParagraph(paraIdx).length();
+        if (colStart >= paraLen) {
+            return null;
+        }
+        int paraStartInCodeArea = codeArea.getAbsolutePosition(paraIdx, 0);
+        int vStart = paraStartInCodeArea + Math.min(colStart, paraLen);
+        int vEnd = paraStartInCodeArea + Math.min(colEnd, paraLen);
+        if (vEnd <= vStart && paraLen > 0) {
+            vEnd = Math.min(vStart + 1, paraStartInCodeArea + paraLen);
+        }
+        if (vEnd <= vStart) {
+            return null;
+        }
+        return new int[]{vStart, vEnd};
+    }
+
+    private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAt(int offset) {
+        if (codeArea.getParagraphs().isEmpty()) return null;
+        int para = codeArea.offsetToPosition(offset, org.fxmisc.richtext.model.TwoDimensional.Bias.Forward).getMajor();
+        int realLine = getRealLineNumber(para + 1);
+        return diagAtLine(realLine);
     }
 
     private dev.lumina.diagnostics.JavaDiagnostics.Diag diagAtLine(int line1Based) {
@@ -2343,8 +2449,9 @@ public class EditorTab extends Tab {
             var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveMethod(full, targetName);
             items.add(ContextActionsPopup.ActionItem.fix("safe-delete-method",
                     "Safe delete '" + targetSig + "'", pRem, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeMethod(codeArea.getText(), targetName);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeMethod(getEditorText(), targetName);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2357,8 +2464,9 @@ public class EditorTab extends Tab {
             var pCtor = dev.lumina.codegen.JavaCodeGenerator.previewAddConstructorParam(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fixWithDots("add-ctor-param",
                     "Add constructor parameter", pCtor, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(codeArea.getText(), targetField);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateAddConstructorParam(getEditorText(), targetField);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2366,8 +2474,9 @@ public class EditorTab extends Tab {
             var pGs = dev.lumina.codegen.JavaCodeGenerator.previewGettersAndSetters(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-getter-setter",
                     "Create getter and setter for '" + targetField + "'", pGs, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText(), targetField);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(getEditorText(), targetField);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2375,8 +2484,9 @@ public class EditorTab extends Tab {
             var pG = dev.lumina.codegen.JavaCodeGenerator.previewGetter(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-getter",
                     "Create getter for '" + targetField + "'", pG, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText(), targetField);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(getEditorText(), targetField);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2384,8 +2494,9 @@ public class EditorTab extends Tab {
             var pS = dev.lumina.codegen.JavaCodeGenerator.previewSetter(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("create-setter",
                     "Create setter for '" + targetField + "'", pS, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText(), targetField);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(getEditorText(), targetField);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2393,8 +2504,9 @@ public class EditorTab extends Tab {
             var pRem = dev.lumina.codegen.JavaCodeGenerator.previewRemoveField(full, targetField);
             items.add(ContextActionsPopup.ActionItem.fix("remove-field",
                     "Remove field '" + targetField + "'", pRem, () -> {
-                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeField(codeArea.getText(), targetField);
-                        codeArea.replaceText(0, codeArea.getLength(), updated);
+                        String updated = dev.lumina.codegen.JavaCodeGenerator.removeField(getEditorText(), targetField);
+                        setEditorText(updated);
+                        markDirty();
                         applyHighlighting();
                         scheduleDiagnostics();
                     }));
@@ -2412,16 +2524,18 @@ public class EditorTab extends Tab {
 
             var pThread = dev.lumina.codegen.JavaCodeGenerator.previewThreadLocal(full, targetField);
             items.add(ContextActionsPopup.ActionItem.itemWithPreview("thread-local", "Convert to 'ThreadLocal'", pThread, () -> {
-                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToThreadLocal(codeArea.getText(), targetField);
-                codeArea.replaceText(0, codeArea.getLength(), updated);
+                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToThreadLocal(getEditorText(), targetField);
+                setEditorText(updated);
+                markDirty();
                 applyHighlighting();
                 scheduleDiagnostics();
             }));
 
             var pAtomic = dev.lumina.codegen.JavaCodeGenerator.previewAtomic(full, targetField);
             items.add(ContextActionsPopup.ActionItem.itemWithPreview("atomic", "Convert to atomic", pAtomic, () -> {
-                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToAtomic(codeArea.getText(), targetField);
-                codeArea.replaceText(0, codeArea.getLength(), updated);
+                String updated = dev.lumina.codegen.JavaCodeGenerator.convertToAtomic(getEditorText(), targetField);
+                setEditorText(updated);
+                markDirty();
                 applyHighlighting();
                 scheduleDiagnostics();
             }));
@@ -2466,50 +2580,58 @@ public class EditorTab extends Tab {
         java.util.List<GeneratePopup.GenerateItem> items = new java.util.ArrayList<>();
         items.add(GeneratePopup.GenerateItem.of("spring-comp", "Spring Component\u2026", null, "\uD83C\uDF3F", () -> {}));
         items.add(GeneratePopup.GenerateItem.of("constructor", "Constructor", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateConstructor(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateConstructor(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("logger", "Logger", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateLogger(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateLogger(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("getter", "Getter", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGetters(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("setter", "Setter", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateSetters(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("getter-setter", "Getter and Setter", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateGettersAndSetters(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("equals-hashcode", "equals() and hashCode()", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateEqualsAndHashCode(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateEqualsAndHashCode(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("tostring", "toString()", null, null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
         items.add(GeneratePopup.GenerateItem.of("override", "Override Methods\u2026", "Ctrl+O", null, () -> {
-            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(codeArea.getText());
-            codeArea.replaceText(0, codeArea.getLength(), updated);
+            String updated = dev.lumina.codegen.JavaCodeGenerator.generateToString(getEditorText());
+            setEditorText(updated);
+            markDirty();
             applyHighlighting();
             scheduleDiagnostics();
         }));
@@ -2741,7 +2863,12 @@ public class EditorTab extends Tab {
     }
 
     public void goToLine(int line) {
-        int target = Math.max(0, Math.min(line - 1, codeArea.getParagraphs().size() - 1));
+        FoldRegion region = getActiveFoldedRegionAtLine(line);
+        if (region != null && region.isFolded()) {
+            toggleFoldRegion(region);
+        }
+        int visibleLine = getVisibleLineNumber(line);
+        int target = Math.max(0, Math.min(visibleLine - 1, codeArea.getParagraphs().size() - 1));
         if (codeArea.getHeight() <= 0 || codeArea.getWidth() <= 0) {
             javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.millis(60));
             pt.setOnFinished(e -> goToLine(line));
@@ -2784,5 +2911,267 @@ public class EditorTab extends Tab {
                 codeArea.insertText(i, 0, "// ");
             }
         }
+    }
+
+    // ---------------------------------------------------- code folding
+    public int getRealLineNumber(int visibleLine) {
+        Integer real = visibleLineToFullLine.get(visibleLine);
+        return real != null ? real : visibleLine;
+    }
+
+    public int getVisibleLineNumber(int realLine) {
+        Integer vis = fullLineToVisibleLine.get(realLine);
+        return vis != null ? vis : realLine;
+    }
+
+    public int getRealLineCount() {
+        if (fullDocumentText == null || fullDocumentText.isEmpty()) {
+            return codeArea.getParagraphs().size();
+        }
+        return fullDocumentText.split("\r?\n", -1).length;
+    }
+
+    public boolean isLineHiddenByFold(int realLine) {
+        FoldRegion region = getActiveFoldedRegionAtLine(realLine);
+        return region != null && region.isFolded() && realLine > region.getStartLine();
+    }
+
+    public void rescanFoldRegions() {
+        foldRegions.clear();
+        if (fullDocumentText == null || fullDocumentText.isEmpty()) {
+            return;
+        }
+        foldRegions.addAll(CodeFoldingScanner.scan(fullDocumentText, baseName));
+    }
+
+    public FoldRegion getActiveFoldRegionAtLine(int realLine) {
+        FoldRegion best = null;
+        for (FoldRegion r : foldRegions) {
+            if (r.containsLine(realLine)) {
+                if (best == null || r.getLineCount() < best.getLineCount()) {
+                    best = r;
+                }
+            }
+        }
+        return best;
+    }
+
+    public FoldRegion getActiveFoldedRegionAtLine(int realLine) {
+        FoldRegion outermostFolded = null;
+        for (FoldRegion r : foldRegions) {
+            if (r.isFolded() && r.containsLine(realLine)) {
+                if (outermostFolded == null || r.getLineCount() > outermostFolded.getLineCount()) {
+                    outermostFolded = r;
+                }
+            }
+        }
+        return outermostFolded;
+    }
+
+    public FoldRegion getFoldRegionAtStartLine(int realLine) {
+        FoldRegion found = null;
+        for (FoldRegion r : foldRegions) {
+            if (r.getStartLine() == realLine) {
+                if (found == null || r.isFolded()) {
+                    found = r;
+                }
+            }
+        }
+        return found;
+    }
+
+    public void toggleFoldRegion(FoldRegion region) {
+        if (region == null) return;
+        fullDocumentText = reconstructFullDocumentText();
+        region.toggle();
+        boolean wasDirty = dirty;
+        applyFoldingView(true);
+        if (!wasDirty) {
+            dirty = false;
+            setText(baseName);
+        }
+    }
+
+    public void collapseRegionAtCaret() {
+        int visibleLine = codeArea.getCurrentParagraph() + 1;
+        int realLine = getRealLineNumber(visibleLine);
+        FoldRegion region = getActiveFoldRegionAtLine(realLine);
+        if (region != null && !region.isFolded()) {
+            toggleFoldRegion(region);
+        }
+    }
+
+    public void expandRegionAtCaret() {
+        int visibleLine = codeArea.getCurrentParagraph() + 1;
+        FoldRegion foldedRegion = visibleLineToFoldedRegion.get(visibleLine);
+        if (foldedRegion != null && foldedRegion.isFolded()) {
+            toggleFoldRegion(foldedRegion);
+            return;
+        }
+        int realLine = getRealLineNumber(visibleLine);
+        FoldRegion region = getActiveFoldRegionAtLine(realLine);
+        if (region != null && region.isFolded()) {
+            toggleFoldRegion(region);
+        }
+    }
+
+    public void collapseAll() {
+        fullDocumentText = reconstructFullDocumentText();
+        for (FoldRegion r : foldRegions) {
+            r.setFolded(true);
+        }
+        boolean wasDirty = dirty;
+        applyFoldingView(true);
+        if (!wasDirty) {
+            dirty = false;
+            setText(baseName);
+        }
+    }
+
+    public void expandAll() {
+        fullDocumentText = reconstructFullDocumentText();
+        for (FoldRegion r : foldRegions) {
+            r.setFolded(false);
+        }
+        boolean wasDirty = dirty;
+        applyFoldingView(true);
+        if (!wasDirty) {
+            dirty = false;
+            setText(baseName);
+        }
+    }
+
+    public List<FoldRegion> getFoldRegions() {
+        return Collections.unmodifiableList(foldRegions);
+    }
+
+    private void syncFullDocumentFromUserEdit() {
+        fullDocumentText = reconstructFullDocumentText();
+        int curVisLine = codeArea.getCurrentParagraph() + 1;
+        FoldRegion foldedOnLine = visibleLineToFoldedRegion.get(curVisLine);
+        if (foldedOnLine != null && foldedOnLine.isFolded()) {
+            foldedOnLine.setFolded(false);
+            Platform.runLater(() -> applyFoldingView(true));
+        }
+    }
+
+    private String reconstructFullDocumentText() {
+        if (visibleLineToFoldedRegion.isEmpty()) {
+            return codeArea.getText();
+        }
+        String[] visibleLines = codeArea.getText().split("\r?\n", -1);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < visibleLines.length; i++) {
+            int visibleLine = i + 1;
+            FoldRegion region = visibleLineToFoldedRegion.get(visibleLine);
+            if (region != null && region.isFolded() && region.getFoldedContent() != null) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(region.getFoldedContent());
+            } else {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(visibleLines[i]);
+            }
+        }
+        return sb.toString();
+    }
+
+    public void applyFoldingView(boolean preserveCaret) {
+        if (fullDocumentText == null) fullDocumentText = "";
+        isApplyingFolding = true;
+        try {
+            int oldCaretLine = codeArea.getCurrentParagraph() + 1;
+            int oldRealLine = getRealLineNumber(oldCaretLine);
+            int oldCol = codeArea.getCaretColumn();
+
+            String[] fullLines = fullDocumentText.split("\r?\n", -1);
+            StringBuilder visible = new StringBuilder();
+            visibleLineToFullLine.clear();
+            fullLineToVisibleLine.clear();
+            visibleLineToFoldedRegion.clear();
+
+            int currentVisibleLine = 1;
+            int lineIdx = 0;
+            while (lineIdx < fullLines.length) {
+                int fullLine = lineIdx + 1;
+                FoldRegion folded = getActiveFoldedRegionAtLine(fullLine);
+                if (folded != null && folded.isFolded()) {
+                    int startIdx = folded.getStartLine() - 1;
+                    int endIdx = Math.min(folded.getEndLine() - 1, fullLines.length - 1);
+
+                    StringBuilder foldedSb = new StringBuilder();
+                    for (int k = startIdx; k <= endIdx; k++) {
+                        if (foldedSb.length() > 0) foldedSb.append("\n");
+                        foldedSb.append(fullLines[k]);
+                    }
+                    folded.setFoldedContent(foldedSb.toString());
+
+                    String startLineText = startIdx < fullLines.length ? fullLines[startIdx] : "";
+                    String indent = getLeadingWhitespace(startLineText);
+                    String placeholderLine;
+                    if (folded.getType() == FoldRegion.RegionType.IMPORTS) {
+                        placeholderLine = indent + "import ...";
+                    } else if (folded.getType() == FoldRegion.RegionType.ANNOTATIONS) {
+                        placeholderLine = indent + "@{...}";
+                    } else if (folded.getType() == FoldRegion.RegionType.METHOD || folded.getType() == FoldRegion.RegionType.CLASS) {
+                        int brace = startLineText.indexOf('{');
+                        if (brace != -1) {
+                            placeholderLine = startLineText.substring(0, brace).stripTrailing() + " {...}";
+                        } else {
+                            placeholderLine = startLineText.stripTrailing() + " {...}";
+                        }
+                    } else if (folded.getType() == FoldRegion.RegionType.COMMENT) {
+                        placeholderLine = indent + (startLineText.trim().startsWith("/**") ? "/**...*/" : "/*...*/");
+                    } else {
+                        placeholderLine = indent + folded.getPlaceholder();
+                    }
+
+                    if (currentVisibleLine > 1) visible.append("\n");
+                    visible.append(placeholderLine);
+
+                    visibleLineToFullLine.put(currentVisibleLine, folded.getStartLine());
+                    fullLineToVisibleLine.put(folded.getStartLine(), currentVisibleLine);
+                    visibleLineToFoldedRegion.put(currentVisibleLine, folded);
+
+                    for (int k = folded.getStartLine(); k <= folded.getEndLine(); k++) {
+                        fullLineToVisibleLine.put(k, currentVisibleLine);
+                    }
+
+                    currentVisibleLine++;
+                    lineIdx = endIdx + 1;
+                } else {
+                    if (currentVisibleLine > 1) visible.append("\n");
+                    visible.append(fullLines[lineIdx]);
+
+                    visibleLineToFullLine.put(currentVisibleLine, fullLine);
+                    fullLineToVisibleLine.put(fullLine, currentVisibleLine);
+                    currentVisibleLine++;
+                    lineIdx++;
+                }
+            }
+
+            codeArea.replaceText(visible.toString());
+
+            if (preserveCaret && !codeArea.getParagraphs().isEmpty()) {
+                int targetVisibleLine = getVisibleLineNumber(oldRealLine);
+                int p = Math.max(0, Math.min(targetVisibleLine - 1, codeArea.getParagraphs().size() - 1));
+                int len = codeArea.getParagraph(p).length();
+                codeArea.moveTo(p, Math.min(oldCol, len));
+                codeArea.requestFollowCaret();
+            }
+
+            refreshGutter();
+            applyHighlighting();
+        } finally {
+            isApplyingFolding = false;
+        }
+    }
+
+    private static String getLeadingWhitespace(String s) {
+        if (s == null) return "";
+        int i = 0;
+        while (i < s.length() && Character.isWhitespace(s.charAt(i))) {
+            i++;
+        }
+        return s.substring(0, i);
     }
 }

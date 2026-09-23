@@ -4441,3 +4441,18 @@
     -fx-background-color: transparent;
 }
 
+/* ==========================================================================
+   Code Folding Chevrons (IntelliJ IDEA Parity)
+   ========================================================================== */
+.fold-chevron {
+    -fx-text-fill: #606366;
+    -fx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -fx-font-size: 11px;
+    -fx-alignment: CENTER;
+    -fx-cursor: hand;
+}
+
+.fold-chevron:hover {
+    -fx-text-fill: #DFE1E5;
+}
+

@@ -897,7 +897,12 @@ public class LuminaApp extends Application {
         Menu completion = new Menu("Code Completion");
         completion.getItems().addAll(placeholder("Basic", "Shortcut+Space"), placeholder("Smart Type", "Shortcut+Shift+Space"));
         Menu folding = new Menu("Folding");
-        folding.getItems().addAll(placeholder("Expand", "Shortcut+Plus"), placeholder("Collapse", "Shortcut+Minus"));
+        folding.getItems().addAll(
+                item("Expand", "Shortcut+Plus", e -> withEditor(EditorTab::expandRegionAtCaret)),
+                item("Collapse", "Shortcut+Minus", e -> withEditor(EditorTab::collapseRegionAtCaret)),
+                new SeparatorMenuItem(),
+                item("Expand All", "Shortcut+Shift+Plus", e -> withEditor(EditorTab::expandAll)),
+                item("Collapse All", "Shortcut+Shift+Minus", e -> withEditor(EditorTab::collapseAll)));
         Menu code = new Menu("Code");
         code.getItems().addAll(
                 placeholder("Override Methods…", "Shortcut+O"), placeholder("Implement Methods…", "Shortcut+I"),
@@ -2229,6 +2234,12 @@ public class LuminaApp extends Application {
         goTo.getItems().addAll(gotoDecl, gotoImpl, superMethod, gotoTest);
 
         Menu folding = new Menu("Folding");
+        folding.getItems().addAll(
+                item("Expand", "Shortcut+Plus", e -> withEditor(EditorTab::expandRegionAtCaret)),
+                item("Collapse", "Shortcut+Minus", e -> withEditor(EditorTab::collapseRegionAtCaret)),
+                new SeparatorMenuItem(),
+                item("Expand All", "Shortcut+Shift+Plus", e -> withEditor(EditorTab::expandAll)),
+                item("Collapse All", "Shortcut+Shift+Minus", e -> withEditor(EditorTab::collapseAll)));
         Menu analyze = new Menu("Analyze");
 
         MenuItem rename = item("Rename\u2026", "Shift+F6", e -> {});
