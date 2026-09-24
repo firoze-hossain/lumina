@@ -10,12 +10,51 @@ import java.util.List;
  * A runnable configuration for the toolbar dropdown, plus detection logic.
  * commands == null means "run the current editor file".
  */
-public record RunConfiguration(String label, List<List<String>> commands, Path workDir) {
+public record RunConfiguration(
+        String label,
+        List<List<String>> commands,
+        Path workDir,
+        Type type,
+        String testClass,
+        String testMethod
+) {
+
+    public enum Type {
+        APPLICATION,
+        TEST_CLASS,
+        TEST_METHOD,
+        CURRENT_FILE
+    }
+
+    public RunConfiguration(String label, List<List<String>> commands, Path workDir) {
+        this(label, commands, workDir, Type.APPLICATION, null, null);
+    }
 
     public static final String CURRENT_FILE = "Current File";
 
     public static RunConfiguration currentFile() {
-        return new RunConfiguration(CURRENT_FILE, null, null);
+        return new RunConfiguration(CURRENT_FILE, null, null, Type.CURRENT_FILE, null, null);
+    }
+
+    public boolean isTest() {
+        return type == Type.TEST_CLASS || type == Type.TEST_METHOD;
+    }
+
+    public static RunConfiguration testClass(Path root, String fqcn) {
+        String simple = fqcn.contains(".") ? fqcn.substring(fqcn.lastIndexOf('.') + 1) : fqcn;
+        List<List<String>> commands = isMavenProject(root)
+                ? List.of(maven(root, "-Dtest=" + simple, "test"))
+                : List.of(gradleCmd(root, "test", "--tests", fqcn));
+        return new RunConfiguration(simple, commands, root, Type.TEST_CLASS, fqcn, null);
+    }
+
+    public static RunConfiguration testMethod(Path root, String fqcn, String method) {
+        String simple = fqcn.contains(".") ? fqcn.substring(fqcn.lastIndexOf('.') + 1) : fqcn;
+        String label = simple + "." + method;
+        List<List<String>> commands = isMavenProject(root)
+                ? List.of(maven(root, "-Dtest=" + simple + "#" + method, "test"))
+                : List.of(gradleCmd(root, "test", "--tests", fqcn + "." + method));
+        return new RunConfiguration(label, commands, root, Type.TEST_METHOD, fqcn, method);
     }
 
     @Override

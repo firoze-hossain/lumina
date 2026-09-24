@@ -98,6 +98,28 @@ public class ConsolePane extends BorderPane {
         toolWindowHeader.setOnMaximize(onMaximize);
     }
 
+    private TestResultsPanel activeTestRunner;
+
+    public void showStandardConsole() {
+        activeTestRunner = null;
+        setCenter(output);
+    }
+
+    public void showTestRunner(TestResultsPanel testRunner) {
+        this.activeTestRunner = testRunner;
+        setCenter(testRunner);
+    }
+
+    public TestResultsPanel getActiveTestRunner() {
+        return activeTestRunner;
+    }
+
+    public void setExecutionTabName(String name) {
+        if (outputTabButton != null && name != null) {
+            outputTabButton.setText(name);
+        }
+    }
+
     public ToolWindowHeader getToolWindowHeader() {
         return toolWindowHeader;
     }

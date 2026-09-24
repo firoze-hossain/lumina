@@ -76,11 +76,20 @@ public class EditorTab extends Tab {
     private String fullDocumentText = "";
     private boolean isApplyingFolding = false;
 
-    // Gutter markers state (IntelliJ line marker provider parity)
+    // Gutter markers state
     private final Map<Integer, List<dev.lumina.gutter.GutterMarker>> lineMarkers = new java.util.concurrent.ConcurrentHashMap<>();
     private java.util.function.BiConsumer<Path, Integer> onNavigateLocation;
     private java.util.function.BiConsumer<javafx.scene.Node, List<dev.lumina.gutter.GutterMarker.NavigationTarget>> onShowImplementationList;
     private javafx.stage.Popup markerHoverPopup;
+
+    public interface TestRunnerCallback {
+        void runTest(String className, String methodName, boolean debug);
+    }
+    private TestRunnerCallback onRunTest;
+
+    public void setOnRunTest(TestRunnerCallback callback) {
+        this.onRunTest = callback;
+    }
 
     public void setGutterMarkers(Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers) {
         this.lineMarkers.clear();
@@ -674,7 +683,7 @@ public class EditorTab extends Tab {
     }
 
     /**
-     * IntelliJ-style author hints: keep the gutter clean (line numbers only)
+     * Author hints: keep the gutter clean (line numbers only)
      * and show the author INLINE, just after each class/method declaration.
      */
     public void setAuthorHints(java.util.List<dev.lumina.git.GitService.BlameLine> lines) {
@@ -761,40 +770,53 @@ public class EditorTab extends Tab {
             boolean hasBreakpoint = breakpoints.contains(line);
             boolean isExecution = (line == debugActiveLine);
 
+            javafx.scene.layout.StackPane bpBox = new javafx.scene.layout.StackPane();
+            bpBox.setPrefWidth(16);
+            bpBox.setMinWidth(16);
+            bpBox.setMaxWidth(16);
+            bpBox.setAlignment(javafx.geometry.Pos.CENTER);
+            bpBox.setCursor(javafx.scene.Cursor.HAND);
+
+            if (hasBreakpoint || isExecution) {
+                bpBox.getChildren().add(createBreakpointGraphic(hasBreakpoint, isExecution));
+            }
+
             javafx.scene.control.Label num = new javafx.scene.control.Label();
             num.getStyleClass().add("lineno");
             int maxLine = Math.max(10, getRealLineCount());
             int digits = Math.max(2, String.valueOf(maxLine).length());
-            double w = Math.max(34.0, digits * 9.0 + 16.0);
+            double w = Math.max(28.0, digits * 9.0 + 8.0);
             num.setPrefWidth(w);
             num.setMinWidth(w);
             num.setMaxWidth(w);
             num.setCursor(javafx.scene.Cursor.HAND);
+            num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+            num.setText(String.valueOf(line));
 
-            if (hasBreakpoint || isExecution) {
-                num.setAlignment(javafx.geometry.Pos.CENTER);
-                num.setText("");
-                num.setGraphic(createBreakpointGraphic(hasBreakpoint, isExecution));
-            } else {
-                num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
-                num.setText(String.valueOf(line));
-                num.setGraphic(null);
-                num.setOnMouseEntered(e -> {
-                    if (!breakpoints.contains(line) && line != debugActiveLine) {
-                        num.setText("");
-                        num.setGraphic(createBreakpointPreviewGraphic());
-                        num.setAlignment(javafx.geometry.Pos.CENTER);
+            // Hover handlers on bpBox and num for breakpoint preview without clearing line number:
+            javafx.event.EventHandler<javafx.scene.input.MouseEvent> onEnter = e -> {
+                if (!breakpoints.contains(line) && line != debugActiveLine) {
+                    if (bpBox.getChildren().isEmpty()) {
+                        bpBox.getChildren().add(createBreakpointPreviewGraphic());
                     }
-                });
-                num.setOnMouseExited(e -> {
-                    if (!breakpoints.contains(line) && line != debugActiveLine) {
-                        num.setGraphic(null);
-                        num.setText(String.valueOf(line));
-                        num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
-                    }
-                });
-            }
-            num.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
+                }
+            };
+            javafx.event.EventHandler<javafx.scene.input.MouseEvent> onExit = e -> {
+                if (!breakpoints.contains(line) && line != debugActiveLine) {
+                    bpBox.getChildren().clear();
+                }
+            };
+            bpBox.setOnMouseEntered(onEnter);
+            bpBox.setOnMouseExited(onExit);
+            num.setOnMouseEntered(onEnter);
+            num.setOnMouseExited(onExit);
+
+            javafx.event.EventHandler<javafx.scene.input.MouseEvent> onToggleBp = e -> {
+                toggleBreakpoint(line);
+                e.consume();
+            };
+            bpBox.setOnMouseClicked(onToggleBp);
+            num.setOnMouseClicked(onToggleBp);
 
             javafx.scene.layout.StackPane foldBox = new javafx.scene.layout.StackPane();
             foldBox.setPrefWidth(12);
@@ -853,6 +875,7 @@ public class EditorTab extends Tab {
 
             javafx.scene.layout.HBox markersBox = new javafx.scene.layout.HBox(2);
             markersBox.setAlignment(javafx.geometry.Pos.CENTER);
+            markersBox.setMinWidth(16);
             List<dev.lumina.gutter.GutterMarker> markers = lineMarkers.get(line);
             if (markers != null && !markers.isEmpty()) {
                 for (dev.lumina.gutter.GutterMarker marker : markers) {
@@ -885,14 +908,73 @@ public class EditorTab extends Tab {
             if (bulb != null) {
                 box.getChildren().add(bulb);
             }
-            box.getChildren().addAll(num, markersBox, foldBox, gitStripe);
+            box.getChildren().addAll(bpBox, num, markersBox, foldBox, gitStripe);
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
+
+            if (isMethodStartLine(line)) {
+                box.setStyle("-fx-border-color: #2D3035 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+            }
+
             return box;
         });
     }
 
+    private boolean isMethodStartLine(int line) {
+        if (line <= 1) return false;
+        int p = line - 1;
+        if (p < 0 || p >= codeArea.getParagraphs().size()) return false;
+        String text = codeArea.getParagraph(p).getText().trim();
+        if (text.startsWith("@Test") || text.startsWith("@Override")
+                || text.startsWith("@Transactional") || text.startsWith("@ParameterizedTest")) {
+            if (p > 0 && !codeArea.getParagraph(p - 1).getText().trim().startsWith("@")) {
+                return true;
+            }
+        }
+        if (DECL.matcher(text).find() && (p == 0 || !codeArea.getParagraph(p - 1).getText().trim().startsWith("@"))) {
+            return true;
+        }
+        return false;
+    }
+
     private void handleMarkerClicked(javafx.scene.Node iconNode, dev.lumina.gutter.GutterMarker marker) {
+        if (marker.isTestMarker()) {
+            String className = null;
+            String methodName = null;
+            if (!marker.targets().isEmpty()) {
+                var target = marker.targets().get(0);
+                if (marker.type() == dev.lumina.gutter.GutterMarker.MarkerType.TEST_CLASS) {
+                    className = target.targetName();
+                } else {
+                    methodName = target.targetName();
+                    className = target.signature();
+                }
+            }
+            if (className == null && getPath() != null) {
+                String fn = getPath().getFileName().toString();
+                if (fn.endsWith(".java")) className = fn.substring(0, fn.length() - 5);
+            }
+            final String cName = className;
+            final String mName = methodName;
+
+            javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
+            String runLabel = mName != null ? "\u25B6  Run '" + mName + "()'" : "\u25B6  Run '" + cName + "'";
+            javafx.scene.control.MenuItem runItem = new javafx.scene.control.MenuItem(runLabel);
+            runItem.setOnAction(e -> {
+                if (onRunTest != null) onRunTest.runTest(cName, mName, false);
+            });
+
+            String debugLabel = mName != null ? "\uD83D\uDC1E  Debug '" + mName + "()'" : "\uD83D\uDC1E  Debug '" + cName + "'";
+            javafx.scene.control.MenuItem debugItem = new javafx.scene.control.MenuItem(debugLabel);
+            debugItem.setOnAction(e -> {
+                if (onRunTest != null) onRunTest.runTest(cName, mName, true);
+            });
+
+            menu.getItems().addAll(runItem, debugItem);
+            menu.show(iconNode, javafx.geometry.Side.RIGHT, 4, 0);
+            return;
+        }
+
         if (marker.targets().isEmpty()) return;
         if (marker.targets().size() == 1) {
             var target = marker.targets().get(0);
@@ -1258,13 +1340,32 @@ public class EditorTab extends Tab {
             String line = codeArea.getParagraph(i).getText();
             java.util.regex.Matcher m = methodSig.matcher(line);
             if (m.find()) {
-                // look back up to 3 lines for a @Test annotation
-                for (int j = i; j >= Math.max(0, i - 3); j--) {
-                    if (codeArea.getParagraph(j).getText().contains("@Test")) {
-                        return m.group(1);
+                String methodName = m.group(1);
+                // look back up to 5 lines for a test annotation
+                for (int j = i; j >= Math.max(0, i - 5); j--) {
+                    String prev = codeArea.getParagraph(j).getText();
+                    if (prev.contains("@Test") || prev.contains("@ParameterizedTest")
+                            || prev.contains("@RepeatedTest") || prev.contains("@TestFactory")
+                            || prev.contains("@TestTemplate")) {
+                        return methodName;
                     }
                 }
-                return null; // nearest method isn't a test
+                // Check if in test class and method starts with test
+                String fn = getPath() != null ? getPath().getFileName().toString() : "";
+                if ((fn.endsWith("Test.java") || fn.endsWith("Tests.java")) && methodName.startsWith("test")) {
+                    return methodName;
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public String testClassAtCaret() {
+        if (getPath() != null) {
+            String fn = getPath().getFileName().toString();
+            if (fn.endsWith(".java")) {
+                return fn.substring(0, fn.length() - 5);
             }
         }
         return null;
