@@ -409,6 +409,20 @@ public class EditorTab extends Tab {
                     case ENTER, TAB -> { completionPopup.acceptSelected(); hideGhostSuggestion(); e.consume(); return; }
                     case ESCAPE -> { completionPopup.hide(); hideGhostSuggestion(); e.consume(); return; }
                     case BACK_SPACE -> Platform.runLater(this::refilterCompletion);
+                    case SPACE -> {
+                        if (dev.lumina.settings.CodeCompletionSettings.getInstance().isInsertBySpaceOrDot()) {
+                            completionPopup.acceptSelected();
+                            hideGhostSuggestion();
+                            e.consume();
+                            return;
+                        }
+                    }
+                    case PERIOD -> {
+                        if (dev.lumina.settings.CodeCompletionSettings.getInstance().isInsertBySpaceOrDot()) {
+                            completionPopup.acceptSelected();
+                            hideGhostSuggestion();
+                        }
+                    }
                     case LEFT, RIGHT, HOME, END, PAGE_UP, PAGE_DOWN -> {
                         completionPopup.hide();
                         hideGhostSuggestion();
@@ -560,8 +574,10 @@ public class EditorTab extends Tab {
                     hideGhostSuggestion();
                 }
             } else if (Character.isLetter(c) || c == '_') {
-                Platform.runLater(completionPopup.isShowing()
-                        ? this::refilterCompletion : this::triggerCompletion);
+                if (dev.lumina.settings.CodeCompletionSettings.getInstance().isShowSuggestionsAsYouType()) {
+                    Platform.runLater(completionPopup.isShowing()
+                            ? this::refilterCompletion : this::triggerCompletion);
+                }
             } else {
                 hideGhostSuggestion();
             }
@@ -3228,6 +3244,9 @@ public class EditorTab extends Tab {
                         .filter(item -> dev.lumina.semantics.Completion
                                 .matches(prefix, item.name()))
                         .sorted((a, b) -> {
+                            if (dev.lumina.settings.CodeCompletionSettings.getInstance().isSortAlphabetically()) {
+                                return a.name().compareToIgnoreCase(b.name());
+                            }
                             if (completionCtx.annotation()) {
                                 int rA = prefixRank(prefix, a.name());
                                 int rB = prefixRank(prefix, b.name());

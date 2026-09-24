@@ -141,12 +141,39 @@ public final class Completion {
 
     /** Prefix match or camel-hump match ("gCB" matches getCollectionById). */
     public static boolean matches(String prefix, String candidate) {
+        dev.lumina.settings.CodeCompletionSettings settings = dev.lumina.settings.CodeCompletionSettings.getInstance();
+        boolean matchCase = settings.isMatchCase();
+        boolean firstLetterOnly = settings.getMatchCaseMode() == dev.lumina.settings.CodeCompletionSettings.MatchCaseMode.FIRST_LETTER_ONLY;
+        return matches(prefix, candidate, matchCase, firstLetterOnly);
+    }
+
+    public static boolean matches(String prefix, String candidate, boolean matchCase, boolean firstLetterOnly) {
         if (prefix.isEmpty()) return true;
-        if (candidate.regionMatches(true, 0, prefix, 0, prefix.length())) {
-            return true;
+        if (!matchCase) {
+            if (candidate.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                return true;
+            }
+            String humps = humpsOf(candidate);
+            return humps.regionMatches(true, 0, prefix, 0, prefix.length());
         }
-        String humps = humpsOf(candidate);
-        return humps.regionMatches(true, 0, prefix, 0, prefix.length());
+        if (firstLetterOnly) {
+            if (candidate.length() >= prefix.length() && candidate.charAt(0) == prefix.charAt(0)) {
+                if (candidate.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                    return true;
+                }
+            }
+            String humps = humpsOf(candidate);
+            if (!humps.isEmpty() && humps.charAt(0) == prefix.charAt(0)) {
+                return humps.regionMatches(true, 0, prefix, 0, prefix.length());
+            }
+            return false;
+        } else {
+            if (candidate.regionMatches(false, 0, prefix, 0, prefix.length())) {
+                return true;
+            }
+            String humps = humpsOf(candidate);
+            return humps.regionMatches(false, 0, prefix, 0, prefix.length());
+        }
     }
 
     /** First character plus every subsequent uppercase character. */
