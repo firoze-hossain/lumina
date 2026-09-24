@@ -42,6 +42,7 @@ public class SettingsDialog {
     private SettingsQuickListsPage currentQuickListsPage;
     private SettingsSystemPage currentSystemPage;
     private SettingsEditorGeneralPage currentEditorGeneralPage;
+    private SettingsAutoImportPage currentAutoImportPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -345,6 +346,15 @@ public class SettingsDialog {
                 }
                 currentEditorGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentEditorGeneralPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Auto Import".equals(pageName)) {
+                if (currentAutoImportPage == null) {
+                    currentAutoImportPage = new SettingsAutoImportPage();
+                }
+                currentAutoImportPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentAutoImportPage);
                 updateApplyButtonState();
                 return;
             }
@@ -728,9 +738,31 @@ public class SettingsDialog {
         // Editor
         TreeItem<String> editor = new TreeItem<>("Editor");
         TreeItem<String> general = new TreeItem<>("General");
+
+        TreeItem<String> smartKeys = new TreeItem<>("Smart Keys");
+        smartKeys.getChildren().addAll(
+                new TreeItem<>("YAML"),
+                new TreeItem<>("HTML/CSS"),
+                new TreeItem<>("JSON"),
+                new TreeItem<>("Rust"),
+                new TreeItem<>("Markdown"),
+                new TreeItem<>("SQL"),
+                new TreeItem<>("JavaScript")
+        );
+
         general.getChildren().addAll(
-                new TreeItem<>("Code Editing"),
-                new TreeItem<>("Font")
+                new TreeItem<>("Auto Import"),
+                new TreeItem<>("Appearance"),
+                new TreeItem<>("Breadcrumbs"),
+                new TreeItem<>("Code Completion"),
+                new TreeItem<>("Code Folding"),
+                new TreeItem<>("Console"),
+                new TreeItem<>("Editor Tabs"),
+                new TreeItem<>("Gutter Icons"),
+                new TreeItem<>("Inline Completion"),
+                new TreeItem<>("Postfix Completion"),
+                smartKeys,
+                new TreeItem<>("Sticky Lines")
         );
 
         TreeItem<String> colorSchemeNode = new TreeItem<>("Color Scheme");
@@ -814,6 +846,8 @@ public class SettingsDialog {
 
         editor.getChildren().addAll(
                 general,
+                new TreeItem<>("Code Editing"),
+                new TreeItem<>("Font"),
                 colorSchemeNode,
                 new TreeItem<>("Code Style"),
                 new TreeItem<>("Inspections"),
@@ -989,12 +1023,16 @@ public class SettingsDialog {
         if (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified()) {
             currentEditorGeneralPage.apply();
         }
+        if (currentAutoImportPage != null && currentAutoImportPage.isModified()) {
+            currentAutoImportPage.apply();
+        }
         updateApplyButtonState();
     }
 
     private void updateApplyButtonState() {
         if (applyButton == null) return;
-        boolean modified = (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified());
+        boolean modified = (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified())
+                || (currentAutoImportPage != null && currentAutoImportPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1022,6 +1060,9 @@ public class SettingsDialog {
         cancel.setOnAction(e -> {
             if (currentEditorGeneralPage != null) {
                 currentEditorGeneralPage.reset();
+            }
+            if (currentAutoImportPage != null) {
+                currentAutoImportPage.reset();
             }
             stage.close();
         });

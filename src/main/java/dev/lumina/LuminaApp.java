@@ -1023,7 +1023,7 @@ public class LuminaApp extends Application {
                 item("Comment with Line Comment", "Shortcut+Slash", e -> withEditor(EditorTab::toggleComment)),
                 placeholder("Comment with Block Comment", "Shortcut+Shift+Slash"), placeholder("Reformat Code", "Shortcut+Alt+L"),
                 placeholder("Reformat File…", "Shortcut+Alt+Shift+L"), placeholder("Auto-Indent Lines", "Shortcut+Alt+I"),
-                placeholder("Optimize Imports", "Shortcut+Alt+O"), placeholder("Rearrange Code", null), new SeparatorMenuItem(),
+                item("Optimize Imports", "Shortcut+Alt+O", e -> withEditor(EditorTab::optimizeImports)), placeholder("Rearrange Code", null), new SeparatorMenuItem(),
                 placeholder("Move Statement Down", "Shortcut+Shift+Down"), placeholder("Move Statement Up", "Shortcut+Shift+Up"),
                 disabled("Move Element Left"), disabled("Move Element Right"), placeholder("Move Line Down", null), placeholder("Move Line Up", null),
                 new SeparatorMenuItem(), disabled("Update Copyright…"), placeholder("Generate module-info Descriptors", null),
