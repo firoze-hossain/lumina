@@ -672,6 +672,33 @@ public class EditorTab extends Tab {
                 });
         setContent(stack);
         javafx.application.Platform.runLater(this::updateCodeGuides);
+        javafx.application.Platform.runLater(this::applyAppearanceSettings);
+        dev.lumina.settings.EditorAppearanceSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyAppearanceSettings));
+    }
+
+    public void applyAppearanceSettings() {
+        dev.lumina.settings.EditorAppearanceSettings s = dev.lumina.settings.EditorAppearanceSettings.getInstance();
+        try {
+            var caretNode = codeArea.getCaretSelectionBind().getUnderlyingCaret();
+            if (caretNode != null) {
+                if (s.isCaretBlinking() && s.getCaretBlinkingMs() > 0) {
+                    caretNode.setBlinkRate(javafx.util.Duration.millis(s.getCaretBlinkingMs()));
+                } else {
+                    caretNode.setBlinkRate(javafx.util.Duration.ZERO);
+                }
+                if (s.isUseBlockCaret()) {
+                    caretNode.setStrokeWidth(7.0);
+                } else {
+                    caretNode.setStrokeWidth(s.isUseFullLineHeightCaret() ? 2.0 : 1.5);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (codeGuidesOverlay != null) {
+            codeGuidesOverlay.setShowIndentGuides(s.isShowIndentGuides());
+            codeGuidesOverlay.setShowMethodSeparators(s.isShowMethodSeparators());
+        }
+        refreshGutter();
     }
 
     // ----------------------------------------------------------- breakpoints & debug
@@ -820,12 +847,13 @@ public class EditorTab extends Tab {
     }
 
     private void refreshGutter() {
+        dev.lumina.settings.EditorAppearanceSettings appSettings = dev.lumina.settings.EditorAppearanceSettings.getInstance();
         codeArea.setParagraphGraphicFactory(i -> {
             final int visibleLine = i + 1;
             final int line = getRealLineNumber(visibleLine);
             dev.lumina.diagnostics.JavaDiagnostics.Diag diagOnLine = diagAtLine(line);
             javafx.scene.control.Label bulb = null;
-            if (diagOnLine != null && diagOnLine.quickFix() != null && !breakpoints.contains(line)) {
+            if (appSettings.isShowIntentionBulb() && diagOnLine != null && diagOnLine.quickFix() != null && !breakpoints.contains(line)) {
                 boolean isErr = diagOnLine.severity()
                         == dev.lumina.diagnostics.JavaDiagnostics.Severity.ERROR;
                 bulb = new javafx.scene.control.Label("\uD83D\uDCA1");
@@ -854,15 +882,38 @@ public class EditorTab extends Tab {
 
             javafx.scene.control.Label num = new javafx.scene.control.Label();
             num.getStyleClass().add("lineno");
-            int maxLine = Math.max(10, getRealLineCount());
-            int digits = Math.max(2, String.valueOf(maxLine).length());
-            double w = Math.max(28.0, digits * 9.0 + 8.0);
-            num.setPrefWidth(w);
-            num.setMinWidth(w);
-            num.setMaxWidth(w);
-            num.setCursor(javafx.scene.Cursor.HAND);
-            num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
-            num.setText(String.valueOf(line));
+            if (appSettings.isShowLineNumbers()) {
+                int maxLine = Math.max(10, getRealLineCount());
+                int digits = Math.max(2, String.valueOf(maxLine).length());
+                double w = Math.max(28.0, digits * 9.0 + 8.0);
+                num.setPrefWidth(w);
+                num.setMinWidth(w);
+                num.setMaxWidth(w);
+                num.setCursor(javafx.scene.Cursor.HAND);
+                num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+                var mode = appSettings.getLineNumbersMode();
+                if (mode == dev.lumina.settings.EditorAppearanceSettings.LineNumbersMode.ABSOLUTE) {
+                    num.setText(String.valueOf(line));
+                } else if (mode == dev.lumina.settings.EditorAppearanceSettings.LineNumbersMode.RELATIVE) {
+                    int currentRealLine = getCaretLine();
+                    num.setText(String.valueOf(Math.abs(line - currentRealLine)));
+                } else if (mode == dev.lumina.settings.EditorAppearanceSettings.LineNumbersMode.HYBRID) {
+                    int currentRealLine = getCaretLine();
+                    if (line == currentRealLine) {
+                        num.setText(String.valueOf(line));
+                    } else {
+                        num.setText(String.valueOf(Math.abs(line - currentRealLine)));
+                    }
+                }
+            } else {
+                num.setVisible(false);
+                num.setManaged(false);
+                num.setPrefWidth(0);
+                num.setMinWidth(0);
+                num.setMaxWidth(0);
+                num.setText("");
+            }
 
             // Hover handlers on bpBox and num for breakpoint preview without clearing line number:
             javafx.event.EventHandler<javafx.scene.input.MouseEvent> onEnter = e -> {
@@ -983,7 +1034,7 @@ public class EditorTab extends Tab {
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
 
-            if (isMethodStartLine(line)) {
+            if (appSettings.isShowMethodSeparators() && isMethodStartLine(line)) {
                 box.setStyle("-fx-border-color: #2D3035 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
             }
 
@@ -2078,6 +2129,9 @@ public class EditorTab extends Tab {
         if (caretListener != null) {
             caretListener.caretMoved(getRealLineNumber(codeArea.getCurrentParagraph() + 1),
                     codeArea.getCaretColumn() + 1);
+        }
+        if (dev.lumina.settings.EditorAppearanceSettings.getInstance().getLineNumbersMode() != dev.lumina.settings.EditorAppearanceSettings.LineNumbersMode.ABSOLUTE) {
+            refreshGutter();
         }
     }
 
