@@ -91,6 +91,10 @@ public class LuminaApp extends Application {
     private ComboBox<RunConfiguration> runConfigBox;
     private Button runButton;
     private Button stopButton;
+    private Button debugBtn;
+    private dev.lumina.debugger.DebuggerService debuggerService;
+    private dev.lumina.ui.DebugPanel debugPanel;
+    private Tab debugBottomTab;
     private RightToolRail rightRail;
     private Label rightToolTitle;
     private NotificationsToolWindowPanel notificationsPanel;
@@ -203,8 +207,14 @@ public class LuminaApp extends Application {
         testsPanel.setHandlers(
                 () -> { if (lastTestRun != null) lastTestRun.run(); },
                 this::rerunFailedTests);
+
+        debuggerService = new dev.lumina.debugger.DebuggerService();
+        debugPanel = new dev.lumina.ui.DebugPanel(debuggerService);
+        debugBottomTab = toolTab("Debug", debugPanel);
+
         bottomTabs = new TabPane(
                 toolTab("Run", console),
+                debugBottomTab,
                 toolTab("Tests", testsPanel),
                 toolTab("Problems", problemsPanel),
                 toolTab("Terminal", terminal),
@@ -212,6 +222,63 @@ public class LuminaApp extends Application {
                 toolTab("Build", buildConsole),
                 toolTab("Services", servicesPanel),
                 mcpBottomTab);
+
+        debugPanel.setOnNavigateFrame((fileOrFqcn, line) -> {
+            Path targetFile = resolveProjectSourceFile(fileOrFqcn);
+            if (targetFile != null) {
+                openFileAtLine(targetFile, line);
+                EditorTab tab = currentEditor();
+                if (tab != null) tab.setDebugActiveLine(line);
+            }
+        });
+        debugPanel.setOnRerun(this::debugSelectedConfig);
+        debugPanel.setOnViewBreakpoints(this::showBreakpointsDialog);
+
+        debuggerService.addListener(new dev.lumina.debugger.DebuggerService.DebugListener() {
+            @Override
+            public void onStateChanged(dev.lumina.debugger.DebuggerService.State newState) {
+                boolean active = (newState == dev.lumina.debugger.DebuggerService.State.RUNNING || newState == dev.lumina.debugger.DebuggerService.State.PAUSED);
+                iconRail.setDebugActive(active);
+                if (debugBtn != null) {
+                    debugBtn.getStyleClass().remove("tool-debug-active");
+                    if (active) debugBtn.getStyleClass().add("tool-debug-active");
+                }
+                if (stopButton != null) {
+                    stopButton.setDisable(!active && !console.isRunning());
+                    if (active) stopButton.getStyleClass().add("stop-active");
+                }
+                if (newState == dev.lumina.debugger.DebuggerService.State.TERMINATED || newState == dev.lumina.debugger.DebuggerService.State.IDLE) {
+                    clearAllDebugActiveLines();
+                }
+            }
+
+            @Override
+            public void onBreakpointHit(dev.lumina.debugger.DebugThread thread, List<dev.lumina.debugger.DebugStackFrame> frames, List<dev.lumina.debugger.DebugVariable> variables, String sourceFile, int line) {
+                handleDebuggerSuspension(frames, variables, sourceFile, line);
+            }
+
+            @Override
+            public void onStepped(dev.lumina.debugger.DebugThread thread, List<dev.lumina.debugger.DebugStackFrame> frames, List<dev.lumina.debugger.DebugVariable> variables, String sourceFile, int line) {
+                handleDebuggerSuspension(frames, variables, sourceFile, line);
+            }
+
+            @Override
+            public void onVmResumed() {
+                clearAllDebugActiveLines();
+            }
+
+            @Override
+            public void onDisconnected() {
+                iconRail.setDebugActive(false);
+                if (debugBtn != null) debugBtn.getStyleClass().remove("tool-debug-active");
+                clearAllDebugActiveLines();
+            }
+
+            @Override
+            public void onLog(String message) {
+                console.println(message);
+            }
+        });
         gitLogPanel.setOnOpenFileDiff(this::openGitCommitFileDiff);
         gitLogPanel.setOnOpenFileInEditor(this::openFile);
         gitLogPanel.setOnHideToolWindow(() -> toggleBottomPanel(false));
@@ -420,6 +487,41 @@ public class LuminaApp extends Application {
             if (e.isAltDown() && !e.isControlDown() && !e.isMetaDown() &&
                     (e.getCode() == javafx.scene.input.KeyCode.BACK_QUOTE || "`".equals(e.getText()))) {
                 showVcsOperationsPopup();
+                e.consume();
+                return;
+            }
+
+            // Debugging shortcuts: F9 (Resume), F8 (Step Over), F7 (Step Into), Shift+F8 (Step Out)
+            if (e.getCode() == javafx.scene.input.KeyCode.F9 && !e.isControlDown() && !e.isAltDown()) {
+                if (debuggerService != null && debuggerService.isPaused()) {
+                    debuggerService.resume();
+                    e.consume();
+                    return;
+                }
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.F8 && !e.isControlDown() && !e.isAltDown() && !e.isShiftDown()) {
+                if (debuggerService != null && debuggerService.isPaused()) {
+                    debuggerService.stepOver();
+                    e.consume();
+                    return;
+                }
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.F7 && !e.isControlDown() && !e.isAltDown() && !e.isShiftDown()) {
+                if (debuggerService != null && debuggerService.isPaused()) {
+                    debuggerService.stepInto();
+                    e.consume();
+                    return;
+                }
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.F8 && e.isShiftDown() && !e.isControlDown() && !e.isAltDown()) {
+                if (debuggerService != null && debuggerService.isPaused()) {
+                    debuggerService.stepOut();
+                    e.consume();
+                    return;
+                }
+            }
+            if (e.getCode() == javafx.scene.input.KeyCode.F8 && e.isShiftDown() && (e.isControlDown() || e.isMetaDown())) {
+                showBreakpointsDialog();
                 e.consume();
                 return;
             }
@@ -1192,11 +1294,11 @@ public class LuminaApp extends Application {
             }
         });
 
-        Button debugBtn = new Button("Debug", bugIcon());
+        debugBtn = new Button("Debug", bugIcon());
         debugBtn.setGraphicTextGap(6);
         debugBtn.getStyleClass().addAll("tool-button", "tool-debug");
         debugBtn.setTooltip(new Tooltip(
-                "Debug (Ctrl/Cmd+D) \u2014 launches with JDWP on port 5005 and attaches jdb"));
+                "Debug (Ctrl/Cmd+D) \u2014 launches with JDWP on port 5005 and connects debugger"));
         debugBtn.setOnAction(e -> debugSelectedConfig());
 
         stopButton = toolButton("\u25A0", "Stop (Ctrl/Cmd+F2)");
@@ -1873,8 +1975,8 @@ public class LuminaApp extends Application {
      *  whatever you last ran. */
     private void showBuildPanel() {
         toggleBottomPanel(true);
-        bottomTabs.getSelectionModel().select(5);
-        iconRail.selectBottom(1);
+        bottomTabs.getSelectionModel().select(6);
+        iconRail.selectBottom(2);
     }
 
     // ------------------------------------------------- blame, usages, tests
@@ -4014,68 +4116,92 @@ public class LuminaApp extends Application {
             label = "Debug " + tab.getPath().getFileName();
         }
 
-        showRunPanel();
+        List<dev.lumina.debugger.DebugBreakpoint> bps = collectAllBreakpoints();
+        showDebugPanel();
         console.runSequence(label + " [debug \u2014 JDWP :5005]",
                 RunConfiguration.debugify(commands), workDir);
-        console.println("JVM suspends until a debugger attaches on port 5005.");
-        console.println("Attaching jdb in the Terminal \u2014 useful commands: "
-                + "stop in pkg.Class.method | cont | step | locals | where");
-
-        // Collect breakpoints from the red gutter dots in all open editors.
-        List<String> stops = breakpointStops();
-        if (!stops.isEmpty()) {
-            console.println("Breakpoints: " + stops.size()
-                    + " \u2014 they will be set in jdb automatically.");
-        }
-
-        Thread attach = new Thread(() -> {
-            try {
-                Thread.sleep(4000);
-            } catch (InterruptedException e) {
-                return;
-            }
-            Platform.runLater(() -> {
-                showTerminal();
-                terminal.sendCommand("jdb -attach 5005");
-            });
-            try {
-                Thread.sleep(2500);   // let jdb finish attaching
-            } catch (InterruptedException e) {
-                return;
-            }
-            for (String stop : stops) {
-                Platform.runLater(() -> terminal.sendCommand(stop));
-                try {
-                    Thread.sleep(180);
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-            try {
-                Thread.sleep(400);
-            } catch (InterruptedException e) {
-                return;
-            }
-            // Resume the suspended VM; it will pause at the first breakpoint.
-            Platform.runLater(() -> terminal.sendCommand("cont"));
-        }, "lumina-jdb-attach");
-        attach.setDaemon(true);
-        attach.start();
+        debugPanel.appendConsole("Debug session started: " + label);
+        debugPanel.appendConsole("Breakpoints active: " + bps.size());
+        debugPanel.appendConsole("Connecting JDI debugger on port 5005...");
+        debuggerService.connect("localhost", 5005, bps);
     }
 
-    /** Red gutter dots across open editors as jdb "stop at" commands. */
-    private List<String> breakpointStops() {
-        List<String> stops = new java.util.ArrayList<>();
-        for (Tab t : allEditorTabs()) {
-            if (!(t instanceof EditorTab et) || et.getPath() == null) continue;
-            String fqcn = fqcnOf(et.getPath());
-            if (fqcn == null) fqcn = testFqcnOf(et.getPath());
-            if (fqcn == null) continue;
-            for (int line : et.getBreakpoints()) {
-                stops.add("stop at " + fqcn + ":" + line);
+    private void handleDebuggerSuspension(List<dev.lumina.debugger.DebugStackFrame> frames,
+                                          List<dev.lumina.debugger.DebugVariable> variables,
+                                          String sourceFile, int line) {
+        showDebugPanel();
+        String lookup = sourceFile;
+        if (lookup == null && !frames.isEmpty()) {
+            lookup = frames.get(0).className();
+        }
+        Path targetFile = resolveProjectSourceFile(lookup);
+        if (targetFile != null) {
+            openFileAtLine(targetFile, line);
+            EditorTab tab = currentEditor();
+            if (tab != null) {
+                tab.setDebugActiveLine(line);
+                tab.clearInlineDebugHints();
+                for (dev.lumina.debugger.DebugVariable v : variables) {
+                    if (!"this".equals(v.name()) && !v.name().startsWith("(")) {
+                        tab.setInlineDebugHint(line, v.name() + ": " + v.valueString());
+                        break;
+                    }
+                }
             }
         }
-        return stops;
+    }
+
+    private void clearAllDebugActiveLines() {
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof EditorTab et) {
+                et.clearDebugActiveLine();
+            }
+        }
+    }
+
+    private Path resolveProjectSourceFile(String fileNameOrFqcn) {
+        if (fileNameOrFqcn == null || projectRoot == null) return null;
+        String simple = fileNameOrFqcn.contains("/") ? fileNameOrFqcn.substring(fileNameOrFqcn.lastIndexOf('/') + 1)
+                : (fileNameOrFqcn.contains(".") ? fileNameOrFqcn.substring(fileNameOrFqcn.lastIndexOf('.') + 1) : fileNameOrFqcn);
+        if (!simple.endsWith(".java")) simple += ".java";
+
+        final String targetName = simple;
+        try (var stream = Files.walk(projectRoot)) {
+            return stream.filter(p -> p.getFileName() != null && p.getFileName().toString().equals(targetName))
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private void showBreakpointsDialog() {
+        List<dev.lumina.debugger.DebugBreakpoint> bps = collectAllBreakpoints();
+        new dev.lumina.ui.BreakpointsDialog(stage, bps, updatedList -> {
+            for (dev.lumina.debugger.DebugBreakpoint bp : updatedList) {
+                if (bp.enabled()) {
+                    debuggerService.addBreakpoint(bp.fqcn(), bp.line());
+                } else {
+                    debuggerService.removeBreakpoint(bp.fqcn(), bp.line());
+                }
+            }
+        }).show();
+    }
+
+    private List<dev.lumina.debugger.DebugBreakpoint> collectAllBreakpoints() {
+        List<dev.lumina.debugger.DebugBreakpoint> list = new ArrayList<>();
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof EditorTab et && et.getPath() != null) {
+                String fqcn = fqcnOf(et.getPath());
+                if (fqcn == null) fqcn = testFqcnOf(et.getPath());
+                if (fqcn != null) {
+                    for (int line : et.getBreakpoints()) {
+                        list.add(new dev.lumina.debugger.DebugBreakpoint(fqcn, line));
+                    }
+                }
+            }
+        }
+        return list;
     }
 
     private void findInFiles() {
@@ -4358,18 +4484,24 @@ public class LuminaApp extends Application {
         iconRail.selectBottom(0);
     }
 
+    private void showDebugPanel() {
+        toggleBottomPanel(true);
+        bottomTabs.getSelectionModel().select(debugBottomTab);
+        iconRail.selectBottom(1);
+    }
+
     private void showTerminal() {
         toggleBottomPanel(true);
-        bottomTabs.getSelectionModel().select(3);
-        iconRail.selectBottom(4);
+        bottomTabs.getSelectionModel().select(4);
+        iconRail.selectBottom(5);
         ensureTerminalSession();
         terminal.focusInput();
     }
 
     public void showGitLog() {
         toggleBottomPanel(true);
-        bottomTabs.getSelectionModel().select(4);
-        iconRail.selectBottom(6);
+        bottomTabs.getSelectionModel().select(5);
+        iconRail.selectBottom(7);
         if (gitLogPanel != null) {
             gitLogPanel.selectLogTab();
             gitLogPanel.refresh();
@@ -4412,20 +4544,21 @@ public class LuminaApp extends Application {
         }
     }
 
-    /** Bottom rail: 0=Run, 1=Build, 2=GitHub Copilot MCP Log, 3=Services,
-     *  4=Terminal, 5=Problems, 6=Git \u2014 mapped onto the bottom dock's
+    /** Bottom rail: 0=Run, 1=Debug, 2=Build, 3=GitHub Copilot MCP Log, 4=Services,
+     *  5=Terminal, 6=Problems, 7=Git — mapped onto the bottom dock's
      *  actual tab indices. */
     private void onBottomRailSelect(int railIndex) {
         int tabIndex = switch (railIndex) {
             case 0 -> 0;   // Run
-            case 1 -> 5;   // Build
-            case 2 -> mcpBottomTab != null ? bottomTabs.getTabs().indexOf(mcpBottomTab) : 7;   // GitHub Copilot MCP Log
-            case 3 -> 6;   // Services
-            case 4 -> 3;   // Terminal
-            case 5 -> 2;   // Problems
-            default -> 4;  // Git
+            case 1 -> 1;   // Debug
+            case 2 -> 6;   // Build
+            case 3 -> mcpBottomTab != null ? bottomTabs.getTabs().indexOf(mcpBottomTab) : 8;   // GitHub Copilot MCP Log
+            case 4 -> 7;   // Services
+            case 5 -> 4;   // Terminal
+            case 6 -> 3;   // Problems
+            default -> 5;  // Git
         };
-        if (railIndex == 2 && tabIndex < 0) {
+        if (railIndex == 3 && tabIndex < 0) {
             String pos = mcpLogPanel.getActiveMoveToPosition();
             if ("Right".equalsIgnoreCase(pos)) {
                 boolean alreadyShowing = outerSplit.getItems().contains(rightDock)
@@ -4457,11 +4590,11 @@ public class LuminaApp extends Application {
         toggleBottomPanel(true);
         bottomTabs.getSelectionModel().select(tabIndex);
         iconRail.selectBottom(railIndex);
-        if (railIndex == 4) {
+        if (railIndex == 5) {
             ensureTerminalSession();
             terminal.focusInput();
         }
-        if (railIndex == 6) gitLogPanel.refresh();
+        if (railIndex == 7) gitLogPanel.refresh();
     }
 
     private void hideMcpPanel() {
@@ -6393,6 +6526,17 @@ public class LuminaApp extends Application {
     private void addTabTo(TabPane group, EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
         tab.setContextMenu(buildEditorTabContextMenu(tab));
+        tab.setOnBreakpointsChanged(() -> {
+            if (debuggerService != null && debuggerService.isConnected() && tab.getPath() != null) {
+                String fqcn = fqcnOf(tab.getPath());
+                if (fqcn == null) fqcn = testFqcnOf(tab.getPath());
+                if (fqcn != null) {
+                    for (int line : tab.getBreakpoints()) {
+                        debuggerService.addBreakpoint(fqcn, line);
+                    }
+                }
+            }
+        });
         wireAddStarters(tab);
         wireMavenSync(tab);
         tab.setOnOpenDiff((title, baseText, curText) -> {

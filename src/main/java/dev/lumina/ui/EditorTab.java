@@ -594,10 +594,45 @@ public class EditorTab extends Tab {
         javafx.application.Platform.runLater(this::updateCodeGuides);
     }
 
-    // ----------------------------------------------------------- breakpoints
+    // ----------------------------------------------------------- breakpoints & debug
 
     private final java.util.Set<Integer> breakpoints = new java.util.TreeSet<>();
     private Runnable onBreakpointsChanged;
+    private int debugActiveLine = -1; // 1-based real line number
+    private final java.util.Map<Integer, String> inlineDebugHints = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public int getDebugActiveLine() {
+        return debugActiveLine;
+    }
+
+    public void setDebugActiveLine(int realLine) {
+        this.debugActiveLine = realLine;
+        refreshGutter();
+        updateAllParagraphStyles();
+        Platform.runLater(this::refreshInlineHints);
+    }
+
+    public void clearDebugActiveLine() {
+        this.debugActiveLine = -1;
+        this.inlineDebugHints.clear();
+        refreshGutter();
+        updateAllParagraphStyles();
+        Platform.runLater(this::refreshInlineHints);
+    }
+
+    public void setInlineDebugHint(int realLine, String hint) {
+        if (hint == null) {
+            inlineDebugHints.remove(realLine);
+        } else {
+            inlineDebugHints.put(realLine, hint);
+        }
+        Platform.runLater(this::refreshInlineHints);
+    }
+
+    public void clearInlineDebugHints() {
+        inlineDebugHints.clear();
+        Platform.runLater(this::refreshInlineHints);
+    }
 
     /** 1-based line numbers with an active breakpoint. */
     public java.util.Set<Integer> getBreakpoints() {
@@ -611,6 +646,7 @@ public class EditorTab extends Tab {
     private void toggleBreakpoint(int line) {
         if (!breakpoints.remove(line)) breakpoints.add(line);
         refreshGutter();                       // repaint dots
+        updateAllParagraphStyles();
         if (onBreakpointsChanged != null) onBreakpointsChanged.run();
     }
 
@@ -662,6 +698,47 @@ public class EditorTab extends Tab {
         return DECL.matcher(text).find();
     }
 
+    private javafx.scene.Node createBreakpointGraphic(boolean isBreakpoint, boolean isExecutionLine) {
+        javafx.scene.layout.StackPane stack = new javafx.scene.layout.StackPane();
+        stack.setPrefSize(14, 14);
+        stack.setMinSize(14, 14);
+        stack.setMaxSize(14, 14);
+
+        javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(6.5);
+        circle.setFill(javafx.scene.paint.Color.web("#E54B4B"));
+        circle.setStroke(javafx.scene.paint.Color.web("#B02A2A"));
+        circle.setStrokeWidth(1.0);
+        stack.getChildren().add(circle);
+
+        if (isExecutionLine) {
+            javafx.scene.shape.Polygon arrow = new javafx.scene.shape.Polygon(
+                    -2.5, -3.5,
+                    3.5, 0.0,
+                    -2.5, 3.5
+            );
+            arrow.setFill(javafx.scene.paint.Color.WHITE);
+            stack.getChildren().add(arrow);
+        } else if (isBreakpoint) {
+            javafx.scene.shape.Polyline check = new javafx.scene.shape.Polyline(
+                    -3.0, 0.0,
+                    -1.0, 2.5,
+                    3.0, -2.5
+            );
+            check.setStroke(javafx.scene.paint.Color.WHITE);
+            check.setStrokeWidth(1.3);
+            stack.getChildren().add(check);
+        }
+        return stack;
+    }
+
+    private javafx.scene.Node createBreakpointPreviewGraphic() {
+        javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(6.0);
+        circle.setFill(javafx.scene.paint.Color.web("#E54B4B", 0.40));
+        circle.setStroke(javafx.scene.paint.Color.web("#B02A2A", 0.40));
+        circle.setStrokeWidth(1.0);
+        return circle;
+    }
+
     private void refreshGutter() {
         codeArea.setParagraphGraphicFactory(i -> {
             final int visibleLine = i + 1;
@@ -681,26 +758,42 @@ public class EditorTab extends Tab {
                 });
             }
 
-            javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(4.5);
-            dot.getStyleClass().add("breakpoint-dot");
-            dot.setVisible(breakpoints.contains(line));
-            javafx.scene.layout.StackPane dotBox =
-                    bulb != null ? new javafx.scene.layout.StackPane(dot, bulb)
-                                 : new javafx.scene.layout.StackPane(dot);
-            dotBox.setPrefWidth(14);
-            dotBox.setMinWidth(14);
-            dotBox.getStyleClass().add("breakpoint-box");
-            dotBox.setCursor(javafx.scene.Cursor.DEFAULT);
-            dotBox.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
+            boolean hasBreakpoint = breakpoints.contains(line);
+            boolean isExecution = (line == debugActiveLine);
 
-            javafx.scene.control.Label num = new javafx.scene.control.Label(String.valueOf(line));
+            javafx.scene.control.Label num = new javafx.scene.control.Label();
             num.getStyleClass().add("lineno");
-            num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
             int maxLine = Math.max(10, getRealLineCount());
             int digits = Math.max(2, String.valueOf(maxLine).length());
-            double w = digits * 8.5 + 16.0;
+            double w = Math.max(34.0, digits * 9.0 + 16.0);
             num.setPrefWidth(w);
             num.setMinWidth(w);
+            num.setMaxWidth(w);
+            num.setCursor(javafx.scene.Cursor.HAND);
+
+            if (hasBreakpoint || isExecution) {
+                num.setAlignment(javafx.geometry.Pos.CENTER);
+                num.setText("");
+                num.setGraphic(createBreakpointGraphic(hasBreakpoint, isExecution));
+            } else {
+                num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+                num.setText(String.valueOf(line));
+                num.setGraphic(null);
+                num.setOnMouseEntered(e -> {
+                    if (!breakpoints.contains(line) && line != debugActiveLine) {
+                        num.setText("");
+                        num.setGraphic(createBreakpointPreviewGraphic());
+                        num.setAlignment(javafx.geometry.Pos.CENTER);
+                    }
+                });
+                num.setOnMouseExited(e -> {
+                    if (!breakpoints.contains(line) && line != debugActiveLine) {
+                        num.setGraphic(null);
+                        num.setText(String.valueOf(line));
+                        num.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+                    }
+                });
+            }
             num.setOnMouseClicked(e -> { toggleBreakpoint(line); e.consume(); });
 
             javafx.scene.layout.StackPane foldBox = new javafx.scene.layout.StackPane();
@@ -773,7 +866,7 @@ public class EditorTab extends Tab {
                 }
             }
 
-            javafx.scene.layout.HBox box;
+            javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(3);
             if (fullBlame && blameLines != null) {
                 String text = i < blameLines.size() ? blameLines.get(i).gutter() : "";
                 javafx.scene.control.Label annotation =
@@ -787,10 +880,12 @@ public class EditorTab extends Tab {
                                             + blameLines.get(i).date() + "\n"
                                             + blameLines.get(i).summary()));
                 }
-                box = new javafx.scene.layout.HBox(4, annotation, dotBox, num, markersBox, foldBox, gitStripe);
-            } else {
-                box = new javafx.scene.layout.HBox(3, dotBox, num, markersBox, foldBox, gitStripe);
+                box.getChildren().add(annotation);
             }
+            if (bulb != null) {
+                box.getChildren().add(bulb);
+            }
+            box.getChildren().addAll(num, markersBox, foldBox, gitStripe);
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
             return box;
@@ -970,6 +1065,25 @@ public class EditorTab extends Tab {
     private void refreshInlineHints() {
         if (hintOverlay == null) return;
         hintOverlay.getChildren().clear();
+
+        // Inline debug variable hints
+        for (java.util.Map.Entry<Integer, String> entry : inlineDebugHints.entrySet()) {
+            int realLine = entry.getKey();
+            int visLine = getVisibleLineNumber(realLine);
+            int lineIdx = visLine - 1;
+            if (lineIdx >= 0 && lineIdx < codeArea.getParagraphs().size()) {
+                lineBoundsAt(lineIdx).ifPresent(b -> {
+                    javafx.scene.control.Label hint =
+                            new javafx.scene.control.Label(entry.getValue());
+                    hint.getStyleClass().add("inlay-debug-value");
+                    hint.applyCss();
+                    hint.layout();
+                    hint.setLayoutX(b.getMaxX() + 14);
+                    hint.setLayoutY(b.getMinY() + (b.getHeight() - 14) / 2);
+                    hintOverlay.getChildren().add(hint);
+                });
+            }
+        }
 
         // Unused field inlay hints ("no usages")
         if (diagnostics != null && !diagnostics.isEmpty()) {
@@ -1749,21 +1863,31 @@ public class EditorTab extends Tab {
 
     private int currentHighlightedLine = -1;
 
+    public void updateAllParagraphStyles() {
+        int activeVisLine = debugActiveLine > 0 ? getVisibleLineNumber(debugActiveLine) : -1;
+        int caretPar = codeArea.getCurrentParagraph();
+        int totalPars = codeArea.getParagraphs().size();
+        for (int i = 0; i < totalPars; i++) {
+            int visLine = i + 1;
+            int real = getRealLineNumber(visLine);
+            if (visLine == activeVisLine) {
+                codeArea.setParagraphStyle(i, java.util.List.of("debug-current-line"));
+            } else if (breakpoints.contains(real)) {
+                codeArea.setParagraphStyle(i, java.util.List.of("breakpoint-line"));
+            } else if (i == caretPar) {
+                codeArea.setParagraphStyle(i, java.util.List.of("has-caret"));
+            } else {
+                codeArea.setParagraphStyle(i, java.util.Collections.emptyList());
+            }
+        }
+        currentHighlightedLine = caretPar;
+    }
+
     /** Tint the caret's paragraph as the current line (IntelliJ-style). */
     private void highlightCurrentLine() {
-        int line = codeArea.getCurrentParagraph();
-        if (line == currentHighlightedLine) return;
-        if (currentHighlightedLine >= 0
-                && currentHighlightedLine < codeArea.getParagraphs().size()) {
-            codeArea.setParagraphStyle(currentHighlightedLine,
-                    java.util.Collections.emptyList());
-        }
-        if (line >= 0 && line < codeArea.getParagraphs().size()) {
-            codeArea.setParagraphStyle(line, java.util.List.of("has-caret"));
-        }
-        currentHighlightedLine = line;
+        updateAllParagraphStyles();
         if (codeGuidesOverlay != null) {
-            codeGuidesOverlay.setActiveCaretLine(line);
+            codeGuidesOverlay.setActiveCaretLine(codeArea.getCurrentParagraph());
         }
     }
 

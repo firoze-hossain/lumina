@@ -39,6 +39,10 @@ public class ConsolePane extends BorderPane {
         this.runningListener = listener;
     }
 
+    public boolean isRunning() {
+        return process != null && process.isAlive();
+    }
+
     /** Re-run the previous command sequence. Returns false if none yet. */
     public boolean restartLast() {
         if (lastCommands == null) return false;

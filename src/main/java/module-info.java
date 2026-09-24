@@ -16,7 +16,9 @@ module dev.lumina {
     requires java.desktop;
     requires java.prefs;
     requires pty4j;
+    requires jdk.jdi;
     exports dev.lumina;
+    exports dev.lumina.debugger;
     exports dev.lumina.ui;
     exports dev.lumina.syntax;
     exports dev.lumina.project;
