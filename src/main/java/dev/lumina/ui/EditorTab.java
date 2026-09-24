@@ -10,7 +10,7 @@ import dev.lumina.git.GitStatusManager;
 import dev.lumina.semantics.Docs;
 import dev.lumina.syntax.JavaSyntaxHighlighter;
 import javafx.application.Platform;
-import javafx.scene.control.Tab;
+import javafx.scene.control.*;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
 import org.fxmisc.richtext.LineNumberFactory;
@@ -429,6 +429,11 @@ public class EditorTab extends Tab {
                     e.consume();
                     return;
                 }
+            }
+            if ((e.isControlDown() || e.isMetaDown()) && e.getCode() == javafx.scene.input.KeyCode.V) {
+                e.consume();
+                paste();
+                return;
             }
             if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
                 if (quickDocPopup.isShowing()) {
@@ -3240,12 +3245,14 @@ public class EditorTab extends Tab {
 
         int shift = 0;
         if (item.importFqcn() != null) {
-            String full = codeArea.getText();
-            if (dev.lumina.semantics.Completion.needsImport(full, item.importFqcn())) {
-                int offset = dev.lumina.semantics.Completion.importInsertOffset(full);
-                String importLine = "import " + item.importFqcn() + ";\n";
-                codeArea.insertText(offset, importLine);
-                if (offset <= start) shift = importLine.length();
+            if (!dev.lumina.settings.AutoImportSettings.getInstance().isJavaExcluded(item.importFqcn())) {
+                String full = codeArea.getText();
+                if (dev.lumina.semantics.Completion.needsImport(full, item.importFqcn())) {
+                    int offset = dev.lumina.semantics.Completion.importInsertOffset(full);
+                    String importLine = "import " + item.importFqcn() + ";\n";
+                    codeArea.insertText(offset, importLine);
+                    if (offset <= start) shift = importLine.length();
+                }
             }
         }
         codeArea.replaceText(start + shift, caret + shift, item.insert());
@@ -3265,7 +3272,102 @@ public class EditorTab extends Tab {
     public void redo() { codeArea.redo(); }
     public void cut() { codeArea.cut(); }
     public void copy() { codeArea.copy(); }
-    public void paste() { codeArea.paste(); }
+
+    public void paste() {
+        javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+        if (clipboard.hasString() && path != null && path.toString().endsWith(".java")) {
+            String pasted = clipboard.getString();
+            String current = codeArea.getText();
+            java.util.List<String> needed = dev.lumina.semantics.AutoImportService.getInstance().resolvePastedImports(current, pasted);
+            if (!needed.isEmpty()) {
+                dev.lumina.settings.AutoImportSettings.InsertImportsMode mode =
+                        dev.lumina.settings.AutoImportSettings.getInstance().getJavaInsertImportsOnPaste();
+                if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ALWAYS) {
+                    applyPasteWithImports(pasted, needed);
+                    return;
+                } else if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ASK) {
+                    promptPasteImports(pasted, needed);
+                    return;
+                }
+            }
+        }
+        codeArea.paste();
+    }
+
+    private void applyPasteWithImports(String pasted, java.util.List<String> needed) {
+        String current = codeArea.getText();
+        int caret = codeArea.getCaretPosition();
+        int insertOffset = dev.lumina.semantics.Completion.importInsertOffset(current);
+
+        StringBuilder sb = new StringBuilder();
+        for (String fqcn : needed) {
+            if (dev.lumina.semantics.Completion.needsImport(current, fqcn)) {
+                sb.append("import ").append(fqcn).append(";\n");
+            }
+        }
+        String importBlock = sb.toString();
+        int shift = 0;
+        if (!importBlock.isEmpty()) {
+            codeArea.insertText(insertOffset, importBlock);
+            if (insertOffset <= caret) {
+                shift = importBlock.length();
+            }
+        }
+        codeArea.moveTo(caret + shift);
+        codeArea.replaceSelection(pasted);
+    }
+
+    private void promptPasteImports(String pasted, java.util.List<String> needed) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Insert Imports on Paste");
+        alert.setHeaderText("The following classes will be imported:");
+
+        javafx.scene.layout.VBox content = new javafx.scene.layout.VBox(6);
+        content.setPadding(new javafx.geometry.Insets(10, 0, 10, 0));
+        java.util.List<CheckBox> checkBoxes = new java.util.ArrayList<>();
+        for (String fqcn : needed) {
+            CheckBox cb = new CheckBox(fqcn);
+            cb.setSelected(true);
+            cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            checkBoxes.add(cb);
+            content.getChildren().add(cb);
+        }
+        alert.getDialogPane().setContent(content);
+        alert.getDialogPane().setStyle("-fx-background-color: #2B2D30;");
+        var contentLabel = alert.getDialogPane().lookup(".content.label");
+        if (contentLabel != null) contentLabel.setStyle("-fx-text-fill: #DFE1E5;");
+
+        ButtonType importBtn = new ButtonType("Import", ButtonBar.ButtonData.OK_DONE);
+        ButtonType dontImportBtn = new ButtonType("Don't Import", ButtonBar.ButtonData.NO);
+        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(importBtn, dontImportBtn, cancelBtn);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent()) {
+            if (result.get() == importBtn) {
+                java.util.List<String> chosen = new java.util.ArrayList<>();
+                for (CheckBox cb : checkBoxes) {
+                    if (cb.isSelected()) chosen.add(cb.getText());
+                }
+                applyPasteWithImports(pasted, chosen);
+            } else if (result.get() == dontImportBtn) {
+                codeArea.replaceSelection(pasted);
+            }
+        }
+    }
+
+    public void optimizeImports() {
+        if (path != null && path.toString().endsWith(".java")) {
+            String current = codeArea.getText();
+            String optimized = dev.lumina.semantics.AutoImportService.getInstance().optimizeImports(current);
+            if (!optimized.equals(current)) {
+                int pos = Math.min(codeArea.getCaretPosition(), optimized.length());
+                codeArea.replaceText(optimized);
+                codeArea.moveTo(pos);
+            }
+        }
+    }
+
     public void selectAll() { codeArea.selectAll(); }
 
     // --------------------------------------------------------- extra tools
