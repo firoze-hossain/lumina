@@ -2959,7 +2959,14 @@ public class LuminaApp extends Application {
             if (t instanceof EditorTab et && et.getPath() != null
                     && et.getText().startsWith("\u25CF")) {
                 try {
-                    Files.writeString(et.getPath(), et.getEditorText());
+                    String text = et.getEditorText();
+                    String processed = dev.lumina.settings.EditorGeneralSettings.getInstance()
+                            .processTextForSave(text, et.getCaretLine());
+                    if (!processed.equals(text)) {
+                        et.updateEditorTextOnSave(processed);
+                        text = processed;
+                    }
+                    Files.writeString(et.getPath(), text);
                     et.markSaved(et.getPath());
                     recheckMavenSync(et);
                 } catch (IOException ignored) {
@@ -7343,7 +7350,14 @@ public class LuminaApp extends Application {
             target = f.toPath();
         }
         try {
-            Files.writeString(target, tab.getEditorText());
+            String text = tab.getEditorText();
+            String processed = dev.lumina.settings.EditorGeneralSettings.getInstance()
+                    .processTextForSave(text, tab.getCaretLine());
+            if (!processed.equals(text)) {
+                tab.updateEditorTextOnSave(processed);
+                text = processed;
+            }
+            Files.writeString(target, text);
             tab.markSaved(target);
             updateBreadcrumbs(target, null);
             fileExplorer.refresh();

@@ -134,10 +134,74 @@ public class EditorTab extends Tab {
     public void setOnOpenDiff(DiffOpenerCallback callback) { this.onOpenDiff = callback; }
     public void setOnOpenCommit(Runnable callback) { this.onOpenCommit = callback; }
 
+    private int currentFontSize = 13;
+    private static final java.util.List<EditorTab> OPEN_EDITOR_TABS = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final dev.lumina.settings.EditorGeneralSettings.Listener editorGeneralListener = this::applyEditorGeneralSettings;
+
+    public void zoomFontSize(int delta) {
+        int newSize = Math.max(8, Math.min(40, currentFontSize + delta));
+        if (newSize == currentFontSize) return;
+        dev.lumina.settings.EditorGeneralSettings eg = dev.lumina.settings.EditorGeneralSettings.getInstance();
+        if (eg.getMouseControlFontSizeScope() == dev.lumina.settings.EditorGeneralSettings.MouseWheelFontSizeScope.ALL_EDITORS) {
+            for (EditorTab tab : OPEN_EDITOR_TABS) {
+                tab.setFontSize(newSize);
+            }
+        } else {
+            setFontSize(newSize);
+        }
+    }
+
+    public void setFontSize(int size) {
+        this.currentFontSize = size;
+        codeArea.setStyle(codeArea.getStyle() + "; -fx-font-size: " + size + "px;");
+    }
+
+    public void applyEditorGeneralSettings(dev.lumina.settings.EditorGeneralSettings eg) {
+        if (eg == null) return;
+        javafx.application.Platform.runLater(() -> {
+            boolean wrap = eg.matchesSoftWrapPattern(baseName);
+            codeArea.setWrapText(wrap);
+            if (eg.isVirtualSpaceAtBottom()) {
+                codeArea.setPadding(new javafx.geometry.Insets(0, 0, 250, 0));
+            } else {
+                codeArea.setPadding(new javafx.geometry.Insets(0, 0, 0, 0));
+            }
+        });
+    }
+
+    public void updateEditorTextOnSave(String text) {
+        if (text == null) return;
+        int pos = codeArea.getCaretPosition();
+        this.fullDocumentText = text;
+        codeArea.replaceText(text);
+        if (pos <= text.length()) {
+            codeArea.moveTo(pos);
+        }
+    }
+
     public EditorTab(String name, Path path) {
         this.baseName = name;
         this.path = path;
         setText(name);
+
+        OPEN_EDITOR_TABS.add(this);
+        applyEditorGeneralSettings(dev.lumina.settings.EditorGeneralSettings.getInstance());
+        dev.lumina.settings.EditorGeneralSettings.getInstance().addListener(editorGeneralListener);
+
+        // Ctrl/Cmd + Mouse Wheel font zoom
+        codeArea.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, e -> {
+            if (e.isControlDown() || e.isMetaDown()) {
+                dev.lumina.settings.EditorGeneralSettings eg = dev.lumina.settings.EditorGeneralSettings.getInstance();
+                if (eg.isMouseControlChangeFontSize()) {
+                    e.consume();
+                    if (e.getDeltaY() > 0) {
+                        zoomFontSize(1);
+                    } else if (e.getDeltaY() < 0) {
+                        zoomFontSize(-1);
+                    }
+                }
+            }
+        });
 
         if (path != null) {
             dev.lumina.git.GitStatusManager.getInstance().addListener(gitStatusListener);
@@ -156,6 +220,8 @@ public class EditorTab extends Tab {
         ghostLabel.setMouseTransparent(true);
         ghostPopup.getContent().add(ghostLabel);
         setOnClosed(e -> {
+            OPEN_EDITOR_TABS.remove(this);
+            dev.lumina.settings.EditorGeneralSettings.getInstance().removeListener(editorGeneralListener);
             if (gitChangePopup != null && gitChangePopup.isShowing()) {
                 gitChangePopup.hide();
             }
