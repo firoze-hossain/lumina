@@ -231,7 +231,7 @@ public class CodeGuidesOverlay extends Canvas {
                 for (int i = visStart; i <= visEnd; i++) {
                     String pText = codeArea.getParagraph(i).getText();
                     boolean blank = isWhitespaceOnly(pText);
-                    boolean shouldDraw = blank || (col < countLeadingSpaces(pText));
+                    boolean shouldDraw = blank || (col <= countLeadingSpaces(pText));
 
                     if (shouldDraw) {
                         if (segStart == -1) {

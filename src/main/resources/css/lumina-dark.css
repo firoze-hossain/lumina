@@ -156,8 +156,22 @@
 .code-area .lineno {
     -fx-background-color: #1F2230;
     -fx-text-fill: #4A5068;
-    -fx-padding: 0 10 0 10;
+    -fx-padding: 0 6 0 2;
     -fx-font-size: 12px;
+}
+
+.code-area .paragraph-box.breakpoint-line {
+    -fx-background-color: rgba(229, 75, 75, 0.12);
+}
+
+.code-area .paragraph-box.debug-current-line {
+    -fx-background-color: rgba(33, 66, 131, 0.50);
+}
+
+.inlay-debug-value {
+    -fx-text-fill: #808080;
+    -fx-font-style: italic;
+    -fx-font-size: 11px;
 }
 
 .gutter-row {
@@ -1393,8 +1407,31 @@
    ============================================================ */
 
 /* breakpoint gutter */
-.breakpoint-dot { -fx-fill: #DB5C5C; }
+.breakpoint-dot {
+    -fx-fill: #E54B4B;
+    -fx-stroke: #B02A2A;
+    -fx-stroke-width: 1;
+}
+.breakpoint-dot-active {
+    -fx-fill: #E54B4B;
+    -fx-stroke: #FFFFFF;
+    -fx-stroke-width: 1.5;
+}
 .breakpoint-box:hover { -fx-background-color: #2A2230; -fx-background-radius: 6; }
+
+/* active debug toolbar button */
+.tool-debug-active {
+    -fx-background-color: rgba(56, 155, 85, 0.25) !important;
+    -fx-border-color: #389B55 !important;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+/* active debug rail icon badge (IntelliJ blue rounded badge) */
+.rail-debug-active {
+    -fx-background-color: #3574F0 !important;
+    -fx-background-radius: 6px !important;
+}
 
 /* stop button: dim while idle, red while a process runs */
 .tool-stop { -fx-text-fill: #6B4A4A; }

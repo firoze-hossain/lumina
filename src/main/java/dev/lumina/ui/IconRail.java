@@ -62,18 +62,33 @@ public final class IconRail extends VBox {
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
         addBottom(runRailIcon(), "Run", 0, onBottomSelect);
-        addBottom(buildIcon(), "Build", 1, onBottomSelect);
-        addBottom(mcpIcon(), "GitHub Copilot MCP Log", 2, onBottomSelect);
-        addBottom(servicesRailIcon(), "Services", 3, onBottomSelect);
-        addBottom(terminalIcon(), "Terminal", 4, onBottomSelect);
-        addBottom(problemsIcon(), "Problems", 5, onBottomSelect);
-        addBottom(gitIcon(), "Git", 6, onBottomSelect);
+        debugRailButton = toggle(debugRailIcon(), "Debug", bottomGroup);
+        debugRailButton.setOnAction(e -> onBottomSelect.accept(1));
+        bottomButtons.add(debugRailButton);
+
+        addBottom(buildIcon(), "Build", 2, onBottomSelect);
+        addBottom(mcpIcon(), "GitHub Copilot MCP Log", 3, onBottomSelect);
+        addBottom(servicesRailIcon(), "Services", 4, onBottomSelect);
+        addBottom(terminalIcon(), "Terminal", 5, onBottomSelect);
+        addBottom(problemsIcon(), "Problems", 6, onBottomSelect);
+        addBottom(gitIcon(), "Git", 7, onBottomSelect);
 
         getChildren().addAll(topButtons.get(0), topButtons.get(1), topButtons.get(2),
                 topButtons.get(3), more, spacer,
                 bottomButtons.get(0), bottomButtons.get(1), bottomButtons.get(2),
                 bottomButtons.get(3), bottomButtons.get(4), bottomButtons.get(5),
-                bottomButtons.get(6));
+                bottomButtons.get(6), bottomButtons.get(7));
+    }
+
+    private ToggleButton debugRailButton;
+
+    public void setDebugActive(boolean active) {
+        if (debugRailButton == null) return;
+        debugRailButton.getStyleClass().remove("rail-debug-active");
+        if (active) {
+            debugRailButton.getStyleClass().add("rail-debug-active");
+            debugRailButton.setSelected(true);
+        }
     }
 
     private void addTop(Node icon, String tip, int index, IntConsumer onSelect) {
@@ -227,6 +242,16 @@ public final class IconRail extends VBox {
         Polygon triangle = new Polygon(-3.5, -6, -3.5, 6, 5.5, 0);
         triangle.setFill(Color.web("#6FCF7A"));
         return sized(triangle);
+    }
+
+    private static Node debugRailIcon() {
+        SVGPath bug = new SVGPath();
+        bug.setContent("M 8 2 A 3 3 0 0 1 11 5 L 11 11 A 3 3 0 0 1 5 11 L 5 5 A 3 3 0 0 1 8 2 Z " +
+                "M 3 6 L 5 7 M 13 6 L 11 7 M 2 9 L 5 9 M 14 9 L 11 9 M 3 12 L 5 11 M 13 12 L 11 11");
+        bug.setStroke(Color.web(INK));
+        bug.setStrokeWidth(1.2);
+        bug.setFill(Color.web(INK));
+        return sized(bug);
     }
 
     private static Node buildIcon() {
