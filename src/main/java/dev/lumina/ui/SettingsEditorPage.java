@@ -132,7 +132,6 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("XML")) {
             showCopyrightFormattingSubPage(pageName);
         } else if (pageName.equals("General") ||
-                pageName.equals("Breadcrumbs") ||
                 pageName.equals("Code Completion") ||
                 pageName.equals("Code Folding") ||
                 pageName.equals("Console") ||

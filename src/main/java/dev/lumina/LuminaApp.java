@@ -5103,6 +5103,10 @@ public class LuminaApp extends Application {
     private HBox buildStatusBar() {
         breadcrumbBar = new HBox(4);
         breadcrumbBar.setAlignment(Pos.CENTER_LEFT);
+        dev.lumina.settings.BreadcrumbsSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(() -> {
+            EditorTab et = currentEditor();
+            updateBreadcrumbs(et != null ? et.getPath() : null, null);
+        }));
         updateBreadcrumbs(null, null);
 
         statusProblems = new Label("");
@@ -5558,6 +5562,19 @@ public class LuminaApp extends Application {
 
     private void updateBreadcrumbs(Path filePath, String fallback) {
         breadcrumbBar.getChildren().clear();
+        dev.lumina.settings.BreadcrumbsSettings bSettings = dev.lumina.settings.BreadcrumbsSettings.getInstance();
+        if (!bSettings.isShowBreadcrumbs()) {
+            breadcrumbBar.setVisible(false);
+            breadcrumbBar.setManaged(false);
+            return;
+        }
+        if (filePath != null && !bSettings.isLanguageEnabledForFile(filePath)) {
+            breadcrumbBar.setVisible(false);
+            breadcrumbBar.setManaged(false);
+            return;
+        }
+        breadcrumbBar.setVisible(true);
+        breadcrumbBar.setManaged(true);
         Path shown = filePath;
         if (shown == null && projectRoot != null) shown = projectRoot;
         if (shown == null) {

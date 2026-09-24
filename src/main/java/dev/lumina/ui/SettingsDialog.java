@@ -43,6 +43,8 @@ public class SettingsDialog {
     private SettingsSystemPage currentSystemPage;
     private SettingsEditorGeneralPage currentEditorGeneralPage;
     private SettingsAutoImportPage currentAutoImportPage;
+    private SettingsAppearancePage currentEditorAppearancePage;
+    private SettingsBreadcrumbsPage currentBreadcrumbsPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -355,6 +357,41 @@ public class SettingsDialog {
                 }
                 currentAutoImportPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentAutoImportPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Appearance".equals(pageName)) {
+                if (currentEditorAppearancePage == null) {
+                    currentEditorAppearancePage = new SettingsAppearancePage();
+                }
+                currentEditorAppearancePage.setOnModifiedListener(this::updateApplyButtonState);
+                currentEditorAppearancePage.setOnNavigateReaderMode(() -> {
+                    TreeItem<String> readerModeItem = findItem(tree.getRoot(), "Reader Mode");
+                    if (readerModeItem != null) {
+                        expandAncestors(readerModeItem);
+                        tree.getSelectionModel().select(readerModeItem);
+                    }
+                });
+                wrapInScroll(currentEditorAppearancePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Breadcrumbs".equals(pageName)) {
+                if (currentBreadcrumbsPage == null) {
+                    currentBreadcrumbsPage = new SettingsBreadcrumbsPage();
+                }
+                currentBreadcrumbsPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentBreadcrumbsPage.setOnManageColors(() -> {
+                    TreeItem<String> csRoot = findItem(tree.getRoot(), "Color Scheme");
+                    if (csRoot != null) {
+                        TreeItem<String> csGeneral = findItem(csRoot, "General");
+                        if (csGeneral != null) {
+                            expandAncestors(csGeneral);
+                            tree.getSelectionModel().select(csGeneral);
+                        }
+                    }
+                });
+                wrapInScroll(currentBreadcrumbsPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1026,13 +1063,21 @@ public class SettingsDialog {
         if (currentAutoImportPage != null && currentAutoImportPage.isModified()) {
             currentAutoImportPage.apply();
         }
+        if (currentEditorAppearancePage != null && currentEditorAppearancePage.isModified()) {
+            currentEditorAppearancePage.apply();
+        }
+        if (currentBreadcrumbsPage != null && currentBreadcrumbsPage.isModified()) {
+            currentBreadcrumbsPage.apply();
+        }
         updateApplyButtonState();
     }
 
     private void updateApplyButtonState() {
         if (applyButton == null) return;
         boolean modified = (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified())
-                || (currentAutoImportPage != null && currentAutoImportPage.isModified());
+                || (currentAutoImportPage != null && currentAutoImportPage.isModified())
+                || (currentEditorAppearancePage != null && currentEditorAppearancePage.isModified())
+                || (currentBreadcrumbsPage != null && currentBreadcrumbsPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1063,6 +1108,12 @@ public class SettingsDialog {
             }
             if (currentAutoImportPage != null) {
                 currentAutoImportPage.reset();
+            }
+            if (currentEditorAppearancePage != null) {
+                currentEditorAppearancePage.reset();
+            }
+            if (currentBreadcrumbsPage != null) {
+                currentBreadcrumbsPage.reset();
             }
             stage.close();
         });
