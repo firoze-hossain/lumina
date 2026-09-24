@@ -41,6 +41,8 @@ public class SettingsDialog {
     private SettingsMenusToolbarsPage currentMenusToolbarsPage;
     private SettingsQuickListsPage currentQuickListsPage;
     private SettingsSystemPage currentSystemPage;
+    private SettingsEditorGeneralPage currentEditorGeneralPage;
+    private Button applyButton;
 
     public SettingsDialog(Stage owner) {
         this(owner, "Appearance");
@@ -337,6 +339,15 @@ public class SettingsDialog {
 
         // 5. Editor and subpages
         if (underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) {
+            if ("General".equals(pageName)) {
+                if (currentEditorGeneralPage == null) {
+                    currentEditorGeneralPage = new SettingsEditorGeneralPage();
+                }
+                currentEditorGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentEditorGeneralPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -718,30 +729,9 @@ public class SettingsDialog {
         TreeItem<String> editor = new TreeItem<>("Editor");
         TreeItem<String> general = new TreeItem<>("General");
         general.getChildren().addAll(
-                new TreeItem<>("Auto Import"),
-                new TreeItem<>("Appearance"),
-                new TreeItem<>("Breadcrumbs"),
-                new TreeItem<>("Code Completion"),
-                new TreeItem<>("Code Folding"),
-                new TreeItem<>("Console"),
-                new TreeItem<>("Editor Tabs"),
-                new TreeItem<>("Gutter Icons"),
-                new TreeItem<>("Inline Completion"),
-                new TreeItem<>("Postfix Completion"),
-                new TreeItem<>("Sticky Lines")
+                new TreeItem<>("Code Editing"),
+                new TreeItem<>("Font")
         );
-
-        TreeItem<String> smartKeys = new TreeItem<>("Smart Keys");
-        smartKeys.getChildren().addAll(
-                new TreeItem<>("YAML"),
-                new TreeItem<>("HTML/CSS"),
-                new TreeItem<>("JSON"),
-                new TreeItem<>("Rust"),
-                new TreeItem<>("Markdown"),
-                new TreeItem<>("SQL"),
-                new TreeItem<>("JavaScript")
-        );
-        general.getChildren().add(smartKeys);
 
         TreeItem<String> colorSchemeNode = new TreeItem<>("Color Scheme");
         colorSchemeNode.getChildren().addAll(
@@ -824,8 +814,6 @@ public class SettingsDialog {
 
         editor.getChildren().addAll(
                 general,
-                new TreeItem<>("Code Editing"),
-                new TreeItem<>("Font"),
                 colorSchemeNode,
                 new TreeItem<>("Code Style"),
                 new TreeItem<>("Inspections"),
@@ -998,6 +986,19 @@ public class SettingsDialog {
         if (currentSystemPage != null) {
             currentSystemPage.save();
         }
+        if (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified()) {
+            currentEditorGeneralPage.apply();
+        }
+        updateApplyButtonState();
+    }
+
+    private void updateApplyButtonState() {
+        if (applyButton == null) return;
+        boolean modified = (currentEditorGeneralPage != null && currentEditorGeneralPage.isModified());
+        applyButton.setDisable(!modified);
+        applyButton.setStyle(modified
+                ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
+                : "-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #6F737A; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: default;");
     }
 
     // --------------------------------------------------- Button Bar
@@ -1018,17 +1019,22 @@ public class SettingsDialog {
         Button cancel = new Button("Cancel");
         cancel.getStyleClass().add("dialog-secondary");
         cancel.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
-        cancel.setOnAction(e -> stage.close());
+        cancel.setOnAction(e -> {
+            if (currentEditorGeneralPage != null) {
+                currentEditorGeneralPage.reset();
+            }
+            stage.close();
+        });
 
-        Button apply = new Button("Apply");
-        apply.getStyleClass().add("dialog-secondary");
-        apply.setStyle("-fx-background-color: #393B40; -fx-border-color: #4E5157; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-border-radius: 4; -fx-cursor: hand;");
-        apply.setOnAction(e -> applyAll());
+        applyButton = new Button("Apply");
+        applyButton.getStyleClass().add("dialog-secondary");
+        applyButton.setOnAction(e -> applyAll());
+        updateApplyButtonState();
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox bar = new HBox(10, helpBtn, spacer, ok, cancel, apply);
+        HBox bar = new HBox(10, helpBtn, spacer, ok, cancel, applyButton);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 20, 12, 20));
         bar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40 transparent transparent transparent; -fx-border-width: 1 0 0 0;");

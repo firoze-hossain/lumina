@@ -26,6 +26,8 @@ public final class Settings {
     private static final Path FILE = Path.of(
             System.getProperty("user.home"), ".lumina", "lumina.properties");
 
+    private static final Properties MEMORY_CACHE = new Properties();
+
     private Settings() {
     }
 
@@ -33,7 +35,19 @@ public final class Settings {
         return load().getProperty(key);
     }
 
+    public static void clear() {
+        MEMORY_CACHE.clear();
+        try {
+            Files.deleteIfExists(FILE);
+        } catch (Throwable ignored) {}
+    }
+
     public static void put(String key, String value) {
+        if (value == null || value.isBlank()) {
+            MEMORY_CACHE.remove(key);
+        } else {
+            MEMORY_CACHE.setProperty(key, value);
+        }
         Properties props = load();
         if (value == null || value.isBlank()) {
             props.remove(key);
@@ -45,18 +59,21 @@ public final class Settings {
             try (OutputStream out = Files.newOutputStream(FILE)) {
                 props.store(out, "Lumina IDE settings");
             }
-        } catch (IOException ignored) {
+        } catch (Throwable ignored) {
             // Settings are best-effort; never break the IDE over them.
         }
     }
 
     private static Properties load() {
         Properties props = new Properties();
-        if (Files.isRegularFile(FILE)) {
-            try (InputStream in = Files.newInputStream(FILE)) {
-                props.load(in);
-            } catch (IOException ignored) {
+        props.putAll(MEMORY_CACHE);
+        try {
+            if (Files.isRegularFile(FILE)) {
+                try (InputStream in = Files.newInputStream(FILE)) {
+                    props.load(in);
+                }
             }
+        } catch (Throwable ignored) {
         }
         return props;
     }
