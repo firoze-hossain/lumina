@@ -62,6 +62,29 @@ public class GutterMarkerService {
     // interface simpleName -> list of implementing TypeInfos
     private final Map<String, List<TypeInfo>> interfaceImplementations = new ConcurrentHashMap<>();
 
+    // Recent test outcomes (className#methodName -> boolean passed)
+    private static final Map<String, Boolean> TEST_OUTCOME_CACHE = new ConcurrentHashMap<>();
+
+    public static void recordTestOutcome(String className, String methodName, boolean passed) {
+        if (className != null && methodName != null) {
+            String simple = className.contains(".") ? className.substring(className.lastIndexOf('.') + 1) : className;
+            TEST_OUTCOME_CACHE.put(simple + "#" + methodName, passed);
+            TEST_OUTCOME_CACHE.put(className + "#" + methodName, passed);
+        }
+    }
+
+    public static Boolean getTestOutcome(String className, String methodName) {
+        if (className == null || methodName == null) return null;
+        String simple = className.contains(".") ? className.substring(className.lastIndexOf('.') + 1) : className;
+        Boolean b = TEST_OUTCOME_CACHE.get(simple + "#" + methodName);
+        if (b != null) return b;
+        return TEST_OUTCOME_CACHE.get(className + "#" + methodName);
+    }
+
+    public static void clearTestOutcomes() {
+        TEST_OUTCOME_CACHE.clear();
+    }
+
     public GutterMarkerService(Path projectRoot, List<Path> sourceRoots) {
         this.projectRoot = projectRoot;
         if (sourceRoots != null) {
@@ -338,6 +361,52 @@ public class GutterMarkerService {
                 }
             }
         }
+
+        // 4. Test Class and Test Method run markers
+        boolean isTestClass = decl.getNameAsString().endsWith("Test") || decl.getNameAsString().endsWith("Tests") || decl.getNameAsString().endsWith("TestCase");
+        boolean hasTestMethods = false;
+
+        for (MethodDeclaration m : decl.getMethods()) {
+            boolean isTest = isTestMethod(m, isTestClass);
+            if (isTest) {
+                hasTestMethods = true;
+                int mLine = m.getName().getBegin().map(p -> p.line).orElseGet(() -> m.getBegin().map(p -> p.line).orElse(-1));
+                if (mLine != -1) {
+                    Boolean passed = getTestOutcome(decl.getNameAsString(), m.getNameAsString());
+                    GutterMarker.MarkerType markerType = passed == null
+                            ? GutterMarker.MarkerType.TEST_METHOD
+                            : (passed ? GutterMarker.MarkerType.TEST_METHOD_PASSED : GutterMarker.MarkerType.TEST_METHOD_FAILED);
+                    String title = "Run '" + decl.getNameAsString() + "." + m.getNameAsString() + "()'";
+                    List<GutterMarker.NavigationTarget> targets = List.of(new GutterMarker.NavigationTarget(
+                            null, mLine, m.getNameAsString(), null, decl.getNameAsString(), "Test method"
+                    ));
+                    addMarker(lineMarkers, mLine, new GutterMarker(
+                            mLine, markerType, title, "Click to run or debug test", null, targets
+                    ));
+                }
+            }
+        }
+
+        if (isTestClass || hasTestMethods) {
+            String title = "Run '" + decl.getNameAsString() + "'";
+            List<GutterMarker.NavigationTarget> targets = List.of(new GutterMarker.NavigationTarget(
+                    null, declLine, decl.getNameAsString(), null, decl.getNameAsString(), "Test class"
+            ));
+            addMarker(lineMarkers, declLine, new GutterMarker(
+                    declLine, GutterMarker.MarkerType.TEST_CLASS, title, "Click to run or debug all tests", null, targets
+            ));
+        }
+    }
+
+    private static boolean isTestMethod(MethodDeclaration m, boolean inTestClass) {
+        for (var ann : m.getAnnotations()) {
+            String name = ann.getNameAsString();
+            if ("Test".equals(name) || "ParameterizedTest".equals(name) || "RepeatedTest".equals(name)
+                    || "TestFactory".equals(name) || "TestTemplate".equals(name)) {
+                return true;
+            }
+        }
+        return inTestClass && m.getNameAsString().startsWith("test") && m.getTypeAsString().equals("void");
     }
 
     private boolean isSpringBean(ClassOrInterfaceDeclaration decl) {

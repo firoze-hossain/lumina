@@ -20,10 +20,12 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -41,8 +43,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
 /**
- * Lumina IDE — Phase 3.
- * Full IntelliJ-style menu bar, Run/Terminal tool windows, Git integration
+ * Lumina IDE.
+ * Complete menu bar, Run/Terminal tool windows, Git integration
  * with branch switching, smart run (Java file / Maven / Gradle / Spring
  * Boot), Go to File, and .class viewing via javap.
  */
@@ -1060,13 +1062,15 @@ public class LuminaApp extends Application {
         Menu run = new Menu("Run");
         run.getItems().addAll(
                 item("Run 'LuminaApp'", "Shift+F10", e -> runSelectedConfig()), item("Debug 'LuminaApp'", "Shift+F9", e -> debugSelectedConfig()),
-                placeholder("Run 'LuminaApp' with Coverage", null), placeholder("Profile 'LuminaApp' with 'IntelliJ Profiler'", null), new SeparatorMenuItem(),
-                item("Run…", "Alt+Shift+F10", e -> runCurrentFile()), item("Debug…", "Alt+Shift+F9", e -> debugSelectedConfig()),
-                placeholder("Attach to Process…", "Shortcut+Alt+5"), placeholder("Edit Configurations…", null), placeholder("Manage Targets…", null),
-                new SeparatorMenuItem(), item("Stop", "Shortcut+F2", e -> console.stopProcess()), disabled("Stop Background Processes…"),
-                disabled("Show Running List"), new SeparatorMenuItem(), debugging, breakpoints, placeholder("View Breakpoints…", "Shortcut+Shift+F8"),
-                testHistory, placeholder("Import Tests from File…", null), placeholder("Manage Coverage Reports…", "Shortcut+Alt+6"),
-                new SeparatorMenuItem(), placeholder("Attach Profiler to Process…", null), profiler,
+                placeholder("Run 'LuminaApp' with Coverage", null), placeholder("Profile 'LuminaApp' with Profiler", null), new SeparatorMenuItem(),
+                item("Run\u2026", "Alt+Shift+F10", e -> runCurrentFile()), item("Debug\u2026", "Alt+Shift+F9", e -> debugSelectedConfig()),
+                item("Run Test at Caret", "Shortcut+Shift+R", e -> runTestAtCaret()),
+                item("Debug Test at Caret", "Shortcut+Shift+D", e -> debugTestAtCaret()),
+                placeholder("Attach to Process\u2026", "Shortcut+Alt+5"), placeholder("Edit Configurations\u2026", null), placeholder("Manage Targets\u2026", null),
+                new SeparatorMenuItem(), item("Stop", "Shortcut+F2", e -> console.stopProcess()), disabled("Stop Background Processes\u2026"),
+                disabled("Show Running List"), new SeparatorMenuItem(), debugging, breakpoints, placeholder("View Breakpoints\u2026", "Shortcut+Shift+F8"),
+                testHistory, placeholder("Import Tests from File\u2026", null), placeholder("Manage Coverage Reports\u2026", "Shortcut+Alt+6"),
+                new SeparatorMenuItem(), placeholder("Attach Profiler to Process\u2026", null), profiler,
                 new SeparatorMenuItem(), item("Run All Tests", "Shortcut+Shift+T", e -> runAllTests()), item("Run Current Test Class", null, e -> runCurrentTestClass()),
                 item("Clear Run Output", null, e -> console.clear()));
 
@@ -1279,6 +1283,34 @@ public class LuminaApp extends Application {
         runConfigBox = new ComboBox<>();
         runConfigBox.getStyleClass().add("run-config-box");
         runConfigBox.setPrefWidth(240);
+        runConfigBox.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(RunConfiguration item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item.label());
+                    setGraphic(createRunConfigGraphic(item));
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                }
+            }
+        });
+        runConfigBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(RunConfiguration item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item.label());
+                    setGraphic(createRunConfigGraphic(item));
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                }
+            }
+        });
 
         // Run occupies one toolbar slot for its whole life: it reads "Run"
         // until something starts, then becomes "Rerun" in that exact same
@@ -1891,6 +1923,55 @@ public class LuminaApp extends Application {
 
     // ------------------------------------------------------------------- run
 
+    private Node createRunConfigGraphic(RunConfiguration item) {
+        if (item == null) return null;
+        StackPane sp = new StackPane();
+        sp.setPrefSize(14, 14);
+        sp.setMinSize(14, 14);
+        sp.setMaxSize(14, 14);
+        sp.setAlignment(Pos.CENTER);
+
+        if (item.isTest()) {
+            javafx.scene.shape.Polygon p = new javafx.scene.shape.Polygon(
+                    -3.5, -4.5,
+                    4.5, 0.0,
+                    -3.5, 4.5
+            );
+            p.setFill(Color.web("#59A869"));
+            sp.getChildren().add(p);
+        } else if (item.type() == RunConfiguration.Type.CURRENT_FILE) {
+            Label l = new Label("\uD83D\uDCC4");
+            l.setStyle("-fx-font-size: 10px;");
+            sp.getChildren().add(l);
+        } else {
+            javafx.scene.shape.Polygon p = new javafx.scene.shape.Polygon(
+                    -3.5, -4.5,
+                    4.5, 0.0,
+                    -3.5, 4.5
+            );
+            p.setFill(Color.web("#3574F0"));
+            sp.getChildren().add(p);
+        }
+        return sp;
+    }
+
+    public void setOrSelectRunConfiguration(RunConfiguration config) {
+        if (config == null || runConfigBox == null) return;
+        RunConfiguration existing = null;
+        for (RunConfiguration c : runConfigBox.getItems()) {
+            if (c.label().equals(config.label())) {
+                existing = c;
+                break;
+            }
+        }
+        if (existing != null) {
+            runConfigBox.getSelectionModel().select(existing);
+        } else {
+            runConfigBox.getItems().add(0, config);
+            runConfigBox.getSelectionModel().select(config);
+        }
+    }
+
     private void refreshRunConfigs() {
         List<RunConfiguration> configs = RunConfiguration.detect(projectRoot);
         runConfigBox.getItems().setAll(configs);
@@ -1900,11 +1981,21 @@ public class LuminaApp extends Application {
 
     private void runSelectedConfig() {
         RunConfiguration config = runConfigBox.getValue();
-        if (config == null || config.commands() == null) {
+        if (config == null) {
+            runCurrentFile();
+            return;
+        }
+        if (config.isTest()) {
+            runTestMethod(config.testClass(), config.testMethod());
+            return;
+        }
+        if (config.commands() == null) {
             runCurrentFile();
             return;
         }
         showRunPanel();
+        console.showStandardConsole();
+        console.setExecutionTabName(config.label() + " \u2715");
         console.runSequence(config.label(), config.commands(), config.workDir());
     }
 
@@ -2243,26 +2334,82 @@ public class LuminaApp extends Application {
                 this::runAllTests);
     }
 
-    /** Run a test command, then parse the reports into the Tests window. */
+    /** Run a test command, then parse the reports into the test runner. */
     private void launchTests(String label, List<String> cmd, Runnable rerun) {
+        launchTests(label, cmd, rerun, null, null);
+    }
+
+    private void launchTests(String label, List<String> cmd, Runnable rerun, String className, String methodName) {
         lastTestRun = rerun;
         testRunStart = System.currentTimeMillis();
         testsPanel.showRunning(label);
         showRunPanel();
-        console.runCommandThen(label, cmd, projectRoot, this::collectTestResults);
+        console.setExecutionTabName(label + " \u2715");
+        console.showTestRunner(testsPanel);
+
+        testsPanel.setHandlers(
+                () -> { if (lastTestRun != null) lastTestRun.run(); },
+                this::rerunFailedTests,
+                () -> console.stopProcess()
+        );
+
+        Thread worker = new Thread(() -> {
+            int code = -1;
+            try {
+                testsPanel.appendConsole("/bin/sh " + String.join(" ", cmd) + "\n");
+                ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
+                if (projectRoot != null) pb.directory(projectRoot.toFile());
+                Process p = pb.start();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(p.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        testsPanel.appendConsole(line);
+                    }
+                }
+                code = p.waitFor();
+                testsPanel.appendConsole("\nProcess finished with exit code " + code);
+            } catch (Exception ex) {
+                testsPanel.appendConsole("\u2717 " + ex.getMessage());
+            } finally {
+                final int exitCode = code;
+                Platform.runLater(() -> collectTestResults(label, className, methodName, exitCode));
+            }
+        }, "lumina-test-exec");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void collectTestResults() {
-        final long since = testRunStart - 2000;   // clock skew safety
+        collectTestResults("Tests", null, null, 0);
+    }
+
+    private void collectTestResults(String label, String className, String methodName, int exitCode) {
+        final long since = testRunStart - 3000;   // clock skew safety
         Thread t = new Thread(() -> {
             List<dev.lumina.run.TestReport.Suite> suites =
                     dev.lumina.run.TestReport.parse(projectRoot, since);
+            if (suites.isEmpty() && className != null) {
+                boolean passed = (exitCode == 0);
+                String m = methodName != null ? methodName : "test";
+                double dur = Math.max(0.005, (System.currentTimeMillis() - testRunStart) / 1000.0);
+                dev.lumina.run.TestReport.Status st = passed ? dev.lumina.run.TestReport.Status.PASSED : dev.lumina.run.TestReport.Status.FAILED;
+                dev.lumina.run.TestReport.Case tc = new dev.lumina.run.TestReport.Case(className, m, st, dur, passed ? "" : "Process exited with code " + exitCode);
+                suites = List.of(new dev.lumina.run.TestReport.Suite(className, dur, List.of(tc)));
+            }
+
+            final List<dev.lumina.run.TestReport.Suite> finalSuites = suites;
             Platform.runLater(() -> {
-                testsPanel.showResults(suites);
-                if (!suites.isEmpty()) {
-                    toggleBottomPanel(true);
-                    iconRail.clearBottomSelection();
-                    bottomTabs.getSelectionModel().select(1);   // Tests tab
+                testsPanel.showResults(finalSuites);
+                for (var s : finalSuites) {
+                    for (var c : s.cases()) {
+                        dev.lumina.gutter.GutterMarkerService.recordTestOutcome(
+                                s.name(), c.method(), c.status() == dev.lumina.run.TestReport.Status.PASSED);
+                    }
+                }
+                EditorTab cur = currentEditor();
+                if (cur != null) {
+                    scheduleGutterMarkerScan(cur);
                 }
             });
         }, "lumina-test-report");
@@ -2337,40 +2484,119 @@ public class LuminaApp extends Application {
                     tab.getPath().getFileName() + " is not under src/test/java.");
             return;
         }
-        saveCurrent(false);
-        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
-        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
-                ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple, "test")
-                : RunConfiguration.gradleCmd(projectRoot, "test", "--tests", fqcn);
-        launchTests("Test " + simple, cmd, this::runCurrentTestClass);
+        runTestMethod(fqcn, null);
     }
 
-    /** Run a single @Test method (IntelliJ-style), or the whole class if null. */
     private void runTestMethod(String method) {
         EditorTab tab = currentEditor();
         if (tab == null || tab.getPath() == null) return;
         String fqcn = testFqcnOf(tab.getPath());
-        if (fqcn == null) {
-            error("Not a test class",
-                    tab.getPath().getFileName() + " is not under src/test/java.");
-            return;
-        }
-        if (method == null) {
-            runCurrentTestClass();
-            return;
-        }
-        saveCurrent(false);
-        String simple = fqcn.substring(fqcn.lastIndexOf('.') + 1);
-        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
-                ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple + "#" + method, "test")
-                : RunConfiguration.gradleCmd(projectRoot, "test",
-                "--tests", fqcn + "." + method);
-        final String m = method;
-        launchTests("Test " + simple + "." + method + "()", cmd,
-                () -> runTestMethod(m));
+        runTestMethod(fqcn, method);
     }
 
-    /** Right-click menu inside the code editor (IntelliJ-style). */
+    private void runTestMethod(String className, String method) {
+        if (!requireProject()) return;
+        saveCurrent(false);
+        String fqcn = className;
+        if (fqcn == null) {
+            EditorTab tab = currentEditor();
+            if (tab != null && tab.getPath() != null) fqcn = testFqcnOf(tab.getPath());
+        }
+        if (fqcn == null) {
+            error("Not a test class", "Open a test class under src/test/java first.");
+            return;
+        }
+
+        String simple = fqcn.contains(".") ? fqcn.substring(fqcn.lastIndexOf('.') + 1) : fqcn;
+        String label = method != null ? simple + "." + method : simple;
+        RunConfiguration config = method != null
+                ? RunConfiguration.testMethod(projectRoot, fqcn, method)
+                : RunConfiguration.testClass(projectRoot, fqcn);
+        setOrSelectRunConfiguration(config);
+
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? (method != null
+                    ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple + "#" + method, "test")
+                    : RunConfiguration.maven(projectRoot, "-Dtest=" + simple, "test"))
+                : (method != null
+                    ? RunConfiguration.gradleCmd(projectRoot, "test", "--tests", fqcn + "." + method)
+                    : RunConfiguration.gradleCmd(projectRoot, "test", "--tests", fqcn));
+
+        final String m = method;
+        final String c = fqcn;
+        launchTests(label, cmd, () -> runTestMethod(c, m), c, m);
+    }
+
+    private void debugTestMethod(String className, String method) {
+        if (!requireProject()) return;
+        saveCurrent(false);
+        String fqcn = className;
+        if (fqcn == null) {
+            EditorTab tab = currentEditor();
+            if (tab != null && tab.getPath() != null) fqcn = testFqcnOf(tab.getPath());
+        }
+        if (fqcn == null) return;
+        String simple = fqcn.contains(".") ? fqcn.substring(fqcn.lastIndexOf('.') + 1) : fqcn;
+        String label = method != null ? simple + "." + method : simple;
+        RunConfiguration config = method != null
+                ? RunConfiguration.testMethod(projectRoot, fqcn, method)
+                : RunConfiguration.testClass(projectRoot, fqcn);
+        setOrSelectRunConfiguration(config);
+
+        List<dev.lumina.debugger.DebugBreakpoint> bps = collectAllBreakpoints();
+        showDebugPanel();
+        debugPanel.appendConsole("Debug session started for test: " + label);
+        debugPanel.appendConsole("Breakpoints active: " + bps.size());
+        debugPanel.appendConsole("Connecting JDI debugger on port 5005...");
+
+        List<String> cmd = RunConfiguration.isMavenProject(projectRoot)
+                ? (method != null
+                    ? RunConfiguration.maven(projectRoot, "-Dtest=" + simple + "#" + method,
+                        "-Dmaven.surefire.debug=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005", "test")
+                    : RunConfiguration.maven(projectRoot, "-Dtest=" + simple,
+                        "-Dmaven.surefire.debug=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005", "test"))
+                : (method != null
+                    ? RunConfiguration.gradleCmd(projectRoot, "test", "--debug-jvm", "--tests", fqcn + "." + method)
+                    : RunConfiguration.gradleCmd(projectRoot, "test", "--debug-jvm", "--tests", fqcn));
+
+        final String m = method;
+        final String c = fqcn;
+        launchTests(label + " [Debug]", cmd, () -> debugTestMethod(c, m), c, m);
+        new Thread(() -> {
+            try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
+            Platform.runLater(() -> debuggerService.connect("localhost", 5005, bps));
+        }).start();
+    }
+
+    private void runTestAtCaret() {
+        EditorTab tab = currentEditor();
+        if (tab == null) return;
+        String method = tab.testMethodAtCaret();
+        String cls = tab.testClassAtCaret();
+        if (method != null) {
+            runTestMethod(cls, method);
+        } else if (tab.getPath() != null && testFqcnOf(tab.getPath()) != null) {
+            runTestMethod(cls, null);
+        } else {
+            runCurrentFile();
+        }
+    }
+
+    private void debugTestAtCaret() {
+        EditorTab tab = currentEditor();
+        if (tab == null) return;
+        String method = tab.testMethodAtCaret();
+        String cls = tab.testClassAtCaret();
+        if (method != null) {
+            debugTestMethod(cls, method);
+        } else if (tab.getPath() != null && testFqcnOf(tab.getPath()) != null) {
+            debugTestMethod(cls, null);
+        } else {
+            debugSelectedConfig();
+        }
+    }
+
+    /** Right-click menu inside the code editor. */
     private ContextMenu buildEditorContextMenu() {
         ContextMenu menu = new ContextMenu();
 
@@ -2415,10 +2641,14 @@ public class LuminaApp extends Application {
             if (t != null) t.openGeneratePopup();
         });
 
-        MenuItem runTest = item("\u25B6  Run Test", null, e -> {
-            EditorTab t = currentEditor();
-            runTestMethod(t != null ? t.testMethodAtCaret() : null);
-        });
+        MenuItem runTest = item("\u25B6  Run", "Ctrl+Shift+R", e -> runTestAtCaret());
+        MenuItem debugTest = item("\uD83D\uDC1E  Debug", "Ctrl+Shift+D", e -> debugTestAtCaret());
+        Menu moreRunDebug = new Menu("More Run/Debug");
+        moreRunDebug.getItems().addAll(
+                item("Run with Coverage", null, e -> {}),
+                item("Modify Run Configuration\u2026", null, e -> {})
+        );
+
         MenuItem run = item("\u25B6  Run", null, e -> runCurrentFile());
         MenuItem debug = item("\uD83D\uDC1E  Debug", null, e -> debugSelectedConfig());
 
@@ -2441,11 +2671,42 @@ public class LuminaApp extends Application {
             boolean isMain = t != null && t.getPath() != null
                     && fqcnOf(t.getPath()) != null;
             String testMethod = (t != null && isTest) ? t.testMethodAtCaret() : null;
-            runTest.setText(testMethod != null
-                    ? "\u25B6  Run '" + testMethod + "()'" : "\u25B6  Run Test");
-            runTest.setVisible(isTest);
-            run.setVisible(isMain);
-            debug.setVisible(isMain);
+            String testClass = (t != null && isTest) ? t.testClassAtCaret() : null;
+
+            if (isTest) {
+                if (testMethod != null) {
+                    runTest.setText("\u25B6  Run '" + testMethod + "()'");
+                    debugTest.setText("\uD83D\uDC1E  Debug '" + testMethod + "()'");
+                    runTest.setOnAction(ev -> runTestMethod(testClass, testMethod));
+                    debugTest.setOnAction(ev -> debugTestMethod(testClass, testMethod));
+                } else {
+                    String c = testClass != null ? testClass : "Test";
+                    runTest.setText("\u25B6  Run '" + c + "'");
+                    debugTest.setText("\uD83D\uDC1E  Debug '" + c + "'");
+                    runTest.setOnAction(ev -> runTestMethod(testClass, null));
+                    debugTest.setOnAction(ev -> debugTestMethod(testClass, null));
+                }
+                runTest.setVisible(true);
+                debugTest.setVisible(true);
+                moreRunDebug.setVisible(true);
+                run.setVisible(false);
+                debug.setVisible(false);
+            } else if (isMain) {
+                String c = t != null && t.getPath() != null ? t.getPath().getFileName().toString().replace(".java", "") : "Main";
+                run.setText("\u25B6  Run '" + c + ".main()'");
+                debug.setText("\uD83D\uDC1E  Debug '" + c + ".main()'");
+                run.setVisible(true);
+                debug.setVisible(true);
+                runTest.setVisible(false);
+                debugTest.setVisible(false);
+                moreRunDebug.setVisible(false);
+            } else {
+                runTest.setVisible(false);
+                debugTest.setVisible(false);
+                moreRunDebug.setVisible(false);
+                run.setVisible(false);
+                debug.setVisible(false);
+            }
         });
 
         menu.getItems().addAll(
@@ -2457,7 +2718,7 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(),
                 rename, refactor, generate,
                 new SeparatorMenuItem(),
-                runTest, run, debug,
+                runTest, debugTest, moreRunDebug, run, debug,
                 new SeparatorMenuItem(),
                 openIn, localHistory,
                 new SeparatorMenuItem(),
@@ -6526,6 +6787,13 @@ public class LuminaApp extends Application {
     private void addTabTo(TabPane group, EditorTab tab) {
         tab.setEditorContextMenu(buildEditorContextMenu());
         tab.setContextMenu(buildEditorTabContextMenu(tab));
+        tab.setOnRunTest((cls, method, isDebug) -> {
+            if (isDebug) {
+                debugTestMethod(cls, method);
+            } else {
+                runTestMethod(cls, method);
+            }
+        });
         tab.setOnBreakpointsChanged(() -> {
             if (debuggerService != null && debuggerService.isConnected() && tab.getPath() != null) {
                 String fqcn = fqcnOf(tab.getPath());
@@ -6605,7 +6873,7 @@ public class LuminaApp extends Application {
             return items;
         });
         // M3: compile-on-idle diagnostics for project .java files, plus
-        // IntelliJ-style Spring Boot config inspections for application
+        // Spring Boot config inspections for application
         // .properties / .yml (unknown properties, missing JDBC driver).
         tab.setDiagnosticsProvider((file, text) -> {
             if (file == null || projectRoot == null) return List.of();
@@ -6683,7 +6951,7 @@ public class LuminaApp extends Application {
 
     /**
      * Right-click menu for an editor tab header, laid out to match
-     * IntelliJ's own item-for-item. Close/Pin/Copy Path/Rename/Annotate/
+     * standard IDE item-for-item. Close/Pin/Copy Path/Rename/Annotate/
      * Open In are real; Split (no split-editor support exists),
      * multi-window, Kotlin conversion, Gist creation, and Copilot are
      * shown \u2014 matching the layout \u2014 but honestly disabled rather than

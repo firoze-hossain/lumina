@@ -12,13 +12,14 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 
 /**
- * Vector gutter icons with high fidelity matching IntelliJ IDEA Ultimate:
+ * Vector gutter icons with high fidelity:
  * - Implements method ((I) ↑)
  * - Implemented in method ((I) ↓)
  * - Overrides method ((O) ↑)
  * - Inferred annotations (@)
  * - Spring Bean / Autowired dependency (↙)
  * - Class implements / Interface declaration icons
+ * - Test Class (▶▶) and Test Method (▶, ▶✓, ▶✗) run icons
  */
 public final class GutterMarkerIcons {
 
@@ -38,6 +39,10 @@ public final class GutterMarkerIcons {
             case IMPLEMENTED_INTERFACE -> createImplementedInterfaceIcon();
             case INFERRED_ANNOTATION -> createInferredAnnotationIcon();
             case BEAN_INJECTION -> createBeanInjectionIcon();
+            case TEST_CLASS -> createTestClassIcon();
+            case TEST_METHOD -> createTestMethodIcon();
+            case TEST_METHOD_PASSED -> createTestMethodPassedIcon();
+            case TEST_METHOD_FAILED -> createTestMethodFailedIcon();
         };
     }
 
@@ -200,6 +205,118 @@ public final class GutterMarkerIcons {
         arrow.setFill(Color.TRANSPARENT);
 
         root.getChildren().addAll(circle, arrow);
+        applyHoverStyle(root);
+        return root;
+    }
+
+    /** Class-level run button (green double play ▶▶). */
+    public static Node createTestClassIcon() {
+        StackPane root = new StackPane();
+        root.setPrefSize(14, 14);
+        root.setMinSize(14, 14);
+        root.setMaxSize(14, 14);
+        root.setAlignment(Pos.CENTER);
+
+        javafx.scene.shape.Polygon p1 = new javafx.scene.shape.Polygon(
+                -4.5, -4.0,
+                0.5, 0.0,
+                -4.5, 4.0
+        );
+        p1.setFill(Color.web(GREEN));
+
+        javafx.scene.shape.Polygon p2 = new javafx.scene.shape.Polygon(
+                0.5, -4.0,
+                5.5, 0.0,
+                0.5, 4.0
+        );
+        p2.setFill(Color.web(GREEN));
+
+        root.getChildren().addAll(p1, p2);
+        applyHoverStyle(root);
+        return root;
+    }
+
+    /** Method-level run button (green single play ▶). */
+    public static Node createTestMethodIcon() {
+        StackPane root = new StackPane();
+        root.setPrefSize(14, 14);
+        root.setMinSize(14, 14);
+        root.setMaxSize(14, 14);
+        root.setAlignment(Pos.CENTER);
+
+        javafx.scene.shape.Polygon play = new javafx.scene.shape.Polygon(
+                -3.5, -4.5,
+                4.5, 0.0,
+                -3.5, 4.5
+        );
+        play.setFill(Color.web(GREEN));
+
+        root.getChildren().add(play);
+        applyHoverStyle(root);
+        return root;
+    }
+
+    /** Method-level passed test button (green circle with checkmark ✓ and play ▶). */
+    public static Node createTestMethodPassedIcon() {
+        StackPane root = new StackPane();
+        root.setPrefSize(15, 14);
+        root.setMinSize(15, 14);
+        root.setMaxSize(15, 14);
+        root.setAlignment(Pos.CENTER);
+
+        Circle circle = new Circle(4.5);
+        circle.setFill(Color.web("#36583E"));
+        circle.setStroke(Color.web(GREEN));
+        circle.setStrokeWidth(1.0);
+        circle.setTranslateX(-2.5);
+
+        javafx.scene.shape.Polyline check = new javafx.scene.shape.Polyline(
+                -4.5, 0.0,
+                -3.0, 1.8,
+                -0.5, -1.8
+        );
+        check.setStroke(Color.web("#98D8A0"));
+        check.setStrokeWidth(1.2);
+
+        javafx.scene.shape.Polygon play = new javafx.scene.shape.Polygon(
+                2.5, -3.5,
+                6.5, 0.0,
+                2.5, 3.5
+        );
+        play.setFill(Color.web(GREEN));
+
+        root.getChildren().addAll(circle, check, play);
+        applyHoverStyle(root);
+        return root;
+    }
+
+    /** Method-level failed test button (red circle with cross ✗ and play ▶). */
+    public static Node createTestMethodFailedIcon() {
+        StackPane root = new StackPane();
+        root.setPrefSize(15, 14);
+        root.setMinSize(15, 14);
+        root.setMaxSize(15, 14);
+        root.setAlignment(Pos.CENTER);
+
+        Circle circle = new Circle(4.5);
+        circle.setFill(Color.web("#583636"));
+        circle.setStroke(Color.web("#E06C75"));
+        circle.setStrokeWidth(1.0);
+        circle.setTranslateX(-2.5);
+
+        SVGPath cross = new SVGPath();
+        cross.setContent("M -4 -1.5 L -1 1.5 M -1 -1.5 L -4 1.5");
+        cross.setStroke(Color.web("#FFA0A0"));
+        cross.setStrokeWidth(1.1);
+
+        javafx.scene.shape.Polygon play = new javafx.scene.shape.Polygon(
+                2.5, -3.5,
+                6.5, 0.0,
+                2.5, 3.5
+        );
+        play.setFill(Color.web(GREEN));
+
+        root.getChildren().addAll(circle, cross, play);
         applyHoverStyle(root);
         return root;
     }
