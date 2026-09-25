@@ -1,190 +1,313 @@
-// SettingsCodeEditingPage.java
 package dev.lumina.ui;
 
+import dev.lumina.settings.CodeEditingSettings;
+import dev.lumina.settings.CodeEditingSettings.RefactoringOption;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
 /**
- * IntelliJ-style Editor > Code Editing settings page.
- * Complete implementation matching the screenshot.
+ * Editor > Code Editing settings page.
+ * Dynamic persistent implementation matching the modern IDE design.
  */
 public class SettingsCodeEditingPage extends VBox {
 
+    // Highlight on Caret Movement
+    private final CheckBox matchedBraceCheck = new CheckBox("Matched brace");
+    private final CheckBox currentScopeCheck = new CheckBox("Current scope");
+    private final CheckBox usagesAtCaretCheck = new CheckBox("Usages of element at caret");
+
+    // Quick Documentation
+    private final CheckBox showQuickDocHoverCheck = new CheckBox("Show quick documentation on hover");
+
+    // Refactorings
+    private final ToggleGroup refactoringGroup = new ToggleGroup();
+    private final RadioButton inEditorRadio = new RadioButton("In the editor");
+    private final RadioButton inModalRadio = new RadioButton("In modal dialogs");
+    private final CheckBox preselectRenameCheck = new CheckBox("Preselect current symbol name for Rename refactoring");
+    private final CheckBox showInlineDialogCheck = new CheckBox("Show inline dialog for local variables");
+
+    // Error Highlighting
+    private final TextField errorStripeMinHeightField = new TextField("2");
+    private final TextField autoreparseDelayField = new TextField("300");
+    private final ComboBox<String> nextErrorCombo = new ComboBox<>();
+    private final CheckBox suppressWarningsCheck = new CheckBox("Suppress with @SuppressWarnings");
+
+    // Editor Tooltips
+    private final TextField tooltipDelayField = new TextField("500");
+
+    private Runnable onModifiedListener;
+    private boolean suppressEvents = false;
+
     public SettingsCodeEditingPage() {
         getStyleClass().add("settings-page");
-        setPadding(new Insets(8, 0, 8, 0));
-        setSpacing(14);
+        setStyle("-fx-background-color: #1E1F22;");
+        setPadding(new Insets(16, 24, 20, 24));
+        setSpacing(12);
 
-        // ============================================================
-        // Highlight on Caret Movement section
-        // ============================================================
-        Label highlightLabel = new Label("Highlight on Caret Movement");
-        highlightLabel.getStyleClass().add("settings-section");
+        buildUi();
+        setupListeners();
+        loadFromSettings(CodeEditingSettings.getInstance());
+    }
 
-        VBox highlightBox = new VBox(4);
-        highlightBox.setPadding(new Insets(4, 0, 8, 20));
+    private void styleCheckBox(CheckBox cb) {
+        cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+    }
 
-        CheckBox matchedBrace = new CheckBox("Matched brace");
-        matchedBrace.setSelected(true);
-        matchedBrace.getStyleClass().add("settings-check");
+    private void styleRadioButton(RadioButton rb) {
+        rb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+    }
 
-        CheckBox currentScope = new CheckBox("Current scope");
-        currentScope.setSelected(false);
-        currentScope.getStyleClass().add("settings-check");
+    private void styleNumberField(TextField tf, int width) {
+        tf.setPrefWidth(width);
+        tf.setMaxWidth(width);
+        tf.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 6 3 6; -fx-font-size: 12px;");
+    }
 
-        CheckBox usagesAtCaret = new CheckBox("Usages of element at caret");
-        usagesAtCaret.setSelected(true);
-        usagesAtCaret.getStyleClass().add("settings-check");
+    private HBox createSectionHeader(String title) {
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(6, 0, 4, 0));
 
-        highlightBox.getChildren().addAll(matchedBrace, currentScope, usagesAtCaret);
+        Label lbl = new Label(title);
+        lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        // ============================================================
-        // Quick Documentation section
-        // ============================================================
-        Label quickDocLabel = new Label("Quick Documentation");
-        quickDocLabel.getStyleClass().add("settings-section");
+        Region line = new Region();
+        line.setStyle("-fx-background-color: #393B40; -fx-pref-height: 1px; -fx-max-height: 1px;");
+        HBox.setHgrow(line, Priority.ALWAYS);
 
-        VBox quickDocBox = new VBox(4);
-        quickDocBox.setPadding(new Insets(4, 0, 8, 20));
+        header.getChildren().addAll(lbl, line);
+        return header;
+    }
 
-        CheckBox showDocOnHover = new CheckBox("Show quick documentation on hover");
-        showDocOnHover.setSelected(true);
-        showDocOnHover.getStyleClass().add("settings-check");
+    private void buildUi() {
+        // Highlight on Caret Movement
+        styleCheckBox(matchedBraceCheck);
+        styleCheckBox(currentScopeCheck);
+        styleCheckBox(usagesAtCaretCheck);
 
-        quickDocBox.getChildren().add(showDocOnHover);
+        HBox highlightHeader = createSectionHeader("Highlight on Caret Movement");
+        VBox highlightGroup = new VBox(8, matchedBraceCheck, currentScopeCheck, usagesAtCaretCheck);
 
-        // ============================================================
-        // Refactorings section
-        // ============================================================
-        Label refactorLabel = new Label("Refactorings");
-        refactorLabel.getStyleClass().add("settings-section");
+        // Quick Documentation
+        styleCheckBox(showQuickDocHoverCheck);
+        HBox quickDocHeader = createSectionHeader("Quick Documentation");
+        VBox quickDocGroup = new VBox(8, showQuickDocHoverCheck);
 
-        VBox refactorBox = new VBox(4);
-        refactorBox.setPadding(new Insets(4, 0, 8, 20));
+        // Refactorings
+        HBox refactorHeader = createSectionHeader("Refactorings");
+        Label specifyOptionsLabel = new Label("Specify refactoring options:");
+        specifyOptionsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
-        CheckBox specifyOptions = new CheckBox("Specify refactoring options:");
-        specifyOptions.setSelected(true);
-        specifyOptions.getStyleClass().add("settings-check");
+        inEditorRadio.setToggleGroup(refactoringGroup);
+        inModalRadio.setToggleGroup(refactoringGroup);
+        styleRadioButton(inEditorRadio);
+        styleRadioButton(inModalRadio);
 
-        VBox specifyOptionsBox = new VBox(4);
-        specifyOptionsBox.setPadding(new Insets(4, 0, 4, 20));
+        VBox radioBox = new VBox(6, inEditorRadio, inModalRadio);
+        radioBox.setPadding(new Insets(2, 0, 2, 20));
 
-        CheckBox inEditor = new CheckBox("In the editor");
-        inEditor.setSelected(false);
-        inEditor.getStyleClass().add("settings-check");
+        styleCheckBox(preselectRenameCheck);
+        styleCheckBox(showInlineDialogCheck);
 
-        CheckBox inModalDialogs = new CheckBox("In modal dialogs");
-        inModalDialogs.setSelected(false);
-        inModalDialogs.getStyleClass().add("settings-check");
-
-        specifyOptionsBox.getChildren().addAll(inEditor, inModalDialogs);
-
-        CheckBox preselectSymbol = new CheckBox("Preselect current symbol name for Rename refactoring");
-        preselectSymbol.setSelected(true);
-        preselectSymbol.getStyleClass().add("settings-check");
-
-        CheckBox showInlineDialog = new CheckBox("Show inline dialog for local variables");
-        showInlineDialog.setSelected(true);
-        showInlineDialog.getStyleClass().add("settings-check");
-
-        refactorBox.getChildren().addAll(
-            specifyOptions,
-            specifyOptionsBox,
-            preselectSymbol,
-            showInlineDialog
+        VBox refactorGroup = new VBox(8,
+                specifyOptionsLabel,
+                radioBox,
+                preselectRenameCheck,
+                showInlineDialogCheck
         );
 
-        // ============================================================
-        // Error Highlighting section
-        // ============================================================
-        Label errorHighlightLabel = new Label("Error Highlighting");
-        errorHighlightLabel.getStyleClass().add("settings-section");
+        // Error Highlighting
+        HBox errorHighlightHeader = createSectionHeader("Error Highlighting");
 
-        VBox errorHighlightBox = new VBox(4);
-        errorHighlightBox.setPadding(new Insets(4, 0, 8, 20));
-
-        HBox minHeightRow = new HBox(8);
-        minHeightRow.setAlignment(Pos.CENTER_LEFT);
-        CheckBox errorStripeMark = new CheckBox("Error stripe mark min height:");
-        errorStripeMark.setSelected(true);
-        errorStripeMark.getStyleClass().add("settings-check");
-        Spinner<Integer> minHeightSpinner = new Spinner<>(1, 10, 2, 1);
-        minHeightSpinner.setPrefWidth(60);
-        minHeightSpinner.getStyleClass().add("settings-spinner");
+        styleNumberField(errorStripeMinHeightField, 45);
+        Label minHeightLabel = new Label("Error stripe mark min height:");
+        minHeightLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
         Label pixelsLabel = new Label("pixels");
-        pixelsLabel.getStyleClass().add("settings-label");
-        minHeightRow.getChildren().addAll(errorStripeMark, minHeightSpinner, pixelsLabel);
+        pixelsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        HBox minHeightRow = new HBox(8, minHeightLabel, errorStripeMinHeightField, pixelsLabel);
+        minHeightRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox autoreparseRow = new HBox(8);
-        autoreparseRow.setAlignment(Pos.CENTER_LEFT);
-        CheckBox autoreparse = new CheckBox("Autoreparse delay:");
-        autoreparse.setSelected(true);
-        autoreparse.getStyleClass().add("settings-check");
-        Spinner<Integer> autoreparseSpinner = new Spinner<>(100, 2000, 300, 50);
-        autoreparseSpinner.setPrefWidth(70);
-        autoreparseSpinner.getStyleClass().add("settings-spinner");
+        styleNumberField(autoreparseDelayField, 55);
+        Label autoreparseLabel = new Label("Autoreparse delay:");
+        autoreparseLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
         Label msLabel = new Label("milliseconds");
-        msLabel.getStyleClass().add("settings-label");
-        autoreparseRow.getChildren().addAll(autoreparse, autoreparseSpinner, msLabel);
+        msLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        HBox autoreparseRow = new HBox(8, autoreparseLabel, autoreparseDelayField, msLabel);
+        autoreparseRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox nextErrorRow = new HBox(8);
+        nextErrorCombo.getItems().addAll(
+                "The problems with the highest priority",
+                "All problems"
+        );
+        nextErrorCombo.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px;");
+        Label nextErrorLabel = new Label("The 'Next Error' action goes through:");
+        nextErrorLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        HBox nextErrorRow = new HBox(8, nextErrorLabel, nextErrorCombo);
         nextErrorRow.setAlignment(Pos.CENTER_LEFT);
-        CheckBox nextError = new CheckBox("The 'Next Error' action goes through:");
-        nextError.setSelected(true);
-        nextError.getStyleClass().add("settings-check");
-        CheckBox highestPriority = new CheckBox("The problems with the highest priority");
-        highestPriority.setSelected(false);
-        highestPriority.getStyleClass().add("settings-check");
-        nextErrorRow.getChildren().addAll(nextError, highestPriority);
 
-        CheckBox suppressWarnings = new CheckBox("Suppress with @SuppressWarnings");
-        suppressWarnings.setSelected(true);
-        suppressWarnings.getStyleClass().add("settings-check");
+        styleCheckBox(suppressWarningsCheck);
 
-        errorHighlightBox.getChildren().addAll(
-            minHeightRow,
-            autoreparseRow,
-            nextErrorRow,
-            suppressWarnings
+        VBox errorHighlightGroup = new VBox(8,
+                minHeightRow,
+                autoreparseRow,
+                nextErrorRow,
+                suppressWarningsCheck
         );
 
-        // ============================================================
-        // Editor Tooltips section
-        // ============================================================
-        Label tooltipsLabel = new Label("Editor Tooltips");
-        tooltipsLabel.getStyleClass().add("settings-section");
+        // Editor Tooltips
+        HBox tooltipsHeader = createSectionHeader("Editor Tooltips");
 
-        HBox tooltipRow = new HBox(8);
-        tooltipRow.setPadding(new Insets(4, 0, 8, 20));
-        tooltipRow.setAlignment(Pos.CENTER_LEFT);
-
-        CheckBox tooltipDelay = new CheckBox("Tooltip delay:");
-        tooltipDelay.setSelected(false);
-        tooltipDelay.getStyleClass().add("settings-check");
-        Spinner<Integer> tooltipSpinner = new Spinner<>(100, 3000, 500, 100);
-        tooltipSpinner.setPrefWidth(70);
-        tooltipSpinner.getStyleClass().add("settings-spinner");
+        styleNumberField(tooltipDelayField, 55);
+        Label tooltipLabel = new Label("Tooltip delay:");
+        tooltipLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
         Label tooltipMsLabel = new Label("milliseconds");
-        tooltipMsLabel.getStyleClass().add("settings-label");
+        tooltipMsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        HBox tooltipsRow = new HBox(8, tooltipLabel, tooltipDelayField, tooltipMsLabel);
+        tooltipsRow.setAlignment(Pos.CENTER_LEFT);
 
-        tooltipRow.getChildren().addAll(tooltipDelay, tooltipSpinner, tooltipMsLabel);
+        VBox tooltipsGroup = new VBox(8, tooltipsRow);
 
-        // ============================================================
-        // Assemble all sections
-        // ============================================================
         getChildren().addAll(
-            highlightLabel,
-            highlightBox,
-            quickDocLabel,
-            quickDocBox,
-            refactorLabel,
-            refactorBox,
-            errorHighlightLabel,
-            errorHighlightBox,
-            tooltipsLabel,
-            tooltipRow
+                highlightHeader, highlightGroup,
+                quickDocHeader, quickDocGroup,
+                refactorHeader, refactorGroup,
+                errorHighlightHeader, errorHighlightGroup,
+                tooltipsHeader, tooltipsGroup
         );
     }
+
+    private void setupListeners() {
+        matchedBraceCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        currentScopeCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        usagesAtCaretCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        showQuickDocHoverCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        inEditorRadio.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        inModalRadio.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        preselectRenameCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        showInlineDialogCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        errorStripeMinHeightField.textProperty().addListener((obs, old, val) -> notifyModified());
+        autoreparseDelayField.textProperty().addListener((obs, old, val) -> notifyModified());
+        nextErrorCombo.valueProperty().addListener((obs, old, val) -> notifyModified());
+        suppressWarningsCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        tooltipDelayField.textProperty().addListener((obs, old, val) -> notifyModified());
+    }
+
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
+
+    private void notifyModified() {
+        if (!suppressEvents && onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
+
+    public void loadFromSettings(CodeEditingSettings s) {
+        suppressEvents = true;
+        try {
+            matchedBraceCheck.setSelected(s.isMatchedBrace());
+            currentScopeCheck.setSelected(s.isCurrentScope());
+            usagesAtCaretCheck.setSelected(s.isUsagesOfElementAtCaret());
+
+            showQuickDocHoverCheck.setSelected(s.isShowQuickDocOnHover());
+
+            if (s.getRefactoringOption() == RefactoringOption.IN_MODAL_DIALOGS) {
+                inModalRadio.setSelected(true);
+            } else {
+                inEditorRadio.setSelected(true);
+            }
+
+            preselectRenameCheck.setSelected(s.isPreselectCurrentSymbolForRename());
+            showInlineDialogCheck.setSelected(s.isShowInlineDialogForLocalVariables());
+
+            errorStripeMinHeightField.setText(String.valueOf(s.getErrorStripeMarkMinHeight()));
+            autoreparseDelayField.setText(String.valueOf(s.getAutoreparseDelay()));
+            nextErrorCombo.setValue(s.getNextErrorActionGoesThrough());
+            suppressWarningsCheck.setSelected(s.isSuppressWithSuppressWarnings());
+
+            tooltipDelayField.setText(String.valueOf(s.getTooltipDelay()));
+        } finally {
+            suppressEvents = false;
+        }
+    }
+
+    public boolean isModified() {
+        CodeEditingSettings s = CodeEditingSettings.getInstance();
+        boolean refactModified = (inEditorRadio.isSelected() && s.getRefactoringOption() != RefactoringOption.IN_EDITOR)
+                || (inModalRadio.isSelected() && s.getRefactoringOption() != RefactoringOption.IN_MODAL_DIALOGS);
+
+        int minHeight = parseSafeInt(errorStripeMinHeightField.getText(), s.getErrorStripeMarkMinHeight());
+        int autoreparse = parseSafeInt(autoreparseDelayField.getText(), s.getAutoreparseDelay());
+        int tooltipDelay = parseSafeInt(tooltipDelayField.getText(), s.getTooltipDelay());
+
+        return matchedBraceCheck.isSelected() != s.isMatchedBrace()
+                || currentScopeCheck.isSelected() != s.isCurrentScope()
+                || usagesAtCaretCheck.isSelected() != s.isUsagesOfElementAtCaret()
+                || showQuickDocHoverCheck.isSelected() != s.isShowQuickDocOnHover()
+                || refactModified
+                || preselectRenameCheck.isSelected() != s.isPreselectCurrentSymbolForRename()
+                || showInlineDialogCheck.isSelected() != s.isShowInlineDialogForLocalVariables()
+                || minHeight != s.getErrorStripeMarkMinHeight()
+                || autoreparse != s.getAutoreparseDelay()
+                || !java.util.Objects.equals(nextErrorCombo.getValue(), s.getNextErrorActionGoesThrough())
+                || suppressWarningsCheck.isSelected() != s.isSuppressWithSuppressWarnings()
+                || tooltipDelay != s.getTooltipDelay();
+    }
+
+    public void apply() {
+        CodeEditingSettings s = CodeEditingSettings.getInstance();
+        s.setMatchedBrace(matchedBraceCheck.isSelected());
+        s.setCurrentScope(currentScopeCheck.isSelected());
+        s.setUsagesOfElementAtCaret(usagesAtCaretCheck.isSelected());
+
+        s.setShowQuickDocOnHover(showQuickDocHoverCheck.isSelected());
+
+        s.setRefactoringOption(inModalRadio.isSelected() ? RefactoringOption.IN_MODAL_DIALOGS : RefactoringOption.IN_EDITOR);
+        s.setPreselectCurrentSymbolForRename(preselectRenameCheck.isSelected());
+        s.setShowInlineDialogForLocalVariables(showInlineDialogCheck.isSelected());
+
+        s.setErrorStripeMarkMinHeight(parseSafeInt(errorStripeMinHeightField.getText(), s.getErrorStripeMarkMinHeight()));
+        s.setAutoreparseDelay(parseSafeInt(autoreparseDelayField.getText(), s.getAutoreparseDelay()));
+        if (nextErrorCombo.getValue() != null) {
+            s.setNextErrorActionGoesThrough(nextErrorCombo.getValue());
+        }
+        s.setSuppressWithSuppressWarnings(suppressWarningsCheck.isSelected());
+        s.setTooltipDelay(parseSafeInt(tooltipDelayField.getText(), s.getTooltipDelay()));
+
+        s.save();
+    }
+
+    public void reset() {
+        loadFromSettings(CodeEditingSettings.getInstance());
+    }
+
+    private int parseSafeInt(String text, int defaultVal) {
+        if (text == null || text.isBlank()) return defaultVal;
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException e) {
+            return defaultVal;
+        }
+    }
+
+    // Component Getters for testing and programmatic access
+    public CheckBox getMatchedBraceCheck() { return matchedBraceCheck; }
+    public CheckBox getCurrentScopeCheck() { return currentScopeCheck; }
+    public CheckBox getUsagesAtCaretCheck() { return usagesAtCaretCheck; }
+    public CheckBox getShowQuickDocHoverCheck() { return showQuickDocHoverCheck; }
+    public RadioButton getInEditorRadio() { return inEditorRadio; }
+    public RadioButton getInModalRadio() { return inModalRadio; }
+    public CheckBox getPreselectRenameCheck() { return preselectRenameCheck; }
+    public CheckBox getShowInlineDialogCheck() { return showInlineDialogCheck; }
+    public TextField getErrorStripeMinHeightField() { return errorStripeMinHeightField; }
+    public TextField getAutoreparseDelayField() { return autoreparseDelayField; }
+    public ComboBox<String> getNextErrorCombo() { return nextErrorCombo; }
+    public CheckBox getSuppressWarningsCheck() { return suppressWarningsCheck; }
+    public TextField getTooltipDelayField() { return tooltipDelayField; }
 }
