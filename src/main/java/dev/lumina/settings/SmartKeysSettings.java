@@ -174,21 +174,23 @@ public final class SmartKeysSettings {
 
     // --- JavaScript ---
     private boolean jsReplaceStringLiteralOnTemplate = true;
-    private boolean jsStartTemplateStringInterpolation = true;
+    private boolean jsStartTemplateStringInterpolation = false;
     private boolean jsEscapeTextOnPasteInStringLiterals = true;
     private boolean jsCloseHtmlSingleTagsInJsx = true;
     private boolean jsConvertHtmlAttributeNamesInJsx = true;
     private boolean jsEscapeJsDocLeadingAsterisks = true;
 
     // --- PHP ---
-    private boolean phpSelectVarWithoutDollarOnDoubleClick = true;
-    private boolean phpEscapeTextOnPasteInStringLiterals = true;
-    private boolean phpReplaceUnnecessaryDoubleQuotesOnPaste = true;
+    private boolean phpEnableSmartFunctionParametersCompletion = false;
+    private boolean phpSelectVarWithoutDollarOnDoubleClick = false;
+    private boolean phpRemovePhpOpenCloseTagsWhilePasting = true;
+    private boolean phpEscapeSymbolsOnPasteInStringLiterals = false;
+    private boolean phpReplaceUnnecessaryDoubleQuotesOnPaste = false;
     private boolean phpAutoInsertPhpTagAfterTyping = true;
-    private boolean phpAutoInsertArrowOnTypingMinusAfterObject = true;
     private boolean phpAutoInsertSemicolon = true;
+    private boolean phpShowAdditionalOptionsSearchingMethodUsages = true;
     private boolean phpAutoInsertClosingHtmlTagInDoc = true;
-    private boolean phpEnableSmartFunctionParametersCompletion = true;
+    private boolean phpAutoInsertArrowOnTypingMinusAfterObject = true;
     private boolean phpSmartIndent = true;
 
     public SmartKeysSettings() {
@@ -287,21 +289,23 @@ public final class SmartKeysSettings {
 
         // JavaScript
         jsReplaceStringLiteralOnTemplate = true;
-        jsStartTemplateStringInterpolation = true;
+        jsStartTemplateStringInterpolation = false;
         jsEscapeTextOnPasteInStringLiterals = true;
         jsCloseHtmlSingleTagsInJsx = true;
         jsConvertHtmlAttributeNamesInJsx = true;
         jsEscapeJsDocLeadingAsterisks = true;
 
         // PHP
-        phpSelectVarWithoutDollarOnDoubleClick = true;
-        phpEscapeTextOnPasteInStringLiterals = true;
-        phpReplaceUnnecessaryDoubleQuotesOnPaste = true;
+        phpEnableSmartFunctionParametersCompletion = false;
+        phpSelectVarWithoutDollarOnDoubleClick = false;
+        phpRemovePhpOpenCloseTagsWhilePasting = true;
+        phpEscapeSymbolsOnPasteInStringLiterals = false;
+        phpReplaceUnnecessaryDoubleQuotesOnPaste = false;
         phpAutoInsertPhpTagAfterTyping = true;
-        phpAutoInsertArrowOnTypingMinusAfterObject = true;
         phpAutoInsertSemicolon = true;
+        phpShowAdditionalOptionsSearchingMethodUsages = true;
         phpAutoInsertClosingHtmlTagInDoc = true;
-        phpEnableSmartFunctionParametersCompletion = true;
+        phpAutoInsertArrowOnTypingMinusAfterObject = true;
         phpSmartIndent = true;
     }
 
@@ -532,11 +536,18 @@ public final class SmartKeysSettings {
         if (val != null) jsEscapeJsDocLeadingAsterisks = Boolean.parseBoolean(val);
 
         // PHP
+        val = Settings.get("smartkeys.php.enable.smart.function.parameters.completion");
+        if (val != null) phpEnableSmartFunctionParametersCompletion = Boolean.parseBoolean(val);
+
         val = Settings.get("smartkeys.php.select.var.without.dollar");
         if (val != null) phpSelectVarWithoutDollarOnDoubleClick = Boolean.parseBoolean(val);
 
-        val = Settings.get("smartkeys.php.escape.text.paste.literals");
-        if (val != null) phpEscapeTextOnPasteInStringLiterals = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.php.remove.open.close.tags.pasting");
+        if (val != null) phpRemovePhpOpenCloseTagsWhilePasting = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.escape.symbols.paste.literals");
+        if (val == null) val = Settings.get("smartkeys.php.escape.text.paste.literals");
+        if (val != null) phpEscapeSymbolsOnPasteInStringLiterals = Boolean.parseBoolean(val);
 
         val = Settings.get("smartkeys.php.replace.quotes.paste");
         if (val != null) phpReplaceUnnecessaryDoubleQuotesOnPaste = Boolean.parseBoolean(val);
@@ -544,17 +555,17 @@ public final class SmartKeysSettings {
         val = Settings.get("smartkeys.php.auto.insert.tag");
         if (val != null) phpAutoInsertPhpTagAfterTyping = Boolean.parseBoolean(val);
 
-        val = Settings.get("smartkeys.php.auto.insert.arrow");
-        if (val != null) phpAutoInsertArrowOnTypingMinusAfterObject = Boolean.parseBoolean(val);
-
         val = Settings.get("smartkeys.php.auto.insert.semicolon");
         if (val != null) phpAutoInsertSemicolon = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.show.additional.options.method.usages");
+        if (val != null) phpShowAdditionalOptionsSearchingMethodUsages = Boolean.parseBoolean(val);
 
         val = Settings.get("smartkeys.php.auto.insert.closing.html.tag.doc");
         if (val != null) phpAutoInsertClosingHtmlTagInDoc = Boolean.parseBoolean(val);
 
-        val = Settings.get("smartkeys.php.enable.smart.function.parameters.completion");
-        if (val != null) phpEnableSmartFunctionParametersCompletion = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.php.auto.insert.arrow");
+        if (val != null) phpAutoInsertArrowOnTypingMinusAfterObject = Boolean.parseBoolean(val);
 
         val = Settings.get("smartkeys.php.smart.indent");
         if (val != null) phpSmartIndent = Boolean.parseBoolean(val);
@@ -658,14 +669,16 @@ public final class SmartKeysSettings {
         Settings.put("smartkeys.js.escape.jsdoc.asterisks", String.valueOf(jsEscapeJsDocLeadingAsterisks));
 
         // PHP
+        Settings.put("smartkeys.php.enable.smart.function.parameters.completion", String.valueOf(phpEnableSmartFunctionParametersCompletion));
         Settings.put("smartkeys.php.select.var.without.dollar", String.valueOf(phpSelectVarWithoutDollarOnDoubleClick));
-        Settings.put("smartkeys.php.escape.text.paste.literals", String.valueOf(phpEscapeTextOnPasteInStringLiterals));
+        Settings.put("smartkeys.php.remove.open.close.tags.pasting", String.valueOf(phpRemovePhpOpenCloseTagsWhilePasting));
+        Settings.put("smartkeys.php.escape.symbols.paste.literals", String.valueOf(phpEscapeSymbolsOnPasteInStringLiterals));
         Settings.put("smartkeys.php.replace.quotes.paste", String.valueOf(phpReplaceUnnecessaryDoubleQuotesOnPaste));
         Settings.put("smartkeys.php.auto.insert.tag", String.valueOf(phpAutoInsertPhpTagAfterTyping));
-        Settings.put("smartkeys.php.auto.insert.arrow", String.valueOf(phpAutoInsertArrowOnTypingMinusAfterObject));
         Settings.put("smartkeys.php.auto.insert.semicolon", String.valueOf(phpAutoInsertSemicolon));
+        Settings.put("smartkeys.php.show.additional.options.method.usages", String.valueOf(phpShowAdditionalOptionsSearchingMethodUsages));
         Settings.put("smartkeys.php.auto.insert.closing.html.tag.doc", String.valueOf(phpAutoInsertClosingHtmlTagInDoc));
-        Settings.put("smartkeys.php.enable.smart.function.parameters.completion", String.valueOf(phpEnableSmartFunctionParametersCompletion));
+        Settings.put("smartkeys.php.auto.insert.arrow", String.valueOf(phpAutoInsertArrowOnTypingMinusAfterObject));
         Settings.put("smartkeys.php.smart.indent", String.valueOf(phpSmartIndent));
 
         notifyListeners();
@@ -776,14 +789,16 @@ public final class SmartKeysSettings {
         this.jsEscapeJsDocLeadingAsterisks = other.jsEscapeJsDocLeadingAsterisks;
 
         // PHP
+        this.phpEnableSmartFunctionParametersCompletion = other.phpEnableSmartFunctionParametersCompletion;
         this.phpSelectVarWithoutDollarOnDoubleClick = other.phpSelectVarWithoutDollarOnDoubleClick;
-        this.phpEscapeTextOnPasteInStringLiterals = other.phpEscapeTextOnPasteInStringLiterals;
+        this.phpRemovePhpOpenCloseTagsWhilePasting = other.phpRemovePhpOpenCloseTagsWhilePasting;
+        this.phpEscapeSymbolsOnPasteInStringLiterals = other.phpEscapeSymbolsOnPasteInStringLiterals;
         this.phpReplaceUnnecessaryDoubleQuotesOnPaste = other.phpReplaceUnnecessaryDoubleQuotesOnPaste;
         this.phpAutoInsertPhpTagAfterTyping = other.phpAutoInsertPhpTagAfterTyping;
-        this.phpAutoInsertArrowOnTypingMinusAfterObject = other.phpAutoInsertArrowOnTypingMinusAfterObject;
         this.phpAutoInsertSemicolon = other.phpAutoInsertSemicolon;
+        this.phpShowAdditionalOptionsSearchingMethodUsages = other.phpShowAdditionalOptionsSearchingMethodUsages;
         this.phpAutoInsertClosingHtmlTagInDoc = other.phpAutoInsertClosingHtmlTagInDoc;
-        this.phpEnableSmartFunctionParametersCompletion = other.phpEnableSmartFunctionParametersCompletion;
+        this.phpAutoInsertArrowOnTypingMinusAfterObject = other.phpAutoInsertArrowOnTypingMinusAfterObject;
         this.phpSmartIndent = other.phpSmartIndent;
     }
 
@@ -871,14 +886,16 @@ public final class SmartKeysSettings {
                 || this.jsConvertHtmlAttributeNamesInJsx != other.jsConvertHtmlAttributeNamesInJsx
                 || this.jsEscapeJsDocLeadingAsterisks != other.jsEscapeJsDocLeadingAsterisks
                 // PHP
+                || this.phpEnableSmartFunctionParametersCompletion != other.phpEnableSmartFunctionParametersCompletion
                 || this.phpSelectVarWithoutDollarOnDoubleClick != other.phpSelectVarWithoutDollarOnDoubleClick
-                || this.phpEscapeTextOnPasteInStringLiterals != other.phpEscapeTextOnPasteInStringLiterals
+                || this.phpRemovePhpOpenCloseTagsWhilePasting != other.phpRemovePhpOpenCloseTagsWhilePasting
+                || this.phpEscapeSymbolsOnPasteInStringLiterals != other.phpEscapeSymbolsOnPasteInStringLiterals
                 || this.phpReplaceUnnecessaryDoubleQuotesOnPaste != other.phpReplaceUnnecessaryDoubleQuotesOnPaste
                 || this.phpAutoInsertPhpTagAfterTyping != other.phpAutoInsertPhpTagAfterTyping
-                || this.phpAutoInsertArrowOnTypingMinusAfterObject != other.phpAutoInsertArrowOnTypingMinusAfterObject
                 || this.phpAutoInsertSemicolon != other.phpAutoInsertSemicolon
+                || this.phpShowAdditionalOptionsSearchingMethodUsages != other.phpShowAdditionalOptionsSearchingMethodUsages
                 || this.phpAutoInsertClosingHtmlTagInDoc != other.phpAutoInsertClosingHtmlTagInDoc
-                || this.phpEnableSmartFunctionParametersCompletion != other.phpEnableSmartFunctionParametersCompletion
+                || this.phpAutoInsertArrowOnTypingMinusAfterObject != other.phpAutoInsertArrowOnTypingMinusAfterObject
                 || this.phpSmartIndent != other.phpSmartIndent;
     }
 
@@ -1126,11 +1143,19 @@ public final class SmartKeysSettings {
     public void setJsEscapeJsDocLeadingAsterisks(boolean val) { this.jsEscapeJsDocLeadingAsterisks = val; }
 
     // PHP
+    public boolean isPhpEnableSmartFunctionParametersCompletion() { return phpEnableSmartFunctionParametersCompletion; }
+    public void setPhpEnableSmartFunctionParametersCompletion(boolean val) { this.phpEnableSmartFunctionParametersCompletion = val; }
+
     public boolean isPhpSelectVarWithoutDollarOnDoubleClick() { return phpSelectVarWithoutDollarOnDoubleClick; }
     public void setPhpSelectVarWithoutDollarOnDoubleClick(boolean val) { this.phpSelectVarWithoutDollarOnDoubleClick = val; }
 
-    public boolean isPhpEscapeTextOnPasteInStringLiterals() { return phpEscapeTextOnPasteInStringLiterals; }
-    public void setPhpEscapeTextOnPasteInStringLiterals(boolean val) { this.phpEscapeTextOnPasteInStringLiterals = val; }
+    public boolean isPhpRemovePhpOpenCloseTagsWhilePasting() { return phpRemovePhpOpenCloseTagsWhilePasting; }
+    public void setPhpRemovePhpOpenCloseTagsWhilePasting(boolean val) { this.phpRemovePhpOpenCloseTagsWhilePasting = val; }
+
+    public boolean isPhpEscapeSymbolsOnPasteInStringLiterals() { return phpEscapeSymbolsOnPasteInStringLiterals; }
+    public void setPhpEscapeSymbolsOnPasteInStringLiterals(boolean val) { this.phpEscapeSymbolsOnPasteInStringLiterals = val; }
+    public boolean isPhpEscapeTextOnPasteInStringLiterals() { return phpEscapeSymbolsOnPasteInStringLiterals; }
+    public void setPhpEscapeTextOnPasteInStringLiterals(boolean val) { this.phpEscapeSymbolsOnPasteInStringLiterals = val; }
 
     public boolean isPhpReplaceUnnecessaryDoubleQuotesOnPaste() { return phpReplaceUnnecessaryDoubleQuotesOnPaste; }
     public void setPhpReplaceUnnecessaryDoubleQuotesOnPaste(boolean val) { this.phpReplaceUnnecessaryDoubleQuotesOnPaste = val; }
@@ -1138,17 +1163,17 @@ public final class SmartKeysSettings {
     public boolean isPhpAutoInsertPhpTagAfterTyping() { return phpAutoInsertPhpTagAfterTyping; }
     public void setPhpAutoInsertPhpTagAfterTyping(boolean val) { this.phpAutoInsertPhpTagAfterTyping = val; }
 
-    public boolean isPhpAutoInsertArrowOnTypingMinusAfterObject() { return phpAutoInsertArrowOnTypingMinusAfterObject; }
-    public void setPhpAutoInsertArrowOnTypingMinusAfterObject(boolean val) { this.phpAutoInsertArrowOnTypingMinusAfterObject = val; }
-
     public boolean isPhpAutoInsertSemicolon() { return phpAutoInsertSemicolon; }
     public void setPhpAutoInsertSemicolon(boolean val) { this.phpAutoInsertSemicolon = val; }
+
+    public boolean isPhpShowAdditionalOptionsSearchingMethodUsages() { return phpShowAdditionalOptionsSearchingMethodUsages; }
+    public void setPhpShowAdditionalOptionsSearchingMethodUsages(boolean val) { this.phpShowAdditionalOptionsSearchingMethodUsages = val; }
 
     public boolean isPhpAutoInsertClosingHtmlTagInDoc() { return phpAutoInsertClosingHtmlTagInDoc; }
     public void setPhpAutoInsertClosingHtmlTagInDoc(boolean val) { this.phpAutoInsertClosingHtmlTagInDoc = val; }
 
-    public boolean isPhpEnableSmartFunctionParametersCompletion() { return phpEnableSmartFunctionParametersCompletion; }
-    public void setPhpEnableSmartFunctionParametersCompletion(boolean val) { this.phpEnableSmartFunctionParametersCompletion = val; }
+    public boolean isPhpAutoInsertArrowOnTypingMinusAfterObject() { return phpAutoInsertArrowOnTypingMinusAfterObject; }
+    public void setPhpAutoInsertArrowOnTypingMinusAfterObject(boolean val) { this.phpAutoInsertArrowOnTypingMinusAfterObject = val; }
 
     public boolean isPhpSmartIndent() { return phpSmartIndent; }
     public void setPhpSmartIndent(boolean val) { this.phpSmartIndent = val; }
@@ -1201,10 +1226,11 @@ public final class SmartKeysSettings {
                 jsReplaceStringLiteralOnTemplate, jsStartTemplateStringInterpolation,
                 jsEscapeTextOnPasteInStringLiterals, jsCloseHtmlSingleTagsInJsx,
                 jsConvertHtmlAttributeNamesInJsx, jsEscapeJsDocLeadingAsterisks,
-                phpSelectVarWithoutDollarOnDoubleClick, phpEscapeTextOnPasteInStringLiterals,
+                phpEnableSmartFunctionParametersCompletion, phpSelectVarWithoutDollarOnDoubleClick,
+                phpRemovePhpOpenCloseTagsWhilePasting, phpEscapeSymbolsOnPasteInStringLiterals,
                 phpReplaceUnnecessaryDoubleQuotesOnPaste, phpAutoInsertPhpTagAfterTyping,
-                phpAutoInsertArrowOnTypingMinusAfterObject, phpAutoInsertSemicolon,
-                phpAutoInsertClosingHtmlTagInDoc, phpEnableSmartFunctionParametersCompletion,
+                phpAutoInsertSemicolon, phpShowAdditionalOptionsSearchingMethodUsages,
+                phpAutoInsertClosingHtmlTagInDoc, phpAutoInsertArrowOnTypingMinusAfterObject,
                 phpSmartIndent
         );
     }

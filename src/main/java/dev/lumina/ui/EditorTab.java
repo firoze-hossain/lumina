@@ -947,6 +947,55 @@ public class EditorTab extends Tab {
                 }
             }
 
+            // JavaScript template string automatic replacement on typing '${'
+            if (isJsFile() && sk.isJsReplaceStringLiteralOnTemplate() && c == '{' && prefix.endsWith("$")) {
+                int lineStart = codeArea.getAbsolutePosition(paragraph, 0);
+                int firstQuote = -1;
+                char quoteChar = 0;
+                for (int i = 0; i < col - 1; i++) {
+                    char chr = line.charAt(i);
+                    if ((chr == '"' || chr == '\'') && (i == 0 || line.charAt(i - 1) != '\\')) {
+                        firstQuote = i;
+                        quoteChar = chr;
+                        break;
+                    }
+                }
+                if (firstQuote != -1) {
+                    int closingQuote = -1;
+                    for (int i = col; i < line.length(); i++) {
+                        char chr = line.charAt(i);
+                        if (chr == quoteChar && (i == 0 || line.charAt(i - 1) != '\\')) {
+                            closingQuote = i;
+                            break;
+                        }
+                    }
+                    if (closingQuote != -1) {
+                        codeArea.replaceText(lineStart + closingQuote, lineStart + closingQuote + 1, "`");
+                        codeArea.replaceText(lineStart + firstQuote, lineStart + firstQuote + 1, "`");
+                        e.consume();
+                        codeArea.insertText(curPos, "{}");
+                        codeArea.moveTo(curPos + 1);
+                        return;
+                    }
+                }
+            }
+
+            // JavaScript start template string interpolation on typing '$'
+            if (isJsFile() && sk.isJsStartTemplateStringInterpolation() && c == '$') {
+                int backtickCount = 0;
+                for (int i = 0; i < col; i++) {
+                    if (line.charAt(i) == '`' && (i == 0 || line.charAt(i - 1) != '\\')) {
+                        backtickCount++;
+                    }
+                }
+                if (backtickCount % 2 == 1) {
+                    e.consume();
+                    codeArea.insertText(curPos, "${}");
+                    codeArea.moveTo(curPos + 2);
+                    return;
+                }
+            }
+
             if (sk.isInsertPairedBrackets()) {
                 if (c == '(') {
                     e.consume();
@@ -3896,6 +3945,16 @@ public class EditorTab extends Tab {
     private boolean isJsonFile() {
         return path != null && path.toString().endsWith(".json");
     }
+    private boolean isJsFile() {
+        if (path == null) return false;
+        String s = path.toString().toLowerCase();
+        return s.endsWith(".js") || s.endsWith(".jsx") || s.endsWith(".ts") || s.endsWith(".tsx") || s.endsWith(".mjs");
+    }
+    private boolean isJsxFile() {
+        if (path == null) return false;
+        String s = path.toString().toLowerCase();
+        return s.endsWith(".jsx") || s.endsWith(".tsx");
+    }
 
     private static int prefixRank(String prefix, String name) {
         if (name.equalsIgnoreCase(prefix)) return 0;
@@ -3974,6 +4033,19 @@ public class EditorTab extends Tab {
                 }
             }
 
+            if (isPhpFile() && sk.isPhpRemovePhpOpenCloseTagsWhilePasting()) {
+                String trimmed = pasted.trim();
+                if (trimmed.startsWith("<?php")) {
+                    trimmed = trimmed.substring(5).trim();
+                } else if (trimmed.startsWith("<?")) {
+                    trimmed = trimmed.substring(2).trim();
+                }
+                if (trimmed.endsWith("?>")) {
+                    trimmed = trimmed.substring(0, trimmed.length() - 2).trim();
+                }
+                pasted = trimmed;
+            }
+
             if (isPhpFile() && sk.isPhpEscapeTextOnPasteInStringLiterals()) {
                 int paragraph = codeArea.getCurrentParagraph();
                 String line = codeArea.getParagraph(paragraph).getText();
@@ -3993,6 +4065,29 @@ public class EditorTab extends Tab {
                         pasted = "'" + inside + "'";
                     }
                 }
+            }
+
+            if (isJsFile() && sk.isJsEscapeTextOnPasteInStringLiterals()) {
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                int col = codeArea.getCaretColumn();
+                String prefix = line.substring(0, Math.min(col, line.length()));
+                String suffix = line.substring(Math.min(col, line.length()));
+                if ((prefix.endsWith("\"") && suffix.startsWith("\""))
+                        || (prefix.endsWith("'") && suffix.startsWith("'"))
+                        || (prefix.endsWith("`") && suffix.startsWith("`"))) {
+                    pasted = pasted.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'");
+                }
+            }
+
+            if (isJsxFile() && sk.isJsCloseHtmlSingleTagsInJsx()) {
+                pasted = pasted.replaceAll("<(img|input|br|hr|meta|link)([^>]*[^/])>", "<$1$2 />");
+            }
+
+            if (isJsxFile() && sk.isJsConvertHtmlAttributeNamesInJsx()) {
+                pasted = pasted.replaceAll("\\bclass=", "className=")
+                               .replaceAll("\\bfor=", "htmlFor=")
+                               .replaceAll("\\btabindex=", "tabIndex=");
             }
 
             if (path != null && path.toString().endsWith(".java")) {
