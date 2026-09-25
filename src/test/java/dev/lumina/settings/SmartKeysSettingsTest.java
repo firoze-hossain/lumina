@@ -98,17 +98,23 @@ class SmartKeysSettingsTest {
         assertEquals("Sequentially", settings.getMarkdownListNumerating());
         assertTrue(settings.isMarkdownInsertLinksOnDrop());
 
-        // Scala
-        assertTrue(settings.isScalaInsertClosingBrace());
-        assertTrue(settings.isScalaAutoIndent());
+        // Scala (Screenshot 4)
+        assertTrue(settings.isScalaIndentPastedLinesAtCaret());
+        assertTrue(settings.isScalaInsertPairQuotesForMultilineString());
+        assertTrue(settings.isScalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace());
+        assertTrue(settings.isScalaWrapSingleExpressionBodyWithClosingBraceAfterBrace());
+        assertTrue(settings.isScalaDeleteClosingBraceAfterDeletingBrace());
+        assertTrue(settings.isScalaAddBracesAutomaticallyBasedOnIndentation());
+        assertFalse(settings.isScalaRemoveBracesAutomaticallyBasedOnIndentation());
 
-        // SQL
+        // SQL (Screenshot 5)
         assertTrue(settings.isSqlInsertStringConcatOnEnter());
         assertTrue(settings.isSqlCloseCodeBlocksOnEnter());
 
-        // Ruby
-        assertTrue(settings.isRubyAutoInsertEnd());
-        assertTrue(settings.isRubySmartIndent());
+        // Ruby (prior screenshot)
+        assertTrue(settings.isRubyContinueLineCommentsOnEnter());
+        assertTrue(settings.isRubyDeleteEmptyLineCommentsOnEnter());
+        assertFalse(settings.isRubyStartInterpolationOnTypingHash());
 
         // JavaScript
         assertTrue(settings.isJsReplaceStringLiteralOnTemplate());
@@ -119,7 +125,14 @@ class SmartKeysSettingsTest {
         assertTrue(settings.isJsEscapeJsDocLeadingAsterisks());
 
         // PHP
+        assertTrue(settings.isPhpSelectVarWithoutDollarOnDoubleClick());
+        assertTrue(settings.isPhpEscapeTextOnPasteInStringLiterals());
+        assertTrue(settings.isPhpReplaceUnnecessaryDoubleQuotesOnPaste());
+        assertTrue(settings.isPhpAutoInsertPhpTagAfterTyping());
+        assertTrue(settings.isPhpAutoInsertArrowOnTypingMinusAfterObject());
         assertTrue(settings.isPhpAutoInsertSemicolon());
+        assertTrue(settings.isPhpAutoInsertClosingHtmlTagInDoc());
+        assertTrue(settings.isPhpEnableSmartFunctionParametersCompletion());
         assertTrue(settings.isPhpSmartIndent());
     }
 
@@ -177,6 +190,21 @@ class SmartKeysSettingsTest {
         copy.setRustInsertPairedHashForRawStrings(false);
         assertTrue(settings.isModified(copy));
         copy.setRustInsertPairedHashForRawStrings(true);
+        assertFalse(settings.isModified(copy));
+
+        copy.setScalaRemoveBracesAutomaticallyBasedOnIndentation(true);
+        assertTrue(settings.isModified(copy));
+        copy.setScalaRemoveBracesAutomaticallyBasedOnIndentation(false);
+        assertFalse(settings.isModified(copy));
+
+        copy.setRubyStartInterpolationOnTypingHash(true);
+        assertTrue(settings.isModified(copy));
+        copy.setRubyStartInterpolationOnTypingHash(false);
+        assertFalse(settings.isModified(copy));
+
+        copy.setPhpSelectVarWithoutDollarOnDoubleClick(false);
+        assertTrue(settings.isModified(copy));
+        copy.setPhpSelectVarWithoutDollarOnDoubleClick(true);
         assertFalse(settings.isModified(copy));
     }
 

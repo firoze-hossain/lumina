@@ -155,16 +155,22 @@ public final class SmartKeysSettings {
     private boolean markdownInsertLinksOnDrop = true;
 
     // --- Scala ---
-    private boolean scalaInsertClosingBrace = true;
-    private boolean scalaAutoIndent = true;
+    private boolean scalaIndentPastedLinesAtCaret = true;
+    private boolean scalaInsertPairQuotesForMultilineString = true;
+    private boolean scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace = true;
+    private boolean scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace = true;
+    private boolean scalaDeleteClosingBraceAfterDeletingBrace = true;
+    private boolean scalaAddBracesAutomaticallyBasedOnIndentation = true;
+    private boolean scalaRemoveBracesAutomaticallyBasedOnIndentation = false;
 
     // --- SQL ---
     private boolean sqlInsertStringConcatOnEnter = true;
     private boolean sqlCloseCodeBlocksOnEnter = true;
 
     // --- Ruby ---
-    private boolean rubyAutoInsertEnd = true;
-    private boolean rubySmartIndent = true;
+    private boolean rubyContinueLineCommentsOnEnter = true;
+    private boolean rubyDeleteEmptyLineCommentsOnEnter = true;
+    private boolean rubyStartInterpolationOnTypingHash = false;
 
     // --- JavaScript ---
     private boolean jsReplaceStringLiteralOnTemplate = true;
@@ -175,7 +181,14 @@ public final class SmartKeysSettings {
     private boolean jsEscapeJsDocLeadingAsterisks = true;
 
     // --- PHP ---
+    private boolean phpSelectVarWithoutDollarOnDoubleClick = true;
+    private boolean phpEscapeTextOnPasteInStringLiterals = true;
+    private boolean phpReplaceUnnecessaryDoubleQuotesOnPaste = true;
+    private boolean phpAutoInsertPhpTagAfterTyping = true;
+    private boolean phpAutoInsertArrowOnTypingMinusAfterObject = true;
     private boolean phpAutoInsertSemicolon = true;
+    private boolean phpAutoInsertClosingHtmlTagInDoc = true;
+    private boolean phpEnableSmartFunctionParametersCompletion = true;
     private boolean phpSmartIndent = true;
 
     public SmartKeysSettings() {
@@ -255,16 +268,22 @@ public final class SmartKeysSettings {
         markdownInsertLinksOnDrop = true;
 
         // Scala
-        scalaInsertClosingBrace = true;
-        scalaAutoIndent = true;
+        scalaIndentPastedLinesAtCaret = true;
+        scalaInsertPairQuotesForMultilineString = true;
+        scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace = true;
+        scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace = true;
+        scalaDeleteClosingBraceAfterDeletingBrace = true;
+        scalaAddBracesAutomaticallyBasedOnIndentation = true;
+        scalaRemoveBracesAutomaticallyBasedOnIndentation = false;
 
         // SQL
         sqlInsertStringConcatOnEnter = true;
         sqlCloseCodeBlocksOnEnter = true;
 
         // Ruby
-        rubyAutoInsertEnd = true;
-        rubySmartIndent = true;
+        rubyContinueLineCommentsOnEnter = true;
+        rubyDeleteEmptyLineCommentsOnEnter = true;
+        rubyStartInterpolationOnTypingHash = false;
 
         // JavaScript
         jsReplaceStringLiteralOnTemplate = true;
@@ -275,7 +294,14 @@ public final class SmartKeysSettings {
         jsEscapeJsDocLeadingAsterisks = true;
 
         // PHP
+        phpSelectVarWithoutDollarOnDoubleClick = true;
+        phpEscapeTextOnPasteInStringLiterals = true;
+        phpReplaceUnnecessaryDoubleQuotesOnPaste = true;
+        phpAutoInsertPhpTagAfterTyping = true;
+        phpAutoInsertArrowOnTypingMinusAfterObject = true;
         phpAutoInsertSemicolon = true;
+        phpAutoInsertClosingHtmlTagInDoc = true;
+        phpEnableSmartFunctionParametersCompletion = true;
         phpSmartIndent = true;
     }
 
@@ -448,11 +474,26 @@ public final class SmartKeysSettings {
         if (val != null) markdownInsertLinksOnDrop = Boolean.parseBoolean(val);
 
         // Scala
-        val = Settings.get("smartkeys.scala.insert.closing.brace");
-        if (val != null) scalaInsertClosingBrace = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.scala.indent.pasted.lines.at.caret");
+        if (val != null) scalaIndentPastedLinesAtCaret = Boolean.parseBoolean(val);
 
-        val = Settings.get("smartkeys.scala.auto.indent");
-        if (val != null) scalaAutoIndent = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.scala.insert.pair.quotes.multiline.string");
+        if (val != null) scalaInsertPairQuotesForMultilineString = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.upgrade.simple.string.interpolated");
+        if (val != null) scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.wrap.single.expression.body.closing.brace");
+        if (val != null) scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.delete.closing.brace.after.deleting");
+        if (val != null) scalaDeleteClosingBraceAfterDeletingBrace = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.add.braces.automatically");
+        if (val != null) scalaAddBracesAutomaticallyBasedOnIndentation = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.remove.braces.automatically");
+        if (val != null) scalaRemoveBracesAutomaticallyBasedOnIndentation = Boolean.parseBoolean(val);
 
         // SQL
         val = Settings.get("smartkeys.sql.insert.string.concat.enter");
@@ -462,11 +503,14 @@ public final class SmartKeysSettings {
         if (val != null) sqlCloseCodeBlocksOnEnter = Boolean.parseBoolean(val);
 
         // Ruby
-        val = Settings.get("smartkeys.ruby.auto.insert.end");
-        if (val != null) rubyAutoInsertEnd = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.ruby.continue.line.comments.on.enter");
+        if (val != null) rubyContinueLineCommentsOnEnter = Boolean.parseBoolean(val);
 
-        val = Settings.get("smartkeys.ruby.smart.indent");
-        if (val != null) rubySmartIndent = Boolean.parseBoolean(val);
+        val = Settings.get("smartkeys.ruby.delete.empty.line.comments.on.enter");
+        if (val != null) rubyDeleteEmptyLineCommentsOnEnter = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.ruby.start.interpolation.on.typing.hash");
+        if (val != null) rubyStartInterpolationOnTypingHash = Boolean.parseBoolean(val);
 
         // JavaScript
         val = Settings.get("smartkeys.js.replace.string.literal.template");
@@ -488,8 +532,29 @@ public final class SmartKeysSettings {
         if (val != null) jsEscapeJsDocLeadingAsterisks = Boolean.parseBoolean(val);
 
         // PHP
+        val = Settings.get("smartkeys.php.select.var.without.dollar");
+        if (val != null) phpSelectVarWithoutDollarOnDoubleClick = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.escape.text.paste.literals");
+        if (val != null) phpEscapeTextOnPasteInStringLiterals = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.replace.quotes.paste");
+        if (val != null) phpReplaceUnnecessaryDoubleQuotesOnPaste = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.auto.insert.tag");
+        if (val != null) phpAutoInsertPhpTagAfterTyping = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.auto.insert.arrow");
+        if (val != null) phpAutoInsertArrowOnTypingMinusAfterObject = Boolean.parseBoolean(val);
+
         val = Settings.get("smartkeys.php.auto.insert.semicolon");
         if (val != null) phpAutoInsertSemicolon = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.auto.insert.closing.html.tag.doc");
+        if (val != null) phpAutoInsertClosingHtmlTagInDoc = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.enable.smart.function.parameters.completion");
+        if (val != null) phpEnableSmartFunctionParametersCompletion = Boolean.parseBoolean(val);
 
         val = Settings.get("smartkeys.php.smart.indent");
         if (val != null) phpSmartIndent = Boolean.parseBoolean(val);
@@ -567,16 +632,22 @@ public final class SmartKeysSettings {
         Settings.put("smartkeys.markdown.insert.links.drop", String.valueOf(markdownInsertLinksOnDrop));
 
         // Scala
-        Settings.put("smartkeys.scala.insert.closing.brace", String.valueOf(scalaInsertClosingBrace));
-        Settings.put("smartkeys.scala.auto.indent", String.valueOf(scalaAutoIndent));
+        Settings.put("smartkeys.scala.indent.pasted.lines.at.caret", String.valueOf(scalaIndentPastedLinesAtCaret));
+        Settings.put("smartkeys.scala.insert.pair.quotes.multiline.string", String.valueOf(scalaInsertPairQuotesForMultilineString));
+        Settings.put("smartkeys.scala.upgrade.simple.string.interpolated", String.valueOf(scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace));
+        Settings.put("smartkeys.scala.wrap.single.expression.body.closing.brace", String.valueOf(scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace));
+        Settings.put("smartkeys.scala.delete.closing.brace.after.deleting", String.valueOf(scalaDeleteClosingBraceAfterDeletingBrace));
+        Settings.put("smartkeys.scala.add.braces.automatically", String.valueOf(scalaAddBracesAutomaticallyBasedOnIndentation));
+        Settings.put("smartkeys.scala.remove.braces.automatically", String.valueOf(scalaRemoveBracesAutomaticallyBasedOnIndentation));
 
         // SQL
         Settings.put("smartkeys.sql.insert.string.concat.enter", String.valueOf(sqlInsertStringConcatOnEnter));
         Settings.put("smartkeys.sql.close.code.blocks.enter", String.valueOf(sqlCloseCodeBlocksOnEnter));
 
         // Ruby
-        Settings.put("smartkeys.ruby.auto.insert.end", String.valueOf(rubyAutoInsertEnd));
-        Settings.put("smartkeys.ruby.smart.indent", String.valueOf(rubySmartIndent));
+        Settings.put("smartkeys.ruby.continue.line.comments.on.enter", String.valueOf(rubyContinueLineCommentsOnEnter));
+        Settings.put("smartkeys.ruby.delete.empty.line.comments.on.enter", String.valueOf(rubyDeleteEmptyLineCommentsOnEnter));
+        Settings.put("smartkeys.ruby.start.interpolation.on.typing.hash", String.valueOf(rubyStartInterpolationOnTypingHash));
 
         // JavaScript
         Settings.put("smartkeys.js.replace.string.literal.template", String.valueOf(jsReplaceStringLiteralOnTemplate));
@@ -587,7 +658,14 @@ public final class SmartKeysSettings {
         Settings.put("smartkeys.js.escape.jsdoc.asterisks", String.valueOf(jsEscapeJsDocLeadingAsterisks));
 
         // PHP
+        Settings.put("smartkeys.php.select.var.without.dollar", String.valueOf(phpSelectVarWithoutDollarOnDoubleClick));
+        Settings.put("smartkeys.php.escape.text.paste.literals", String.valueOf(phpEscapeTextOnPasteInStringLiterals));
+        Settings.put("smartkeys.php.replace.quotes.paste", String.valueOf(phpReplaceUnnecessaryDoubleQuotesOnPaste));
+        Settings.put("smartkeys.php.auto.insert.tag", String.valueOf(phpAutoInsertPhpTagAfterTyping));
+        Settings.put("smartkeys.php.auto.insert.arrow", String.valueOf(phpAutoInsertArrowOnTypingMinusAfterObject));
         Settings.put("smartkeys.php.auto.insert.semicolon", String.valueOf(phpAutoInsertSemicolon));
+        Settings.put("smartkeys.php.auto.insert.closing.html.tag.doc", String.valueOf(phpAutoInsertClosingHtmlTagInDoc));
+        Settings.put("smartkeys.php.enable.smart.function.parameters.completion", String.valueOf(phpEnableSmartFunctionParametersCompletion));
         Settings.put("smartkeys.php.smart.indent", String.valueOf(phpSmartIndent));
 
         notifyListeners();
@@ -672,16 +750,22 @@ public final class SmartKeysSettings {
         this.markdownInsertLinksOnDrop = other.markdownInsertLinksOnDrop;
 
         // Scala
-        this.scalaInsertClosingBrace = other.scalaInsertClosingBrace;
-        this.scalaAutoIndent = other.scalaAutoIndent;
+        this.scalaIndentPastedLinesAtCaret = other.scalaIndentPastedLinesAtCaret;
+        this.scalaInsertPairQuotesForMultilineString = other.scalaInsertPairQuotesForMultilineString;
+        this.scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace = other.scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace;
+        this.scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace = other.scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace;
+        this.scalaDeleteClosingBraceAfterDeletingBrace = other.scalaDeleteClosingBraceAfterDeletingBrace;
+        this.scalaAddBracesAutomaticallyBasedOnIndentation = other.scalaAddBracesAutomaticallyBasedOnIndentation;
+        this.scalaRemoveBracesAutomaticallyBasedOnIndentation = other.scalaRemoveBracesAutomaticallyBasedOnIndentation;
 
         // SQL
         this.sqlInsertStringConcatOnEnter = other.sqlInsertStringConcatOnEnter;
         this.sqlCloseCodeBlocksOnEnter = other.sqlCloseCodeBlocksOnEnter;
 
         // Ruby
-        this.rubyAutoInsertEnd = other.rubyAutoInsertEnd;
-        this.rubySmartIndent = other.rubySmartIndent;
+        this.rubyContinueLineCommentsOnEnter = other.rubyContinueLineCommentsOnEnter;
+        this.rubyDeleteEmptyLineCommentsOnEnter = other.rubyDeleteEmptyLineCommentsOnEnter;
+        this.rubyStartInterpolationOnTypingHash = other.rubyStartInterpolationOnTypingHash;
 
         // JavaScript
         this.jsReplaceStringLiteralOnTemplate = other.jsReplaceStringLiteralOnTemplate;
@@ -692,7 +776,14 @@ public final class SmartKeysSettings {
         this.jsEscapeJsDocLeadingAsterisks = other.jsEscapeJsDocLeadingAsterisks;
 
         // PHP
+        this.phpSelectVarWithoutDollarOnDoubleClick = other.phpSelectVarWithoutDollarOnDoubleClick;
+        this.phpEscapeTextOnPasteInStringLiterals = other.phpEscapeTextOnPasteInStringLiterals;
+        this.phpReplaceUnnecessaryDoubleQuotesOnPaste = other.phpReplaceUnnecessaryDoubleQuotesOnPaste;
+        this.phpAutoInsertPhpTagAfterTyping = other.phpAutoInsertPhpTagAfterTyping;
+        this.phpAutoInsertArrowOnTypingMinusAfterObject = other.phpAutoInsertArrowOnTypingMinusAfterObject;
         this.phpAutoInsertSemicolon = other.phpAutoInsertSemicolon;
+        this.phpAutoInsertClosingHtmlTagInDoc = other.phpAutoInsertClosingHtmlTagInDoc;
+        this.phpEnableSmartFunctionParametersCompletion = other.phpEnableSmartFunctionParametersCompletion;
         this.phpSmartIndent = other.phpSmartIndent;
     }
 
@@ -758,14 +849,20 @@ public final class SmartKeysSettings {
                 || !Objects.equals(this.markdownListNumerating, other.markdownListNumerating)
                 || this.markdownInsertLinksOnDrop != other.markdownInsertLinksOnDrop
                 // Scala
-                || this.scalaInsertClosingBrace != other.scalaInsertClosingBrace
-                || this.scalaAutoIndent != other.scalaAutoIndent
+                || this.scalaIndentPastedLinesAtCaret != other.scalaIndentPastedLinesAtCaret
+                || this.scalaInsertPairQuotesForMultilineString != other.scalaInsertPairQuotesForMultilineString
+                || this.scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace != other.scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace
+                || this.scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace != other.scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace
+                || this.scalaDeleteClosingBraceAfterDeletingBrace != other.scalaDeleteClosingBraceAfterDeletingBrace
+                || this.scalaAddBracesAutomaticallyBasedOnIndentation != other.scalaAddBracesAutomaticallyBasedOnIndentation
+                || this.scalaRemoveBracesAutomaticallyBasedOnIndentation != other.scalaRemoveBracesAutomaticallyBasedOnIndentation
                 // SQL
                 || this.sqlInsertStringConcatOnEnter != other.sqlInsertStringConcatOnEnter
                 || this.sqlCloseCodeBlocksOnEnter != other.sqlCloseCodeBlocksOnEnter
                 // Ruby
-                || this.rubyAutoInsertEnd != other.rubyAutoInsertEnd
-                || this.rubySmartIndent != other.rubySmartIndent
+                || this.rubyContinueLineCommentsOnEnter != other.rubyContinueLineCommentsOnEnter
+                || this.rubyDeleteEmptyLineCommentsOnEnter != other.rubyDeleteEmptyLineCommentsOnEnter
+                || this.rubyStartInterpolationOnTypingHash != other.rubyStartInterpolationOnTypingHash
                 // JavaScript
                 || this.jsReplaceStringLiteralOnTemplate != other.jsReplaceStringLiteralOnTemplate
                 || this.jsStartTemplateStringInterpolation != other.jsStartTemplateStringInterpolation
@@ -774,7 +871,14 @@ public final class SmartKeysSettings {
                 || this.jsConvertHtmlAttributeNamesInJsx != other.jsConvertHtmlAttributeNamesInJsx
                 || this.jsEscapeJsDocLeadingAsterisks != other.jsEscapeJsDocLeadingAsterisks
                 // PHP
+                || this.phpSelectVarWithoutDollarOnDoubleClick != other.phpSelectVarWithoutDollarOnDoubleClick
+                || this.phpEscapeTextOnPasteInStringLiterals != other.phpEscapeTextOnPasteInStringLiterals
+                || this.phpReplaceUnnecessaryDoubleQuotesOnPaste != other.phpReplaceUnnecessaryDoubleQuotesOnPaste
+                || this.phpAutoInsertPhpTagAfterTyping != other.phpAutoInsertPhpTagAfterTyping
+                || this.phpAutoInsertArrowOnTypingMinusAfterObject != other.phpAutoInsertArrowOnTypingMinusAfterObject
                 || this.phpAutoInsertSemicolon != other.phpAutoInsertSemicolon
+                || this.phpAutoInsertClosingHtmlTagInDoc != other.phpAutoInsertClosingHtmlTagInDoc
+                || this.phpEnableSmartFunctionParametersCompletion != other.phpEnableSmartFunctionParametersCompletion
                 || this.phpSmartIndent != other.phpSmartIndent;
     }
 
@@ -964,11 +1068,26 @@ public final class SmartKeysSettings {
     public void setMarkdownInsertLinksOnDrop(boolean val) { this.markdownInsertLinksOnDrop = val; }
 
     // Scala
-    public boolean isScalaInsertClosingBrace() { return scalaInsertClosingBrace; }
-    public void setScalaInsertClosingBrace(boolean val) { this.scalaInsertClosingBrace = val; }
+    public boolean isScalaIndentPastedLinesAtCaret() { return scalaIndentPastedLinesAtCaret; }
+    public void setScalaIndentPastedLinesAtCaret(boolean val) { this.scalaIndentPastedLinesAtCaret = val; }
 
-    public boolean isScalaAutoIndent() { return scalaAutoIndent; }
-    public void setScalaAutoIndent(boolean val) { this.scalaAutoIndent = val; }
+    public boolean isScalaInsertPairQuotesForMultilineString() { return scalaInsertPairQuotesForMultilineString; }
+    public void setScalaInsertPairQuotesForMultilineString(boolean val) { this.scalaInsertPairQuotesForMultilineString = val; }
+
+    public boolean isScalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace() { return scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace; }
+    public void setScalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace(boolean val) { this.scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace = val; }
+
+    public boolean isScalaWrapSingleExpressionBodyWithClosingBraceAfterBrace() { return scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace; }
+    public void setScalaWrapSingleExpressionBodyWithClosingBraceAfterBrace(boolean val) { this.scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace = val; }
+
+    public boolean isScalaDeleteClosingBraceAfterDeletingBrace() { return scalaDeleteClosingBraceAfterDeletingBrace; }
+    public void setScalaDeleteClosingBraceAfterDeletingBrace(boolean val) { this.scalaDeleteClosingBraceAfterDeletingBrace = val; }
+
+    public boolean isScalaAddBracesAutomaticallyBasedOnIndentation() { return scalaAddBracesAutomaticallyBasedOnIndentation; }
+    public void setScalaAddBracesAutomaticallyBasedOnIndentation(boolean val) { this.scalaAddBracesAutomaticallyBasedOnIndentation = val; }
+
+    public boolean isScalaRemoveBracesAutomaticallyBasedOnIndentation() { return scalaRemoveBracesAutomaticallyBasedOnIndentation; }
+    public void setScalaRemoveBracesAutomaticallyBasedOnIndentation(boolean val) { this.scalaRemoveBracesAutomaticallyBasedOnIndentation = val; }
 
     // SQL
     public boolean isSqlInsertStringConcatOnEnter() { return sqlInsertStringConcatOnEnter; }
@@ -978,11 +1097,14 @@ public final class SmartKeysSettings {
     public void setSqlCloseCodeBlocksOnEnter(boolean val) { this.sqlCloseCodeBlocksOnEnter = val; }
 
     // Ruby
-    public boolean isRubyAutoInsertEnd() { return rubyAutoInsertEnd; }
-    public void setRubyAutoInsertEnd(boolean val) { this.rubyAutoInsertEnd = val; }
+    public boolean isRubyContinueLineCommentsOnEnter() { return rubyContinueLineCommentsOnEnter; }
+    public void setRubyContinueLineCommentsOnEnter(boolean val) { this.rubyContinueLineCommentsOnEnter = val; }
 
-    public boolean isRubySmartIndent() { return rubySmartIndent; }
-    public void setRubySmartIndent(boolean val) { this.rubySmartIndent = val; }
+    public boolean isRubyDeleteEmptyLineCommentsOnEnter() { return rubyDeleteEmptyLineCommentsOnEnter; }
+    public void setRubyDeleteEmptyLineCommentsOnEnter(boolean val) { this.rubyDeleteEmptyLineCommentsOnEnter = val; }
+
+    public boolean isRubyStartInterpolationOnTypingHash() { return rubyStartInterpolationOnTypingHash; }
+    public void setRubyStartInterpolationOnTypingHash(boolean val) { this.rubyStartInterpolationOnTypingHash = val; }
 
     // JavaScript
     public boolean isJsReplaceStringLiteralOnTemplate() { return jsReplaceStringLiteralOnTemplate; }
@@ -1004,8 +1126,29 @@ public final class SmartKeysSettings {
     public void setJsEscapeJsDocLeadingAsterisks(boolean val) { this.jsEscapeJsDocLeadingAsterisks = val; }
 
     // PHP
+    public boolean isPhpSelectVarWithoutDollarOnDoubleClick() { return phpSelectVarWithoutDollarOnDoubleClick; }
+    public void setPhpSelectVarWithoutDollarOnDoubleClick(boolean val) { this.phpSelectVarWithoutDollarOnDoubleClick = val; }
+
+    public boolean isPhpEscapeTextOnPasteInStringLiterals() { return phpEscapeTextOnPasteInStringLiterals; }
+    public void setPhpEscapeTextOnPasteInStringLiterals(boolean val) { this.phpEscapeTextOnPasteInStringLiterals = val; }
+
+    public boolean isPhpReplaceUnnecessaryDoubleQuotesOnPaste() { return phpReplaceUnnecessaryDoubleQuotesOnPaste; }
+    public void setPhpReplaceUnnecessaryDoubleQuotesOnPaste(boolean val) { this.phpReplaceUnnecessaryDoubleQuotesOnPaste = val; }
+
+    public boolean isPhpAutoInsertPhpTagAfterTyping() { return phpAutoInsertPhpTagAfterTyping; }
+    public void setPhpAutoInsertPhpTagAfterTyping(boolean val) { this.phpAutoInsertPhpTagAfterTyping = val; }
+
+    public boolean isPhpAutoInsertArrowOnTypingMinusAfterObject() { return phpAutoInsertArrowOnTypingMinusAfterObject; }
+    public void setPhpAutoInsertArrowOnTypingMinusAfterObject(boolean val) { this.phpAutoInsertArrowOnTypingMinusAfterObject = val; }
+
     public boolean isPhpAutoInsertSemicolon() { return phpAutoInsertSemicolon; }
     public void setPhpAutoInsertSemicolon(boolean val) { this.phpAutoInsertSemicolon = val; }
+
+    public boolean isPhpAutoInsertClosingHtmlTagInDoc() { return phpAutoInsertClosingHtmlTagInDoc; }
+    public void setPhpAutoInsertClosingHtmlTagInDoc(boolean val) { this.phpAutoInsertClosingHtmlTagInDoc = val; }
+
+    public boolean isPhpEnableSmartFunctionParametersCompletion() { return phpEnableSmartFunctionParametersCompletion; }
+    public void setPhpEnableSmartFunctionParametersCompletion(boolean val) { this.phpEnableSmartFunctionParametersCompletion = val; }
 
     public boolean isPhpSmartIndent() { return phpSmartIndent; }
     public void setPhpSmartIndent(boolean val) { this.phpSmartIndent = val; }
@@ -1046,13 +1189,23 @@ public final class SmartKeysSettings {
                 markdownUseShiftEnterForNewTableRow, markdownUseTabShiftTabToNavigateCells,
                 markdownAdjustIndentationOnType, markdownSmartEnterAndBackspace,
                 markdownRenumberListWhenTyping, markdownListNumerating, markdownInsertLinksOnDrop,
-                scalaInsertClosingBrace, scalaAutoIndent,
+                scalaIndentPastedLinesAtCaret, scalaInsertPairQuotesForMultilineString,
+                scalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace,
+                scalaWrapSingleExpressionBodyWithClosingBraceAfterBrace,
+                scalaDeleteClosingBraceAfterDeletingBrace,
+                scalaAddBracesAutomaticallyBasedOnIndentation,
+                scalaRemoveBracesAutomaticallyBasedOnIndentation,
                 sqlInsertStringConcatOnEnter, sqlCloseCodeBlocksOnEnter,
-                rubyAutoInsertEnd, rubySmartIndent,
+                rubyContinueLineCommentsOnEnter, rubyDeleteEmptyLineCommentsOnEnter,
+                rubyStartInterpolationOnTypingHash,
                 jsReplaceStringLiteralOnTemplate, jsStartTemplateStringInterpolation,
                 jsEscapeTextOnPasteInStringLiterals, jsCloseHtmlSingleTagsInJsx,
                 jsConvertHtmlAttributeNamesInJsx, jsEscapeJsDocLeadingAsterisks,
-                phpAutoInsertSemicolon, phpSmartIndent
+                phpSelectVarWithoutDollarOnDoubleClick, phpEscapeTextOnPasteInStringLiterals,
+                phpReplaceUnnecessaryDoubleQuotesOnPaste, phpAutoInsertPhpTagAfterTyping,
+                phpAutoInsertArrowOnTypingMinusAfterObject, phpAutoInsertSemicolon,
+                phpAutoInsertClosingHtmlTagInDoc, phpEnableSmartFunctionParametersCompletion,
+                phpSmartIndent
         );
     }
 }
