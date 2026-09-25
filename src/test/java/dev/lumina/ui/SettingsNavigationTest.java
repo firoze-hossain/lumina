@@ -20,11 +20,18 @@ class SettingsNavigationTest {
     @BeforeAll
     static void initJavaFX() {
         try {
-            Platform.startup(() -> javaFxAvailable = true);
-            javaFxAvailable = true;
+            String display = System.getenv("DISPLAY");
+            if (display == null || display.isBlank() || java.awt.GraphicsEnvironment.isHeadless()) {
+                return;
+            }
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            Platform.startup(() -> {
+                javaFxAvailable = true;
+                latch.countDown();
+            });
+            latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
         } catch (Throwable ignored) {
-            // Already started or headless
-            javaFxAvailable = true;
+            javaFxAvailable = false;
         }
     }
 
@@ -239,6 +246,52 @@ class SettingsNavigationTest {
         });
         switchLatch.await(5, java.util.concurrent.TimeUnit.SECONDS);
         assertEquals(0, switchLatch.getCount(), "All 10 subpages should render without exception");
+    }
+
+    @Test
+    void testSettingsDialogInlineCompletionNavigation() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsDialog dialog = new SettingsDialog(null, "Inline Completion");
+                ref.set(dialog);
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsDialog dialog = ref.get();
+        assertNotNull(dialog);
+        assertNotNull(dialog.getContentContainer());
+        assertFalse(dialog.getContentContainer().getChildren().isEmpty());
+        assertEquals("Inline Completion", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
+    }
+
+    @Test
+    void testSettingsDialogPostfixCompletionNavigation() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsDialog dialog = new SettingsDialog(null, "Postfix Completion");
+                ref.set(dialog);
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsDialog dialog = ref.get();
+        assertNotNull(dialog);
+        assertNotNull(dialog.getContentContainer());
+        assertFalse(dialog.getContentContainer().getChildren().isEmpty());
+        assertEquals("Postfix Completion", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
     }
 
     @SuppressWarnings("unchecked")

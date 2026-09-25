@@ -131,9 +131,11 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("XHTML") ||
                 pageName.equals("XML")) {
             showCopyrightFormattingSubPage(pageName);
+        } else if (pageName.equals("Inline Completion")) {
+            showInlineCompletionPage();
+        } else if (pageName.equals("Postfix Completion")) {
+            showPostfixCompletionPage();
         } else if (pageName.equals("General") ||
-                pageName.equals("Inline Completion") ||
-                pageName.equals("Postfix Completion") ||
                 pageName.equals("Sticky Lines")) {
             showGeneralPage();
         } else if (pageName.equals("Smart Keys") ||

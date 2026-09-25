@@ -50,6 +50,8 @@ public class SettingsDialog {
     private SettingsConsolePage currentConsolePage;
     private SettingsEditorTabsPage currentEditorTabsPage;
     private SettingsGutterIconsPage currentGutterIconsPage;
+    private SettingsInlineCompletionPage currentInlineCompletionPage;
+    private SettingsPostfixCompletionPage currentPostfixCompletionPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -303,6 +305,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Inline Completion".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentInlineCompletionPage != null) {
+                            currentInlineCompletionPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Postfix Completion".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPostfixCompletionPage != null) {
+                            currentPostfixCompletionPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -509,6 +535,31 @@ public class SettingsDialog {
                 }
                 currentGutterIconsPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentGutterIconsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Inline Completion".equals(pageName)) {
+                if (currentInlineCompletionPage == null) {
+                    currentInlineCompletionPage = new SettingsInlineCompletionPage();
+                }
+                currentInlineCompletionPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentInlineCompletionPage.setOnNavigateCodeCompletion(() -> {
+                    TreeItem<String> item = findItem(tree.getRoot(), "Code Completion");
+                    if (item != null) {
+                        expandAncestors(item);
+                        tree.getSelectionModel().select(item);
+                    }
+                });
+                wrapInScroll(currentInlineCompletionPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Postfix Completion".equals(pageName)) {
+                if (currentPostfixCompletionPage == null) {
+                    currentPostfixCompletionPage = new SettingsPostfixCompletionPage();
+                }
+                currentPostfixCompletionPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentPostfixCompletionPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1201,6 +1252,12 @@ public class SettingsDialog {
         if (currentGutterIconsPage != null && currentGutterIconsPage.isModified()) {
             currentGutterIconsPage.apply();
         }
+        if (currentInlineCompletionPage != null && currentInlineCompletionPage.isModified()) {
+            currentInlineCompletionPage.apply();
+        }
+        if (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified()) {
+            currentPostfixCompletionPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1214,7 +1271,9 @@ public class SettingsDialog {
                 || (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified())
                 || (currentConsolePage != null && currentConsolePage.isModified())
                 || (currentEditorTabsPage != null && currentEditorTabsPage.isModified())
-                || (currentGutterIconsPage != null && currentGutterIconsPage.isModified());
+                || (currentGutterIconsPage != null && currentGutterIconsPage.isModified())
+                || (currentInlineCompletionPage != null && currentInlineCompletionPage.isModified())
+                || (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1266,6 +1325,12 @@ public class SettingsDialog {
             }
             if (currentGutterIconsPage != null) {
                 currentGutterIconsPage.reset();
+            }
+            if (currentInlineCompletionPage != null) {
+                currentInlineCompletionPage.reset();
+            }
+            if (currentPostfixCompletionPage != null) {
+                currentPostfixCompletionPage.reset();
             }
             stage.close();
         });

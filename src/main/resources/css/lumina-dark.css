@@ -4493,3 +4493,71 @@
     -fx-text-fill: #DFE1E5;
 }
 
+/* ==========================================================================
+   Postfix Completion Settings Tree & Previews
+   ========================================================================== */
+.postfix-tree {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-control-inner-background-alt: #1E1F22;
+    -fx-background: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.postfix-tree .virtual-flow,
+.postfix-tree .virtual-flow .clipped-container,
+.postfix-tree .virtual-flow .clipped-container .sheet,
+.postfix-tree .clipped-container,
+.postfix-tree .sheet {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+}
+
+.postfix-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-padding: 3px 6px 3px 4px;
+}
+
+.postfix-tree .tree-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.postfix-tree .tree-cell:hover {
+    -fx-background-color: #2B2D30;
+}
+
+.postfix-tree .tree-cell:selected,
+.postfix-tree .tree-cell:filled:selected,
+.postfix-tree .tree-cell:focused:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.postfix-tree .tree-cell .arrow {
+    -fx-background-color: #8C9099;
+}
+
+.postfix-tree .tree-cell:selected .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+.postfix-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2px 4px 2px 2px;
+}
+
+.postfix-code-pane {
+    -fx-background-color: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 8px 12px;
+}
+
+

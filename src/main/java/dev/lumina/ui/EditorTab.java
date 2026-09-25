@@ -479,6 +479,15 @@ public class EditorTab extends Tab {
                     return;
                 }
             }
+            if (e.isAltDown() && e.isShiftDown() && (e.getCode() == javafx.scene.input.KeyCode.BACK_SLASH || e.getCode() == javafx.scene.input.KeyCode.DOWN)) {
+                e.consume();
+                triggerCompletion();
+                return;
+            }
+            if (tryExpandPostfix(e.getCode())) {
+                e.consume();
+                return;
+            }
             if ((e.isControlDown() || e.isMetaDown()) && e.getCode() == javafx.scene.input.KeyCode.V) {
                 e.consume();
                 paste();
@@ -3345,6 +3354,78 @@ public class EditorTab extends Tab {
         } else {
             hideGhostSuggestion();
         }
+    }
+
+    private boolean tryExpandPostfix(javafx.scene.input.KeyCode code) {
+        dev.lumina.settings.PostfixCompletionSettings settings = dev.lumina.settings.PostfixCompletionSettings.getInstance();
+        if (!settings.isEnablePostfixCompletion()) return false;
+
+        String shortcut = settings.getExpandShortcut();
+        boolean matchesKey = switch (shortcut) {
+            case "Space" -> code == javafx.scene.input.KeyCode.SPACE;
+            case "Enter" -> code == javafx.scene.input.KeyCode.ENTER;
+            default -> code == javafx.scene.input.KeyCode.TAB;
+        };
+        if (!matchesKey) return false;
+
+        int caret = codeArea.getCaretPosition();
+        if (caret <= 0) return false;
+
+        int lineIdx = codeArea.getCurrentParagraph();
+        String lineText = codeArea.getText(lineIdx);
+        int col = codeArea.getCaretColumn();
+        if (col <= 0 || col > lineText.length()) return false;
+
+        String beforeCaretInLine = lineText.substring(0, col);
+        int lastDot = beforeCaretInLine.lastIndexOf('.');
+        if (lastDot < 0) return false;
+
+        String key = beforeCaretInLine.substring(lastDot + 1).trim();
+        if (key.isEmpty()) return false;
+
+        int exprStart = lastDot - 1;
+        while (exprStart >= 0) {
+            char c = beforeCaretInLine.charAt(exprStart);
+            if (Character.isWhitespace(c) || c == '(' || c == '[' || c == '{' || c == '=' || c == ',' || c == ';') {
+                exprStart++;
+                break;
+            }
+            exprStart--;
+        }
+        if (exprStart < 0) exprStart = 0;
+        String expr = beforeCaretInLine.substring(exprStart, lastDot).trim();
+        if (expr.isEmpty()) return false;
+
+        String lang = getLanguageForFile();
+        java.util.Optional<String> expanded = settings.expand(lang, key, expr);
+        if (expanded.isPresent()) {
+            int replaceStart = caret - (beforeCaretInLine.length() - exprStart);
+            int replaceEnd = caret;
+            String rep = expanded.get();
+            codeArea.replaceText(replaceStart, replaceEnd, rep);
+            applyHighlighting();
+            scheduleDiagnostics();
+            return true;
+        }
+        return false;
+    }
+
+    private String getLanguageForFile() {
+        if (path == null) return "Java";
+        String n = path.getFileName().toString().toLowerCase();
+        if (n.endsWith(".java")) return "Java";
+        if (n.endsWith(".ts")) return "TypeScript";
+        if (n.endsWith(".js")) return "JavaScript";
+        if (n.endsWith(".rs")) return "Rust";
+        if (n.endsWith(".kt") || n.endsWith(".kts")) return "Kotlin";
+        if (n.endsWith(".py")) return "Python";
+        if (n.endsWith(".go")) return "Go";
+        if (n.endsWith(".sql")) return "SQL";
+        if (n.endsWith(".groovy")) return "Groovy";
+        if (n.endsWith(".rb")) return "Ruby";
+        if (n.endsWith(".scala")) return "Scala";
+        if (n.endsWith(".php")) return "PHP";
+        return "Java";
     }
 
     private static int prefixRank(String prefix, String name) {
