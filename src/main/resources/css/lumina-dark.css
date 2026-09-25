@@ -1840,6 +1840,53 @@
     -fx-text-fill: inherit;
 }
 
+/* Color Scheme Category Tree (fixing white background, matching IntelliJ dark theme #2B2D30) */
+.color-scheme-tree {
+    -fx-background-color: #2B2D30;
+    -fx-background-insets: 0;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.color-scheme-tree .tree-cell {
+    -fx-background-color: #2B2D30;
+    -fx-text-fill: #DFE1E5;
+    -fx-padding: 3 8 3 8;
+    -fx-font-size: 13px;
+}
+
+.color-scheme-tree .tree-cell:empty {
+    -fx-background-color: #2B2D30;
+}
+
+.color-scheme-tree .tree-cell:hover {
+    -fx-background-color: #35373B;
+}
+
+.color-scheme-tree .tree-cell:selected,
+.color-scheme-tree .tree-cell:filled:selected,
+.color-scheme-tree .tree-cell:focused:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.color-scheme-tree .tree-cell .arrow {
+    -fx-background-color: #848BA3;
+}
+
+.color-scheme-tree .tree-cell:selected .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+.color-scheme-tree .tree-cell .tree-disclosure-node {
+    -fx-padding: 2 6 2 0;
+}
+
+.color-scheme-tree .tree-cell .label {
+    -fx-text-fill: inherit;
+}
+
 .settings-page {
     -fx-background-color: #1E1F22;
 }
