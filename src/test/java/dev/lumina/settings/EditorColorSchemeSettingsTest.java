@@ -87,4 +87,34 @@ class EditorColorSchemeSettingsTest {
         settings.setActiveSchemeName("Dark");
         assertFalse(notified.get());
     }
+
+    @Test
+    void testInheritanceResolution() {
+        String active = settings.getActiveSchemeName();
+
+        // Sticky Lines // Border inherits from Guides // Hard wrap guide
+        ColorAttribute borderAttr = settings.resolveAttribute(active, "Editor // Sticky Lines // Border");
+        assertNotNull(borderAttr);
+        assertEquals("#323438", borderAttr.getBackground());
+
+        // Sticky Lines // Hovered inherits from Caret row (#1F2024)
+        ColorAttribute hoveredAttr = settings.resolveAttribute(active, "Editor // Sticky Lines // Hovered");
+        assertNotNull(hoveredAttr);
+        assertEquals("#1F2024", hoveredAttr.getBackground());
+
+        // Modify Caret row and verify Hovered dynamically reflects change
+        ColorAttribute newCaretRow = new ColorAttribute(null, "#252830", false, false);
+        settings.setAttribute(active, "Editor // Caret row", newCaretRow);
+
+        ColorAttribute updatedHovered = settings.resolveAttribute(active, "Editor // Sticky Lines // Hovered");
+        assertEquals("#252830", updatedHovered.getBackground());
+
+        // Override Sticky Lines // Hovered explicitly (uncheck inherit)
+        ColorAttribute explicitHovered = new ColorAttribute(null, "#333333", false, false);
+        explicitHovered.setInherit(false);
+        settings.setAttribute(active, "Editor // Sticky Lines // Hovered", explicitHovered);
+
+        ColorAttribute resolvedExplicit = settings.resolveAttribute(active, "Editor // Sticky Lines // Hovered");
+        assertEquals("#333333", resolvedExplicit.getBackground());
+    }
 }
