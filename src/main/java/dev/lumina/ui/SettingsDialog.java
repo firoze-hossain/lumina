@@ -47,6 +47,7 @@ public class SettingsDialog {
     private SettingsBreadcrumbsPage currentBreadcrumbsPage;
     private SettingsCodeCompletionPage currentCodeCompletionPage;
     private SettingsCodeFoldingPage currentCodeFoldingPage;
+    private SettingsConsolePage currentConsolePage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -264,6 +265,18 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Console".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentConsolePage != null) {
+                            currentConsolePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -443,6 +456,15 @@ public class SettingsDialog {
                 }
                 currentCodeFoldingPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentCodeFoldingPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Console".equals(pageName)) {
+                if (currentConsolePage == null) {
+                    currentConsolePage = new SettingsConsolePage();
+                }
+                currentConsolePage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentConsolePage);
                 updateApplyButtonState();
                 return;
             }
@@ -1126,6 +1148,9 @@ public class SettingsDialog {
         if (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified()) {
             currentCodeFoldingPage.apply();
         }
+        if (currentConsolePage != null && currentConsolePage.isModified()) {
+            currentConsolePage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1136,7 +1161,8 @@ public class SettingsDialog {
                 || (currentEditorAppearancePage != null && currentEditorAppearancePage.isModified())
                 || (currentBreadcrumbsPage != null && currentBreadcrumbsPage.isModified())
                 || (currentCodeCompletionPage != null && currentCodeCompletionPage.isModified())
-                || (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified());
+                || (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified())
+                || (currentConsolePage != null && currentConsolePage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1179,6 +1205,9 @@ public class SettingsDialog {
             }
             if (currentCodeFoldingPage != null) {
                 currentCodeFoldingPage.reset();
+            }
+            if (currentConsolePage != null) {
+                currentConsolePage.reset();
             }
             stage.close();
         });
