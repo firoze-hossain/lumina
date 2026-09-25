@@ -1225,7 +1225,9 @@ public class EditorTab extends Tab {
         javafx.application.Platform.runLater(this::updateCodeGuides);
         javafx.application.Platform.runLater(this::applyAppearanceSettings);
         dev.lumina.settings.EditorAppearanceSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyAppearanceSettings));
+        dev.lumina.settings.EditorFontSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyFontSettings));
         dev.lumina.folding.CodeFoldingSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::refreshGutter));
+        javafx.application.Platform.runLater(this::applyFontSettings);
     }
 
     public void applyAppearanceSettings() {
@@ -1251,6 +1253,21 @@ public class EditorTab extends Tab {
             codeGuidesOverlay.setShowMethodSeparators(s.isShowMethodSeparators());
         }
         refreshGutter();
+    }
+
+    public void applyFontSettings() {
+        dev.lumina.settings.EditorFontSettings fs = dev.lumina.settings.EditorFontSettings.getInstance();
+        String family = fs.getFontFamily();
+        double size = fs.getFontSize();
+        double lineHeight = fs.getLineHeight();
+        String weight = fs.getMainWeight() != null ? fs.getMainWeight().toLowerCase() : "regular";
+        String cssWeight = "normal";
+        if (weight.contains("bold")) cssWeight = "bold";
+        else if (weight.contains("light") || weight.contains("thin")) cssWeight = "lighter";
+
+        this.currentFontSize = (int) size;
+        codeArea.setStyle(String.format("-fx-font-family: '%s'; -fx-font-size: %.1fpx; -fx-font-weight: %s; -fx-line-spacing: %.1f;",
+                family, size, cssWeight, (lineHeight - 1.0) * size));
     }
 
     // ----------------------------------------------------------- breakpoints & debug

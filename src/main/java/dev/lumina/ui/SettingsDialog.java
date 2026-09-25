@@ -65,6 +65,8 @@ public class SettingsDialog {
     private SettingsSmartKeysJavaScriptPage currentSmartKeysJsPage;
     private SettingsSmartKeysPHPPage currentSmartKeysPhpPage;
     private SettingsStickyLinesPage currentStickyLinesPage;
+    private SettingsCodeEditingPage currentCodeEditingPage;
+    private SettingsFontPage currentFontPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -498,6 +500,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Code Editing".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCodeEditingPage != null) {
+                            currentCodeEditingPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Font".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentFontPage != null) {
+                            currentFontPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -856,6 +882,24 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentStickyLinesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Code Editing".equals(pageName)) {
+                if (currentCodeEditingPage == null) {
+                    currentCodeEditingPage = new SettingsCodeEditingPage();
+                }
+                currentCodeEditingPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentCodeEditingPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Font".equals(pageName)) {
+                if (currentFontPage == null) {
+                    currentFontPage = new SettingsFontPage();
+                }
+                currentFontPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentFontPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1598,6 +1642,12 @@ public class SettingsDialog {
         if (currentStickyLinesPage != null && currentStickyLinesPage.isModified()) {
             currentStickyLinesPage.apply();
         }
+        if (currentCodeEditingPage != null && currentCodeEditingPage.isModified()) {
+            currentCodeEditingPage.apply();
+        }
+        if (currentFontPage != null && currentFontPage.isModified()) {
+            currentFontPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1626,7 +1676,9 @@ public class SettingsDialog {
                 || (currentSmartKeysRubyPage != null && currentSmartKeysRubyPage.isModified())
                 || (currentSmartKeysJsPage != null && currentSmartKeysJsPage.isModified())
                 || (currentSmartKeysPhpPage != null && currentSmartKeysPhpPage.isModified())
-                || (currentStickyLinesPage != null && currentStickyLinesPage.isModified());
+                || (currentStickyLinesPage != null && currentStickyLinesPage.isModified())
+                || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
+                || (currentFontPage != null && currentFontPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1723,6 +1775,12 @@ public class SettingsDialog {
             }
             if (currentStickyLinesPage != null) {
                 currentStickyLinesPage.reset();
+            }
+            if (currentCodeEditingPage != null) {
+                currentCodeEditingPage.reset();
+            }
+            if (currentFontPage != null) {
+                currentFontPage.reset();
             }
             stage.close();
         });
