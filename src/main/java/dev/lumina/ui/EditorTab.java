@@ -1226,8 +1226,10 @@ public class EditorTab extends Tab {
         javafx.application.Platform.runLater(this::applyAppearanceSettings);
         dev.lumina.settings.EditorAppearanceSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyAppearanceSettings));
         dev.lumina.settings.EditorFontSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyFontSettings));
+        dev.lumina.settings.EditorColorSchemeSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyColorSchemeSettings));
         dev.lumina.folding.CodeFoldingSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::refreshGutter));
         javafx.application.Platform.runLater(this::applyFontSettings);
+        javafx.application.Platform.runLater(this::applyColorSchemeSettings);
     }
 
     public void applyAppearanceSettings() {
@@ -1268,6 +1270,18 @@ public class EditorTab extends Tab {
         this.currentFontSize = (int) size;
         codeArea.setStyle(String.format("-fx-font-family: '%s'; -fx-font-size: %.1fpx; -fx-font-weight: %s; -fx-line-spacing: %.1f;",
                 family, size, cssWeight, (lineHeight - 1.0) * size));
+    }
+
+    public void applyColorSchemeSettings() {
+        dev.lumina.settings.EditorColorSchemeSettings cs = dev.lumina.settings.EditorColorSchemeSettings.getInstance();
+        String scheme = cs.getActiveSchemeName();
+        var defaultTextAttr = cs.getAttribute(scheme, "Text // Default text");
+        if (defaultTextAttr != null) {
+            String bg = defaultTextAttr.getBackground() != null ? defaultTextAttr.getBackground() : "#1E1F22";
+            String fg = defaultTextAttr.getForeground() != null ? defaultTextAttr.getForeground() : "#DFE1E5";
+            codeArea.setStyle(codeArea.getStyle() + String.format(" -fx-background-color: %s; -fx-text-fill: %s;", bg, fg));
+        }
+        applyHighlighting();
     }
 
     // ----------------------------------------------------------- breakpoints & debug

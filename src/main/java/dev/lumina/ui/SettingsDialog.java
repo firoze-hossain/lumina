@@ -67,6 +67,8 @@ public class SettingsDialog {
     private SettingsStickyLinesPage currentStickyLinesPage;
     private SettingsCodeEditingPage currentCodeEditingPage;
     private SettingsFontPage currentFontPage;
+    private SettingsColorSchemePage currentColorSchemePage;
+    private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -524,6 +526,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Color Scheme".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemePage != null) {
+                            currentColorSchemePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("General".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeGeneralPage != null) {
+                            currentColorSchemeGeneralPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -622,6 +648,25 @@ public class SettingsDialog {
 
         // 4. Color Scheme subpages
         if (underColorScheme) {
+            if ("General".equals(pageName)) {
+                if (currentColorSchemeGeneralPage == null) {
+                    currentColorSchemeGeneralPage = new SettingsColorSchemeGeneralPage();
+                }
+                currentColorSchemeGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeGeneralPage.getHeaderBar().setOnNavigateToTheme(() -> {
+                    TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
+                    if (appRoot != null) {
+                        TreeItem<String> appItem = findItem(appRoot, "Appearance");
+                        if (appItem != null) {
+                            expandAncestors(appItem);
+                            tree.getSelectionModel().select(appItem);
+                        }
+                    }
+                });
+                wrapInScroll(currentColorSchemeGeneralPage);
+                updateApplyButtonState();
+                return;
+            }
             buildColorSchemePage(pageName);
             return;
         }
@@ -900,6 +945,35 @@ public class SettingsDialog {
                 }
                 currentFontPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentFontPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Color Scheme".equals(pageName)) {
+                if (currentColorSchemePage == null) {
+                    currentColorSchemePage = new SettingsColorSchemePage();
+                }
+                currentColorSchemePage.setOnNavigate(cat -> {
+                    TreeItem<String> csRoot = findItem(tree.getRoot(), "Color Scheme");
+                    if (csRoot != null) {
+                        TreeItem<String> item = findItem(csRoot, cat);
+                        if (item != null) {
+                            expandAncestors(item);
+                            tree.getSelectionModel().select(item);
+                        }
+                    }
+                });
+                currentColorSchemePage.getHeaderBar().setOnNavigateToTheme(() -> {
+                    TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
+                    if (appRoot != null) {
+                        TreeItem<String> appItem = findItem(appRoot, "Appearance");
+                        if (appItem != null) {
+                            expandAncestors(appItem);
+                            tree.getSelectionModel().select(appItem);
+                        }
+                    }
+                });
+                currentColorSchemePage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentColorSchemePage);
                 updateApplyButtonState();
                 return;
             }
@@ -1193,8 +1267,35 @@ public class SettingsDialog {
     }
 
     private void buildColorSchemePage(String pageName) {
-        SettingsColorSchemePage page = new SettingsColorSchemePage();
-        page.selectPage(pageName);
+        if ("Color Scheme Font".equals(pageName)) {
+            SettingsColorSchemeFontPage page = new SettingsColorSchemeFontPage();
+            wrapInScroll(page);
+            return;
+        }
+        if ("Console Font".equals(pageName)) {
+            SettingsConsoleFontPage page = new SettingsConsoleFontPage();
+            wrapInScroll(page);
+            return;
+        }
+        if ("Console Colors".equals(pageName)) {
+            SettingsConsoleColorsPage page = new SettingsConsoleColorsPage();
+            wrapInScroll(page);
+            return;
+        }
+        if ("Language Defaults".equals(pageName)) {
+            SettingsColorSchemeLanguageDefaultsPage page = new SettingsColorSchemeLanguageDefaultsPage();
+            wrapInScroll(page);
+            return;
+        }
+        VBox page = new VBox(12);
+        page.setPadding(new Insets(16, 24, 20, 24));
+        page.setStyle("-fx-background-color: #1E1F22;");
+        ColorSchemeHeaderBar bar = new ColorSchemeHeaderBar();
+        Label title = new Label(pageName);
+        title.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 16px; -fx-font-weight: bold;");
+        Label desc = new Label("Configure color scheme settings for " + pageName + ".");
+        desc.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px;");
+        page.getChildren().addAll(bar, title, desc);
         wrapInScroll(page);
     }
 
@@ -1648,6 +1749,12 @@ public class SettingsDialog {
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
+        if (currentColorSchemePage != null && currentColorSchemePage.isModified()) {
+            currentColorSchemePage.apply();
+        }
+        if (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified()) {
+            currentColorSchemeGeneralPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1678,7 +1785,9 @@ public class SettingsDialog {
                 || (currentSmartKeysPhpPage != null && currentSmartKeysPhpPage.isModified())
                 || (currentStickyLinesPage != null && currentStickyLinesPage.isModified())
                 || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
-                || (currentFontPage != null && currentFontPage.isModified());
+                || (currentFontPage != null && currentFontPage.isModified())
+                || (currentColorSchemePage != null && currentColorSchemePage.isModified())
+                || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1781,6 +1890,12 @@ public class SettingsDialog {
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
+            }
+            if (currentColorSchemePage != null) {
+                currentColorSchemePage.reset();
+            }
+            if (currentColorSchemeGeneralPage != null) {
+                currentColorSchemeGeneralPage.reset();
             }
             stage.close();
         });
