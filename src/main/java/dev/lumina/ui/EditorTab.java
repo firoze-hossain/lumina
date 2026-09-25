@@ -8,6 +8,7 @@ import dev.lumina.git.GitFileStatus;
 import dev.lumina.git.GitService;
 import dev.lumina.git.GitStatusManager;
 import dev.lumina.semantics.Docs;
+import dev.lumina.settings.SmartKeysSettings;
 import dev.lumina.syntax.JavaSyntaxHighlighter;
 import javafx.application.Platform;
 import javafx.scene.control.*;
@@ -568,14 +569,131 @@ public class EditorTab extends Tab {
                 openGeneratePopup();
                 return;
             }
-            if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && !e.isAltDown() && !e.isControlDown() && !e.isMetaDown()) {
+                SmartKeysSettings sk = SmartKeysSettings.getInstance();
                 int paragraph = codeArea.getCurrentParagraph();
                 String line = codeArea.getParagraph(paragraph).getText();
-                String indent = line.replaceAll("\\S.*$", "");
-                Platform.runLater(() -> codeArea.insertText(codeArea.getCaretPosition(), indent));
-            } else if (e.getCode() == javafx.scene.input.KeyCode.TAB) {
+                int col = codeArea.getCaretColumn();
+                String prefix = line.substring(0, Math.min(col, line.length()));
+                String suffix = line.substring(Math.min(col, line.length()));
+                String baseIndent = line.replaceAll("\\S.*$", "");
+
+                if (sk.isSmartIndent()) {
+                    boolean afterOpenBrace = prefix.trim().endsWith("{");
+                    boolean beforeCloseBrace = suffix.trim().startsWith("}");
+                    boolean docComment = prefix.trim().startsWith("/**") || prefix.trim().startsWith("*");
+                    boolean jspTag = path != null && path.toString().endsWith(".jsp") && prefix.trim().endsWith("<%");
+
+                    if (afterOpenBrace && beforeCloseBrace && sk.isInsertPairRBrace()) {
+                        e.consume();
+                        String indentPlus = baseIndent + "    ";
+                        codeArea.replaceSelection("\n" + indentPlus + "\n" + baseIndent);
+                        codeArea.moveTo(codeArea.getCaretPosition() - baseIndent.length() - 1);
+                        return;
+                    } else if (afterOpenBrace) {
+                        Platform.runLater(() -> codeArea.insertText(codeArea.getCaretPosition(), baseIndent + "    "));
+                    } else if (docComment && sk.isInsertDocCommentStub()) {
+                        String docIndent = baseIndent;
+                        if (!prefix.trim().startsWith("*")) {
+                            docIndent = baseIndent + " ";
+                        }
+                        String stub = docIndent + "* ";
+                        Platform.runLater(() -> codeArea.insertText(codeArea.getCaretPosition(), stub));
+                    } else if (jspTag && sk.isInsertPairPercentOnEnterInJsp()) {
+                        e.consume();
+                        codeArea.replaceSelection("\n" + baseIndent + "    \n" + baseIndent + "%>");
+                        codeArea.moveTo(codeArea.getCaretPosition() - baseIndent.length() - 3);
+                        return;
+                    } else {
+                        Platform.runLater(() -> codeArea.insertText(codeArea.getCaretPosition(), baseIndent));
+                    }
+                } else {
+                    Platform.runLater(() -> codeArea.insertText(codeArea.getCaretPosition(), baseIndent));
+                }
+                return;
+            } else if (e.getCode() == javafx.scene.input.KeyCode.TAB && !e.isAltDown() && !e.isControlDown() && !e.isMetaDown()) {
+                SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                if (sk.isJumpOutsideClosingBracketOrQuoteWithTab() && codeArea.getSelection().getLength() == 0) {
+                    int pos = codeArea.getCaretPosition();
+                    String text = codeArea.getText();
+                    if (pos < text.length()) {
+                        char nextChar = text.charAt(pos);
+                        if (nextChar == ')' || nextChar == ']' || nextChar == '}' || nextChar == '>' || nextChar == '"' || nextChar == '\'') {
+                            e.consume();
+                            codeArea.moveTo(pos + 1);
+                            return;
+                        }
+                    }
+                }
                 e.consume();
                 codeArea.insertText(codeArea.getCaretPosition(), "    ");
+                return;
+            } else if (e.getCode() == javafx.scene.input.KeyCode.BACK_SPACE && !e.isAltDown() && !e.isControlDown() && !e.isMetaDown() && !completionPopup.isShowing()) {
+                SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                if (sk.getUnindentOnBackspace() != SmartKeysSettings.UnindentOnBackspace.DISABLED
+                        && codeArea.getSelection().getLength() == 0) {
+                    int col = codeArea.getCaretColumn();
+                    int paragraph = codeArea.getCurrentParagraph();
+                    String line = codeArea.getParagraph(paragraph).getText();
+                    String leading = line.substring(0, Math.min(col, line.length()));
+                    if (col > 0 && leading.trim().isEmpty()) {
+                        e.consume();
+                        int spacesToRemove = col % 4 == 0 ? 4 : (col % 4);
+                        if (spacesToRemove > col) spacesToRemove = col;
+                        int pos = codeArea.getCaretPosition();
+                        codeArea.deleteText(pos - spacesToRemove, pos);
+                        return;
+                    }
+                }
+            } else if (e.getCode() == javafx.scene.input.KeyCode.HOME && !e.isControlDown() && !e.isAltDown() && !e.isMetaDown()) {
+                SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                if (sk.isHomeMovesCaretToFirstNonWhitespace()) {
+                    int col = codeArea.getCaretColumn();
+                    int paragraph = codeArea.getCurrentParagraph();
+                    String line = codeArea.getParagraph(paragraph).getText();
+                    int firstNonWs = 0;
+                    while (firstNonWs < line.length() && Character.isWhitespace(line.charAt(firstNonWs))) {
+                        firstNonWs++;
+                    }
+                    if (firstNonWs < line.length()) {
+                        e.consume();
+                        int lineStart = codeArea.getCaretPosition() - col;
+                        if (col == firstNonWs) {
+                            if (e.isShiftDown()) {
+                                codeArea.selectRange(codeArea.getAnchor(), lineStart);
+                            } else {
+                                codeArea.moveTo(lineStart);
+                            }
+                        } else {
+                            if (e.isShiftDown()) {
+                                codeArea.selectRange(codeArea.getAnchor(), lineStart + firstNonWs);
+                            } else {
+                                codeArea.moveTo(lineStart + firstNonWs);
+                            }
+                        }
+                        return;
+                    }
+                }
+            } else if (e.getCode() == javafx.scene.input.KeyCode.END && !e.isControlDown() && !e.isAltDown() && !e.isMetaDown()) {
+                SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                if (sk.isEndOnBlankLineMovesCaretToIndent()) {
+                    int paragraph = codeArea.getCurrentParagraph();
+                    String line = codeArea.getParagraph(paragraph).getText();
+                    if (line.trim().isEmpty() && paragraph > 0) {
+                        String prevLine = codeArea.getParagraph(paragraph - 1).getText();
+                        String prevIndent = prevLine.replaceAll("\\S.*$", "");
+                        if (prevLine.trim().endsWith("{")) {
+                            prevIndent += "    ";
+                        }
+                        if (!prevIndent.isEmpty()) {
+                            e.consume();
+                            int lineStart = codeArea.getCaretPosition() - codeArea.getCaretColumn();
+                            codeArea.replaceText(lineStart, lineStart + line.length(), prevIndent);
+                            codeArea.moveTo(lineStart + prevIndent.length());
+                            return;
+                        }
+                    }
+                }
             }
         });
 
@@ -585,6 +703,98 @@ public class EditorTab extends Tab {
             String ch = e.getCharacter();
             if (ch == null || ch.isEmpty()) return;
             char c = ch.charAt(0);
+
+            SmartKeysSettings sk = SmartKeysSettings.getInstance();
+            if (codeArea.getSelection().getLength() > 0 && sk.isSurroundSelectionOnQuoteOrBrace()) {
+                char close = 0;
+                if (c == '(') close = ')';
+                else if (c == '[') close = ']';
+                else if (c == '{') close = '}';
+                else if (c == '<') close = '>';
+                else if (c == '"') close = '"';
+                else if (c == '\'') close = '\'';
+                if (close != 0) {
+                    e.consume();
+                    String selected = codeArea.getSelectedText();
+                    int start = codeArea.getSelection().getStart();
+                    codeArea.replaceSelection(c + selected + close);
+                    codeArea.selectRange(start + 1, start + 1 + selected.length());
+                    return;
+                }
+            }
+
+            int curPos = codeArea.getCaretPosition();
+            String fullDoc = codeArea.getText();
+            char nextC = curPos < fullDoc.length() ? fullDoc.charAt(curPos) : 0;
+
+            if (sk.isInsertPairedBrackets()) {
+                if (c == '(') {
+                    e.consume();
+                    codeArea.insertText(curPos, "()");
+                    codeArea.moveTo(curPos + 1);
+                    completionPopup.hide();
+                    hideGhostSuggestion();
+                    if (paramInfoTrigger != null) {
+                        Platform.runLater(paramInfoTrigger);
+                    }
+                    return;
+                } else if (c == '[') {
+                    e.consume();
+                    codeArea.insertText(curPos, "[]");
+                    codeArea.moveTo(curPos + 1);
+                    return;
+                } else if (c == '{') {
+                    e.consume();
+                    codeArea.insertText(curPos, "{}");
+                    codeArea.moveTo(curPos + 1);
+                    return;
+                } else if ((c == ')' || c == ']' || c == '}') && nextC == c) {
+                    e.consume();
+                    codeArea.moveTo(curPos + 1);
+                    return;
+                }
+            }
+
+            if (sk.isInsertPairQuote()) {
+                if (c == '"') {
+                    if (nextC == '"') {
+                        e.consume();
+                        codeArea.moveTo(curPos + 1);
+                        return;
+                    } else {
+                        e.consume();
+                        codeArea.insertText(curPos, "\"\"");
+                        codeArea.moveTo(curPos + 1);
+                        return;
+                    }
+                } else if (c == '\'') {
+                    if (nextC == '\'') {
+                        e.consume();
+                        codeArea.moveTo(curPos + 1);
+                        return;
+                    } else {
+                        e.consume();
+                        codeArea.insertText(curPos, "''");
+                        codeArea.moveTo(curPos + 1);
+                        return;
+                    }
+                }
+            }
+
+            if (c == '}' && sk.isReformatBlockOnTypingRBrace()) {
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                if (line.trim().isEmpty()) {
+                    int indentLen = line.length();
+                    int targetIndent = Math.max(0, indentLen - 4);
+                    String newIndent = " ".repeat(targetIndent);
+                    int lineStart = curPos - line.length();
+                    e.consume();
+                    codeArea.replaceText(lineStart, curPos, newIndent + "}");
+                    codeArea.moveTo(lineStart + newIndent.length() + 1);
+                    return;
+                }
+            }
             boolean configFile = isSpringConfigFile();
             if (c == '.' && !configFile) {
                 Platform.runLater(this::triggerCompletion);
@@ -3476,23 +3686,68 @@ public class EditorTab extends Tab {
 
     public void paste() {
         javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
-        if (clipboard.hasString() && path != null && path.toString().endsWith(".java")) {
+        if (clipboard.hasString()) {
             String pasted = clipboard.getString();
-            String current = codeArea.getText();
-            java.util.List<String> needed = dev.lumina.semantics.AutoImportService.getInstance().resolvePastedImports(current, pasted);
-            if (!needed.isEmpty()) {
-                dev.lumina.settings.AutoImportSettings.InsertImportsMode mode =
-                        dev.lumina.settings.AutoImportSettings.getInstance().getJavaInsertImportsOnPaste();
-                if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ALWAYS) {
-                    applyPasteWithImports(pasted, needed);
-                    return;
-                } else if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ASK) {
-                    promptPasteImports(pasted, needed);
-                    return;
+            SmartKeysSettings sk = SmartKeysSettings.getInstance();
+
+            if (path != null && (path.toString().endsWith(".kt") || path.toString().endsWith(".kts"))
+                    && sk.isConvertPastedJavaToKotlin()) {
+                pasted = convertJavaSnippetToKotlin(pasted);
+            }
+
+            if (sk.getReformatOnPaste() == SmartKeysSettings.ReformatOnPaste.INDENT_EACH_LINE) {
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                String baseIndent = line.replaceAll("\\S.*$", "");
+                if (!baseIndent.isEmpty() && pasted.contains("\n")) {
+                    String[] lines = pasted.split("\n", -1);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < lines.length; i++) {
+                        if (i == 0) {
+                            sb.append(lines[i]);
+                        } else {
+                            sb.append("\n").append(baseIndent).append(lines[i].stripLeading());
+                        }
+                    }
+                    pasted = sb.toString();
                 }
             }
+
+            if (path != null && path.toString().endsWith(".java")) {
+                String current = codeArea.getText();
+                java.util.List<String> needed = dev.lumina.semantics.AutoImportService.getInstance().resolvePastedImports(current, pasted);
+                if (!needed.isEmpty()) {
+                    dev.lumina.settings.AutoImportSettings.InsertImportsMode mode =
+                            dev.lumina.settings.AutoImportSettings.getInstance().getJavaInsertImportsOnPaste();
+                    if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ALWAYS) {
+                        applyPasteWithImports(pasted, needed);
+                        return;
+                    } else if (mode == dev.lumina.settings.AutoImportSettings.InsertImportsMode.ASK) {
+                        promptPasteImports(pasted, needed);
+                        return;
+                    }
+                }
+            }
+
+            codeArea.replaceSelection(pasted);
+            return;
         }
         codeArea.paste();
+    }
+
+    private String convertJavaSnippetToKotlin(String javaCode) {
+        if (javaCode == null) return "";
+        return javaCode
+                .replace("System.out.println", "println")
+                .replace("System.out.print", "print")
+                .replace("public static void main(String[] args)", "fun main(args: Array<String>)")
+                .replace("public static void main(String... args)", "fun main(vararg args: String)")
+                .replaceAll("(?m);\\s*$", "")
+                .replaceAll("\\bpublic void \\b", "fun ")
+                .replaceAll("\\bprivate void \\b", "private fun ")
+                .replaceAll("\\bprotected void \\b", "protected fun ")
+                .replaceAll("\\bpublic class \\b", "class ")
+                .replaceAll("\\bnew \\b", "");
     }
 
     private void applyPasteWithImports(String pasted, java.util.List<String> needed) {
