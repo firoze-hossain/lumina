@@ -132,7 +132,6 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("XML")) {
             showCopyrightFormattingSubPage(pageName);
         } else if (pageName.equals("General") ||
-                pageName.equals("Editor Tabs") ||
                 pageName.equals("Gutter Icons") ||
                 pageName.equals("Inline Completion") ||
                 pageName.equals("Postfix Completion") ||

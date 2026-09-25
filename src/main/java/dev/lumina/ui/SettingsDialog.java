@@ -48,6 +48,7 @@ public class SettingsDialog {
     private SettingsCodeCompletionPage currentCodeCompletionPage;
     private SettingsCodeFoldingPage currentCodeFoldingPage;
     private SettingsConsolePage currentConsolePage;
+    private SettingsEditorTabsPage currentEditorTabsPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -277,6 +278,18 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Editor Tabs".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentEditorTabsPage != null) {
+                            currentEditorTabsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -465,6 +478,15 @@ public class SettingsDialog {
                 }
                 currentConsolePage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentConsolePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Editor Tabs".equals(pageName)) {
+                if (currentEditorTabsPage == null) {
+                    currentEditorTabsPage = new SettingsEditorTabsPage();
+                }
+                currentEditorTabsPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentEditorTabsPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1151,6 +1173,9 @@ public class SettingsDialog {
         if (currentConsolePage != null && currentConsolePage.isModified()) {
             currentConsolePage.apply();
         }
+        if (currentEditorTabsPage != null && currentEditorTabsPage.isModified()) {
+            currentEditorTabsPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1162,7 +1187,8 @@ public class SettingsDialog {
                 || (currentBreadcrumbsPage != null && currentBreadcrumbsPage.isModified())
                 || (currentCodeCompletionPage != null && currentCodeCompletionPage.isModified())
                 || (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified())
-                || (currentConsolePage != null && currentConsolePage.isModified());
+                || (currentConsolePage != null && currentConsolePage.isModified())
+                || (currentEditorTabsPage != null && currentEditorTabsPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1208,6 +1234,9 @@ public class SettingsDialog {
             }
             if (currentConsolePage != null) {
                 currentConsolePage.reset();
+            }
+            if (currentEditorTabsPage != null) {
+                currentEditorTabsPage.reset();
             }
             stage.close();
         });
