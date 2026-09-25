@@ -690,6 +690,7 @@ public class EditorTab extends Tab {
         javafx.application.Platform.runLater(this::updateCodeGuides);
         javafx.application.Platform.runLater(this::applyAppearanceSettings);
         dev.lumina.settings.EditorAppearanceSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::applyAppearanceSettings));
+        dev.lumina.folding.CodeFoldingSettings.getInstance().addListener(s -> javafx.application.Platform.runLater(this::refreshGutter));
     }
 
     public void applyAppearanceSettings() {
@@ -963,15 +964,20 @@ public class EditorTab extends Tab {
             foldBox.setAlignment(javafx.geometry.Pos.CENTER);
 
             boolean showFoldingArrows = CodeFoldingSettings.getInstance().isShowFoldingArrows();
+            CodeFoldingSettings.FoldingArrowsMode arrowMode = CodeFoldingSettings.getInstance().getCodeFoldingArrowsMode();
             FoldRegion region = getFoldRegionAtStartLine(line);
+            javafx.scene.control.Label chevron = null;
             if (region != null && showFoldingArrows) {
-                javafx.scene.control.Label chevron = new javafx.scene.control.Label(region.isFolded() ? "\u203A" : "\u2304");
+                chevron = new javafx.scene.control.Label(region.isFolded() ? "\u203A" : "\u2304");
                 chevron.getStyleClass().add("fold-chevron");
                 chevron.setCursor(javafx.scene.Cursor.HAND);
                 chevron.setOnMouseClicked(e -> {
                     toggleFoldRegion(region);
                     e.consume();
                 });
+                if (arrowMode == CodeFoldingSettings.FoldingArrowsMode.ON_MOUSE_HOVER && !region.isFolded()) {
+                    chevron.setOpacity(0.0);
+                }
                 foldBox.getChildren().add(chevron);
             }
 
@@ -1049,6 +1055,12 @@ public class EditorTab extends Tab {
             box.getChildren().addAll(bpBox, num, markersBox, foldBox, gitStripe);
             box.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             box.getStyleClass().add("gutter-row");
+
+            if (chevron != null && arrowMode == CodeFoldingSettings.FoldingArrowsMode.ON_MOUSE_HOVER && (region == null || !region.isFolded())) {
+                final javafx.scene.control.Label activeChevron = chevron;
+                box.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> activeChevron.setOpacity(1.0));
+                box.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_EXITED, e -> activeChevron.setOpacity(0.0));
+            }
 
             if (appSettings.isShowMethodSeparators() && isMethodStartLine(line)) {
                 box.setStyle("-fx-border-color: #2D3035 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
