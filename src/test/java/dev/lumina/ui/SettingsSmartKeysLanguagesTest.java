@@ -246,13 +246,26 @@ class SettingsSmartKeysLanguagesTest {
         CountDownLatch latch = new CountDownLatch(1);
         Platform.runLater(() -> {
             try {
-                // Scala
+                // Scala (Screenshot 4)
                 SettingsSmartKeysScalaPage scalaPage = new SettingsSmartKeysScalaPage();
                 assertFalse(scalaPage.isModified());
-                assertTrue(scalaPage.getInsertClosingBraceCheck().isSelected());
-                assertTrue(scalaPage.getAutoIndentCheck().isSelected());
+                assertTrue(scalaPage.getIndentPastedLinesCheck().isSelected());
+                assertTrue(scalaPage.getInsertPairQuotesCheck().isSelected());
+                assertTrue(scalaPage.getUpgradeSimpleStringCheck().isSelected());
+                assertTrue(scalaPage.getWrapSingleExpressionCheck().isSelected());
+                assertTrue(scalaPage.getDeleteClosingBraceCheck().isSelected());
+                assertTrue(scalaPage.getAddBracesAutomaticallyCheck().isSelected());
+                assertFalse(scalaPage.getRemoveBracesAutomaticallyCheck().isSelected());
 
-                // SQL
+                scalaPage.getRemoveBracesAutomaticallyCheck().setSelected(true);
+                assertTrue(scalaPage.isModified());
+                scalaPage.apply();
+                assertTrue(SmartKeysSettings.getInstance().isScalaRemoveBracesAutomaticallyBasedOnIndentation());
+                assertFalse(scalaPage.isModified());
+                scalaPage.reset();
+                assertTrue(scalaPage.getRemoveBracesAutomaticallyCheck().isSelected());
+
+                // SQL (Screenshot 5)
                 SettingsSmartKeysSQLPage sqlPage = new SettingsSmartKeysSQLPage();
                 assertFalse(sqlPage.isModified());
                 assertTrue(sqlPage.getInsertStringConcatCheck().isSelected());
@@ -261,8 +274,17 @@ class SettingsSmartKeysLanguagesTest {
                 // Ruby
                 SettingsSmartKeysRubyPage rubyPage = new SettingsSmartKeysRubyPage();
                 assertFalse(rubyPage.isModified());
-                assertTrue(rubyPage.getAutoInsertEndCheck().isSelected());
-                assertTrue(rubyPage.getSmartIndentCheck().isSelected());
+                assertTrue(rubyPage.getContinueLineCommentsCheck().isSelected());
+                assertTrue(rubyPage.getDeleteEmptyLineCommentsCheck().isSelected());
+                assertFalse(rubyPage.getStartInterpolationOnTypingHashCheck().isSelected());
+
+                rubyPage.getStartInterpolationOnTypingHashCheck().setSelected(true);
+                assertTrue(rubyPage.isModified());
+                rubyPage.apply();
+                assertTrue(SmartKeysSettings.getInstance().isRubyStartInterpolationOnTypingHash());
+                assertFalse(rubyPage.isModified());
+                rubyPage.reset();
+                assertTrue(rubyPage.getStartInterpolationOnTypingHashCheck().isSelected());
 
                 // JavaScript
                 SettingsSmartKeysJavaScriptPage jsPage = new SettingsSmartKeysJavaScriptPage();
@@ -273,8 +295,23 @@ class SettingsSmartKeysLanguagesTest {
                 // PHP
                 SettingsSmartKeysPHPPage phpPage = new SettingsSmartKeysPHPPage();
                 assertFalse(phpPage.isModified());
+                assertTrue(phpPage.getSelectVarWithoutDollarCheck().isSelected());
+                assertTrue(phpPage.getEscapeTextOnPasteCheck().isSelected());
+                assertTrue(phpPage.getReplaceQuotesOnPasteCheck().isSelected());
+                assertTrue(phpPage.getAutoInsertPhpTagCheck().isSelected());
+                assertTrue(phpPage.getAutoInsertArrowCheck().isSelected());
                 assertTrue(phpPage.getAutoInsertSemicolonCheck().isSelected());
+                assertTrue(phpPage.getAutoInsertClosingTagDocCheck().isSelected());
+                assertTrue(phpPage.getSmartParamsCompletionCheck().isSelected());
                 assertTrue(phpPage.getSmartIndentCheck().isSelected());
+
+                phpPage.getSelectVarWithoutDollarCheck().setSelected(false);
+                assertTrue(phpPage.isModified());
+                phpPage.apply();
+                assertFalse(SmartKeysSettings.getInstance().isPhpSelectVarWithoutDollarOnDoubleClick());
+                assertFalse(phpPage.isModified());
+                phpPage.reset();
+                assertFalse(phpPage.getSelectVarWithoutDollarCheck().isSelected());
             } finally {
                 latch.countDown();
             }

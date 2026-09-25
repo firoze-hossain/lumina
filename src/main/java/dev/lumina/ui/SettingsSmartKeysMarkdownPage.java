@@ -91,7 +91,7 @@ public class SettingsSmartKeysMarkdownPage extends VBox {
 
         HBox listsHeader = createSectionHeader("Lists");
 
-        numeratingCombo.getItems().addAll("Sequentially", "Strictly", "As in markdown");
+        numeratingCombo.getItems().addAll("Sequentially", "With '1.'", "With previous number");
         numeratingCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
         numeratingCombo.setPrefWidth(160);
 

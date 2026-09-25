@@ -578,6 +578,108 @@ public class EditorTab extends Tab {
                 String suffix = line.substring(Math.min(col, line.length()));
                 String baseIndent = line.replaceAll("\\S.*$", "");
 
+                if (e.isShiftDown()) {
+                    if (isMarkdownFile() && sk.isMarkdownUseShiftEnterForNewTableRow() && line.contains("|")) {
+                        e.consume();
+                        long pipes = line.chars().filter(ch -> ch == '|').count();
+                        StringBuilder newRow = new StringBuilder("\n|");
+                        for (int i = 0; i < Math.max(1, pipes - 1); i++) {
+                            newRow.append("  |");
+                        }
+                        int cur = codeArea.getCaretPosition();
+                        codeArea.insertText(cur, newRow.toString());
+                        codeArea.moveTo(cur + 3);
+                        return;
+                    }
+                    if (isRubyFile() && sk.isRubyContinueLineCommentsOnEnter() && prefix.trim().startsWith("#")) {
+                        e.consume();
+                        codeArea.replaceSelection("\n" + baseIndent + "# ");
+                        return;
+                    }
+                    e.consume();
+                    codeArea.replaceSelection("\n" + baseIndent);
+                    return;
+                }
+
+                // 1. Markdown Smart Enter
+                if (isMarkdownFile()) {
+                    if (sk.isMarkdownInsertHtmlBreakInsideTableCells() && prefix.contains("|") && suffix.contains("|")) {
+                        e.consume();
+                        codeArea.insertText(codeArea.getCaretPosition(), "<br/>");
+                        return;
+                    }
+                    if (sk.isMarkdownSmartEnterAndBackspace()) {
+                        if (prefix.trim().matches("^([-*+]|\\d+\\.)\\s*$") && suffix.trim().isEmpty()) {
+                            e.consume();
+                            int lineStart = codeArea.getCaretPosition() - col;
+                            codeArea.replaceText(lineStart, lineStart + line.length(), baseIndent);
+                            codeArea.moveTo(lineStart + baseIndent.length());
+                            return;
+                        }
+                        java.util.regex.Matcher bm = java.util.regex.Pattern.compile("^(\\s*)([-*+])\\s+").matcher(prefix);
+                        if (bm.find()) {
+                            e.consume();
+                            codeArea.replaceSelection("\n" + bm.group(1) + bm.group(2) + " ");
+                            return;
+                        }
+                        java.util.regex.Matcher nm = java.util.regex.Pattern.compile("^(\\s*)(\\d+)\\.\\s+").matcher(prefix);
+                        if (nm.find()) {
+                            e.consume();
+                            int num = Integer.parseInt(nm.group(2));
+                            String nextNum;
+                            String numerating = sk.getMarkdownListNumerating();
+                            if ("With '1.'".equals(numerating)) {
+                                nextNum = "1";
+                            } else if ("With previous number".equals(numerating)) {
+                                nextNum = String.valueOf(num);
+                            } else {
+                                nextNum = String.valueOf(num + 1);
+                            }
+                            codeArea.replaceSelection("\n" + nm.group(1) + nextNum + ". ");
+                            return;
+                        }
+                    }
+                }
+
+                // 2. SQL Smart Enter
+                if (isSqlFile()) {
+                    if (sk.isSqlInsertStringConcatOnEnter()) {
+                        int quotesBefore = 0;
+                        for (int i = 0; i < prefix.length(); i++) {
+                            if (prefix.charAt(i) == '\'') quotesBefore++;
+                        }
+                        if (quotesBefore % 2 == 1 && suffix.contains("'")) {
+                            e.consume();
+                            codeArea.replaceSelection("' ||\n" + baseIndent + "    '");
+                            return;
+                        }
+                    }
+                    if (sk.isSqlCloseCodeBlocksOnEnter()) {
+                        String trimmed = prefix.trim().toUpperCase();
+                        if (trimmed.endsWith("BEGIN") || trimmed.endsWith("CASE")) {
+                            e.consume();
+                            String close = trimmed.endsWith("CASE") ? "END" : "END;";
+                            codeArea.replaceSelection("\n" + baseIndent + "    \n" + baseIndent + close);
+                            codeArea.moveTo(codeArea.getCaretPosition() - baseIndent.length() - close.length() - 1);
+                            return;
+                        }
+                    }
+                }
+
+                // 3. Ruby line comments
+                if (isRubyFile() && sk.isRubyContinueLineCommentsOnEnter() && prefix.trim().startsWith("#")) {
+                    if (sk.isRubyDeleteEmptyLineCommentsOnEnter() && prefix.trim().equals("#") && suffix.trim().isEmpty()) {
+                        e.consume();
+                        int lineStart = codeArea.getCaretPosition() - col;
+                        codeArea.replaceText(lineStart, lineStart + line.length(), baseIndent);
+                        codeArea.moveTo(lineStart + baseIndent.length());
+                        return;
+                    }
+                    e.consume();
+                    codeArea.replaceSelection("\n" + baseIndent + "# ");
+                    return;
+                }
+
                 if (sk.isSmartIndent()) {
                     boolean afterOpenBrace = prefix.trim().endsWith("{");
                     boolean beforeCloseBrace = suffix.trim().startsWith("}");
@@ -613,6 +715,22 @@ public class EditorTab extends Tab {
                 return;
             } else if (e.getCode() == javafx.scene.input.KeyCode.TAB && !e.isAltDown() && !e.isControlDown() && !e.isMetaDown()) {
                 SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                int col = codeArea.getCaretColumn();
+
+                if (isMarkdownFile() && sk.isMarkdownUseTabShiftTabToNavigateCells() && line.contains("|")) {
+                    int nextPipe = line.indexOf('|', col);
+                    if (nextPipe != -1) {
+                        e.consume();
+                        int lineStart = codeArea.getCaretPosition() - col;
+                        int target = nextPipe + 1;
+                        if (target < line.length() && line.charAt(target) == ' ') target++;
+                        codeArea.moveTo(lineStart + target);
+                        return;
+                    }
+                }
+
                 if (sk.isJumpOutsideClosingBracketOrQuoteWithTab() && codeArea.getSelection().getLength() == 0) {
                     int pos = codeArea.getCaretPosition();
                     String text = codeArea.getText();
@@ -630,11 +748,34 @@ public class EditorTab extends Tab {
                 return;
             } else if (e.getCode() == javafx.scene.input.KeyCode.BACK_SPACE && !e.isAltDown() && !e.isControlDown() && !e.isMetaDown() && !completionPopup.isShowing()) {
                 SmartKeysSettings sk = SmartKeysSettings.getInstance();
+                int col = codeArea.getCaretColumn();
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                String prefix = line.substring(0, Math.min(col, line.length()));
+                String suffix = line.substring(Math.min(col, line.length()));
+                String baseIndent = line.replaceAll("\\S.*$", "");
+
+                if (isMarkdownFile() && sk.isMarkdownSmartEnterAndBackspace()) {
+                    if (prefix.matches("^\\s*([*+-]|\\d+\\.)\\s$") && suffix.isEmpty()) {
+                        e.consume();
+                        int lineStart = codeArea.getCaretPosition() - col;
+                        codeArea.replaceText(lineStart, lineStart + line.length(), baseIndent);
+                        codeArea.moveTo(lineStart + baseIndent.length());
+                        return;
+                    }
+                }
+
+                if (isScalaFile() && sk.isScalaDeleteClosingBraceAfterDeletingBrace()) {
+                    if (col > 0 && prefix.endsWith("{") && suffix.startsWith("}")) {
+                        e.consume();
+                        int pos = codeArea.getCaretPosition();
+                        codeArea.deleteText(pos - 1, pos + 1);
+                        return;
+                    }
+                }
+
                 if (sk.getUnindentOnBackspace() != SmartKeysSettings.UnindentOnBackspace.DISABLED
                         && codeArea.getSelection().getLength() == 0) {
-                    int col = codeArea.getCaretColumn();
-                    int paragraph = codeArea.getCurrentParagraph();
-                    String line = codeArea.getParagraph(paragraph).getText();
                     String leading = line.substring(0, Math.min(col, line.length()));
                     if (col > 0 && leading.trim().isEmpty()) {
                         e.consume();
@@ -726,6 +867,85 @@ public class EditorTab extends Tab {
             int curPos = codeArea.getCaretPosition();
             String fullDoc = codeArea.getText();
             char nextC = curPos < fullDoc.length() ? fullDoc.charAt(curPos) : 0;
+            int paragraph = codeArea.getCurrentParagraph();
+            String line = codeArea.getParagraph(paragraph).getText();
+            int col = codeArea.getCaretColumn();
+            String prefix = line.substring(0, Math.min(col, line.length()));
+
+            // Rust raw string hash pairing: r# -> r#""#
+            if (isRustFile() && sk.isRustInsertPairedHashForRawStrings() && c == '"') {
+                if (prefix.matches(".*r#+$")) {
+                    e.consume();
+                    int hashes = 0;
+                    for (int i = prefix.length() - 1; i >= 0 && prefix.charAt(i) == '#'; i--) {
+                        hashes++;
+                    }
+                    String closing = "\"" + "#".repeat(hashes);
+                    codeArea.insertText(curPos, "\"" + closing);
+                    codeArea.moveTo(curPos + 1);
+                    return;
+                }
+            }
+
+            // Scala multiline quotes: """ -> """"""
+            if (isScalaFile() && sk.isScalaInsertPairQuotesForMultilineString() && c == '"' && prefix.endsWith("\"\"")) {
+                e.consume();
+                codeArea.insertText(curPos, "\"\"\"\"");
+                codeArea.moveTo(curPos + 1);
+                return;
+            }
+
+            // Scala string interpolation upgrade: "$|" + '{' -> 's"...${|}'
+            if (isScalaFile() && c == '{') {
+                if (sk.isScalaUpgradeSimpleStringIntoInterpolatedAfterDollarBrace() && prefix.endsWith("$")) {
+                    int quoteIdx = prefix.lastIndexOf('"');
+                    if (quoteIdx != -1 && (quoteIdx == 0 || !Character.isLetter(prefix.charAt(quoteIdx - 1)))) {
+                        int lineStart = curPos - col;
+                        codeArea.insertText(lineStart + quoteIdx, "s");
+                        curPos++;
+                    }
+                    e.consume();
+                    codeArea.insertText(curPos, "{}");
+                    codeArea.moveTo(curPos + 1);
+                    return;
+                }
+                if (sk.isScalaWrapSingleExpressionBodyWithClosingBraceAfterBrace() && prefix.trim().endsWith("=")) {
+                    e.consume();
+                    codeArea.insertText(curPos, " {}");
+                    codeArea.moveTo(curPos + 2);
+                    return;
+                }
+            }
+
+            // Python method self insertion: def foo(| -> def foo(self)
+            if (isPythonFile() && sk.isPythonInsertSelfWhenDefiningMethod() && c == '(') {
+                if (prefix.matches("^\\s+def\\s+[A-Za-z0-9_]+$")) {
+                    e.consume();
+                    codeArea.insertText(curPos, "(self)");
+                    codeArea.moveTo(curPos + 6);
+                    return;
+                }
+            }
+
+            // PHP auto-insert '->' after variable
+            if (isPhpFile() && sk.isPhpAutoInsertArrowOnTypingMinusAfterObject() && c == '-') {
+                if (prefix.matches(".*\\$[A-Za-z0-9_]+$")) {
+                    e.consume();
+                    codeArea.insertText(curPos, "->");
+                    codeArea.moveTo(curPos + 2);
+                    return;
+                }
+            }
+
+            // PHP auto-insert '<?php' after '<?'
+            if (isPhpFile() && sk.isPhpAutoInsertPhpTagAfterTyping() && c == '?') {
+                if (prefix.endsWith("<")) {
+                    e.consume();
+                    codeArea.insertText(curPos, "?php ");
+                    codeArea.moveTo(curPos + 5);
+                    return;
+                }
+            }
 
             if (sk.isInsertPairedBrackets()) {
                 if (c == '(') {
@@ -782,8 +1002,6 @@ public class EditorTab extends Tab {
             }
 
             if (c == '}' && sk.isReformatBlockOnTypingRBrace()) {
-                int paragraph = codeArea.getCurrentParagraph();
-                String line = codeArea.getParagraph(paragraph).getText();
                 if (line.trim().isEmpty()) {
                     int indentLen = line.length();
                     int targetIndent = Math.max(0, indentLen - 4);
@@ -870,6 +1088,20 @@ public class EditorTab extends Tab {
                         navigationHandler.accept(word);
                     }
                 }
+            }
+        });
+
+        // Double-click in PHP: select variable name without '$'
+        codeArea.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, e -> {
+            if (e.getClickCount() == 2 && isPhpFile() && SmartKeysSettings.getInstance().isPhpSelectVarWithoutDollarOnDoubleClick()) {
+                Platform.runLater(() -> {
+                    String sel = codeArea.getSelectedText();
+                    if (sel != null && sel.startsWith("$") && sel.length() > 1) {
+                        int selStart = codeArea.getSelection().getStart();
+                        int selEnd = codeArea.getSelection().getEnd();
+                        codeArea.selectRange(selStart + 1, selEnd);
+                    }
+                });
             }
         });
 
@@ -3635,7 +3867,34 @@ public class EditorTab extends Tab {
         if (n.endsWith(".rb")) return "Ruby";
         if (n.endsWith(".scala")) return "Scala";
         if (n.endsWith(".php")) return "PHP";
+        if (n.endsWith(".md") || n.endsWith(".markdown")) return "Markdown";
+        if (n.endsWith(".json")) return "JSON";
         return "Java";
+    }
+
+    private boolean isMarkdownFile() {
+        return path != null && (path.toString().endsWith(".md") || path.toString().endsWith(".markdown"));
+    }
+    private boolean isSqlFile() {
+        return path != null && path.toString().endsWith(".sql");
+    }
+    private boolean isRustFile() {
+        return path != null && path.toString().endsWith(".rs");
+    }
+    private boolean isScalaFile() {
+        return path != null && path.toString().endsWith(".scala");
+    }
+    private boolean isPythonFile() {
+        return path != null && path.toString().endsWith(".py");
+    }
+    private boolean isPhpFile() {
+        return path != null && path.toString().endsWith(".php");
+    }
+    private boolean isRubyFile() {
+        return path != null && path.toString().endsWith(".rb");
+    }
+    private boolean isJsonFile() {
+        return path != null && path.toString().endsWith(".json");
     }
 
     private static int prefixRank(String prefix, String name) {
@@ -3695,7 +3954,9 @@ public class EditorTab extends Tab {
                 pasted = convertJavaSnippetToKotlin(pasted);
             }
 
-            if (sk.getReformatOnPaste() == SmartKeysSettings.ReformatOnPaste.INDENT_EACH_LINE) {
+            if (sk.getReformatOnPaste() == SmartKeysSettings.ReformatOnPaste.INDENT_EACH_LINE
+                    || (isPythonFile() && sk.isPythonSmartIndentPastedLines())
+                    || (isScalaFile() && sk.isScalaIndentPastedLinesAtCaret())) {
                 int paragraph = codeArea.getCurrentParagraph();
                 String line = codeArea.getParagraph(paragraph).getText();
                 String baseIndent = line.replaceAll("\\S.*$", "");
@@ -3710,6 +3971,27 @@ public class EditorTab extends Tab {
                         }
                     }
                     pasted = sb.toString();
+                }
+            }
+
+            if (isPhpFile() && sk.isPhpEscapeTextOnPasteInStringLiterals()) {
+                int paragraph = codeArea.getCurrentParagraph();
+                String line = codeArea.getParagraph(paragraph).getText();
+                int col = codeArea.getCaretColumn();
+                String prefix = line.substring(0, Math.min(col, line.length()));
+                String suffix = line.substring(Math.min(col, line.length()));
+                if ((prefix.endsWith("\"") && suffix.startsWith("\""))
+                        || (prefix.endsWith("'") && suffix.startsWith("'"))) {
+                    pasted = pasted.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'");
+                }
+            }
+
+            if (isPhpFile() && sk.isPhpReplaceUnnecessaryDoubleQuotesOnPaste()) {
+                if (pasted.startsWith("\"") && pasted.endsWith("\"") && pasted.length() >= 2) {
+                    String inside = pasted.substring(1, pasted.length() - 1);
+                    if (!inside.contains("$") && !inside.contains("\\")) {
+                        pasted = "'" + inside + "'";
+                    }
                 }
             }
 
