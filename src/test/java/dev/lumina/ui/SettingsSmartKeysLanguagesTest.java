@@ -290,28 +290,28 @@ class SettingsSmartKeysLanguagesTest {
                 SettingsSmartKeysJavaScriptPage jsPage = new SettingsSmartKeysJavaScriptPage();
                 assertFalse(jsPage.isModified());
                 assertTrue(jsPage.getReplaceStringLiteralCheck().isSelected());
-                assertTrue(jsPage.getStartTemplateStringCheck().isSelected());
+                assertFalse(jsPage.getStartTemplateStringCheck().isSelected());
 
                 // PHP
                 SettingsSmartKeysPHPPage phpPage = new SettingsSmartKeysPHPPage();
                 assertFalse(phpPage.isModified());
-                assertTrue(phpPage.getSelectVarWithoutDollarCheck().isSelected());
-                assertTrue(phpPage.getEscapeTextOnPasteCheck().isSelected());
-                assertTrue(phpPage.getReplaceQuotesOnPasteCheck().isSelected());
+                assertFalse(phpPage.getSmartParamsCompletionCheck().isSelected());
+                assertFalse(phpPage.getSelectVarWithoutDollarCheck().isSelected());
+                assertTrue(phpPage.getRemovePhpTagsOnPasteCheck().isSelected());
+                assertFalse(phpPage.getEscapeSymbolsOnPasteCheck().isSelected());
+                assertFalse(phpPage.getReplaceQuotesOnPasteCheck().isSelected());
                 assertTrue(phpPage.getAutoInsertPhpTagCheck().isSelected());
-                assertTrue(phpPage.getAutoInsertArrowCheck().isSelected());
                 assertTrue(phpPage.getAutoInsertSemicolonCheck().isSelected());
+                assertTrue(phpPage.getShowAdditionalOptionsMethodUsagesCheck().isSelected());
                 assertTrue(phpPage.getAutoInsertClosingTagDocCheck().isSelected());
-                assertTrue(phpPage.getSmartParamsCompletionCheck().isSelected());
-                assertTrue(phpPage.getSmartIndentCheck().isSelected());
 
-                phpPage.getSelectVarWithoutDollarCheck().setSelected(false);
+                phpPage.getSelectVarWithoutDollarCheck().setSelected(true);
                 assertTrue(phpPage.isModified());
                 phpPage.apply();
-                assertFalse(SmartKeysSettings.getInstance().isPhpSelectVarWithoutDollarOnDoubleClick());
+                assertTrue(SmartKeysSettings.getInstance().isPhpSelectVarWithoutDollarOnDoubleClick());
                 assertFalse(phpPage.isModified());
                 phpPage.reset();
-                assertFalse(phpPage.getSelectVarWithoutDollarCheck().isSelected());
+                assertTrue(phpPage.getSelectVarWithoutDollarCheck().isSelected());
             } finally {
                 latch.countDown();
             }

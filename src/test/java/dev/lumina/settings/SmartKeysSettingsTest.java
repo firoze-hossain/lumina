@@ -118,21 +118,23 @@ class SmartKeysSettingsTest {
 
         // JavaScript
         assertTrue(settings.isJsReplaceStringLiteralOnTemplate());
-        assertTrue(settings.isJsStartTemplateStringInterpolation());
+        assertFalse(settings.isJsStartTemplateStringInterpolation());
         assertTrue(settings.isJsEscapeTextOnPasteInStringLiterals());
         assertTrue(settings.isJsCloseHtmlSingleTagsInJsx());
         assertTrue(settings.isJsConvertHtmlAttributeNamesInJsx());
         assertTrue(settings.isJsEscapeJsDocLeadingAsterisks());
 
         // PHP
-        assertTrue(settings.isPhpSelectVarWithoutDollarOnDoubleClick());
-        assertTrue(settings.isPhpEscapeTextOnPasteInStringLiterals());
-        assertTrue(settings.isPhpReplaceUnnecessaryDoubleQuotesOnPaste());
+        assertFalse(settings.isPhpEnableSmartFunctionParametersCompletion());
+        assertFalse(settings.isPhpSelectVarWithoutDollarOnDoubleClick());
+        assertTrue(settings.isPhpRemovePhpOpenCloseTagsWhilePasting());
+        assertFalse(settings.isPhpEscapeSymbolsOnPasteInStringLiterals());
+        assertFalse(settings.isPhpReplaceUnnecessaryDoubleQuotesOnPaste());
         assertTrue(settings.isPhpAutoInsertPhpTagAfterTyping());
-        assertTrue(settings.isPhpAutoInsertArrowOnTypingMinusAfterObject());
         assertTrue(settings.isPhpAutoInsertSemicolon());
+        assertTrue(settings.isPhpShowAdditionalOptionsSearchingMethodUsages());
         assertTrue(settings.isPhpAutoInsertClosingHtmlTagInDoc());
-        assertTrue(settings.isPhpEnableSmartFunctionParametersCompletion());
+        assertTrue(settings.isPhpAutoInsertArrowOnTypingMinusAfterObject());
         assertTrue(settings.isPhpSmartIndent());
     }
 
@@ -202,9 +204,9 @@ class SmartKeysSettingsTest {
         copy.setRubyStartInterpolationOnTypingHash(false);
         assertFalse(settings.isModified(copy));
 
-        copy.setPhpSelectVarWithoutDollarOnDoubleClick(false);
-        assertTrue(settings.isModified(copy));
         copy.setPhpSelectVarWithoutDollarOnDoubleClick(true);
+        assertTrue(settings.isModified(copy));
+        copy.setPhpSelectVarWithoutDollarOnDoubleClick(false);
         assertFalse(settings.isModified(copy));
     }
 
