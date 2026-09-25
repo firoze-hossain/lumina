@@ -15,7 +15,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 /**
- * IntelliJ IDEA-style Settings dialog with:
+ * Comprehensive Settings dialog with:
  * - Left: Settings category tree with interactive search filtering
  * - Right Top: Dynamic breadcrumbs header (e.g. Appearance & Behavior › Appearance) and ← → navigation history
  * - Right Center: Dynamic page routing (Category overview for parent nodes, SettingsIdeAppearancePage for Appearance, etc.)
@@ -53,6 +53,17 @@ public class SettingsDialog {
     private SettingsInlineCompletionPage currentInlineCompletionPage;
     private SettingsPostfixCompletionPage currentPostfixCompletionPage;
     private SettingsSmartKeysPage currentSmartKeysPage;
+    private SettingsSmartKeysYAMLPage currentSmartKeysYamlPage;
+    private SettingsSmartKeysHTMLCSSPage currentSmartKeysHtmlCssPage;
+    private SettingsSmartKeysPythonPage currentSmartKeysPythonPage;
+    private SettingsSmartKeysJSONPage currentSmartKeysJsonPage;
+    private SettingsSmartKeysRustPage currentSmartKeysRustPage;
+    private SettingsSmartKeysMarkdownPage currentSmartKeysMarkdownPage;
+    private SettingsSmartKeysScalaPage currentSmartKeysScalaPage;
+    private SettingsSmartKeysSQLPage currentSmartKeysSqlPage;
+    private SettingsSmartKeysRubyPage currentSmartKeysRubyPage;
+    private SettingsSmartKeysJavaScriptPage currentSmartKeysJsPage;
+    private SettingsSmartKeysPHPPage currentSmartKeysPhpPage;
     private SettingsStickyLinesPage currentStickyLinesPage;
     private Button applyButton;
 
@@ -343,6 +354,138 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("YAML".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysYamlPage != null) {
+                            currentSmartKeysYamlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("HTML/CSS".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysHtmlCssPage != null) {
+                            currentSmartKeysHtmlCssPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysPythonPage != null) {
+                            currentSmartKeysPythonPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSON".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysJsonPage != null) {
+                            currentSmartKeysJsonPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Rust".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysRustPage != null) {
+                            currentSmartKeysRustPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Markdown".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysMarkdownPage != null) {
+                            currentSmartKeysMarkdownPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Scala".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysScalaPage != null) {
+                            currentSmartKeysScalaPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SQL".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysSqlPage != null) {
+                            currentSmartKeysSqlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Ruby".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysRubyPage != null) {
+                            currentSmartKeysRubyPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JavaScript".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysJsPage != null) {
+                            currentSmartKeysJsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("PHP".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysPhpPage != null) {
+                            currentSmartKeysPhpPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Sticky Lines".equals(item.getValue())) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -595,6 +738,105 @@ public class SettingsDialog {
                 }
                 currentSmartKeysPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentSmartKeysPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("YAML".equals(pageName)) {
+                if (currentSmartKeysYamlPage == null) {
+                    currentSmartKeysYamlPage = new SettingsSmartKeysYAMLPage();
+                }
+                currentSmartKeysYamlPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysYamlPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("HTML/CSS".equals(pageName)) {
+                if (currentSmartKeysHtmlCssPage == null) {
+                    currentSmartKeysHtmlCssPage = new SettingsSmartKeysHTMLCSSPage();
+                }
+                currentSmartKeysHtmlCssPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysHtmlCssPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Python".equals(pageName)) {
+                if (currentSmartKeysPythonPage == null) {
+                    currentSmartKeysPythonPage = new SettingsSmartKeysPythonPage();
+                }
+                currentSmartKeysPythonPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysPythonPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JSON".equals(pageName)) {
+                if (currentSmartKeysJsonPage == null) {
+                    currentSmartKeysJsonPage = new SettingsSmartKeysJSONPage();
+                }
+                currentSmartKeysJsonPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysJsonPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Rust".equals(pageName)) {
+                if (currentSmartKeysRustPage == null) {
+                    currentSmartKeysRustPage = new SettingsSmartKeysRustPage();
+                }
+                currentSmartKeysRustPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysRustPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Markdown".equals(pageName)) {
+                if (currentSmartKeysMarkdownPage == null) {
+                    currentSmartKeysMarkdownPage = new SettingsSmartKeysMarkdownPage();
+                }
+                currentSmartKeysMarkdownPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysMarkdownPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Scala".equals(pageName)) {
+                if (currentSmartKeysScalaPage == null) {
+                    currentSmartKeysScalaPage = new SettingsSmartKeysScalaPage();
+                }
+                currentSmartKeysScalaPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysScalaPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("SQL".equals(pageName)) {
+                if (currentSmartKeysSqlPage == null) {
+                    currentSmartKeysSqlPage = new SettingsSmartKeysSQLPage();
+                }
+                currentSmartKeysSqlPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysSqlPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Ruby".equals(pageName)) {
+                if (currentSmartKeysRubyPage == null) {
+                    currentSmartKeysRubyPage = new SettingsSmartKeysRubyPage();
+                }
+                currentSmartKeysRubyPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysRubyPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JavaScript".equals(pageName)) {
+                if (currentSmartKeysJsPage == null) {
+                    currentSmartKeysJsPage = new SettingsSmartKeysJavaScriptPage();
+                }
+                currentSmartKeysJsPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysJsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("PHP".equals(pageName)) {
+                if (currentSmartKeysPhpPage == null) {
+                    currentSmartKeysPhpPage = new SettingsSmartKeysPHPPage();
+                }
+                currentSmartKeysPhpPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysPhpPage);
                 updateApplyButtonState();
                 return;
             }
@@ -935,8 +1177,9 @@ public class SettingsDialog {
         return List.of(
                 "General", "Auto Import", "Appearance", "Breadcrumbs", "Code Completion",
                 "Code Folding", "Console", "Editor Tabs", "Gutter Icons", "Inline Completion",
-                "Postfix Completion", "Sticky Lines", "Smart Keys", "YAML", "HTML/CSS", "JSON",
-                "Rust", "Markdown", "SQL", "JavaScript", "Code Editing", "Font", "Color Scheme",
+                "Postfix Completion", "Sticky Lines", "Smart Keys", "YAML", "HTML/CSS", "Python",
+                "JSON", "Rust", "Markdown", "Scala", "SQL", "Ruby", "JavaScript", "PHP",
+                "Code Editing", "Font", "Color Scheme",
                 "Code Style", "Inspections", "File and Code Templates", "File Encodings",
                 "Live Templates", "File Types", "Copyright", "Inlay Hints", "Duplicates",
                 "Emmet", "Intentions", "Language Injections", "Natural Languages",
@@ -1002,11 +1245,15 @@ public class SettingsDialog {
         smartKeys.getChildren().addAll(
                 new TreeItem<>("YAML"),
                 new TreeItem<>("HTML/CSS"),
+                new TreeItem<>("Python"),
                 new TreeItem<>("JSON"),
                 new TreeItem<>("Rust"),
                 new TreeItem<>("Markdown"),
+                new TreeItem<>("Scala"),
                 new TreeItem<>("SQL"),
-                new TreeItem<>("JavaScript")
+                new TreeItem<>("Ruby"),
+                new TreeItem<>("JavaScript"),
+                new TreeItem<>("PHP")
         );
 
         general.getChildren().addAll(
@@ -1315,6 +1562,39 @@ public class SettingsDialog {
         if (currentSmartKeysPage != null && currentSmartKeysPage.isModified()) {
             currentSmartKeysPage.apply();
         }
+        if (currentSmartKeysYamlPage != null && currentSmartKeysYamlPage.isModified()) {
+            currentSmartKeysYamlPage.apply();
+        }
+        if (currentSmartKeysHtmlCssPage != null && currentSmartKeysHtmlCssPage.isModified()) {
+            currentSmartKeysHtmlCssPage.apply();
+        }
+        if (currentSmartKeysPythonPage != null && currentSmartKeysPythonPage.isModified()) {
+            currentSmartKeysPythonPage.apply();
+        }
+        if (currentSmartKeysJsonPage != null && currentSmartKeysJsonPage.isModified()) {
+            currentSmartKeysJsonPage.apply();
+        }
+        if (currentSmartKeysRustPage != null && currentSmartKeysRustPage.isModified()) {
+            currentSmartKeysRustPage.apply();
+        }
+        if (currentSmartKeysMarkdownPage != null && currentSmartKeysMarkdownPage.isModified()) {
+            currentSmartKeysMarkdownPage.apply();
+        }
+        if (currentSmartKeysScalaPage != null && currentSmartKeysScalaPage.isModified()) {
+            currentSmartKeysScalaPage.apply();
+        }
+        if (currentSmartKeysSqlPage != null && currentSmartKeysSqlPage.isModified()) {
+            currentSmartKeysSqlPage.apply();
+        }
+        if (currentSmartKeysRubyPage != null && currentSmartKeysRubyPage.isModified()) {
+            currentSmartKeysRubyPage.apply();
+        }
+        if (currentSmartKeysJsPage != null && currentSmartKeysJsPage.isModified()) {
+            currentSmartKeysJsPage.apply();
+        }
+        if (currentSmartKeysPhpPage != null && currentSmartKeysPhpPage.isModified()) {
+            currentSmartKeysPhpPage.apply();
+        }
         if (currentStickyLinesPage != null && currentStickyLinesPage.isModified()) {
             currentStickyLinesPage.apply();
         }
@@ -1335,6 +1615,17 @@ public class SettingsDialog {
                 || (currentInlineCompletionPage != null && currentInlineCompletionPage.isModified())
                 || (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified())
                 || (currentSmartKeysPage != null && currentSmartKeysPage.isModified())
+                || (currentSmartKeysYamlPage != null && currentSmartKeysYamlPage.isModified())
+                || (currentSmartKeysHtmlCssPage != null && currentSmartKeysHtmlCssPage.isModified())
+                || (currentSmartKeysPythonPage != null && currentSmartKeysPythonPage.isModified())
+                || (currentSmartKeysJsonPage != null && currentSmartKeysJsonPage.isModified())
+                || (currentSmartKeysRustPage != null && currentSmartKeysRustPage.isModified())
+                || (currentSmartKeysMarkdownPage != null && currentSmartKeysMarkdownPage.isModified())
+                || (currentSmartKeysScalaPage != null && currentSmartKeysScalaPage.isModified())
+                || (currentSmartKeysSqlPage != null && currentSmartKeysSqlPage.isModified())
+                || (currentSmartKeysRubyPage != null && currentSmartKeysRubyPage.isModified())
+                || (currentSmartKeysJsPage != null && currentSmartKeysJsPage.isModified())
+                || (currentSmartKeysPhpPage != null && currentSmartKeysPhpPage.isModified())
                 || (currentStickyLinesPage != null && currentStickyLinesPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
@@ -1396,6 +1687,39 @@ public class SettingsDialog {
             }
             if (currentSmartKeysPage != null) {
                 currentSmartKeysPage.reset();
+            }
+            if (currentSmartKeysYamlPage != null) {
+                currentSmartKeysYamlPage.reset();
+            }
+            if (currentSmartKeysHtmlCssPage != null) {
+                currentSmartKeysHtmlCssPage.reset();
+            }
+            if (currentSmartKeysPythonPage != null) {
+                currentSmartKeysPythonPage.reset();
+            }
+            if (currentSmartKeysJsonPage != null) {
+                currentSmartKeysJsonPage.reset();
+            }
+            if (currentSmartKeysRustPage != null) {
+                currentSmartKeysRustPage.reset();
+            }
+            if (currentSmartKeysMarkdownPage != null) {
+                currentSmartKeysMarkdownPage.reset();
+            }
+            if (currentSmartKeysScalaPage != null) {
+                currentSmartKeysScalaPage.reset();
+            }
+            if (currentSmartKeysSqlPage != null) {
+                currentSmartKeysSqlPage.reset();
+            }
+            if (currentSmartKeysRubyPage != null) {
+                currentSmartKeysRubyPage.reset();
+            }
+            if (currentSmartKeysJsPage != null) {
+                currentSmartKeysJsPage.reset();
+            }
+            if (currentSmartKeysPhpPage != null) {
+                currentSmartKeysPhpPage.reset();
             }
             if (currentStickyLinesPage != null) {
                 currentStickyLinesPage.reset();
