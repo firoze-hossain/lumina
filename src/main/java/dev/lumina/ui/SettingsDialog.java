@@ -49,6 +49,7 @@ public class SettingsDialog {
     private SettingsCodeFoldingPage currentCodeFoldingPage;
     private SettingsConsolePage currentConsolePage;
     private SettingsEditorTabsPage currentEditorTabsPage;
+    private SettingsGutterIconsPage currentGutterIconsPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -290,6 +291,18 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Gutter Icons".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentGutterIconsPage != null) {
+                            currentGutterIconsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -487,6 +500,15 @@ public class SettingsDialog {
                 }
                 currentEditorTabsPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentEditorTabsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Gutter Icons".equals(pageName)) {
+                if (currentGutterIconsPage == null) {
+                    currentGutterIconsPage = new SettingsGutterIconsPage();
+                }
+                currentGutterIconsPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentGutterIconsPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1176,6 +1198,9 @@ public class SettingsDialog {
         if (currentEditorTabsPage != null && currentEditorTabsPage.isModified()) {
             currentEditorTabsPage.apply();
         }
+        if (currentGutterIconsPage != null && currentGutterIconsPage.isModified()) {
+            currentGutterIconsPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1188,7 +1213,8 @@ public class SettingsDialog {
                 || (currentCodeCompletionPage != null && currentCodeCompletionPage.isModified())
                 || (currentCodeFoldingPage != null && currentCodeFoldingPage.isModified())
                 || (currentConsolePage != null && currentConsolePage.isModified())
-                || (currentEditorTabsPage != null && currentEditorTabsPage.isModified());
+                || (currentEditorTabsPage != null && currentEditorTabsPage.isModified())
+                || (currentGutterIconsPage != null && currentGutterIconsPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1237,6 +1263,9 @@ public class SettingsDialog {
             }
             if (currentEditorTabsPage != null) {
                 currentEditorTabsPage.reset();
+            }
+            if (currentGutterIconsPage != null) {
+                currentGutterIconsPage.reset();
             }
             stage.close();
         });
