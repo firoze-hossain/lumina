@@ -1,169 +1,387 @@
 package dev.lumina.ui;
 
+import dev.lumina.settings.SmartKeysSettings;
+import dev.lumina.settings.SmartKeysSettings.ReformatOnPaste;
+import dev.lumina.settings.SmartKeysSettings.UnindentOnBackspace;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 
 /**
- * IntelliJ-style Editor > General > Smart Keys settings page.
- * Complete implementation matching the screenshot.
+ * Editor > General > Smart Keys settings page.
+ * Full dynamic configuration matching the modern IDE design.
  */
 public class SettingsSmartKeysPage extends VBox {
 
+    // --- General Smart Keys ---
+    private final CheckBox homeMovesCaretCheck = new CheckBox("Home moves caret to first non-whitespace character");
+    private final CheckBox endOnBlankLineCheck = new CheckBox("End on blank line moves caret to indent position");
+    private final CheckBox insertPairedBracketsCheck = new CheckBox("Insert paired brackets (), [], {}, <>");
+    private final CheckBox insertPairQuoteCheck = new CheckBox("Insert pair quote");
+    private final CheckBox reformatBlockCheck = new CheckBox("Reformat block on typing '}'");
+    private final CheckBox useCamelHumpsCheck = new CheckBox("Use \"CamelHumps\" words");
+    private final CheckBox honorCamelHumpsCheck = new CheckBox("Honor \"CamelHumps\" words settings when selecting on double click");
+    private final CheckBox surroundSelectionCheck = new CheckBox("Surround selection on typing quote or brace");
+    private final CheckBox multipleCaretsCheck = new CheckBox("Add multiple carets on double Ctrl with arrow keys");
+    private final CheckBox jumpOutsideBracketCheck = new CheckBox("Jump outside closing bracket/quote with Tab when typing");
+
+    // --- Enter ---
+    private final CheckBox smartIndentCheck = new CheckBox("Smart Indent");
+    private final CheckBox insertPairRBraceCheck = new CheckBox("Insert pair '}'");
+    private final CheckBox closeBlockCommentCheck = new CheckBox("Close block comment");
+    private final CheckBox insertDocCommentCheck = new CheckBox("Insert documentation comment stub");
+
+    // --- Backspace & Paste ---
+    private final ComboBox<UnindentOnBackspace> unindentOnBackspaceCombo = new ComboBox<>();
+    private final ComboBox<ReformatOnPaste> reformatOnPasteCombo = new ComboBox<>();
+    private final CheckBox reformatRemoveBreaksCheck = new CheckBox("Reformat again to remove custom line breaks");
+
+    // --- JavaDoc ---
+    private final CheckBox autoInsertClosingTagCheck = new CheckBox("Automatically insert closing tag in JavaDoc");
+
+    // --- JSP ---
+    private final CheckBox insertPairPercentCheck = new CheckBox("Insert pair %> on Enter in JSP");
+
+    // --- Kotlin ---
+    private final CheckBox convertPastedJavaCheck = new CheckBox("Convert pasted Java code to Kotlin");
+    private final CheckBox dontShowConversionDialogCheck = new CheckBox("Don't show Java to Kotlin conversion dialog on paste");
+    private final CheckBox autoAddValCheck = new CheckBox("Auto add 'val' keyword to data/value class constructor parameters");
+
+    private Runnable onModifiedListener;
+    private boolean suppressEvents = false;
+
     public SettingsSmartKeysPage() {
         getStyleClass().add("settings-page");
-        setPadding(new Insets(0, 0, 0, 0));
-        setSpacing(14);
+        setStyle("-fx-background-color: #1E1F22;");
+        setPadding(new Insets(14, 24, 28, 24));
+        setSpacing(10);
 
-        // ============================================================
-        // Smart Keys Section
-        // ============================================================
-        
-        // Home moves caret to first non-whitespace character
-        CheckBox homeMovesCaret = new CheckBox("Home moves caret to first non-whitespace character");
-        homeMovesCaret.getStyleClass().add("settings-check");
+        buildUi();
+        setupListeners();
+        loadFromSettings(SmartKeysSettings.getInstance());
+    }
 
-        // End on blank line moves caret to indent position
-        CheckBox endOnBlankLine = new CheckBox("End on blank line moves caret to indent position");
-        endOnBlankLine.getStyleClass().add("settings-check");
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
 
-        // Insert paired brackets
-        CheckBox insertPairedBrackets = new CheckBox("Insert paired brackets (), [], {}, <>");
-        insertPairedBrackets.getStyleClass().add("settings-check");
+    private void notifyModified() {
+        if (!suppressEvents && onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
 
-        // Insert pair quote
-        CheckBox insertPairQuote = new CheckBox("Insert pair quote");
-        insertPairQuote.getStyleClass().add("settings-check");
+    private void styleCheckBox(CheckBox cb) {
+        cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+    }
 
-        // Reformat block on typing '}'
-        CheckBox reformatBlock = new CheckBox("Reformat block on typing '}'");
-        reformatBlock.getStyleClass().add("settings-check");
+    private HBox createSectionHeader(String title) {
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(10, 0, 4, 0));
 
-        // Use "CamelHumps" words
-        CheckBox useCamelHumps = new CheckBox("Use \"CamelHumps\" words");
-        useCamelHumps.getStyleClass().add("settings-check");
+        Label lbl = new Label(title);
+        lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        // Honor "CamelHumps" words settings when selecting on double click
-        CheckBox honorCamelHumps = new CheckBox("Honor \"CamelHumps\" words settings when selecting on double click");
-        honorCamelHumps.getStyleClass().add("settings-check");
+        Region line = new Region();
+        line.setStyle("-fx-background-color: #393B40; -fx-pref-height: 1px; -fx-max-height: 1px;");
+        HBox.setHgrow(line, Priority.ALWAYS);
 
-        // Surround selection on typing quote or brace
-        CheckBox surroundSelection = new CheckBox("Surround selection on typing quote or brace");
-        surroundSelection.getStyleClass().add("settings-check");
+        header.getChildren().addAll(lbl, line);
+        return header;
+    }
 
-        // Add multiple carets on double Ctrl with arrow keys
-        CheckBox multipleCarets = new CheckBox("Add multiple carets on double Ctrl with arrow keys");
-        multipleCarets.getStyleClass().add("settings-check");
+    private void buildUi() {
+        // Style all checkboxes
+        styleCheckBox(homeMovesCaretCheck);
+        styleCheckBox(endOnBlankLineCheck);
+        styleCheckBox(insertPairedBracketsCheck);
+        styleCheckBox(insertPairQuoteCheck);
+        styleCheckBox(reformatBlockCheck);
+        styleCheckBox(useCamelHumpsCheck);
+        styleCheckBox(honorCamelHumpsCheck);
+        styleCheckBox(surroundSelectionCheck);
+        styleCheckBox(multipleCaretsCheck);
+        styleCheckBox(jumpOutsideBracketCheck);
 
-        // Jump outside closing bracket/quote with Tab when typing
-        CheckBox jumpOutsideBracket = new CheckBox("Jump outside closing bracket/quote with Tab when typing");
-        jumpOutsideBracket.getStyleClass().add("settings-check");
+        styleCheckBox(smartIndentCheck);
+        styleCheckBox(insertPairRBraceCheck);
+        styleCheckBox(closeBlockCommentCheck);
+        styleCheckBox(insertDocCommentCheck);
 
-        // ============================================================
+        styleCheckBox(reformatRemoveBreaksCheck);
+        styleCheckBox(autoInsertClosingTagCheck);
+        styleCheckBox(insertPairPercentCheck);
+
+        styleCheckBox(convertPastedJavaCheck);
+        styleCheckBox(dontShowConversionDialogCheck);
+        dontShowConversionDialogCheck.setPadding(new Insets(0, 0, 0, 20));
+        dontShowConversionDialogCheck.disableProperty().bind(convertPastedJavaCheck.selectedProperty().not());
+        styleCheckBox(autoAddValCheck);
+
+        // General Smart Keys list
+        VBox generalGroup = new VBox(8,
+                homeMovesCaretCheck,
+                endOnBlankLineCheck,
+                insertPairedBracketsCheck,
+                insertPairQuoteCheck,
+                reformatBlockCheck,
+                useCamelHumpsCheck,
+                honorCamelHumpsCheck,
+                surroundSelectionCheck,
+                multipleCaretsCheck,
+                jumpOutsideBracketCheck
+        );
+
         // Enter Section
-        // ============================================================
-        Label enterLabel = new Label("Enter");
-        enterLabel.getStyleClass().add("settings-section");
+        HBox enterHeader = createSectionHeader("Enter");
+        VBox enterGroup = new VBox(8,
+                smartIndentCheck,
+                insertPairRBraceCheck,
+                closeBlockCommentCheck,
+                insertDocCommentCheck
+        );
 
-        CheckBox smartIndent = new CheckBox("Smart indent");
-        smartIndent.getStyleClass().add("settings-check");
+        // Backspace & Paste controls
+        unindentOnBackspaceCombo.getItems().setAll(UnindentOnBackspace.values());
+        unindentOnBackspaceCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(UnindentOnBackspace object) {
+                return object != null ? object.getLabel() : "";
+            }
 
-        CheckBox insertPairBrace = new CheckBox("Insert pair '}'");
-        insertPairBrace.getStyleClass().add("settings-check");
+            @Override
+            public UnindentOnBackspace fromString(String string) {
+                return UnindentOnBackspace.fromLabel(string);
+            }
+        });
+        unindentOnBackspaceCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        unindentOnBackspaceCombo.setPrefWidth(240);
 
-        CheckBox closeBlockComment = new CheckBox("Close block comment");
-        closeBlockComment.getStyleClass().add("settings-check");
+        reformatOnPasteCombo.getItems().setAll(ReformatOnPaste.values());
+        reformatOnPasteCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(ReformatOnPaste object) {
+                return object != null ? object.getLabel() : "";
+            }
 
-        CheckBox insertDocComment = new CheckBox("Insert documentation comment stub");
-        insertDocComment.getStyleClass().add("settings-check");
+            @Override
+            public ReformatOnPaste fromString(String string) {
+                return ReformatOnPaste.fromLabel(string);
+            }
+        });
+        reformatOnPasteCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        reformatOnPasteCombo.setPrefWidth(240);
 
-        // ============================================================
-        // Backspace Section
-        // ============================================================
-        Label backspaceLabel = new Label("Backspace");
-        backspaceLabel.getStyleClass().add("settings-section");
+        GridPane dropdownGrid = new GridPane();
+        dropdownGrid.setHgap(10);
+        dropdownGrid.setVgap(8);
+        dropdownGrid.setPadding(new Insets(4, 0, 4, 0));
 
-        CheckBox unindentOnBackspace = new CheckBox("Unindent on Backspace: To proper indent position");
-        unindentOnBackspace.getStyleClass().add("settings-check");
+        Label unindentLabel = new Label("Unindent on Backspace:");
+        unindentLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        unindentLabel.setPrefWidth(160);
 
-        // ============================================================
-        // Reformat on paste Section
-        // ============================================================
-        Label reformatPasteLabel = new Label("Reformat on paste");
-        reformatPasteLabel.getStyleClass().add("settings-section");
+        Label reformatLabel = new Label("Reformat on paste:");
+        reformatLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        reformatLabel.setPrefWidth(160);
 
-        CheckBox indentEachLine = new CheckBox("Indent each line");
-        indentEachLine.getStyleClass().add("settings-check");
+        dropdownGrid.add(unindentLabel, 0, 0);
+        dropdownGrid.add(unindentOnBackspaceCombo, 1, 0);
+        dropdownGrid.add(reformatLabel, 0, 1);
+        dropdownGrid.add(reformatOnPasteCombo, 1, 1);
 
-        CheckBox reformatRemoveBreaks = new CheckBox("Reformat again to remove custom line breaks");
-        reformatRemoveBreaks.getStyleClass().add("settings-check");
+        VBox pasteGroup = new VBox(8,
+                dropdownGrid,
+                reformatRemoveBreaksCheck
+        );
 
-        // ============================================================
         // JavaDoc Section
-        // ============================================================
-        Label javadocLabel = new Label("JavaDoc");
-        javadocLabel.getStyleClass().add("settings-section");
+        HBox javadocHeader = createSectionHeader("JavaDoc");
+        VBox javadocGroup = new VBox(8,
+                autoInsertClosingTagCheck
+        );
 
-        CheckBox autoInsertClosingTag = new CheckBox("Automatically insert closing tag in JavaDoc");
-        autoInsertClosingTag.getStyleClass().add("settings-check");
-
-        // ============================================================
         // JSP Section
-        // ============================================================
-        Label jspLabel = new Label("JSP");
-        jspLabel.getStyleClass().add("settings-section");
+        VBox jspGroup = new VBox(8,
+                insertPairPercentCheck
+        );
+        jspGroup.setPadding(new Insets(4, 0, 0, 0));
 
-        CheckBox insertPairOnEnter = new CheckBox("Insert pair %> on Enter in JSP");
-        insertPairOnEnter.getStyleClass().add("settings-check");
-
-        // ============================================================
         // Kotlin Section
-        // ============================================================
-        Label kotlinLabel = new Label("Kotlin");
-        kotlinLabel.getStyleClass().add("settings-section");
+        HBox kotlinHeader = createSectionHeader("Kotlin");
+        VBox kotlinGroup = new VBox(8,
+                convertPastedJavaCheck,
+                dontShowConversionDialogCheck,
+                autoAddValCheck
+        );
 
-        CheckBox convertPastedJava = new CheckBox("Convert pasted Java code to Kotlin");
-        convertPastedJava.getStyleClass().add("settings-check");
-
-        CheckBox dontShowConversionDialog = new CheckBox("Don't show Java to Kotlin conversion dialog on paste");
-        dontShowConversionDialog.getStyleClass().add("settings-check");
-
-        CheckBox autoAddVal = new CheckBox("Auto add 'val' keyword to data/value class constructor parameters");
-        autoAddVal.getStyleClass().add("settings-check");
-
-        // ============================================================
-        // Assemble all sections
-        // ============================================================
         getChildren().addAll(
-            homeMovesCaret,
-            endOnBlankLine,
-            insertPairedBrackets,
-            insertPairQuote,
-            reformatBlock,
-            useCamelHumps,
-            honorCamelHumps,
-            surroundSelection,
-            multipleCarets,
-            jumpOutsideBracket,
-            enterLabel,
-            smartIndent,
-            insertPairBrace,
-            closeBlockComment,
-            insertDocComment,
-            backspaceLabel,
-            unindentOnBackspace,
-            reformatPasteLabel,
-            indentEachLine,
-            reformatRemoveBreaks,
-            javadocLabel,
-            autoInsertClosingTag,
-            jspLabel,
-            insertPairOnEnter,
-            kotlinLabel,
-            convertPastedJava,
-            dontShowConversionDialog,
-            autoAddVal
+                generalGroup,
+                enterHeader,
+                enterGroup,
+                pasteGroup,
+                javadocHeader,
+                javadocGroup,
+                jspGroup,
+                kotlinHeader,
+                kotlinGroup
         );
     }
+
+    private void setupListeners() {
+        homeMovesCaretCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        endOnBlankLineCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        insertPairedBracketsCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        insertPairQuoteCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        reformatBlockCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        useCamelHumpsCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        honorCamelHumpsCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        surroundSelectionCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        multipleCaretsCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        jumpOutsideBracketCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        smartIndentCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        insertPairRBraceCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        closeBlockCommentCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        insertDocCommentCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        unindentOnBackspaceCombo.valueProperty().addListener((obs, old, val) -> notifyModified());
+        reformatOnPasteCombo.valueProperty().addListener((obs, old, val) -> notifyModified());
+        reformatRemoveBreaksCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        autoInsertClosingTagCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        insertPairPercentCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+
+        convertPastedJavaCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        dontShowConversionDialogCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+        autoAddValCheck.selectedProperty().addListener((obs, old, val) -> notifyModified());
+    }
+
+    public void loadFromSettings(SmartKeysSettings settings) {
+        suppressEvents = true;
+        try {
+            homeMovesCaretCheck.setSelected(settings.isHomeMovesCaretToFirstNonWhitespace());
+            endOnBlankLineCheck.setSelected(settings.isEndOnBlankLineMovesCaretToIndent());
+            insertPairedBracketsCheck.setSelected(settings.isInsertPairedBrackets());
+            insertPairQuoteCheck.setSelected(settings.isInsertPairQuote());
+            reformatBlockCheck.setSelected(settings.isReformatBlockOnTypingRBrace());
+            useCamelHumpsCheck.setSelected(settings.isUseCamelHumpsWords());
+            honorCamelHumpsCheck.setSelected(settings.isHonorCamelHumpsOnDoubleClick());
+            surroundSelectionCheck.setSelected(settings.isSurroundSelectionOnQuoteOrBrace());
+            multipleCaretsCheck.setSelected(settings.isAddMultipleCaretsOnDoubleCtrlArrow());
+            jumpOutsideBracketCheck.setSelected(settings.isJumpOutsideClosingBracketOrQuoteWithTab());
+
+            smartIndentCheck.setSelected(settings.isSmartIndent());
+            insertPairRBraceCheck.setSelected(settings.isInsertPairRBrace());
+            closeBlockCommentCheck.setSelected(settings.isCloseBlockComment());
+            insertDocCommentCheck.setSelected(settings.isInsertDocCommentStub());
+
+            unindentOnBackspaceCombo.setValue(settings.getUnindentOnBackspace());
+            reformatOnPasteCombo.setValue(settings.getReformatOnPaste());
+            reformatRemoveBreaksCheck.setSelected(settings.isReformatAgainToRemoveCustomLineBreaks());
+
+            autoInsertClosingTagCheck.setSelected(settings.isAutoInsertClosingTagInJavaDoc());
+            insertPairPercentCheck.setSelected(settings.isInsertPairPercentOnEnterInJsp());
+
+            convertPastedJavaCheck.setSelected(settings.isConvertPastedJavaToKotlin());
+            dontShowConversionDialogCheck.setSelected(settings.isDontShowJavaToKotlinDialogOnPaste());
+            autoAddValCheck.setSelected(settings.isAutoAddValKeywordToConstructorParams());
+        } finally {
+            suppressEvents = false;
+        }
+    }
+
+    public boolean isModified() {
+        SmartKeysSettings s = SmartKeysSettings.getInstance();
+        return homeMovesCaretCheck.isSelected() != s.isHomeMovesCaretToFirstNonWhitespace()
+                || endOnBlankLineCheck.isSelected() != s.isEndOnBlankLineMovesCaretToIndent()
+                || insertPairedBracketsCheck.isSelected() != s.isInsertPairedBrackets()
+                || insertPairQuoteCheck.isSelected() != s.isInsertPairQuote()
+                || reformatBlockCheck.isSelected() != s.isReformatBlockOnTypingRBrace()
+                || useCamelHumpsCheck.isSelected() != s.isUseCamelHumpsWords()
+                || honorCamelHumpsCheck.isSelected() != s.isHonorCamelHumpsOnDoubleClick()
+                || surroundSelectionCheck.isSelected() != s.isSurroundSelectionOnQuoteOrBrace()
+                || multipleCaretsCheck.isSelected() != s.isAddMultipleCaretsOnDoubleCtrlArrow()
+                || jumpOutsideBracketCheck.isSelected() != s.isJumpOutsideClosingBracketOrQuoteWithTab()
+                || smartIndentCheck.isSelected() != s.isSmartIndent()
+                || insertPairRBraceCheck.isSelected() != s.isInsertPairRBrace()
+                || closeBlockCommentCheck.isSelected() != s.isCloseBlockComment()
+                || insertDocCommentCheck.isSelected() != s.isInsertDocCommentStub()
+                || unindentOnBackspaceCombo.getValue() != s.getUnindentOnBackspace()
+                || reformatOnPasteCombo.getValue() != s.getReformatOnPaste()
+                || reformatRemoveBreaksCheck.isSelected() != s.isReformatAgainToRemoveCustomLineBreaks()
+                || autoInsertClosingTagCheck.isSelected() != s.isAutoInsertClosingTagInJavaDoc()
+                || insertPairPercentCheck.isSelected() != s.isInsertPairPercentOnEnterInJsp()
+                || convertPastedJavaCheck.isSelected() != s.isConvertPastedJavaToKotlin()
+                || dontShowConversionDialogCheck.isSelected() != s.isDontShowJavaToKotlinDialogOnPaste()
+                || autoAddValCheck.isSelected() != s.isAutoAddValKeywordToConstructorParams();
+    }
+
+    public void apply() {
+        SmartKeysSettings s = SmartKeysSettings.getInstance();
+        s.setHomeMovesCaretToFirstNonWhitespace(homeMovesCaretCheck.isSelected());
+        s.setEndOnBlankLineMovesCaretToIndent(endOnBlankLineCheck.isSelected());
+        s.setInsertPairedBrackets(insertPairedBracketsCheck.isSelected());
+        s.setInsertPairQuote(insertPairQuoteCheck.isSelected());
+        s.setReformatBlockOnTypingRBrace(reformatBlockCheck.isSelected());
+        s.setUseCamelHumpsWords(useCamelHumpsCheck.isSelected());
+        s.setHonorCamelHumpsOnDoubleClick(honorCamelHumpsCheck.isSelected());
+        s.setSurroundSelectionOnQuoteOrBrace(surroundSelectionCheck.isSelected());
+        s.setAddMultipleCaretsOnDoubleCtrlArrow(multipleCaretsCheck.isSelected());
+        s.setJumpOutsideClosingBracketOrQuoteWithTab(jumpOutsideBracketCheck.isSelected());
+
+        s.setSmartIndent(smartIndentCheck.isSelected());
+        s.setInsertPairRBrace(insertPairRBraceCheck.isSelected());
+        s.setCloseBlockComment(closeBlockCommentCheck.isSelected());
+        s.setInsertDocCommentStub(insertDocCommentCheck.isSelected());
+
+        s.setUnindentOnBackspace(unindentOnBackspaceCombo.getValue());
+        s.setReformatOnPaste(reformatOnPasteCombo.getValue());
+        s.setReformatAgainToRemoveCustomLineBreaks(reformatRemoveBreaksCheck.isSelected());
+
+        s.setAutoInsertClosingTagInJavaDoc(autoInsertClosingTagCheck.isSelected());
+        s.setInsertPairPercentOnEnterInJsp(insertPairPercentCheck.isSelected());
+
+        s.setConvertPastedJavaToKotlin(convertPastedJavaCheck.isSelected());
+        s.setDontShowJavaToKotlinDialogOnPaste(dontShowConversionDialogCheck.isSelected());
+        s.setAutoAddValKeywordToConstructorParams(autoAddValCheck.isSelected());
+
+        s.save();
+    }
+
+    public void reset() {
+        loadFromSettings(SmartKeysSettings.getInstance());
+    }
+
+    // --- Component Getters for Tests ---
+
+    public CheckBox getHomeMovesCaretCheck() { return homeMovesCaretCheck; }
+    public CheckBox getEndOnBlankLineCheck() { return endOnBlankLineCheck; }
+    public CheckBox getInsertPairedBracketsCheck() { return insertPairedBracketsCheck; }
+    public CheckBox getInsertPairQuoteCheck() { return insertPairQuoteCheck; }
+    public CheckBox getReformatBlockCheck() { return reformatBlockCheck; }
+    public CheckBox getUseCamelHumpsCheck() { return useCamelHumpsCheck; }
+    public CheckBox getHonorCamelHumpsCheck() { return honorCamelHumpsCheck; }
+    public CheckBox getSurroundSelectionCheck() { return surroundSelectionCheck; }
+    public CheckBox getMultipleCaretsCheck() { return multipleCaretsCheck; }
+    public CheckBox getJumpOutsideBracketCheck() { return jumpOutsideBracketCheck; }
+
+    public CheckBox getSmartIndentCheck() { return smartIndentCheck; }
+    public CheckBox getInsertPairRBraceCheck() { return insertPairRBraceCheck; }
+    public CheckBox getCloseBlockCommentCheck() { return closeBlockCommentCheck; }
+    public CheckBox getInsertDocCommentCheck() { return insertDocCommentCheck; }
+
+    public ComboBox<UnindentOnBackspace> getUnindentOnBackspaceCombo() { return unindentOnBackspaceCombo; }
+    public ComboBox<ReformatOnPaste> getReformatOnPasteCombo() { return reformatOnPasteCombo; }
+    public CheckBox getReformatRemoveBreaksCheck() { return reformatRemoveBreaksCheck; }
+
+    public CheckBox getAutoInsertClosingTagCheck() { return autoInsertClosingTagCheck; }
+    public CheckBox getInsertPairPercentCheck() { return insertPairPercentCheck; }
+
+    public CheckBox getConvertPastedJavaCheck() { return convertPastedJavaCheck; }
+    public CheckBox getDontShowConversionDialogCheck() { return dontShowConversionDialogCheck; }
+    public CheckBox getAutoAddValCheck() { return autoAddValCheck; }
 }

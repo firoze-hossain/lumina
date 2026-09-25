@@ -294,6 +294,52 @@ class SettingsNavigationTest {
         assertEquals("Postfix Completion", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
     }
 
+    @Test
+    void testSettingsDialogSmartKeysNavigation() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsDialog dialog = new SettingsDialog(null, "Smart Keys");
+                ref.set(dialog);
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsDialog dialog = ref.get();
+        assertNotNull(dialog);
+        assertNotNull(dialog.getContentContainer());
+        assertFalse(dialog.getContentContainer().getChildren().isEmpty());
+        assertEquals("Smart Keys", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
+    }
+
+    @Test
+    void testSettingsDialogStickyLinesNavigation() throws Exception {
+        if (!javaFxAvailable) return;
+
+        AtomicReference<SettingsDialog> ref = new AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsDialog dialog = new SettingsDialog(null, "Sticky Lines");
+                ref.set(dialog);
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+
+        SettingsDialog dialog = ref.get();
+        assertNotNull(dialog);
+        assertNotNull(dialog.getContentContainer());
+        assertFalse(dialog.getContentContainer().getChildren().isEmpty());
+        assertEquals("Sticky Lines", dialog.getTree().getSelectionModel().getSelectedItem().getValue());
+    }
+
     @SuppressWarnings("unchecked")
     private ComboBox<String> findComboBox(javafx.scene.Parent parent) {
         for (javafx.scene.Node node : parent.getChildrenUnmodifiable()) {

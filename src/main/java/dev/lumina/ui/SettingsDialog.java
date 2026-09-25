@@ -52,6 +52,8 @@ public class SettingsDialog {
     private SettingsGutterIconsPage currentGutterIconsPage;
     private SettingsInlineCompletionPage currentInlineCompletionPage;
     private SettingsPostfixCompletionPage currentPostfixCompletionPage;
+    private SettingsSmartKeysPage currentSmartKeysPage;
+    private SettingsStickyLinesPage currentStickyLinesPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -329,6 +331,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Smart Keys".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSmartKeysPage != null) {
+                            currentSmartKeysPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Sticky Lines".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentStickyLinesPage != null) {
+                            currentStickyLinesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -560,6 +586,34 @@ public class SettingsDialog {
                 }
                 currentPostfixCompletionPage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentPostfixCompletionPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Smart Keys".equals(pageName)) {
+                if (currentSmartKeysPage == null) {
+                    currentSmartKeysPage = new SettingsSmartKeysPage();
+                }
+                currentSmartKeysPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentSmartKeysPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Sticky Lines".equals(pageName)) {
+                if (currentStickyLinesPage == null) {
+                    currentStickyLinesPage = new SettingsStickyLinesPage();
+                }
+                currentStickyLinesPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentStickyLinesPage.setOnManageColors(() -> {
+                    TreeItem<String> csRoot = findItem(tree.getRoot(), "Color Scheme");
+                    if (csRoot != null) {
+                        TreeItem<String> csGeneral = findItem(csRoot, "General");
+                        if (csGeneral != null) {
+                            expandAncestors(csGeneral);
+                            tree.getSelectionModel().select(csGeneral);
+                        }
+                    }
+                });
+                wrapInScroll(currentStickyLinesPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1258,6 +1312,12 @@ public class SettingsDialog {
         if (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified()) {
             currentPostfixCompletionPage.apply();
         }
+        if (currentSmartKeysPage != null && currentSmartKeysPage.isModified()) {
+            currentSmartKeysPage.apply();
+        }
+        if (currentStickyLinesPage != null && currentStickyLinesPage.isModified()) {
+            currentStickyLinesPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1273,7 +1333,9 @@ public class SettingsDialog {
                 || (currentEditorTabsPage != null && currentEditorTabsPage.isModified())
                 || (currentGutterIconsPage != null && currentGutterIconsPage.isModified())
                 || (currentInlineCompletionPage != null && currentInlineCompletionPage.isModified())
-                || (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified());
+                || (currentPostfixCompletionPage != null && currentPostfixCompletionPage.isModified())
+                || (currentSmartKeysPage != null && currentSmartKeysPage.isModified())
+                || (currentStickyLinesPage != null && currentStickyLinesPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1331,6 +1393,12 @@ public class SettingsDialog {
             }
             if (currentPostfixCompletionPage != null) {
                 currentPostfixCompletionPage.reset();
+            }
+            if (currentSmartKeysPage != null) {
+                currentSmartKeysPage.reset();
+            }
+            if (currentStickyLinesPage != null) {
+                currentStickyLinesPage.reset();
             }
             stage.close();
         });
