@@ -54,6 +54,73 @@ class SmartKeysSettingsTest {
         assertTrue(settings.isConvertPastedJavaToKotlin());
         assertFalse(settings.isDontShowJavaToKotlinDialogOnPaste());
         assertTrue(settings.isAutoAddValKeywordToConstructorParams());
+
+        // YAML (Screenshot 1)
+        assertTrue(settings.isYamlAutoExpandKeySequencesOnPaste());
+
+        // HTML/CSS (Screenshot 2)
+        assertTrue(settings.isXmlHtmlInsertClosingTag());
+        assertTrue(settings.isXmlHtmlInsertRequiredAttributes());
+        assertTrue(settings.isXmlHtmlInsertRequiredSubtags());
+        assertTrue(settings.isXmlHtmlStartAttribute());
+        assertTrue(settings.isXmlHtmlAddQuotesForAttributeValue());
+        assertTrue(settings.isXmlHtmlAutoCloseTag());
+        assertTrue(settings.isXmlHtmlSimultaneousTagEditing());
+        assertTrue(settings.isCssSelectWholeCssIdentifiersOnDoubleClick());
+
+        // Python (Screenshot 3)
+        assertFalse(settings.isPythonSmartIndentPastedLines());
+        assertTrue(settings.isPythonUseParenthesesInsteadOfBackslashes());
+        assertTrue(settings.isPythonInsertSelfWhenDefiningMethod());
+        assertFalse(settings.isPythonInsertTypePlaceholdersInDocCommentStub());
+
+        // JSON (Screenshot 4)
+        assertTrue(settings.isJsonInsertMissingCommaOnEnter());
+        assertTrue(settings.isJsonInsertMissingCommaAfterMatchingBracesQuotes());
+        assertTrue(settings.isJsonAutoManageCommasPastingFragments());
+        assertTrue(settings.isJsonEscapeTextOnPasteInStringLiterals());
+        assertTrue(settings.isJsonAutoAddQuotesToPropertyNamesOnColon());
+        assertTrue(settings.isJsonAutoAddWhitespaceOnColonAfterProperty());
+        assertFalse(settings.isJsonAutoMoveColonAfterPropertyNameInsideQuotes());
+        assertFalse(settings.isJsonAutoMoveCommaAfterValueInsideQuotes());
+
+        // Rust (Screenshot 5)
+        assertTrue(settings.isRustInsertPairedHashForRawStrings());
+
+        // Markdown
+        assertTrue(settings.isMarkdownReformatTable());
+        assertTrue(settings.isMarkdownInsertHtmlBreakInsideTableCells());
+        assertTrue(settings.isMarkdownUseShiftEnterForNewTableRow());
+        assertTrue(settings.isMarkdownUseTabShiftTabToNavigateCells());
+        assertTrue(settings.isMarkdownAdjustIndentationOnType());
+        assertTrue(settings.isMarkdownSmartEnterAndBackspace());
+        assertFalse(settings.isMarkdownRenumberListWhenTyping());
+        assertEquals("Sequentially", settings.getMarkdownListNumerating());
+        assertTrue(settings.isMarkdownInsertLinksOnDrop());
+
+        // Scala
+        assertTrue(settings.isScalaInsertClosingBrace());
+        assertTrue(settings.isScalaAutoIndent());
+
+        // SQL
+        assertTrue(settings.isSqlInsertStringConcatOnEnter());
+        assertTrue(settings.isSqlCloseCodeBlocksOnEnter());
+
+        // Ruby
+        assertTrue(settings.isRubyAutoInsertEnd());
+        assertTrue(settings.isRubySmartIndent());
+
+        // JavaScript
+        assertTrue(settings.isJsReplaceStringLiteralOnTemplate());
+        assertTrue(settings.isJsStartTemplateStringInterpolation());
+        assertTrue(settings.isJsEscapeTextOnPasteInStringLiterals());
+        assertTrue(settings.isJsCloseHtmlSingleTagsInJsx());
+        assertTrue(settings.isJsConvertHtmlAttributeNamesInJsx());
+        assertTrue(settings.isJsEscapeJsDocLeadingAsterisks());
+
+        // PHP
+        assertTrue(settings.isPhpAutoInsertSemicolon());
+        assertTrue(settings.isPhpSmartIndent());
     }
 
     @Test
@@ -89,6 +156,27 @@ class SmartKeysSettingsTest {
         copy.setDontShowJavaToKotlinDialogOnPaste(true);
         assertTrue(settings.isModified(copy));
         copy.setDontShowJavaToKotlinDialogOnPaste(false);
+        assertFalse(settings.isModified(copy));
+
+        // Language isModified checks
+        copy.setYamlAutoExpandKeySequencesOnPaste(false);
+        assertTrue(settings.isModified(copy));
+        copy.setYamlAutoExpandKeySequencesOnPaste(true);
+        assertFalse(settings.isModified(copy));
+
+        copy.setPythonSmartIndentPastedLines(true);
+        assertTrue(settings.isModified(copy));
+        copy.setPythonSmartIndentPastedLines(false);
+        assertFalse(settings.isModified(copy));
+
+        copy.setJsonAutoMoveColonAfterPropertyNameInsideQuotes(true);
+        assertTrue(settings.isModified(copy));
+        copy.setJsonAutoMoveColonAfterPropertyNameInsideQuotes(false);
+        assertFalse(settings.isModified(copy));
+
+        copy.setRustInsertPairedHashForRawStrings(false);
+        assertTrue(settings.isModified(copy));
+        copy.setRustInsertPairedHashForRawStrings(true);
         assertFalse(settings.isModified(copy));
     }
 

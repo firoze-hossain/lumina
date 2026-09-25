@@ -7,7 +7,8 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Dynamic persistent configuration model for Editor > General > Smart Keys settings.
+ * Dynamic persistent configuration model for Editor > General > Smart Keys settings
+ * and language-specific Smart Keys subpages.
  * Backed by ~/.lumina/lumina.properties, supporting listeners, dirty tracking, and real-time updates.
  */
 public final class SmartKeysSettings {
@@ -110,6 +111,73 @@ public final class SmartKeysSettings {
     private boolean dontShowJavaToKotlinDialogOnPaste = false;
     private boolean autoAddValKeywordToConstructorParams = true;
 
+    // --- YAML ---
+    private boolean yamlAutoExpandKeySequencesOnPaste = true;
+
+    // --- HTML/CSS ---
+    private boolean xmlHtmlInsertClosingTag = true;
+    private boolean xmlHtmlInsertRequiredAttributes = true;
+    private boolean xmlHtmlInsertRequiredSubtags = true;
+    private boolean xmlHtmlStartAttribute = true;
+    private boolean xmlHtmlAddQuotesForAttributeValue = true;
+    private boolean xmlHtmlAutoCloseTag = true;
+    private boolean xmlHtmlSimultaneousTagEditing = true;
+    private boolean cssSelectWholeCssIdentifiersOnDoubleClick = true;
+
+    // --- Python ---
+    private boolean pythonSmartIndentPastedLines = false;
+    private boolean pythonUseParenthesesInsteadOfBackslashes = true;
+    private boolean pythonInsertSelfWhenDefiningMethod = true;
+    private boolean pythonInsertTypePlaceholdersInDocCommentStub = false;
+
+    // --- JSON ---
+    private boolean jsonInsertMissingCommaOnEnter = true;
+    private boolean jsonInsertMissingCommaAfterMatchingBracesQuotes = true;
+    private boolean jsonAutoManageCommasPastingFragments = true;
+    private boolean jsonEscapeTextOnPasteInStringLiterals = true;
+    private boolean jsonAutoAddQuotesToPropertyNamesOnColon = true;
+    private boolean jsonAutoAddWhitespaceOnColonAfterProperty = true;
+    private boolean jsonAutoMoveColonAfterPropertyNameInsideQuotes = false;
+    private boolean jsonAutoMoveCommaAfterValueInsideQuotes = false;
+
+    // --- Rust ---
+    private boolean rustInsertPairedHashForRawStrings = true;
+
+    // --- Markdown ---
+    private boolean markdownReformatTable = true;
+    private boolean markdownInsertHtmlBreakInsideTableCells = true;
+    private boolean markdownUseShiftEnterForNewTableRow = true;
+    private boolean markdownUseTabShiftTabToNavigateCells = true;
+    private boolean markdownAdjustIndentationOnType = true;
+    private boolean markdownSmartEnterAndBackspace = true;
+    private boolean markdownRenumberListWhenTyping = false;
+    private String markdownListNumerating = "Sequentially";
+    private boolean markdownInsertLinksOnDrop = true;
+
+    // --- Scala ---
+    private boolean scalaInsertClosingBrace = true;
+    private boolean scalaAutoIndent = true;
+
+    // --- SQL ---
+    private boolean sqlInsertStringConcatOnEnter = true;
+    private boolean sqlCloseCodeBlocksOnEnter = true;
+
+    // --- Ruby ---
+    private boolean rubyAutoInsertEnd = true;
+    private boolean rubySmartIndent = true;
+
+    // --- JavaScript ---
+    private boolean jsReplaceStringLiteralOnTemplate = true;
+    private boolean jsStartTemplateStringInterpolation = true;
+    private boolean jsEscapeTextOnPasteInStringLiterals = true;
+    private boolean jsCloseHtmlSingleTagsInJsx = true;
+    private boolean jsConvertHtmlAttributeNamesInJsx = true;
+    private boolean jsEscapeJsDocLeadingAsterisks = true;
+
+    // --- PHP ---
+    private boolean phpAutoInsertSemicolon = true;
+    private boolean phpSmartIndent = true;
+
     public SmartKeysSettings() {
         initDefaults();
         load();
@@ -142,6 +210,73 @@ public final class SmartKeysSettings {
         convertPastedJavaToKotlin = true;
         dontShowJavaToKotlinDialogOnPaste = false;
         autoAddValKeywordToConstructorParams = true;
+
+        // YAML
+        yamlAutoExpandKeySequencesOnPaste = true;
+
+        // HTML/CSS
+        xmlHtmlInsertClosingTag = true;
+        xmlHtmlInsertRequiredAttributes = true;
+        xmlHtmlInsertRequiredSubtags = true;
+        xmlHtmlStartAttribute = true;
+        xmlHtmlAddQuotesForAttributeValue = true;
+        xmlHtmlAutoCloseTag = true;
+        xmlHtmlSimultaneousTagEditing = true;
+        cssSelectWholeCssIdentifiersOnDoubleClick = true;
+
+        // Python
+        pythonSmartIndentPastedLines = false;
+        pythonUseParenthesesInsteadOfBackslashes = true;
+        pythonInsertSelfWhenDefiningMethod = true;
+        pythonInsertTypePlaceholdersInDocCommentStub = false;
+
+        // JSON
+        jsonInsertMissingCommaOnEnter = true;
+        jsonInsertMissingCommaAfterMatchingBracesQuotes = true;
+        jsonAutoManageCommasPastingFragments = true;
+        jsonEscapeTextOnPasteInStringLiterals = true;
+        jsonAutoAddQuotesToPropertyNamesOnColon = true;
+        jsonAutoAddWhitespaceOnColonAfterProperty = true;
+        jsonAutoMoveColonAfterPropertyNameInsideQuotes = false;
+        jsonAutoMoveCommaAfterValueInsideQuotes = false;
+
+        // Rust
+        rustInsertPairedHashForRawStrings = true;
+
+        // Markdown
+        markdownReformatTable = true;
+        markdownInsertHtmlBreakInsideTableCells = true;
+        markdownUseShiftEnterForNewTableRow = true;
+        markdownUseTabShiftTabToNavigateCells = true;
+        markdownAdjustIndentationOnType = true;
+        markdownSmartEnterAndBackspace = true;
+        markdownRenumberListWhenTyping = false;
+        markdownListNumerating = "Sequentially";
+        markdownInsertLinksOnDrop = true;
+
+        // Scala
+        scalaInsertClosingBrace = true;
+        scalaAutoIndent = true;
+
+        // SQL
+        sqlInsertStringConcatOnEnter = true;
+        sqlCloseCodeBlocksOnEnter = true;
+
+        // Ruby
+        rubyAutoInsertEnd = true;
+        rubySmartIndent = true;
+
+        // JavaScript
+        jsReplaceStringLiteralOnTemplate = true;
+        jsStartTemplateStringInterpolation = true;
+        jsEscapeTextOnPasteInStringLiterals = true;
+        jsCloseHtmlSingleTagsInJsx = true;
+        jsConvertHtmlAttributeNamesInJsx = true;
+        jsEscapeJsDocLeadingAsterisks = true;
+
+        // PHP
+        phpAutoInsertSemicolon = true;
+        phpSmartIndent = true;
     }
 
     public void load() {
@@ -212,6 +347,152 @@ public final class SmartKeysSettings {
 
         val = Settings.get("smartkeys.kotlin.auto.add.val");
         if (val != null) autoAddValKeywordToConstructorParams = Boolean.parseBoolean(val);
+
+        // YAML
+        val = Settings.get("smartkeys.yaml.auto.expand.key.sequences.on.paste");
+        if (val != null) yamlAutoExpandKeySequencesOnPaste = Boolean.parseBoolean(val);
+
+        // HTML/CSS
+        val = Settings.get("smartkeys.html.insert.closing.tag");
+        if (val != null) xmlHtmlInsertClosingTag = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.insert.required.attributes");
+        if (val != null) xmlHtmlInsertRequiredAttributes = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.insert.required.subtags");
+        if (val != null) xmlHtmlInsertRequiredSubtags = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.start.attribute");
+        if (val != null) xmlHtmlStartAttribute = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.add.quotes.for.attribute");
+        if (val != null) xmlHtmlAddQuotesForAttributeValue = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.auto.close.tag");
+        if (val != null) xmlHtmlAutoCloseTag = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.html.simultaneous.tag.editing");
+        if (val != null) xmlHtmlSimultaneousTagEditing = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.css.select.whole.identifiers.double.click");
+        if (val != null) cssSelectWholeCssIdentifiersOnDoubleClick = Boolean.parseBoolean(val);
+
+        // Python
+        val = Settings.get("smartkeys.python.smart.indent.pasted.lines");
+        if (val != null) pythonSmartIndentPastedLines = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.python.use.parentheses.for.breaking.lines");
+        if (val != null) pythonUseParenthesesInsteadOfBackslashes = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.python.insert.self.when.defining.method");
+        if (val != null) pythonInsertSelfWhenDefiningMethod = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.python.insert.type.placeholders.doc.stub");
+        if (val != null) pythonInsertTypePlaceholdersInDocCommentStub = Boolean.parseBoolean(val);
+
+        // JSON
+        val = Settings.get("smartkeys.json.insert.missing.comma.enter");
+        if (val != null) jsonInsertMissingCommaOnEnter = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.insert.missing.comma.braces.quotes");
+        if (val != null) jsonInsertMissingCommaAfterMatchingBracesQuotes = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.auto.manage.commas.paste");
+        if (val != null) jsonAutoManageCommasPastingFragments = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.escape.text.paste.literals");
+        if (val != null) jsonEscapeTextOnPasteInStringLiterals = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.auto.add.quotes.property.colon");
+        if (val != null) jsonAutoAddQuotesToPropertyNamesOnColon = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.auto.add.whitespace.colon");
+        if (val != null) jsonAutoAddWhitespaceOnColonAfterProperty = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.auto.move.colon.inside.quotes");
+        if (val != null) jsonAutoMoveColonAfterPropertyNameInsideQuotes = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.json.auto.move.comma.inside.quotes");
+        if (val != null) jsonAutoMoveCommaAfterValueInsideQuotes = Boolean.parseBoolean(val);
+
+        // Rust
+        val = Settings.get("smartkeys.rust.insert.paired.hash.raw.strings");
+        if (val != null) rustInsertPairedHashForRawStrings = Boolean.parseBoolean(val);
+
+        // Markdown
+        val = Settings.get("smartkeys.markdown.reformat.table");
+        if (val != null) markdownReformatTable = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.insert.html.break.table");
+        if (val != null) markdownInsertHtmlBreakInsideTableCells = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.shift.enter.table.row");
+        if (val != null) markdownUseShiftEnterForNewTableRow = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.tab.navigate.table");
+        if (val != null) markdownUseTabShiftTabToNavigateCells = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.adjust.indentation.type");
+        if (val != null) markdownAdjustIndentationOnType = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.smart.enter.backspace");
+        if (val != null) markdownSmartEnterAndBackspace = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.renumber.list.typing");
+        if (val != null) markdownRenumberListWhenTyping = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.markdown.list.numerating");
+        if (val != null) markdownListNumerating = val;
+
+        val = Settings.get("smartkeys.markdown.insert.links.drop");
+        if (val != null) markdownInsertLinksOnDrop = Boolean.parseBoolean(val);
+
+        // Scala
+        val = Settings.get("smartkeys.scala.insert.closing.brace");
+        if (val != null) scalaInsertClosingBrace = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.scala.auto.indent");
+        if (val != null) scalaAutoIndent = Boolean.parseBoolean(val);
+
+        // SQL
+        val = Settings.get("smartkeys.sql.insert.string.concat.enter");
+        if (val != null) sqlInsertStringConcatOnEnter = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.sql.close.code.blocks.enter");
+        if (val != null) sqlCloseCodeBlocksOnEnter = Boolean.parseBoolean(val);
+
+        // Ruby
+        val = Settings.get("smartkeys.ruby.auto.insert.end");
+        if (val != null) rubyAutoInsertEnd = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.ruby.smart.indent");
+        if (val != null) rubySmartIndent = Boolean.parseBoolean(val);
+
+        // JavaScript
+        val = Settings.get("smartkeys.js.replace.string.literal.template");
+        if (val != null) jsReplaceStringLiteralOnTemplate = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.js.start.template.string.interpolation");
+        if (val != null) jsStartTemplateStringInterpolation = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.js.escape.text.paste.literals");
+        if (val != null) jsEscapeTextOnPasteInStringLiterals = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.js.close.html.single.tags.jsx");
+        if (val != null) jsCloseHtmlSingleTagsInJsx = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.js.convert.html.attribute.names.jsx");
+        if (val != null) jsConvertHtmlAttributeNamesInJsx = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.js.escape.jsdoc.asterisks");
+        if (val != null) jsEscapeJsDocLeadingAsterisks = Boolean.parseBoolean(val);
+
+        // PHP
+        val = Settings.get("smartkeys.php.auto.insert.semicolon");
+        if (val != null) phpAutoInsertSemicolon = Boolean.parseBoolean(val);
+
+        val = Settings.get("smartkeys.php.smart.indent");
+        if (val != null) phpSmartIndent = Boolean.parseBoolean(val);
     }
 
     public void save() {
@@ -241,6 +522,73 @@ public final class SmartKeysSettings {
         Settings.put("smartkeys.kotlin.convert.pasted.java", String.valueOf(convertPastedJavaToKotlin));
         Settings.put("smartkeys.kotlin.dont.show.dialog", String.valueOf(dontShowJavaToKotlinDialogOnPaste));
         Settings.put("smartkeys.kotlin.auto.add.val", String.valueOf(autoAddValKeywordToConstructorParams));
+
+        // YAML
+        Settings.put("smartkeys.yaml.auto.expand.key.sequences.on.paste", String.valueOf(yamlAutoExpandKeySequencesOnPaste));
+
+        // HTML/CSS
+        Settings.put("smartkeys.html.insert.closing.tag", String.valueOf(xmlHtmlInsertClosingTag));
+        Settings.put("smartkeys.html.insert.required.attributes", String.valueOf(xmlHtmlInsertRequiredAttributes));
+        Settings.put("smartkeys.html.insert.required.subtags", String.valueOf(xmlHtmlInsertRequiredSubtags));
+        Settings.put("smartkeys.html.start.attribute", String.valueOf(xmlHtmlStartAttribute));
+        Settings.put("smartkeys.html.add.quotes.for.attribute", String.valueOf(xmlHtmlAddQuotesForAttributeValue));
+        Settings.put("smartkeys.html.auto.close.tag", String.valueOf(xmlHtmlAutoCloseTag));
+        Settings.put("smartkeys.html.simultaneous.tag.editing", String.valueOf(xmlHtmlSimultaneousTagEditing));
+        Settings.put("smartkeys.css.select.whole.identifiers.double.click", String.valueOf(cssSelectWholeCssIdentifiersOnDoubleClick));
+
+        // Python
+        Settings.put("smartkeys.python.smart.indent.pasted.lines", String.valueOf(pythonSmartIndentPastedLines));
+        Settings.put("smartkeys.python.use.parentheses.for.breaking.lines", String.valueOf(pythonUseParenthesesInsteadOfBackslashes));
+        Settings.put("smartkeys.python.insert.self.when.defining.method", String.valueOf(pythonInsertSelfWhenDefiningMethod));
+        Settings.put("smartkeys.python.insert.type.placeholders.doc.stub", String.valueOf(pythonInsertTypePlaceholdersInDocCommentStub));
+
+        // JSON
+        Settings.put("smartkeys.json.insert.missing.comma.enter", String.valueOf(jsonInsertMissingCommaOnEnter));
+        Settings.put("smartkeys.json.insert.missing.comma.braces.quotes", String.valueOf(jsonInsertMissingCommaAfterMatchingBracesQuotes));
+        Settings.put("smartkeys.json.auto.manage.commas.paste", String.valueOf(jsonAutoManageCommasPastingFragments));
+        Settings.put("smartkeys.json.escape.text.paste.literals", String.valueOf(jsonEscapeTextOnPasteInStringLiterals));
+        Settings.put("smartkeys.json.auto.add.quotes.property.colon", String.valueOf(jsonAutoAddQuotesToPropertyNamesOnColon));
+        Settings.put("smartkeys.json.auto.add.whitespace.colon", String.valueOf(jsonAutoAddWhitespaceOnColonAfterProperty));
+        Settings.put("smartkeys.json.auto.move.colon.inside.quotes", String.valueOf(jsonAutoMoveColonAfterPropertyNameInsideQuotes));
+        Settings.put("smartkeys.json.auto.move.comma.inside.quotes", String.valueOf(jsonAutoMoveCommaAfterValueInsideQuotes));
+
+        // Rust
+        Settings.put("smartkeys.rust.insert.paired.hash.raw.strings", String.valueOf(rustInsertPairedHashForRawStrings));
+
+        // Markdown
+        Settings.put("smartkeys.markdown.reformat.table", String.valueOf(markdownReformatTable));
+        Settings.put("smartkeys.markdown.insert.html.break.table", String.valueOf(markdownInsertHtmlBreakInsideTableCells));
+        Settings.put("smartkeys.markdown.shift.enter.table.row", String.valueOf(markdownUseShiftEnterForNewTableRow));
+        Settings.put("smartkeys.markdown.tab.navigate.table", String.valueOf(markdownUseTabShiftTabToNavigateCells));
+        Settings.put("smartkeys.markdown.adjust.indentation.type", String.valueOf(markdownAdjustIndentationOnType));
+        Settings.put("smartkeys.markdown.smart.enter.backspace", String.valueOf(markdownSmartEnterAndBackspace));
+        Settings.put("smartkeys.markdown.renumber.list.typing", String.valueOf(markdownRenumberListWhenTyping));
+        Settings.put("smartkeys.markdown.list.numerating", markdownListNumerating);
+        Settings.put("smartkeys.markdown.insert.links.drop", String.valueOf(markdownInsertLinksOnDrop));
+
+        // Scala
+        Settings.put("smartkeys.scala.insert.closing.brace", String.valueOf(scalaInsertClosingBrace));
+        Settings.put("smartkeys.scala.auto.indent", String.valueOf(scalaAutoIndent));
+
+        // SQL
+        Settings.put("smartkeys.sql.insert.string.concat.enter", String.valueOf(sqlInsertStringConcatOnEnter));
+        Settings.put("smartkeys.sql.close.code.blocks.enter", String.valueOf(sqlCloseCodeBlocksOnEnter));
+
+        // Ruby
+        Settings.put("smartkeys.ruby.auto.insert.end", String.valueOf(rubyAutoInsertEnd));
+        Settings.put("smartkeys.ruby.smart.indent", String.valueOf(rubySmartIndent));
+
+        // JavaScript
+        Settings.put("smartkeys.js.replace.string.literal.template", String.valueOf(jsReplaceStringLiteralOnTemplate));
+        Settings.put("smartkeys.js.start.template.string.interpolation", String.valueOf(jsStartTemplateStringInterpolation));
+        Settings.put("smartkeys.js.escape.text.paste.literals", String.valueOf(jsEscapeTextOnPasteInStringLiterals));
+        Settings.put("smartkeys.js.close.html.single.tags.jsx", String.valueOf(jsCloseHtmlSingleTagsInJsx));
+        Settings.put("smartkeys.js.convert.html.attribute.names.jsx", String.valueOf(jsConvertHtmlAttributeNamesInJsx));
+        Settings.put("smartkeys.js.escape.jsdoc.asterisks", String.valueOf(jsEscapeJsDocLeadingAsterisks));
+
+        // PHP
+        Settings.put("smartkeys.php.auto.insert.semicolon", String.valueOf(phpAutoInsertSemicolon));
+        Settings.put("smartkeys.php.smart.indent", String.valueOf(phpSmartIndent));
 
         notifyListeners();
     }
@@ -279,6 +627,73 @@ public final class SmartKeysSettings {
         this.convertPastedJavaToKotlin = other.convertPastedJavaToKotlin;
         this.dontShowJavaToKotlinDialogOnPaste = other.dontShowJavaToKotlinDialogOnPaste;
         this.autoAddValKeywordToConstructorParams = other.autoAddValKeywordToConstructorParams;
+
+        // YAML
+        this.yamlAutoExpandKeySequencesOnPaste = other.yamlAutoExpandKeySequencesOnPaste;
+
+        // HTML/CSS
+        this.xmlHtmlInsertClosingTag = other.xmlHtmlInsertClosingTag;
+        this.xmlHtmlInsertRequiredAttributes = other.xmlHtmlInsertRequiredAttributes;
+        this.xmlHtmlInsertRequiredSubtags = other.xmlHtmlInsertRequiredSubtags;
+        this.xmlHtmlStartAttribute = other.xmlHtmlStartAttribute;
+        this.xmlHtmlAddQuotesForAttributeValue = other.xmlHtmlAddQuotesForAttributeValue;
+        this.xmlHtmlAutoCloseTag = other.xmlHtmlAutoCloseTag;
+        this.xmlHtmlSimultaneousTagEditing = other.xmlHtmlSimultaneousTagEditing;
+        this.cssSelectWholeCssIdentifiersOnDoubleClick = other.cssSelectWholeCssIdentifiersOnDoubleClick;
+
+        // Python
+        this.pythonSmartIndentPastedLines = other.pythonSmartIndentPastedLines;
+        this.pythonUseParenthesesInsteadOfBackslashes = other.pythonUseParenthesesInsteadOfBackslashes;
+        this.pythonInsertSelfWhenDefiningMethod = other.pythonInsertSelfWhenDefiningMethod;
+        this.pythonInsertTypePlaceholdersInDocCommentStub = other.pythonInsertTypePlaceholdersInDocCommentStub;
+
+        // JSON
+        this.jsonInsertMissingCommaOnEnter = other.jsonInsertMissingCommaOnEnter;
+        this.jsonInsertMissingCommaAfterMatchingBracesQuotes = other.jsonInsertMissingCommaAfterMatchingBracesQuotes;
+        this.jsonAutoManageCommasPastingFragments = other.jsonAutoManageCommasPastingFragments;
+        this.jsonEscapeTextOnPasteInStringLiterals = other.jsonEscapeTextOnPasteInStringLiterals;
+        this.jsonAutoAddQuotesToPropertyNamesOnColon = other.jsonAutoAddQuotesToPropertyNamesOnColon;
+        this.jsonAutoAddWhitespaceOnColonAfterProperty = other.jsonAutoAddWhitespaceOnColonAfterProperty;
+        this.jsonAutoMoveColonAfterPropertyNameInsideQuotes = other.jsonAutoMoveColonAfterPropertyNameInsideQuotes;
+        this.jsonAutoMoveCommaAfterValueInsideQuotes = other.jsonAutoMoveCommaAfterValueInsideQuotes;
+
+        // Rust
+        this.rustInsertPairedHashForRawStrings = other.rustInsertPairedHashForRawStrings;
+
+        // Markdown
+        this.markdownReformatTable = other.markdownReformatTable;
+        this.markdownInsertHtmlBreakInsideTableCells = other.markdownInsertHtmlBreakInsideTableCells;
+        this.markdownUseShiftEnterForNewTableRow = other.markdownUseShiftEnterForNewTableRow;
+        this.markdownUseTabShiftTabToNavigateCells = other.markdownUseTabShiftTabToNavigateCells;
+        this.markdownAdjustIndentationOnType = other.markdownAdjustIndentationOnType;
+        this.markdownSmartEnterAndBackspace = other.markdownSmartEnterAndBackspace;
+        this.markdownRenumberListWhenTyping = other.markdownRenumberListWhenTyping;
+        this.markdownListNumerating = other.markdownListNumerating;
+        this.markdownInsertLinksOnDrop = other.markdownInsertLinksOnDrop;
+
+        // Scala
+        this.scalaInsertClosingBrace = other.scalaInsertClosingBrace;
+        this.scalaAutoIndent = other.scalaAutoIndent;
+
+        // SQL
+        this.sqlInsertStringConcatOnEnter = other.sqlInsertStringConcatOnEnter;
+        this.sqlCloseCodeBlocksOnEnter = other.sqlCloseCodeBlocksOnEnter;
+
+        // Ruby
+        this.rubyAutoInsertEnd = other.rubyAutoInsertEnd;
+        this.rubySmartIndent = other.rubySmartIndent;
+
+        // JavaScript
+        this.jsReplaceStringLiteralOnTemplate = other.jsReplaceStringLiteralOnTemplate;
+        this.jsStartTemplateStringInterpolation = other.jsStartTemplateStringInterpolation;
+        this.jsEscapeTextOnPasteInStringLiterals = other.jsEscapeTextOnPasteInStringLiterals;
+        this.jsCloseHtmlSingleTagsInJsx = other.jsCloseHtmlSingleTagsInJsx;
+        this.jsConvertHtmlAttributeNamesInJsx = other.jsConvertHtmlAttributeNamesInJsx;
+        this.jsEscapeJsDocLeadingAsterisks = other.jsEscapeJsDocLeadingAsterisks;
+
+        // PHP
+        this.phpAutoInsertSemicolon = other.phpAutoInsertSemicolon;
+        this.phpSmartIndent = other.phpSmartIndent;
     }
 
     public boolean isModified(SmartKeysSettings other) {
@@ -304,7 +719,63 @@ public final class SmartKeysSettings {
                 || this.insertPairPercentOnEnterInJsp != other.insertPairPercentOnEnterInJsp
                 || this.convertPastedJavaToKotlin != other.convertPastedJavaToKotlin
                 || this.dontShowJavaToKotlinDialogOnPaste != other.dontShowJavaToKotlinDialogOnPaste
-                || this.autoAddValKeywordToConstructorParams != other.autoAddValKeywordToConstructorParams;
+                || this.autoAddValKeywordToConstructorParams != other.autoAddValKeywordToConstructorParams
+                // YAML
+                || this.yamlAutoExpandKeySequencesOnPaste != other.yamlAutoExpandKeySequencesOnPaste
+                // HTML/CSS
+                || this.xmlHtmlInsertClosingTag != other.xmlHtmlInsertClosingTag
+                || this.xmlHtmlInsertRequiredAttributes != other.xmlHtmlInsertRequiredAttributes
+                || this.xmlHtmlInsertRequiredSubtags != other.xmlHtmlInsertRequiredSubtags
+                || this.xmlHtmlStartAttribute != other.xmlHtmlStartAttribute
+                || this.xmlHtmlAddQuotesForAttributeValue != other.xmlHtmlAddQuotesForAttributeValue
+                || this.xmlHtmlAutoCloseTag != other.xmlHtmlAutoCloseTag
+                || this.xmlHtmlSimultaneousTagEditing != other.xmlHtmlSimultaneousTagEditing
+                || this.cssSelectWholeCssIdentifiersOnDoubleClick != other.cssSelectWholeCssIdentifiersOnDoubleClick
+                // Python
+                || this.pythonSmartIndentPastedLines != other.pythonSmartIndentPastedLines
+                || this.pythonUseParenthesesInsteadOfBackslashes != other.pythonUseParenthesesInsteadOfBackslashes
+                || this.pythonInsertSelfWhenDefiningMethod != other.pythonInsertSelfWhenDefiningMethod
+                || this.pythonInsertTypePlaceholdersInDocCommentStub != other.pythonInsertTypePlaceholdersInDocCommentStub
+                // JSON
+                || this.jsonInsertMissingCommaOnEnter != other.jsonInsertMissingCommaOnEnter
+                || this.jsonInsertMissingCommaAfterMatchingBracesQuotes != other.jsonInsertMissingCommaAfterMatchingBracesQuotes
+                || this.jsonAutoManageCommasPastingFragments != other.jsonAutoManageCommasPastingFragments
+                || this.jsonEscapeTextOnPasteInStringLiterals != other.jsonEscapeTextOnPasteInStringLiterals
+                || this.jsonAutoAddQuotesToPropertyNamesOnColon != other.jsonAutoAddQuotesToPropertyNamesOnColon
+                || this.jsonAutoAddWhitespaceOnColonAfterProperty != other.jsonAutoAddWhitespaceOnColonAfterProperty
+                || this.jsonAutoMoveColonAfterPropertyNameInsideQuotes != other.jsonAutoMoveColonAfterPropertyNameInsideQuotes
+                || this.jsonAutoMoveCommaAfterValueInsideQuotes != other.jsonAutoMoveCommaAfterValueInsideQuotes
+                // Rust
+                || this.rustInsertPairedHashForRawStrings != other.rustInsertPairedHashForRawStrings
+                // Markdown
+                || this.markdownReformatTable != other.markdownReformatTable
+                || this.markdownInsertHtmlBreakInsideTableCells != other.markdownInsertHtmlBreakInsideTableCells
+                || this.markdownUseShiftEnterForNewTableRow != other.markdownUseShiftEnterForNewTableRow
+                || this.markdownUseTabShiftTabToNavigateCells != other.markdownUseTabShiftTabToNavigateCells
+                || this.markdownAdjustIndentationOnType != other.markdownAdjustIndentationOnType
+                || this.markdownSmartEnterAndBackspace != other.markdownSmartEnterAndBackspace
+                || this.markdownRenumberListWhenTyping != other.markdownRenumberListWhenTyping
+                || !Objects.equals(this.markdownListNumerating, other.markdownListNumerating)
+                || this.markdownInsertLinksOnDrop != other.markdownInsertLinksOnDrop
+                // Scala
+                || this.scalaInsertClosingBrace != other.scalaInsertClosingBrace
+                || this.scalaAutoIndent != other.scalaAutoIndent
+                // SQL
+                || this.sqlInsertStringConcatOnEnter != other.sqlInsertStringConcatOnEnter
+                || this.sqlCloseCodeBlocksOnEnter != other.sqlCloseCodeBlocksOnEnter
+                // Ruby
+                || this.rubyAutoInsertEnd != other.rubyAutoInsertEnd
+                || this.rubySmartIndent != other.rubySmartIndent
+                // JavaScript
+                || this.jsReplaceStringLiteralOnTemplate != other.jsReplaceStringLiteralOnTemplate
+                || this.jsStartTemplateStringInterpolation != other.jsStartTemplateStringInterpolation
+                || this.jsEscapeTextOnPasteInStringLiterals != other.jsEscapeTextOnPasteInStringLiterals
+                || this.jsCloseHtmlSingleTagsInJsx != other.jsCloseHtmlSingleTagsInJsx
+                || this.jsConvertHtmlAttributeNamesInJsx != other.jsConvertHtmlAttributeNamesInJsx
+                || this.jsEscapeJsDocLeadingAsterisks != other.jsEscapeJsDocLeadingAsterisks
+                // PHP
+                || this.phpAutoInsertSemicolon != other.phpAutoInsertSemicolon
+                || this.phpSmartIndent != other.phpSmartIndent;
     }
 
     public void addListener(Listener listener) {
@@ -327,181 +798,217 @@ public final class SmartKeysSettings {
 
     // --- Getters and Setters ---
 
-    public boolean isHomeMovesCaretToFirstNonWhitespace() {
-        return homeMovesCaretToFirstNonWhitespace;
-    }
+    public boolean isHomeMovesCaretToFirstNonWhitespace() { return homeMovesCaretToFirstNonWhitespace; }
+    public void setHomeMovesCaretToFirstNonWhitespace(boolean val) { this.homeMovesCaretToFirstNonWhitespace = val; }
 
-    public void setHomeMovesCaretToFirstNonWhitespace(boolean homeMovesCaretToFirstNonWhitespace) {
-        this.homeMovesCaretToFirstNonWhitespace = homeMovesCaretToFirstNonWhitespace;
-    }
+    public boolean isEndOnBlankLineMovesCaretToIndent() { return endOnBlankLineMovesCaretToIndent; }
+    public void setEndOnBlankLineMovesCaretToIndent(boolean val) { this.endOnBlankLineMovesCaretToIndent = val; }
 
-    public boolean isEndOnBlankLineMovesCaretToIndent() {
-        return endOnBlankLineMovesCaretToIndent;
-    }
+    public boolean isInsertPairedBrackets() { return insertPairedBrackets; }
+    public void setInsertPairedBrackets(boolean val) { this.insertPairedBrackets = val; }
 
-    public void setEndOnBlankLineMovesCaretToIndent(boolean endOnBlankLineMovesCaretToIndent) {
-        this.endOnBlankLineMovesCaretToIndent = endOnBlankLineMovesCaretToIndent;
-    }
+    public boolean isInsertPairQuote() { return insertPairQuote; }
+    public void setInsertPairQuote(boolean val) { this.insertPairQuote = val; }
 
-    public boolean isInsertPairedBrackets() {
-        return insertPairedBrackets;
-    }
+    public boolean isReformatBlockOnTypingRBrace() { return reformatBlockOnTypingRBrace; }
+    public void setReformatBlockOnTypingRBrace(boolean val) { this.reformatBlockOnTypingRBrace = val; }
 
-    public void setInsertPairedBrackets(boolean insertPairedBrackets) {
-        this.insertPairedBrackets = insertPairedBrackets;
-    }
+    public boolean isUseCamelHumpsWords() { return useCamelHumpsWords; }
+    public void setUseCamelHumpsWords(boolean val) { this.useCamelHumpsWords = val; }
 
-    public boolean isInsertPairQuote() {
-        return insertPairQuote;
-    }
+    public boolean isHonorCamelHumpsOnDoubleClick() { return honorCamelHumpsOnDoubleClick; }
+    public void setHonorCamelHumpsOnDoubleClick(boolean val) { this.honorCamelHumpsOnDoubleClick = val; }
 
-    public void setInsertPairQuote(boolean insertPairQuote) {
-        this.insertPairQuote = insertPairQuote;
-    }
+    public boolean isSurroundSelectionOnQuoteOrBrace() { return surroundSelectionOnQuoteOrBrace; }
+    public void setSurroundSelectionOnQuoteOrBrace(boolean val) { this.surroundSelectionOnQuoteOrBrace = val; }
 
-    public boolean isReformatBlockOnTypingRBrace() {
-        return reformatBlockOnTypingRBrace;
-    }
+    public boolean isAddMultipleCaretsOnDoubleCtrlArrow() { return addMultipleCaretsOnDoubleCtrlArrow; }
+    public void setAddMultipleCaretsOnDoubleCtrlArrow(boolean val) { this.addMultipleCaretsOnDoubleCtrlArrow = val; }
 
-    public void setReformatBlockOnTypingRBrace(boolean reformatBlockOnTypingRBrace) {
-        this.reformatBlockOnTypingRBrace = reformatBlockOnTypingRBrace;
-    }
+    public boolean isJumpOutsideClosingBracketOrQuoteWithTab() { return jumpOutsideClosingBracketOrQuoteWithTab; }
+    public void setJumpOutsideClosingBracketOrQuoteWithTab(boolean val) { this.jumpOutsideClosingBracketOrQuoteWithTab = val; }
 
-    public boolean isUseCamelHumpsWords() {
-        return useCamelHumpsWords;
-    }
+    public boolean isSmartIndent() { return smartIndent; }
+    public void setSmartIndent(boolean val) { this.smartIndent = val; }
 
-    public void setUseCamelHumpsWords(boolean useCamelHumpsWords) {
-        this.useCamelHumpsWords = useCamelHumpsWords;
-    }
+    public boolean isInsertPairRBrace() { return insertPairRBrace; }
+    public void setInsertPairRBrace(boolean val) { this.insertPairRBrace = val; }
 
-    public boolean isHonorCamelHumpsOnDoubleClick() {
-        return honorCamelHumpsOnDoubleClick;
-    }
+    public boolean isCloseBlockComment() { return closeBlockComment; }
+    public void setCloseBlockComment(boolean val) { this.closeBlockComment = val; }
 
-    public void setHonorCamelHumpsOnDoubleClick(boolean honorCamelHumpsOnDoubleClick) {
-        this.honorCamelHumpsOnDoubleClick = honorCamelHumpsOnDoubleClick;
-    }
+    public boolean isInsertDocCommentStub() { return insertDocCommentStub; }
+    public void setInsertDocCommentStub(boolean val) { this.insertDocCommentStub = val; }
 
-    public boolean isSurroundSelectionOnQuoteOrBrace() {
-        return surroundSelectionOnQuoteOrBrace;
-    }
+    public UnindentOnBackspace getUnindentOnBackspace() { return unindentOnBackspace; }
+    public void setUnindentOnBackspace(UnindentOnBackspace val) { this.unindentOnBackspace = val != null ? val : UnindentOnBackspace.TO_PROPER_INDENT; }
 
-    public void setSurroundSelectionOnQuoteOrBrace(boolean surroundSelectionOnQuoteOrBrace) {
-        this.surroundSelectionOnQuoteOrBrace = surroundSelectionOnQuoteOrBrace;
-    }
+    public ReformatOnPaste getReformatOnPaste() { return reformatOnPaste; }
+    public void setReformatOnPaste(ReformatOnPaste val) { this.reformatOnPaste = val != null ? val : ReformatOnPaste.INDENT_EACH_LINE; }
 
-    public boolean isAddMultipleCaretsOnDoubleCtrlArrow() {
-        return addMultipleCaretsOnDoubleCtrlArrow;
-    }
+    public boolean isReformatAgainToRemoveCustomLineBreaks() { return reformatAgainToRemoveCustomLineBreaks; }
+    public void setReformatAgainToRemoveCustomLineBreaks(boolean val) { this.reformatAgainToRemoveCustomLineBreaks = val; }
 
-    public void setAddMultipleCaretsOnDoubleCtrlArrow(boolean addMultipleCaretsOnDoubleCtrlArrow) {
-        this.addMultipleCaretsOnDoubleCtrlArrow = addMultipleCaretsOnDoubleCtrlArrow;
-    }
+    public boolean isAutoInsertClosingTagInJavaDoc() { return autoInsertClosingTagInJavaDoc; }
+    public void setAutoInsertClosingTagInJavaDoc(boolean val) { this.autoInsertClosingTagInJavaDoc = val; }
 
-    public boolean isJumpOutsideClosingBracketOrQuoteWithTab() {
-        return jumpOutsideClosingBracketOrQuoteWithTab;
-    }
+    public boolean isInsertPairPercentOnEnterInJsp() { return insertPairPercentOnEnterInJsp; }
+    public void setInsertPairPercentOnEnterInJsp(boolean val) { this.insertPairPercentOnEnterInJsp = val; }
 
-    public void setJumpOutsideClosingBracketOrQuoteWithTab(boolean jumpOutsideClosingBracketOrQuoteWithTab) {
-        this.jumpOutsideClosingBracketOrQuoteWithTab = jumpOutsideClosingBracketOrQuoteWithTab;
-    }
+    public boolean isConvertPastedJavaToKotlin() { return convertPastedJavaToKotlin; }
+    public void setConvertPastedJavaToKotlin(boolean val) { this.convertPastedJavaToKotlin = val; }
 
-    public boolean isSmartIndent() {
-        return smartIndent;
-    }
+    public boolean isDontShowJavaToKotlinDialogOnPaste() { return dontShowJavaToKotlinDialogOnPaste; }
+    public void setDontShowJavaToKotlinDialogOnPaste(boolean val) { this.dontShowJavaToKotlinDialogOnPaste = val; }
 
-    public void setSmartIndent(boolean smartIndent) {
-        this.smartIndent = smartIndent;
-    }
+    public boolean isAutoAddValKeywordToConstructorParams() { return autoAddValKeywordToConstructorParams; }
+    public void setAutoAddValKeywordToConstructorParams(boolean val) { this.autoAddValKeywordToConstructorParams = val; }
 
-    public boolean isInsertPairRBrace() {
-        return insertPairRBrace;
-    }
+    // YAML
+    public boolean isYamlAutoExpandKeySequencesOnPaste() { return yamlAutoExpandKeySequencesOnPaste; }
+    public void setYamlAutoExpandKeySequencesOnPaste(boolean val) { this.yamlAutoExpandKeySequencesOnPaste = val; }
 
-    public void setInsertPairRBrace(boolean insertPairRBrace) {
-        this.insertPairRBrace = insertPairRBrace;
-    }
+    // HTML/CSS
+    public boolean isXmlHtmlInsertClosingTag() { return xmlHtmlInsertClosingTag; }
+    public void setXmlHtmlInsertClosingTag(boolean val) { this.xmlHtmlInsertClosingTag = val; }
 
-    public boolean isCloseBlockComment() {
-        return closeBlockComment;
-    }
+    public boolean isXmlHtmlInsertRequiredAttributes() { return xmlHtmlInsertRequiredAttributes; }
+    public void setXmlHtmlInsertRequiredAttributes(boolean val) { this.xmlHtmlInsertRequiredAttributes = val; }
 
-    public void setCloseBlockComment(boolean closeBlockComment) {
-        this.closeBlockComment = closeBlockComment;
-    }
+    public boolean isXmlHtmlInsertRequiredSubtags() { return xmlHtmlInsertRequiredSubtags; }
+    public void setXmlHtmlInsertRequiredSubtags(boolean val) { this.xmlHtmlInsertRequiredSubtags = val; }
 
-    public boolean isInsertDocCommentStub() {
-        return insertDocCommentStub;
-    }
+    public boolean isXmlHtmlStartAttribute() { return xmlHtmlStartAttribute; }
+    public void setXmlHtmlStartAttribute(boolean val) { this.xmlHtmlStartAttribute = val; }
 
-    public void setInsertDocCommentStub(boolean insertDocCommentStub) {
-        this.insertDocCommentStub = insertDocCommentStub;
-    }
+    public boolean isXmlHtmlAddQuotesForAttributeValue() { return xmlHtmlAddQuotesForAttributeValue; }
+    public void setXmlHtmlAddQuotesForAttributeValue(boolean val) { this.xmlHtmlAddQuotesForAttributeValue = val; }
 
-    public UnindentOnBackspace getUnindentOnBackspace() {
-        return unindentOnBackspace;
-    }
+    public boolean isXmlHtmlAutoCloseTag() { return xmlHtmlAutoCloseTag; }
+    public void setXmlHtmlAutoCloseTag(boolean val) { this.xmlHtmlAutoCloseTag = val; }
 
-    public void setUnindentOnBackspace(UnindentOnBackspace unindentOnBackspace) {
-        this.unindentOnBackspace = unindentOnBackspace != null ? unindentOnBackspace : UnindentOnBackspace.TO_PROPER_INDENT;
-    }
+    public boolean isXmlHtmlSimultaneousTagEditing() { return xmlHtmlSimultaneousTagEditing; }
+    public void setXmlHtmlSimultaneousTagEditing(boolean val) { this.xmlHtmlSimultaneousTagEditing = val; }
 
-    public ReformatOnPaste getReformatOnPaste() {
-        return reformatOnPaste;
-    }
+    public boolean isCssSelectWholeCssIdentifiersOnDoubleClick() { return cssSelectWholeCssIdentifiersOnDoubleClick; }
+    public void setCssSelectWholeCssIdentifiersOnDoubleClick(boolean val) { this.cssSelectWholeCssIdentifiersOnDoubleClick = val; }
 
-    public void setReformatOnPaste(ReformatOnPaste reformatOnPaste) {
-        this.reformatOnPaste = reformatOnPaste != null ? reformatOnPaste : ReformatOnPaste.INDENT_EACH_LINE;
-    }
+    // Python
+    public boolean isPythonSmartIndentPastedLines() { return pythonSmartIndentPastedLines; }
+    public void setPythonSmartIndentPastedLines(boolean val) { this.pythonSmartIndentPastedLines = val; }
 
-    public boolean isReformatAgainToRemoveCustomLineBreaks() {
-        return reformatAgainToRemoveCustomLineBreaks;
-    }
+    public boolean isPythonUseParenthesesInsteadOfBackslashes() { return pythonUseParenthesesInsteadOfBackslashes; }
+    public void setPythonUseParenthesesInsteadOfBackslashes(boolean val) { this.pythonUseParenthesesInsteadOfBackslashes = val; }
 
-    public void setReformatAgainToRemoveCustomLineBreaks(boolean reformatAgainToRemoveCustomLineBreaks) {
-        this.reformatAgainToRemoveCustomLineBreaks = reformatAgainToRemoveCustomLineBreaks;
-    }
+    public boolean isPythonInsertSelfWhenDefiningMethod() { return pythonInsertSelfWhenDefiningMethod; }
+    public void setPythonInsertSelfWhenDefiningMethod(boolean val) { this.pythonInsertSelfWhenDefiningMethod = val; }
 
-    public boolean isAutoInsertClosingTagInJavaDoc() {
-        return autoInsertClosingTagInJavaDoc;
-    }
+    public boolean isPythonInsertTypePlaceholdersInDocCommentStub() { return pythonInsertTypePlaceholdersInDocCommentStub; }
+    public void setPythonInsertTypePlaceholdersInDocCommentStub(boolean val) { this.pythonInsertTypePlaceholdersInDocCommentStub = val; }
 
-    public void setAutoInsertClosingTagInJavaDoc(boolean autoInsertClosingTagInJavaDoc) {
-        this.autoInsertClosingTagInJavaDoc = autoInsertClosingTagInJavaDoc;
-    }
+    // JSON
+    public boolean isJsonInsertMissingCommaOnEnter() { return jsonInsertMissingCommaOnEnter; }
+    public void setJsonInsertMissingCommaOnEnter(boolean val) { this.jsonInsertMissingCommaOnEnter = val; }
 
-    public boolean isInsertPairPercentOnEnterInJsp() {
-        return insertPairPercentOnEnterInJsp;
-    }
+    public boolean isJsonInsertMissingCommaAfterMatchingBracesQuotes() { return jsonInsertMissingCommaAfterMatchingBracesQuotes; }
+    public void setJsonInsertMissingCommaAfterMatchingBracesQuotes(boolean val) { this.jsonInsertMissingCommaAfterMatchingBracesQuotes = val; }
 
-    public void setInsertPairPercentOnEnterInJsp(boolean insertPairPercentOnEnterInJsp) {
-        this.insertPairPercentOnEnterInJsp = insertPairPercentOnEnterInJsp;
-    }
+    public boolean isJsonAutoManageCommasPastingFragments() { return jsonAutoManageCommasPastingFragments; }
+    public void setJsonAutoManageCommasPastingFragments(boolean val) { this.jsonAutoManageCommasPastingFragments = val; }
 
-    public boolean isConvertPastedJavaToKotlin() {
-        return convertPastedJavaToKotlin;
-    }
+    public boolean isJsonEscapeTextOnPasteInStringLiterals() { return jsonEscapeTextOnPasteInStringLiterals; }
+    public void setJsonEscapeTextOnPasteInStringLiterals(boolean val) { this.jsonEscapeTextOnPasteInStringLiterals = val; }
 
-    public void setConvertPastedJavaToKotlin(boolean convertPastedJavaToKotlin) {
-        this.convertPastedJavaToKotlin = convertPastedJavaToKotlin;
-    }
+    public boolean isJsonAutoAddQuotesToPropertyNamesOnColon() { return jsonAutoAddQuotesToPropertyNamesOnColon; }
+    public void setJsonAutoAddQuotesToPropertyNamesOnColon(boolean val) { this.jsonAutoAddQuotesToPropertyNamesOnColon = val; }
 
-    public boolean isDontShowJavaToKotlinDialogOnPaste() {
-        return dontShowJavaToKotlinDialogOnPaste;
-    }
+    public boolean isJsonAutoAddWhitespaceOnColonAfterProperty() { return jsonAutoAddWhitespaceOnColonAfterProperty; }
+    public void setJsonAutoAddWhitespaceOnColonAfterProperty(boolean val) { this.jsonAutoAddWhitespaceOnColonAfterProperty = val; }
 
-    public void setDontShowJavaToKotlinDialogOnPaste(boolean dontShowJavaToKotlinDialogOnPaste) {
-        this.dontShowJavaToKotlinDialogOnPaste = dontShowJavaToKotlinDialogOnPaste;
-    }
+    public boolean isJsonAutoMoveColonAfterPropertyNameInsideQuotes() { return jsonAutoMoveColonAfterPropertyNameInsideQuotes; }
+    public void setJsonAutoMoveColonAfterPropertyNameInsideQuotes(boolean val) { this.jsonAutoMoveColonAfterPropertyNameInsideQuotes = val; }
 
-    public boolean isAutoAddValKeywordToConstructorParams() {
-        return autoAddValKeywordToConstructorParams;
-    }
+    public boolean isJsonAutoMoveCommaAfterValueInsideQuotes() { return jsonAutoMoveCommaAfterValueInsideQuotes; }
+    public void setJsonAutoMoveCommaAfterValueInsideQuotes(boolean val) { this.jsonAutoMoveCommaAfterValueInsideQuotes = val; }
 
-    public void setAutoAddValKeywordToConstructorParams(boolean autoAddValKeywordToConstructorParams) {
-        this.autoAddValKeywordToConstructorParams = autoAddValKeywordToConstructorParams;
-    }
+    // Rust
+    public boolean isRustInsertPairedHashForRawStrings() { return rustInsertPairedHashForRawStrings; }
+    public void setRustInsertPairedHashForRawStrings(boolean val) { this.rustInsertPairedHashForRawStrings = val; }
+
+    // Markdown
+    public boolean isMarkdownReformatTable() { return markdownReformatTable; }
+    public void setMarkdownReformatTable(boolean val) { this.markdownReformatTable = val; }
+
+    public boolean isMarkdownInsertHtmlBreakInsideTableCells() { return markdownInsertHtmlBreakInsideTableCells; }
+    public void setMarkdownInsertHtmlBreakInsideTableCells(boolean val) { this.markdownInsertHtmlBreakInsideTableCells = val; }
+
+    public boolean isMarkdownUseShiftEnterForNewTableRow() { return markdownUseShiftEnterForNewTableRow; }
+    public void setMarkdownUseShiftEnterForNewTableRow(boolean val) { this.markdownUseShiftEnterForNewTableRow = val; }
+
+    public boolean isMarkdownUseTabShiftTabToNavigateCells() { return markdownUseTabShiftTabToNavigateCells; }
+    public void setMarkdownUseTabShiftTabToNavigateCells(boolean val) { this.markdownUseTabShiftTabToNavigateCells = val; }
+
+    public boolean isMarkdownAdjustIndentationOnType() { return markdownAdjustIndentationOnType; }
+    public void setMarkdownAdjustIndentationOnType(boolean val) { this.markdownAdjustIndentationOnType = val; }
+
+    public boolean isMarkdownSmartEnterAndBackspace() { return markdownSmartEnterAndBackspace; }
+    public void setMarkdownSmartEnterAndBackspace(boolean val) { this.markdownSmartEnterAndBackspace = val; }
+
+    public boolean isMarkdownRenumberListWhenTyping() { return markdownRenumberListWhenTyping; }
+    public void setMarkdownRenumberListWhenTyping(boolean val) { this.markdownRenumberListWhenTyping = val; }
+
+    public String getMarkdownListNumerating() { return markdownListNumerating; }
+    public void setMarkdownListNumerating(String val) { this.markdownListNumerating = val != null ? val : "Sequentially"; }
+
+    public boolean isMarkdownInsertLinksOnDrop() { return markdownInsertLinksOnDrop; }
+    public void setMarkdownInsertLinksOnDrop(boolean val) { this.markdownInsertLinksOnDrop = val; }
+
+    // Scala
+    public boolean isScalaInsertClosingBrace() { return scalaInsertClosingBrace; }
+    public void setScalaInsertClosingBrace(boolean val) { this.scalaInsertClosingBrace = val; }
+
+    public boolean isScalaAutoIndent() { return scalaAutoIndent; }
+    public void setScalaAutoIndent(boolean val) { this.scalaAutoIndent = val; }
+
+    // SQL
+    public boolean isSqlInsertStringConcatOnEnter() { return sqlInsertStringConcatOnEnter; }
+    public void setSqlInsertStringConcatOnEnter(boolean val) { this.sqlInsertStringConcatOnEnter = val; }
+
+    public boolean isSqlCloseCodeBlocksOnEnter() { return sqlCloseCodeBlocksOnEnter; }
+    public void setSqlCloseCodeBlocksOnEnter(boolean val) { this.sqlCloseCodeBlocksOnEnter = val; }
+
+    // Ruby
+    public boolean isRubyAutoInsertEnd() { return rubyAutoInsertEnd; }
+    public void setRubyAutoInsertEnd(boolean val) { this.rubyAutoInsertEnd = val; }
+
+    public boolean isRubySmartIndent() { return rubySmartIndent; }
+    public void setRubySmartIndent(boolean val) { this.rubySmartIndent = val; }
+
+    // JavaScript
+    public boolean isJsReplaceStringLiteralOnTemplate() { return jsReplaceStringLiteralOnTemplate; }
+    public void setJsReplaceStringLiteralOnTemplate(boolean val) { this.jsReplaceStringLiteralOnTemplate = val; }
+
+    public boolean isJsStartTemplateStringInterpolation() { return jsStartTemplateStringInterpolation; }
+    public void setJsStartTemplateStringInterpolation(boolean val) { this.jsStartTemplateStringInterpolation = val; }
+
+    public boolean isJsEscapeTextOnPasteInStringLiterals() { return jsEscapeTextOnPasteInStringLiterals; }
+    public void setJsEscapeTextOnPasteInStringLiterals(boolean val) { this.jsEscapeTextOnPasteInStringLiterals = val; }
+
+    public boolean isJsCloseHtmlSingleTagsInJsx() { return jsCloseHtmlSingleTagsInJsx; }
+    public void setJsCloseHtmlSingleTagsInJsx(boolean val) { this.jsCloseHtmlSingleTagsInJsx = val; }
+
+    public boolean isJsConvertHtmlAttributeNamesInJsx() { return jsConvertHtmlAttributeNamesInJsx; }
+    public void setJsConvertHtmlAttributeNamesInJsx(boolean val) { this.jsConvertHtmlAttributeNamesInJsx = val; }
+
+    public boolean isJsEscapeJsDocLeadingAsterisks() { return jsEscapeJsDocLeadingAsterisks; }
+    public void setJsEscapeJsDocLeadingAsterisks(boolean val) { this.jsEscapeJsDocLeadingAsterisks = val; }
+
+    // PHP
+    public boolean isPhpAutoInsertSemicolon() { return phpAutoInsertSemicolon; }
+    public void setPhpAutoInsertSemicolon(boolean val) { this.phpAutoInsertSemicolon = val; }
+
+    public boolean isPhpSmartIndent() { return phpSmartIndent; }
+    public void setPhpSmartIndent(boolean val) { this.phpSmartIndent = val; }
 
     @Override
     public boolean equals(Object o) {
@@ -522,7 +1029,30 @@ public final class SmartKeysSettings {
                 unindentOnBackspace, reformatOnPaste, reformatAgainToRemoveCustomLineBreaks,
                 autoInsertClosingTagInJavaDoc, insertPairPercentOnEnterInJsp,
                 convertPastedJavaToKotlin, dontShowJavaToKotlinDialogOnPaste,
-                autoAddValKeywordToConstructorParams
+                autoAddValKeywordToConstructorParams,
+                yamlAutoExpandKeySequencesOnPaste,
+                xmlHtmlInsertClosingTag, xmlHtmlInsertRequiredAttributes,
+                xmlHtmlInsertRequiredSubtags, xmlHtmlStartAttribute,
+                xmlHtmlAddQuotesForAttributeValue, xmlHtmlAutoCloseTag,
+                xmlHtmlSimultaneousTagEditing, cssSelectWholeCssIdentifiersOnDoubleClick,
+                pythonSmartIndentPastedLines, pythonUseParenthesesInsteadOfBackslashes,
+                pythonInsertSelfWhenDefiningMethod, pythonInsertTypePlaceholdersInDocCommentStub,
+                jsonInsertMissingCommaOnEnter, jsonInsertMissingCommaAfterMatchingBracesQuotes,
+                jsonAutoManageCommasPastingFragments, jsonEscapeTextOnPasteInStringLiterals,
+                jsonAutoAddQuotesToPropertyNamesOnColon, jsonAutoAddWhitespaceOnColonAfterProperty,
+                jsonAutoMoveColonAfterPropertyNameInsideQuotes, jsonAutoMoveCommaAfterValueInsideQuotes,
+                rustInsertPairedHashForRawStrings,
+                markdownReformatTable, markdownInsertHtmlBreakInsideTableCells,
+                markdownUseShiftEnterForNewTableRow, markdownUseTabShiftTabToNavigateCells,
+                markdownAdjustIndentationOnType, markdownSmartEnterAndBackspace,
+                markdownRenumberListWhenTyping, markdownListNumerating, markdownInsertLinksOnDrop,
+                scalaInsertClosingBrace, scalaAutoIndent,
+                sqlInsertStringConcatOnEnter, sqlCloseCodeBlocksOnEnter,
+                rubyAutoInsertEnd, rubySmartIndent,
+                jsReplaceStringLiteralOnTemplate, jsStartTemplateStringInterpolation,
+                jsEscapeTextOnPasteInStringLiterals, jsCloseHtmlSingleTagsInJsx,
+                jsConvertHtmlAttributeNamesInJsx, jsEscapeJsDocLeadingAsterisks,
+                phpAutoInsertSemicolon, phpSmartIndent
         );
     }
 }

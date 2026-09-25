@@ -5,7 +5,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 /**
- * IntelliJ-style Editor settings page.
+ * Modern Editor settings page.
  * This shows the content for Editor sub-pages directly.
  */
 public class SettingsEditorPage extends VBox {
