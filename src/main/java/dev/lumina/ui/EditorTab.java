@@ -78,6 +78,8 @@ public class EditorTab extends Tab {
 
     // Gutter markers state
     private final Map<Integer, List<dev.lumina.gutter.GutterMarker>> lineMarkers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<Integer, List<dev.lumina.gutter.GutterMarker>> rawLineMarkers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.function.Consumer<dev.lumina.settings.GutterIconsSettings> gutterIconsListener = s -> javafx.application.Platform.runLater(this::applyGutterMarkerSettings);
     private java.util.function.BiConsumer<Path, Integer> onNavigateLocation;
     private java.util.function.BiConsumer<javafx.scene.Node, List<dev.lumina.gutter.GutterMarker.NavigationTarget>> onShowImplementationList;
     private javafx.stage.Popup markerHoverPopup;
@@ -92,11 +94,42 @@ public class EditorTab extends Tab {
     }
 
     public void setGutterMarkers(Map<Integer, List<dev.lumina.gutter.GutterMarker>> markers) {
-        this.lineMarkers.clear();
+        this.rawLineMarkers.clear();
         if (markers != null) {
-            this.lineMarkers.putAll(markers);
+            this.rawLineMarkers.putAll(markers);
+        }
+        applyGutterMarkerSettings();
+    }
+
+    private void applyGutterMarkerSettings() {
+        this.lineMarkers.clear();
+        dev.lumina.settings.GutterIconsSettings s = dev.lumina.settings.GutterIconsSettings.getInstance();
+        if (s.isShowGutterIcons()) {
+            for (Map.Entry<Integer, List<dev.lumina.gutter.GutterMarker>> entry : rawLineMarkers.entrySet()) {
+                List<dev.lumina.gutter.GutterMarker> list = new ArrayList<>();
+                for (dev.lumina.gutter.GutterMarker m : entry.getValue()) {
+                    if (isMarkerEnabled(m, s)) {
+                        list.add(m);
+                    }
+                }
+                if (!list.isEmpty()) {
+                    this.lineMarkers.put(entry.getKey(), list);
+                }
+            }
         }
         javafx.application.Platform.runLater(this::refreshGutter);
+    }
+
+    private static boolean isMarkerEnabled(dev.lumina.gutter.GutterMarker m, dev.lumina.settings.GutterIconsSettings s) {
+        if (!s.isShowGutterIcons()) return false;
+        return switch (m.type()) {
+            case IMPLEMENTED_METHOD, IMPLEMENTED_INTERFACE -> s.isIconEnabled("java.implemented.method");
+            case IMPLEMENTS_METHOD, IMPLEMENTS_INTERFACE -> s.isIconEnabled("java.implementing.method");
+            case OVERRIDES_METHOD -> s.isIconEnabled("java.overriding.method");
+            case INFERRED_ANNOTATION -> s.isIconEnabled("java.inferred.contract.annotations") || s.isIconEnabled("java.inferred.nullability.annotations");
+            case BEAN_INJECTION -> s.isIconEnabled("spring.bean") || s.isIconEnabled("spring.autowired");
+            case TEST_CLASS, TEST_METHOD, TEST_METHOD_PASSED, TEST_METHOD_FAILED -> s.isIconEnabled("common.run.line.marker");
+        };
     }
 
     public void setOnNavigateLocation(java.util.function.BiConsumer<Path, Integer> handler) {
@@ -187,6 +220,7 @@ public class EditorTab extends Tab {
         OPEN_EDITOR_TABS.add(this);
         applyEditorGeneralSettings(dev.lumina.settings.EditorGeneralSettings.getInstance());
         dev.lumina.settings.EditorGeneralSettings.getInstance().addListener(editorGeneralListener);
+        dev.lumina.settings.GutterIconsSettings.getInstance().addListener(gutterIconsListener);
 
         // Ctrl/Cmd + Mouse Wheel font zoom
         codeArea.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, e -> {
@@ -222,6 +256,7 @@ public class EditorTab extends Tab {
         setOnClosed(e -> {
             OPEN_EDITOR_TABS.remove(this);
             dev.lumina.settings.EditorGeneralSettings.getInstance().removeListener(editorGeneralListener);
+            dev.lumina.settings.GutterIconsSettings.getInstance().removeListener(gutterIconsListener);
             if (gitChangePopup != null && gitChangePopup.isShowing()) {
                 gitChangePopup.hide();
             }
