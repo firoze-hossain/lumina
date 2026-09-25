@@ -1,240 +1,426 @@
-// SettingsEditorTabsPage.java
 package dev.lumina.ui;
 
+import dev.lumina.settings.EditorTabsSettings;
+import dev.lumina.settings.EditorTabsSettings.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 
 /**
- * IntelliJ-style Editor > General > Editor Tabs settings page.
- * Complete implementation matching both screenshots.
+ * Pixel-perfect IntelliJ IDEA-style Editor > General > Editor Tabs settings page.
+ * Completely dynamic, backed by EditorTabsSettings, supporting dirty tracking,
+ * real-time tab synchronization, and all sections matching IntelliJ IDEA.
  */
 public class SettingsEditorTabsPage extends VBox {
 
+    // 1. Appearance
+    private final ComboBox<TabPlacement> tabPlacementCombo = new ComboBox<>();
+    private final RadioButton oneRowRadio = new RadioButton("One row, and if tabs don't fit:");
+    private final RadioButton scrollTabsRadio = new RadioButton("Scroll the tabs panel");
+    private final RadioButton squeezeTabsRadio = new RadioButton("Squeeze tabs");
+    private final ToggleGroup oneRowFitGroup = new ToggleGroup();
+    private final RadioButton multipleRowsRadio = new RadioButton("Multiple rows");
+    private final ToggleGroup tabRowsModeGroup = new ToggleGroup();
+
+    private final CheckBox showPinnedTabsInSeparateRowCheck = new CheckBox("Show pinned tabs in a separate row");
+    private final CheckBox showFileIconCheck = new CheckBox("Show file icon");
+    private final CheckBox showFileExtensionCheck = new CheckBox("Show file extension");
+    private final CheckBox showDirectoryForNonUniqueNamesCheck = new CheckBox("Show directory for non-unique file names");
+    private final CheckBox markModifiedCheck = new CheckBox("Mark modified");
+    private final CheckBox showFullPathOnMouseHoverCheck = new CheckBox("Show full path on mouse hover");
+
+    private final ComboBox<CloseButtonPosition> closeButtonPosCombo = new ComboBox<>();
+
+    // 2. Tab Order
+    private final CheckBox sortTabsAlphabeticallyCheck = new CheckBox("Sort tabs alphabetically");
+    private final CheckBox openNewTabsAtEndCheck = new CheckBox("Open new tabs at the end");
+
+    // 3. Opening Policy
+    private final CheckBox enablePreviewTabCheck = new CheckBox("Enable preview tab");
+    private final Label previewTabHint = new Label("The preview tab is reused to show files selected with a single click in the Project tool window, and files opened during debugging.");
+
+    // 4. Closing Policy
+    private final TextField tabLimitField = new TextField("30");
+
+    private final RadioButton closeUnchangedRadio = new RadioButton("Close unchanged");
+    private final RadioButton closeUnusedRadio = new RadioButton("Close unused");
+    private final ToggleGroup exceedLimitGroup = new ToggleGroup();
+
+    private final RadioButton activateLeftRadio = new RadioButton("The tab on the left");
+    private final RadioButton activateRightRadio = new RadioButton("The tab on the right");
+    private final RadioButton activateRecentRadio = new RadioButton("Most recently opened tab");
+    private final ToggleGroup activateGroup = new ToggleGroup();
+
+    // 5. Database
+    private final CheckBox dbAlwaysShowQualifiedNamesCheck = new CheckBox("Always show qualified names for database objects in tab titles");
+    private final CheckBox dbShortenDatasourceNamesCheck = new CheckBox("Shorten datasource and object names in tab titles");
+
+    private Runnable onModifiedListener;
+    private boolean suppressEvents = false;
+
     public SettingsEditorTabsPage() {
         getStyleClass().add("settings-page");
-        setPadding(new Insets(8, 0, 8, 0));
-        setSpacing(14);
+        setStyle("-fx-background-color: #1E1F22;");
+        setPadding(new Insets(14, 24, 28, 24));
+        setSpacing(8);
 
-        // ============================================================
-        // Appearance section
-        // ============================================================
-        Label appearanceLabel = new Label("Appearance");
-        appearanceLabel.getStyleClass().add("settings-section");
+        buildUi();
+        setupListeners();
+        loadFromSettings(EditorTabsSettings.getInstance());
+    }
+
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
+
+    private void notifyModified() {
+        if (!suppressEvents && onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
+
+    private void styleCheckBox(CheckBox cb) {
+        cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+    }
+
+    private void styleRadio(RadioButton rb) {
+        rb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+    }
+
+    private void styleTextField(TextField tf, double width) {
+        tf.setPrefWidth(width);
+        tf.setPrefHeight(25);
+        tf.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 6 3 6;");
+    }
+
+    private Node buildSectionSeparator(String title) {
+        HBox box = new HBox(10);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(14, 0, 4, 0));
+
+        Label label = new Label(title);
+        label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        Region line = new Region();
+        line.setStyle("-fx-background-color: #393B40; -fx-min-height: 1px; -fx-pref-height: 1px; -fx-max-height: 1px;");
+        HBox.setHgrow(line, Priority.ALWAYS);
+
+        box.getChildren().addAll(label, line);
+        return box;
+    }
+
+    private void buildUi() {
+        // --- 1. Appearance ---
+        Node appearanceSeparator = buildSectionSeparator("Appearance");
 
         // Tab placement
-        HBox placementRow = new HBox(8);
-        placementRow.setPadding(new Insets(4, 0, 8, 20));
-        placementRow.setAlignment(Pos.CENTER_LEFT);
+        Label tabPlacementLabel = new Label("Tab placement:");
+        tabPlacementLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        Label placementLabel = new Label("Tab placement:");
-        placementLabel.getStyleClass().add("settings-label");
-        ComboBox<String> placementCombo = new ComboBox<>();
-        placementCombo.getItems().addAll("Top", "Bottom", "Left", "Right");
-        placementCombo.getSelectionModel().selectFirst();
-        placementCombo.getStyleClass().add("settings-combo");
-        placementCombo.setPrefWidth(120);
-        placementRow.getChildren().addAll(placementLabel, placementCombo);
+        tabPlacementCombo.getItems().setAll(TabPlacement.values());
+        tabPlacementCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(TabPlacement p) { return p != null ? p.getLabel() : ""; }
+            @Override public TabPlacement fromString(String s) { return TabPlacement.fromLabel(s); }
+        });
+        tabPlacementCombo.setPrefWidth(100);
+        tabPlacementCombo.setPrefHeight(25);
+        tabPlacementCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        HBox placementRow = new HBox(8, tabPlacementLabel, tabPlacementCombo);
+        placementRow.setAlignment(Pos.CENTER_LEFT);
+        placementRow.setPadding(new Insets(0, 0, 4, 0));
 
         // Show tabs in
         Label showTabsLabel = new Label("Show tabs in:");
-        showTabsLabel.getStyleClass().add("settings-label");
-        showTabsLabel.setPadding(new Insets(8, 0, 4, 20));
+        showTabsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        VBox showTabsBox = new VBox(4);
-        showTabsBox.setPadding(new Insets(4, 0, 4, 20));
+        styleRadio(oneRowRadio);
+        styleRadio(multipleRowsRadio);
+        oneRowRadio.setToggleGroup(tabRowsModeGroup);
+        multipleRowsRadio.setToggleGroup(tabRowsModeGroup);
 
-        // One row radio buttons
-        RadioButton oneRow = new RadioButton("One row, and if tabs don't fit:");
-        oneRow.setSelected(true);
-        oneRow.getStyleClass().add("settings-radio");
+        styleRadio(scrollTabsRadio);
+        styleRadio(squeezeTabsRadio);
+        scrollTabsRadio.setToggleGroup(oneRowFitGroup);
+        squeezeTabsRadio.setToggleGroup(oneRowFitGroup);
 
-        VBox oneRowOptions = new VBox(4);
-        oneRowOptions.setPadding(new Insets(4, 0, 4, 20));
+        VBox oneRowFitBox = new VBox(4, scrollTabsRadio, squeezeTabsRadio);
+        oneRowFitBox.setPadding(new Insets(2, 0, 4, 20));
 
-        RadioButton scrollTabs = new RadioButton("Scroll the tabs panel");
-        scrollTabs.setSelected(true);
-        RadioButton squeezeTabs = new RadioButton("Squeeze tabs");
+        oneRowRadio.selectedProperty().addListener((obs, o, n) -> {
+            scrollTabsRadio.setDisable(!n);
+            squeezeTabsRadio.setDisable(!n);
+        });
 
-        ToggleGroup oneRowGroup = new ToggleGroup();
-        scrollTabs.setToggleGroup(oneRowGroup);
-        squeezeTabs.setToggleGroup(oneRowGroup);
-
-        oneRowOptions.getChildren().addAll(scrollTabs, squeezeTabs);
-
-        RadioButton multipleRows = new RadioButton("Multiple rows");
-        multipleRows.getStyleClass().add("settings-radio");
-
-        ToggleGroup showTabsGroup = new ToggleGroup();
-        oneRow.setToggleGroup(showTabsGroup);
-        multipleRows.setToggleGroup(showTabsGroup);
+        VBox showTabsBox = new VBox(4, showTabsLabel, oneRowRadio, oneRowFitBox, multipleRowsRadio);
+        showTabsBox.setPadding(new Insets(2, 0, 4, 0));
 
         // Appearance checkboxes
-        CheckBox pinnedSeparateRow = new CheckBox("Show pinned tabs in a separate row");
-        pinnedSeparateRow.setSelected(true);
-        pinnedSeparateRow.getStyleClass().add("settings-check");
+        styleCheckBox(showPinnedTabsInSeparateRowCheck);
+        styleCheckBox(showFileIconCheck);
+        styleCheckBox(showFileExtensionCheck);
+        styleCheckBox(showDirectoryForNonUniqueNamesCheck);
+        styleCheckBox(markModifiedCheck);
+        styleCheckBox(showFullPathOnMouseHoverCheck);
 
-        CheckBox showFileIcon = new CheckBox("Show file icon");
-        showFileIcon.setSelected(true);
-        showFileIcon.getStyleClass().add("settings-check");
-
-        CheckBox showFileExtension = new CheckBox("Show file extension");
-        showFileExtension.setSelected(true);
-        showFileExtension.getStyleClass().add("settings-check");
-
-        CheckBox showDirectory = new CheckBox("Show directory for non-unique file names");
-        showDirectory.setSelected(true);
-        showDirectory.getStyleClass().add("settings-check");
-
-        CheckBox markModified = new CheckBox("Mark modified");
-        markModified.setSelected(true);
-        markModified.getStyleClass().add("settings-check");
-
-        CheckBox showFullPath = new CheckBox("Show full path on mouse hover");
-        showFullPath.setSelected(true);
-        showFullPath.getStyleClass().add("settings-check");
+        VBox appearanceChecksBox = new VBox(6,
+                showPinnedTabsInSeparateRowCheck,
+                showFileIconCheck,
+                showFileExtensionCheck,
+                showDirectoryForNonUniqueNamesCheck,
+                markModifiedCheck,
+                showFullPathOnMouseHoverCheck
+        );
+        appearanceChecksBox.setPadding(new Insets(4, 0, 6, 0));
 
         // Close button position
-        HBox closeRow = new HBox(8);
-        closeRow.setPadding(new Insets(4, 0, 8, 20));
-        closeRow.setAlignment(Pos.CENTER_LEFT);
+        Label closePosLabel = new Label("Close button position:");
+        closePosLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        Label closeLabel = new Label("Close button position:");
-        closeLabel.getStyleClass().add("settings-label");
-        ComboBox<String> closeCombo = new ComboBox<>();
-        closeCombo.getItems().addAll("Right", "Left");
-        closeCombo.getSelectionModel().selectFirst();
-        closeCombo.getStyleClass().add("settings-combo");
-        closeCombo.setPrefWidth(120);
-        closeRow.getChildren().addAll(closeLabel, closeCombo);
+        closeButtonPosCombo.getItems().setAll(CloseButtonPosition.values());
+        closeButtonPosCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(CloseButtonPosition c) { return c != null ? c.getLabel() : ""; }
+            @Override public CloseButtonPosition fromString(String s) { return CloseButtonPosition.fromLabel(s); }
+        });
+        closeButtonPosCombo.setPrefWidth(90);
+        closeButtonPosCombo.setPrefHeight(25);
+        closeButtonPosCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        // Assemble appearance section
-        VBox appearanceBox = new VBox(4);
-        appearanceBox.setPadding(new Insets(4, 0, 8, 20));
-        appearanceBox.getChildren().addAll(
-            placementRow,
-            showTabsLabel,
-            oneRow,
-            oneRowOptions,
-            multipleRows,
-            pinnedSeparateRow,
-            showFileIcon,
-            showFileExtension,
-            showDirectory,
-            markModified,
-            showFullPath,
-            closeRow
-        );
+        HBox closePosRow = new HBox(8, closePosLabel, closeButtonPosCombo);
+        closePosRow.setAlignment(Pos.CENTER_LEFT);
+        closePosRow.setPadding(new Insets(2, 0, 4, 0));
 
-        // ============================================================
-        // Opening Policy section
-        // ============================================================
-        Label openingLabel = new Label("Opening Policy");
-        openingLabel.getStyleClass().add("settings-section");
+        // --- 2. Tab Order ---
+        Node tabOrderSeparator = buildSectionSeparator("Tab Order");
 
-        CheckBox previewTab = new CheckBox("Enable preview tab");
-        previewTab.setSelected(true);
-        previewTab.getStyleClass().add("settings-check");
+        styleCheckBox(sortTabsAlphabeticallyCheck);
+        styleCheckBox(openNewTabsAtEndCheck);
 
-        Label previewHint = new Label("The preview tab is reused to show files selected with a single click in the Project tool window, and files opened during debugging.");
-        previewHint.getStyleClass().add("settings-hint");
-        previewHint.setWrapText(true);
-        previewHint.setPadding(new Insets(0, 0, 8, 20));
+        VBox tabOrderBox = new VBox(6, sortTabsAlphabeticallyCheck, openNewTabsAtEndCheck);
+        tabOrderBox.setPadding(new Insets(2, 0, 4, 0));
 
-        VBox openingBox = new VBox(4);
-        openingBox.setPadding(new Insets(4, 0, 8, 20));
-        openingBox.getChildren().addAll(previewTab, previewHint);
+        // --- 3. Opening Policy ---
+        Node openingSeparator = buildSectionSeparator("Opening Policy");
 
-        // ============================================================
-        // Closing Policy section
-        // ============================================================
-        Label closingLabel = new Label("Closing Policy");
-        closingLabel.getStyleClass().add("settings-section");
+        styleCheckBox(enablePreviewTabCheck);
+        previewTabHint.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px;");
+        previewTabHint.setWrapText(true);
+        previewTabHint.setPadding(new Insets(0, 0, 2, 20));
 
-        HBox limitRow = new HBox(8);
-        limitRow.setPadding(new Insets(4, 0, 8, 20));
-        limitRow.setAlignment(Pos.CENTER_LEFT);
+        VBox openingBox = new VBox(4, enablePreviewTabCheck, previewTabHint);
+        openingBox.setPadding(new Insets(2, 0, 4, 0));
 
-        Label limitLabel = new Label("Tab limit:");
-        limitLabel.getStyleClass().add("settings-label");
-        Spinner<Integer> limitSpinner = new Spinner<>(5, 100, 30, 5);
-        limitSpinner.setPrefWidth(70);
-        limitSpinner.getStyleClass().add("settings-spinner");
-        limitRow.getChildren().addAll(limitLabel, limitSpinner);
+        // --- 4. Closing Policy ---
+        Node closingSeparator = buildSectionSeparator("Closing Policy");
+
+        Label tabLimitLabel = new Label("Tab limit:");
+        tabLimitLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        styleTextField(tabLimitField, 55);
+
+        HBox tabLimitRow = new HBox(8, tabLimitLabel, tabLimitField);
+        tabLimitRow.setAlignment(Pos.CENTER_LEFT);
 
         Label exceedLabel = new Label("When tabs exceed the limit:");
-        exceedLabel.getStyleClass().add("settings-label");
-        exceedLabel.setPadding(new Insets(8, 0, 4, 20));
+        exceedLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        CheckBox closeUnchanged = new CheckBox("Close unchanged");
-        closeUnchanged.getStyleClass().add("settings-check");
+        styleRadio(closeUnchangedRadio);
+        styleRadio(closeUnusedRadio);
+        closeUnchangedRadio.setToggleGroup(exceedLimitGroup);
+        closeUnusedRadio.setToggleGroup(exceedLimitGroup);
 
-        CheckBox closeUnused = new CheckBox("Close unused");
-        closeUnused.setSelected(true);
-        closeUnused.getStyleClass().add("settings-check");
-
-        VBox exceedBox = new VBox(4);
-        exceedBox.setPadding(new Insets(4, 0, 8, 20));
-        exceedBox.getChildren().addAll(closeUnchanged, closeUnused);
+        VBox exceedBox = new VBox(4, closeUnchangedRadio, closeUnusedRadio);
+        exceedBox.setPadding(new Insets(2, 0, 4, 20));
 
         Label activateLabel = new Label("When the current tab is closed, activate:");
-        activateLabel.getStyleClass().add("settings-label");
-        activateLabel.setPadding(new Insets(8, 0, 4, 20));
+        activateLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
 
-        RadioButton activateLeft = new RadioButton("The tab on the left");
-        activateLeft.setSelected(true);
-        RadioButton activateRight = new RadioButton("The tab on the right");
-        RadioButton activateRecent = new RadioButton("Most recently opened tab");
+        styleRadio(activateLeftRadio);
+        styleRadio(activateRightRadio);
+        styleRadio(activateRecentRadio);
+        activateLeftRadio.setToggleGroup(activateGroup);
+        activateRightRadio.setToggleGroup(activateGroup);
+        activateRecentRadio.setToggleGroup(activateGroup);
 
-        ToggleGroup activateGroup = new ToggleGroup();
-        activateLeft.setToggleGroup(activateGroup);
-        activateRight.setToggleGroup(activateGroup);
-        activateRecent.setToggleGroup(activateGroup);
+        VBox activateBox = new VBox(4, activateLeftRadio, activateRightRadio, activateRecentRadio);
+        activateBox.setPadding(new Insets(2, 0, 4, 20));
 
-        VBox activateBox = new VBox(4);
-        activateBox.setPadding(new Insets(4, 0, 8, 20));
-        activateBox.getChildren().addAll(activateLeft, activateRight, activateRecent);
+        VBox closingBox = new VBox(6, tabLimitRow, exceedLabel, exceedBox, activateLabel, activateBox);
+        closingBox.setPadding(new Insets(2, 0, 4, 0));
 
-        VBox closingBox = new VBox(4);
-        closingBox.setPadding(new Insets(4, 0, 8, 20));
-        closingBox.getChildren().addAll(
-            limitRow,
-            exceedLabel,
-            exceedBox,
-            activateLabel,
-            activateBox
-        );
+        // --- 5. Database ---
+        Node databaseSeparator = buildSectionSeparator("Database");
 
-        // ============================================================
-        // Database section
-        // ============================================================
-        Label dbLabel = new Label("Database");
-        dbLabel.getStyleClass().add("settings-section");
+        styleCheckBox(dbAlwaysShowQualifiedNamesCheck);
+        styleCheckBox(dbShortenDatasourceNamesCheck);
 
-        CheckBox qualifiedNames = new CheckBox("Always show qualified names for database objects in tab titles");
-        qualifiedNames.getStyleClass().add("settings-check");
+        VBox databaseBox = new VBox(6, dbAlwaysShowQualifiedNamesCheck, dbShortenDatasourceNamesCheck);
+        databaseBox.setPadding(new Insets(2, 0, 4, 0));
 
-        CheckBox shortenNames = new CheckBox("Shorten datasource and object names in tab titles");
-        shortenNames.setSelected(true);
-        shortenNames.getStyleClass().add("settings-check");
-
-        VBox dbBox = new VBox(4);
-        dbBox.setPadding(new Insets(4, 0, 8, 20));
-        dbBox.getChildren().addAll(qualifiedNames, shortenNames);
-
-        // ============================================================
-        // Assemble all sections
-        // ============================================================
         getChildren().addAll(
-            appearanceLabel,
-            appearanceBox,
-            openingLabel,
-            openingBox,
-            closingLabel,
-            closingBox,
-            dbLabel,
-            dbBox
+                appearanceSeparator,
+                placementRow,
+                showTabsBox,
+                appearanceChecksBox,
+                closePosRow,
+                tabOrderSeparator,
+                tabOrderBox,
+                openingSeparator,
+                openingBox,
+                closingSeparator,
+                closingBox,
+                databaseSeparator,
+                databaseBox
         );
+    }
+
+    private void setupListeners() {
+        tabPlacementCombo.valueProperty().addListener((obs, o, n) -> notifyModified());
+        oneRowRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        multipleRowsRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        scrollTabsRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        squeezeTabsRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        showPinnedTabsInSeparateRowCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        showFileIconCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        showFileExtensionCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        showDirectoryForNonUniqueNamesCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        markModifiedCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        showFullPathOnMouseHoverCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        closeButtonPosCombo.valueProperty().addListener((obs, o, n) -> notifyModified());
+
+        sortTabsAlphabeticallyCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        openNewTabsAtEndCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        enablePreviewTabCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        tabLimitField.textProperty().addListener((obs, o, n) -> notifyModified());
+
+        closeUnchangedRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        closeUnusedRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        activateLeftRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        activateRightRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        activateRecentRadio.selectedProperty().addListener((obs, o, n) -> notifyModified());
+
+        dbAlwaysShowQualifiedNamesCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+        dbShortenDatasourceNamesCheck.selectedProperty().addListener((obs, o, n) -> notifyModified());
+    }
+
+    public void loadFromSettings(EditorTabsSettings s) {
+        suppressEvents = true;
+        try {
+            tabPlacementCombo.setValue(s.getTabPlacement());
+
+            if (s.getTabRowsMode() == TabRowsMode.MULTIPLE_ROWS) {
+                multipleRowsRadio.setSelected(true);
+            } else {
+                oneRowRadio.setSelected(true);
+            }
+
+            if (s.getOneRowFitPolicy() == OneRowFitPolicy.SQUEEZE) {
+                squeezeTabsRadio.setSelected(true);
+            } else {
+                scrollTabsRadio.setSelected(true);
+            }
+
+            boolean isOneRow = (s.getTabRowsMode() == TabRowsMode.ONE_ROW);
+            scrollTabsRadio.setDisable(!isOneRow);
+            squeezeTabsRadio.setDisable(!isOneRow);
+
+            showPinnedTabsInSeparateRowCheck.setSelected(s.isShowPinnedTabsInSeparateRow());
+            showFileIconCheck.setSelected(s.isShowFileIcon());
+            showFileExtensionCheck.setSelected(s.isShowFileExtension());
+            showDirectoryForNonUniqueNamesCheck.setSelected(s.isShowDirectoryForNonUniqueNames());
+            markModifiedCheck.setSelected(s.isMarkModified());
+            showFullPathOnMouseHoverCheck.setSelected(s.isShowFullPathOnMouseHover());
+
+            closeButtonPosCombo.setValue(s.getCloseButtonPosition());
+
+            sortTabsAlphabeticallyCheck.setSelected(s.isSortTabsAlphabetically());
+            openNewTabsAtEndCheck.setSelected(s.isOpenNewTabsAtEnd());
+
+            enablePreviewTabCheck.setSelected(s.isEnablePreviewTab());
+
+            tabLimitField.setText(String.valueOf(s.getTabLimit()));
+
+            if (s.getTabsExceedLimitPolicy() == TabsExceedLimitPolicy.CLOSE_UNCHANGED) {
+                closeUnchangedRadio.setSelected(true);
+            } else {
+                closeUnusedRadio.setSelected(true);
+            }
+
+            if (s.getTabCloseActivatePolicy() == TabCloseActivatePolicy.ACTIVATE_RIGHT) {
+                activateRightRadio.setSelected(true);
+            } else if (s.getTabCloseActivatePolicy() == TabCloseActivatePolicy.ACTIVATE_MOST_RECENT) {
+                activateRecentRadio.setSelected(true);
+            } else {
+                activateLeftRadio.setSelected(true);
+            }
+
+            dbAlwaysShowQualifiedNamesCheck.setSelected(s.isDbAlwaysShowQualifiedNames());
+            dbShortenDatasourceNamesCheck.setSelected(s.isDbShortenDatasourceNames());
+        } finally {
+            suppressEvents = false;
+        }
+    }
+
+    public void saveToSettings(EditorTabsSettings s) {
+        if (tabPlacementCombo.getValue() != null) {
+            s.setTabPlacement(tabPlacementCombo.getValue());
+        }
+        s.setTabRowsMode(multipleRowsRadio.isSelected() ? TabRowsMode.MULTIPLE_ROWS : TabRowsMode.ONE_ROW);
+        s.setOneRowFitPolicy(squeezeTabsRadio.isSelected() ? OneRowFitPolicy.SQUEEZE : OneRowFitPolicy.SCROLL);
+
+        s.setShowPinnedTabsInSeparateRow(showPinnedTabsInSeparateRowCheck.isSelected());
+        s.setShowFileIcon(showFileIconCheck.isSelected());
+        s.setShowFileExtension(showFileExtensionCheck.isSelected());
+        s.setShowDirectoryForNonUniqueNames(showDirectoryForNonUniqueNamesCheck.isSelected());
+        s.setMarkModified(markModifiedCheck.isSelected());
+        s.setShowFullPathOnMouseHover(showFullPathOnMouseHoverCheck.isSelected());
+
+        if (closeButtonPosCombo.getValue() != null) {
+            s.setCloseButtonPosition(closeButtonPosCombo.getValue());
+        }
+
+        s.setSortTabsAlphabetically(sortTabsAlphabeticallyCheck.isSelected());
+        s.setOpenNewTabsAtEnd(openNewTabsAtEndCheck.isSelected());
+
+        s.setEnablePreviewTab(enablePreviewTabCheck.isSelected());
+
+        try {
+            s.setTabLimit(Integer.parseInt(tabLimitField.getText().trim()));
+        } catch (NumberFormatException ignored) {}
+
+        s.setTabsExceedLimitPolicy(closeUnchangedRadio.isSelected() ? TabsExceedLimitPolicy.CLOSE_UNCHANGED : TabsExceedLimitPolicy.CLOSE_UNUSED);
+
+        if (activateRightRadio.isSelected()) {
+            s.setTabCloseActivatePolicy(TabCloseActivatePolicy.ACTIVATE_RIGHT);
+        } else if (activateRecentRadio.isSelected()) {
+            s.setTabCloseActivatePolicy(TabCloseActivatePolicy.ACTIVATE_MOST_RECENT);
+        } else {
+            s.setTabCloseActivatePolicy(TabCloseActivatePolicy.ACTIVATE_LEFT);
+        }
+
+        s.setDbAlwaysShowQualifiedNames(dbAlwaysShowQualifiedNamesCheck.isSelected());
+        s.setDbShortenDatasourceNames(dbShortenDatasourceNamesCheck.isSelected());
+    }
+
+    public boolean isModified() {
+        EditorTabsSettings current = new EditorTabsSettings();
+        saveToSettings(current);
+        return current.isModified(EditorTabsSettings.getInstance());
+    }
+
+    public void apply() {
+        saveToSettings(EditorTabsSettings.getInstance());
+        EditorTabsSettings.getInstance().save();
+    }
+
+    public void reset() {
+        loadFromSettings(EditorTabsSettings.getInstance());
     }
 }
