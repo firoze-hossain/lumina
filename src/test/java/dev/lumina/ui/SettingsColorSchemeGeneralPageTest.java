@@ -278,4 +278,76 @@ class SettingsColorSchemeGeneralPageTest {
         });
         assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
+
+    @Test
+    void testCategoriesFromScreenshots() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsColorSchemeGeneralPage page = new SettingsColorSchemeGeneralPage();
+
+                // 1. Identifiers // Reassigned local variable (media_1790381886079.png)
+                page.selectTreeItem("Identifiers // Reassigned local variable");
+                assertTrue(page.getAttributeEditorBox().isVisible());
+                assertTrue(page.getInheritBox().isVisible());
+                assertTrue(page.getInheritCheck().isSelected());
+                assertEquals("Identifiers->Reassigned local variable", page.getInheritLink().getText());
+                assertTrue(page.getForegroundCheck().isSelected());
+                assertEquals("BCBEC4", page.getForegroundSwatch().getText());
+                assertTrue(page.getForegroundCheck().isDisabled());
+                assertTrue(page.getEffectsCheck().isSelected());
+                assertEquals("84868C", page.getEffectsSwatch().getText());
+                assertEquals(dev.lumina.settings.EditorColorSchemeSettings.EffectType.UNDERSCORED, page.getEffectTypeCombo().getValue());
+                assertTrue(page.getEffectsCheck().isDisabled());
+
+                // 2. Line Coverage // Full (media_1790381912220.png)
+                page.selectTreeItem("Line Coverage // Full");
+                assertTrue(page.getAttributeEditorBox().isVisible());
+                assertFalse(page.getInheritBox().isVisible());
+                assertTrue(page.getBoldCheck().isSelected());
+                assertFalse(page.getItalicCheck().isSelected());
+                assertTrue(page.getForegroundCheck().isSelected());
+                assertEquals("375239", page.getForegroundSwatch().getText());
+                assertFalse(page.getBackgroundCheck().isSelected());
+
+                // 3. Live Templates // Template Variable (media_1790381939807.png)
+                page.selectTreeItem("Live Templates // Template Variable");
+                assertTrue(page.getAttributeEditorBox().isVisible());
+                assertFalse(page.getInheritBox().isVisible());
+                assertFalse(page.getBoldCheck().isSelected());
+                assertFalse(page.getItalicCheck().isSelected());
+                assertTrue(page.getForegroundCheck().isSelected());
+                assertEquals("B189F5", page.getForegroundSwatch().getText());
+                assertFalse(page.getBackgroundCheck().isSelected());
+
+                // 4. Popups and Hints // Promotion pane (media_1790381958006.png)
+                page.selectTreeItem("Popups and Hints // Promotion pane");
+                assertTrue(page.getAttributeEditorBox().isVisible());
+                assertFalse(page.getInheritBox().isVisible());
+                assertFalse(page.getForegroundCheck().isSelected());
+                assertTrue(page.getBackgroundCheck().isSelected());
+                assertEquals("25324D", page.getBackgroundSwatch().getText());
+
+                // 5. Preview // Border (media_1790381971087.png)
+                page.selectTreeItem("Preview // Border");
+                assertTrue(page.getAttributeEditorBox().isVisible());
+                assertTrue(page.getInheritBox().isVisible());
+                assertTrue(page.getInheritCheck().isSelected());
+                assertEquals("Editor->Guides->Indent guide", page.getInheritLink().getText());
+                assertFalse(page.getForegroundCheck().isSelected());
+                assertTrue(page.getBackgroundCheck().isSelected());
+                assertEquals("323438", page.getBackgroundSwatch().getText());
+                assertTrue(page.getBackgroundCheck().isDisabled());
+
+                // Test clicking Preview // Border inherit link navigates to Editor // Guides // Indent guide
+                page.getInheritLink().fire();
+                assertEquals("Indent guide", page.getCategoryTree().getSelectionModel().getSelectedItem().getValue());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
 }

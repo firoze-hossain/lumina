@@ -117,4 +117,37 @@ class EditorColorSchemeSettingsTest {
         ColorAttribute resolvedExplicit = settings.resolveAttribute(active, "Editor // Sticky Lines // Hovered");
         assertEquals("#333333", resolvedExplicit.getBackground());
     }
+
+    @Test
+    void testIntelliJDescriptorsAndResolutions() {
+        String active = settings.getActiveSchemeName();
+
+        // Identifiers // Reassigned local variable (media_1790381886079.png)
+        ColorAttribute reassigned = settings.resolveAttribute(active, "Identifiers // Reassigned local variable");
+        assertNotNull(reassigned);
+        assertEquals("#BCBEC4", reassigned.getForeground());
+        assertEquals("#84868C", reassigned.getEffectColor());
+        assertEquals(EffectType.UNDERSCORED, reassigned.getEffectType());
+
+        // Line Coverage // Full (media_1790381912220.png)
+        ColorAttribute lineCoverage = settings.resolveAttribute(active, "Line Coverage // Full");
+        assertNotNull(lineCoverage);
+        assertEquals("#375239", lineCoverage.getForeground());
+        assertTrue(lineCoverage.isBold());
+
+        // Live Templates // Template Variable (media_1790381939807.png)
+        ColorAttribute templateVar = settings.resolveAttribute(active, "Live Templates // Template Variable");
+        assertNotNull(templateVar);
+        assertEquals("#B189F5", templateVar.getForeground());
+
+        // Popups and Hints // Promotion pane (media_1790381958006.png)
+        ColorAttribute promotion = settings.resolveAttribute(active, "Popups and Hints // Promotion pane");
+        assertNotNull(promotion);
+        assertEquals("#25324D", promotion.getBackground());
+
+        // Preview // Border inherits from Editor // Guides // Indent guide (media_1790381971087.png)
+        ColorAttribute previewBorder = settings.resolveAttribute(active, "Preview // Border");
+        assertNotNull(previewBorder);
+        assertEquals("#323438", previewBorder.getBackground());
+    }
 }

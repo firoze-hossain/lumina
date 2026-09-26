@@ -28,10 +28,12 @@ public final class EditorColorSchemeSettings {
             "Dark"
     );
 
-    private static final EditorColorSchemeSettings INSTANCE = new EditorColorSchemeSettings();
+    private static class InstanceHolder {
+        private static final EditorColorSchemeSettings INSTANCE = new EditorColorSchemeSettings();
+    }
 
     public static EditorColorSchemeSettings getInstance() {
-        return INSTANCE;
+        return InstanceHolder.INSTANCE;
     }
 
     public enum EffectType {
@@ -78,6 +80,7 @@ public final class EditorColorSchemeSettings {
         private boolean italic;
         private boolean inherit = true;
         private String inheritFrom;
+        private String inheritScope;
 
         public ColorAttribute() {}
 
@@ -127,6 +130,9 @@ public final class EditorColorSchemeSettings {
         public String getInheritFrom() { return inheritFrom; }
         public void setInheritFrom(String inheritFrom) { this.inheritFrom = inheritFrom; }
 
+        public String getInheritScope() { return inheritScope; }
+        public void setInheritScope(String inheritScope) { this.inheritScope = inheritScope; }
+
         @Override
         public ColorAttribute clone() {
             try {
@@ -142,6 +148,7 @@ public final class EditorColorSchemeSettings {
                 copy.italic = this.italic;
                 copy.inherit = this.inherit;
                 copy.inheritFrom = this.inheritFrom;
+                copy.inheritScope = this.inheritScope;
                 return copy;
             }
         }
@@ -159,12 +166,13 @@ public final class EditorColorSchemeSettings {
                     Objects.equals(errorStripeColor, that.errorStripeColor) &&
                     effectType == that.effectType &&
                     Objects.equals(effectColor, that.effectColor) &&
-                    Objects.equals(inheritFrom, that.inheritFrom);
+                    Objects.equals(inheritFrom, that.inheritFrom) &&
+                    Objects.equals(inheritScope, that.inheritScope);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(foreground, background, errorStripeColor, effectType, effectColor, bold, italic, inherit, inheritFrom);
+            return Objects.hash(foreground, background, errorStripeColor, effectType, effectColor, bold, italic, inherit, inheritFrom, inheritScope);
         }
     }
 
@@ -209,118 +217,404 @@ public final class EditorColorSchemeSettings {
         }
     }
 
+    public static final class AttributesDescriptor {
+        private final String key;
+        private final String displayName;
+        private final List<String> categoryPath;
+        private final ColorAttribute defaultAttribute;
+        private final String inheritFrom;
+        private final String inheritScope;
+        private final boolean supportsForeground;
+        private final boolean supportsBackground;
+        private final boolean supportsErrorStripe;
+        private final boolean supportsEffects;
+        private final EffectType defaultEffectType;
+        private final boolean supportsFont;
+
+        public AttributesDescriptor(String key, String displayName, List<String> categoryPath,
+                                    ColorAttribute defaultAttribute,
+                                    String inheritFrom, String inheritScope,
+                                    boolean supportsForeground, boolean supportsBackground,
+                                    boolean supportsErrorStripe, boolean supportsEffects,
+                                    EffectType defaultEffectType, boolean supportsFont) {
+            this.key = key;
+            this.displayName = displayName;
+            this.categoryPath = categoryPath != null ? List.copyOf(categoryPath) : List.of();
+            this.defaultAttribute = defaultAttribute != null ? defaultAttribute.clone() : new ColorAttribute();
+            this.inheritFrom = inheritFrom;
+            this.inheritScope = inheritScope;
+            this.supportsForeground = supportsForeground;
+            this.supportsBackground = supportsBackground;
+            this.supportsErrorStripe = supportsErrorStripe;
+            this.supportsEffects = supportsEffects;
+            this.defaultEffectType = defaultEffectType != null ? defaultEffectType : EffectType.UNDERSCORED;
+            this.supportsFont = supportsFont;
+        }
+
+        public String getKey() { return key; }
+        public String getDisplayName() { return displayName; }
+        public List<String> getCategoryPath() { return categoryPath; }
+        public ColorAttribute getDefaultAttribute() { return defaultAttribute.clone(); }
+        public String getInheritFrom() { return inheritFrom; }
+        public String getInheritScope() { return inheritScope; }
+        public boolean hasInheritance() { return inheritFrom != null && !inheritFrom.isBlank(); }
+        public boolean isSupportsForeground() { return supportsForeground; }
+        public boolean isSupportsBackground() { return supportsBackground; }
+        public boolean isSupportsErrorStripe() { return supportsErrorStripe; }
+        public boolean isSupportsEffects() { return supportsEffects; }
+        public EffectType getDefaultEffectType() { return defaultEffectType; }
+        public boolean isSupportsFont() { return supportsFont; }
+    }
+
+    private static ColorAttribute inheritAttr(String fg, String bg, String inheritFrom, String inheritScope) {
+        ColorAttribute attr = new ColorAttribute(fg, bg, false, false);
+        attr.setInherit(true);
+        attr.setInheritFrom(inheritFrom);
+        attr.setInheritScope(inheritScope);
+        return attr;
+    }
+
+    private static ColorAttribute inheritAttr(String fg, String bg, String stripe, EffectType effectType, String effectColor, String inheritFrom, String inheritScope) {
+        ColorAttribute attr = new ColorAttribute(fg, bg, stripe, effectType, effectColor, false, false);
+        attr.setInherit(true);
+        attr.setInheritFrom(inheritFrom);
+        attr.setInheritScope(inheritScope);
+        return attr;
+    }
+
+    private static final List<AttributesDescriptor> GENERAL_DESCRIPTORS = List.of(
+            // Code (media_1790343290072.png & media_1790343304243.png)
+            new AttributesDescriptor("Code // Identifier under caret", "Identifier under caret", List.of("Code"),
+                    new ColorAttribute(null, "#373B39", "#5B786A", EffectType.UNDERSCORED, null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Code // Identifier under caret (write)", "Identifier under caret (write)", List.of("Code"),
+                    new ColorAttribute(null, "#402E3B", "#BA5F9E", EffectType.UNDERSCORED, null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Code // Injected language fragment", "Injected language fragment", List.of("Code"),
+                    new ColorAttribute(null, "#2B3838", false, false),
+                    null, null, true, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Code // Line number", "Line number", List.of("Code"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Code // Line number on caret row", "Line number on caret row", List.of("Code"),
+                    new ColorAttribute("#A1A3AB", null, null, EffectType.UNDERSCORED, null, false, false),
+                    null, null, true, true, false, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Code // Matched brace", "Matched brace", List.of("Code"),
+                    new ColorAttribute(null, "#3B514D", false, false),
+                    null, null, true, true, false, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Code // Method separator color", "Method separator color", List.of("Code"),
+                    new ColorAttribute("#393B40", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Code // TODO defaults", "TODO defaults", List.of("Code"),
+                    new ColorAttribute("#549159", null, true, true),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Code // Unmatched brace", "Unmatched brace", List.of("Code"),
+                    new ColorAttribute(null, "#562423", false, false),
+                    null, null, true, true, false, true, EffectType.BORDERED, false),
+
+            // Editor (media_1790343317824.png, media_1790343353746.png, media_1790343452222.png - media_1790343516571.png)
+            new AttributesDescriptor("Editor // Bookmarks", "Bookmarks", List.of("Editor"),
+                    new ColorAttribute(null, null, "#F7E9C6", EffectType.BORDERED, null, false, false),
+                    null, null, false, false, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Editor // Breadcrumbs // Border", "Border", List.of("Editor", "Breadcrumbs"),
+                    new ColorAttribute("#393B40", null, false, false),
+                    null, null, true, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Breadcrumbs // Current", "Current", List.of("Editor", "Breadcrumbs"),
+                    new ColorAttribute("#DFE1E5", "#2B2D30", null, EffectType.BORDERED, null, false, false),
+                    null, null, true, true, false, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Editor // Breadcrumbs // Default", "Default", List.of("Editor", "Breadcrumbs"),
+                    new ColorAttribute("#848BA3", null, false, false),
+                    null, null, true, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Breadcrumbs // Hovered", "Hovered", List.of("Editor", "Breadcrumbs"),
+                    new ColorAttribute("#DFE1E5", "#35373B", false, false),
+                    null, null, true, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Breadcrumbs // Inactive", "Inactive", List.of("Editor", "Breadcrumbs"),
+                    new ColorAttribute("#5F6368", null, false, false),
+                    null, null, true, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Caret", "Caret", List.of("Editor"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Caret row", "Caret row", List.of("Editor"),
+                    new ColorAttribute(null, "#1F2024", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Guides // Hard wrap guide", "Hard wrap guide", List.of("Editor", "Guides"),
+                    new ColorAttribute("#323438", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Guides // Indent guide", "Indent guide", List.of("Editor", "Guides"),
+                    new ColorAttribute("#323438", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Guides // Indent guide selected", "Indent guide selected", List.of("Editor", "Guides"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Guides // Matched brace guide", "Matched brace guide", List.of("Editor", "Guides"),
+                    new ColorAttribute("#3B514D", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Guides // Visual guides", "Visual guides", List.of("Editor", "Guides"),
+                    new ColorAttribute("#393B40", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Gutter background", "Gutter background", List.of("Editor"),
+                    new ColorAttribute(null, null, false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Notification background", "Notification background", List.of("Editor"),
+                    new ColorAttribute(null, "#25324D", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Selection background", "Selection background", List.of("Editor"),
+                    new ColorAttribute(null, "#214283", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Selection foreground", "Selection foreground", List.of("Editor"),
+                    new ColorAttribute(null, null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Sticky Lines // Background", "Background", List.of("Editor", "Sticky Lines"),
+                    new ColorAttribute(null, null, false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Sticky Lines // Border", "Border", List.of("Editor", "Sticky Lines"),
+                    inheritAttr(null, null, "Editor // Guides // Hard wrap guide", "(General)"),
+                    "Editor // Guides // Hard wrap guide", "(General)",
+                    false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Sticky Lines // Hovered", "Hovered", List.of("Editor", "Sticky Lines"),
+                    inheritAttr(null, null, "Editor // Caret row", "(General)"),
+                    "Editor // Caret row", "(General)",
+                    false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tabs // Modified icon color", "Modified icon color", List.of("Editor", "Tabs"),
+                    new ColorAttribute("#4083C9", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tabs // Selected Tab", "Selected Tab", List.of("Editor", "Tabs"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tabs // Selected Tab inactive", "Selected Tab inactive", List.of("Editor", "Tabs"),
+                    new ColorAttribute(null, "#2B2D30", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tabs // Underline", "Underline", List.of("Editor", "Tabs"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tabs // Underline inactive", "Underline inactive", List.of("Editor", "Tabs"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tear line", "Tear line", List.of("Editor"),
+                    new ColorAttribute("#393B40", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Tear line selection", "Tear line selection", List.of("Editor"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Vertical Scrollbar // Thumb", "Thumb", List.of("Editor", "Vertical Scrollbar"),
+                    new ColorAttribute(null, "#4E5157", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Vertical Scrollbar // Thumb while scrolling", "Thumb while scrolling", List.of("Editor", "Vertical Scrollbar"),
+                    new ColorAttribute(null, "#A6A6A6", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+            new AttributesDescriptor("Editor // Vertical Scrollbar // Track", "Track", List.of("Editor", "Vertical Scrollbar"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, false, true, false, false, EffectType.NONE, false),
+
+            // Errors and Warnings (media_1790345048357.png - media_1790345076709.png)
+            new AttributesDescriptor("Errors and Warnings // Deprecated symbol", "Deprecated symbol", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.STRIKEOUT, "#8C8C8C", false, false),
+                    null, null, true, true, true, true, EffectType.STRIKEOUT, true),
+            new AttributesDescriptor("Errors and Warnings // Deprecated symbol marked for removal", "Deprecated symbol marked for removal", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.STRIKEOUT, "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.STRIKEOUT, true),
+            new AttributesDescriptor("Errors and Warnings // Duplicate from server", "Duplicate from server", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, "#5E5339", null, EffectType.BORDERED, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Errors and Warnings // Error", "Error", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, "#E5534B", EffectType.UNDERWAVED, "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Errors and Warnings // Grammar error", "Grammar error", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#713D40", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Errors and Warnings // Problem from server", "Problem from server", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#C29E4A", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Errors and Warnings // Runtime problem", "Runtime problem", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Errors and Warnings // Text style suggestion", "Text style suggestion", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.UNDERSCORED, "#589DF6", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Errors and Warnings // Typo", "Typo", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#4B7258", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Errors and Warnings // Unknown symbol", "Unknown symbol", List.of("Errors and Warnings"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Errors and Warnings // Unused code", "Unused code", List.of("Errors and Warnings"),
+                    new ColorAttribute("#70727B", null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Errors and Warnings // Warning", "Warning", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, "#C29E4A", EffectType.UNDERWAVED, "#F2C55C", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Errors and Warnings // Weak Warning", "Weak Warning", List.of("Errors and Warnings"),
+                    new ColorAttribute(null, null, "#B9BECF", EffectType.UNDERWAVED, "#B9BECF", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+
+            // Hyperlinks (media_1790358354725.png)
+            new AttributesDescriptor("Hyperlinks // Followed", "Followed", List.of("Hyperlinks"),
+                    new ColorAttribute("#B189F5", null, null, EffectType.UNDERSCORED, "#B189F5", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Hyperlinks // Inactive", "Inactive", List.of("Hyperlinks"),
+                    new ColorAttribute("#70727B", null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Hyperlinks // Reference", "Reference", List.of("Hyperlinks"),
+                    new ColorAttribute("#548AF7", null, null, EffectType.UNDERSCORED, "#548AF7", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Hyperlinks // Unfollowed", "Unfollowed", List.of("Hyperlinks"),
+                    new ColorAttribute("#548AF7", null, null, EffectType.UNDERSCORED, "#548AF7", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+
+            // Identifiers (media_1790381886079.png)
+            new AttributesDescriptor("Identifiers // Reassigned local variable", "Reassigned local variable", List.of("Identifiers"),
+                    inheritAttr("#BCBEC4", null, null, EffectType.UNDERSCORED, "#84868C", "Identifiers // Reassigned local variable", "(Language Defaults)"),
+                    "Identifiers // Reassigned local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.UNDERSCORED, true),
+
+            // Line Coverage (media_1790381912220.png)
+            new AttributesDescriptor("Line Coverage // Full", "Full", List.of("Line Coverage"),
+                    new ColorAttribute("#375239", null, true, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Line Coverage // Partial", "Partial", List.of("Line Coverage"),
+                    new ColorAttribute("#6B5620", null, true, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Line Coverage // Uncovered", "Uncovered", List.of("Line Coverage"),
+                    new ColorAttribute("#713D40", null, true, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Live Templates (media_1790381939807.png)
+            new AttributesDescriptor("Live Templates // Active Segment", "Active Segment", List.of("Live Templates"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#385E9D", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Live Templates // Inactive Segment", "Inactive Segment", List.of("Live Templates"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#5A5D63", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Live Templates // Template Variable", "Template Variable", List.of("Live Templates"),
+                    new ColorAttribute("#B189F5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Popups and Hints (media_1790381958006.png)
+            new AttributesDescriptor("Popups and Hints // Code lens", "Code lens", List.of("Popups and Hints"),
+                    new ColorAttribute("#70727B", null, false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Completion", "Completion", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Documentation", "Documentation", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Error hint", "Error hint", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#562423", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Hint border", "Hint border", List.of("Popups and Hints"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#393B40", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Popups and Hints // Information hint", "Information hint", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Promotion pane", "Promotion pane", List.of("Popups and Hints"),
+                    new ColorAttribute(null, "#25324D", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Question hint", "Question hint", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#25324D", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Recent locations selection", "Recent locations selection", List.of("Popups and Hints"),
+                    new ColorAttribute(null, "#2E436E", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Tooltip", "Tooltip", List.of("Popups and Hints"),
+                    new ColorAttribute("#DFE1E5", "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Popups and Hints // Warning hint", "Warning hint", List.of("Popups and Hints"),
+                    new ColorAttribute(null, "#665014", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+
+            // Preview (media_1790381971087.png)
+            new AttributesDescriptor("Preview // Background", "Background", List.of("Preview"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Preview // Border", "Border", List.of("Preview"),
+                    inheritAttr(null, null, "Editor // Guides // Indent guide", "(General)"),
+                    "Editor // Guides // Indent guide", "(General)",
+                    true, true, true, true, EffectType.UNDERSCORED, true),
+
+            // Search Results (media_1790358799065.png)
+            new AttributesDescriptor("Search Results // Search result", "Search result", List.of("Search Results"),
+                    new ColorAttribute(null, "#265261", "#2E5F7E", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Search Results // Search result (write access)", "Search result (write access)", List.of("Search Results"),
+                    new ColorAttribute(null, "#66313F", "#FA7DB1", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Search Results // Text search result", "Text search result", List.of("Search Results"),
+                    new ColorAttribute(null, "#32593D", "#3C804A", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Text (media_1790358818750.png)
+            new AttributesDescriptor("Text // Background in read-only files", "Background in read-only files", List.of("Text"),
+                    new ColorAttribute(null, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Default text", "Default text", List.of("Text"),
+                    new ColorAttribute("#DFE1E5", "#1E1F22", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Deleted text", "Deleted text", List.of("Text"),
+                    new ColorAttribute("#E5534B", null, null, EffectType.STRIKEOUT, "#E5534B", false, false),
+                    null, null, true, true, true, true, EffectType.STRIKEOUT, true),
+            new AttributesDescriptor("Text // Folded text", "Folded text", List.of("Text"),
+                    new ColorAttribute("#868991", "#393B40", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Folded text with highlighting", "Folded text with highlighting", List.of("Text"),
+                    new ColorAttribute("#868991", "#393B40", null, EffectType.UNDERWAVED, "#C29E4A", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Text // Read-only fragment background", "Read-only fragment background", List.of("Text"),
+                    new ColorAttribute(null, "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Soft wrap sign", "Soft wrap sign", List.of("Text"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Tabs", "Tabs", List.of("Text"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text // Whitespaces", "Whitespaces", List.of("Text"),
+                    new ColorAttribute("#4E5157", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true)
+    );
+
+    private static final Map<String, AttributesDescriptor> DESCRIPTORS_BY_KEY;
+    static {
+        Map<String, AttributesDescriptor> map = new LinkedHashMap<>();
+        for (AttributesDescriptor desc : GENERAL_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        DESCRIPTORS_BY_KEY = Collections.unmodifiableMap(map);
+    }
+
+    public static List<AttributesDescriptor> getGeneralDescriptors() {
+        return GENERAL_DESCRIPTORS;
+    }
+
+    public static AttributesDescriptor getDescriptor(String key) {
+        if (key == null) return null;
+        String norm = normalizeKey(key);
+        return DESCRIPTORS_BY_KEY.get(norm);
+    }
+
+    public static String normalizeKey(String key) {
+        if (key == null) return null;
+        switch (key) {
+            case "Hyperlinks // Inactive hyperlink": return "Hyperlinks // Inactive";
+            case "Hyperlinks // Followed hyperlink": return "Hyperlinks // Followed";
+            case "Hyperlinks // Reference hyperlink": return "Hyperlinks // Reference";
+            case "Line Coverage // Full coverage": return "Line Coverage // Full";
+            case "Line Coverage // Partial coverage": return "Line Coverage // Partial";
+            case "Live Templates // Active template": return "Live Templates // Active Segment";
+            case "Live Templates // Inactive template": return "Live Templates // Inactive Segment";
+            case "Popups and Hints // Parameter hint": return "Popups and Hints // Code lens";
+            case "Popups and Hints // Inlay hint": return "Popups and Hints // Information hint";
+            case "Preview // Preview scope": return "Preview // Background";
+            default: return key;
+        }
+    }
+
     private Map<String, ColorAttribute> createIslandsDarkDefaults() {
         Map<String, ColorAttribute> map = new LinkedHashMap<>();
-
-        // Code (media_1790343290072.png & media_1790343304243.png)
-        map.put("Code // Identifier under caret", new ColorAttribute(null, "#373B39", "#5B786A", EffectType.UNDERSCORED, null, false, false));
-        map.put("Code // Identifier under caret (write)", new ColorAttribute(null, "#402E3B", "#BA5F9E", EffectType.UNDERSCORED, null, false, false));
-        map.put("Code // Injected language fragment", new ColorAttribute(null, "#2B3838", false, false));
-        map.put("Code // Line number", new ColorAttribute("#4E5157", null, false, false));
-        map.put("Code // Line number on caret row", new ColorAttribute("#A1A3AB", null, null, EffectType.UNDERSCORED, null, false, false));
-        map.put("Code // Matched brace", new ColorAttribute(null, "#3B514D", false, false));
-        map.put("Code // Method separator color", new ColorAttribute("#393B40", null, false, false));
-        map.put("Code // TODO defaults", new ColorAttribute("#549159", null, true, true));
-        map.put("Code // Unmatched brace", new ColorAttribute(null, "#562423", false, false));
-
-        // Editor (media_1790343317824.png, media_1790343353746.png, media_1790343452222.png - media_1790343516571.png)
-        map.put("Editor // Bookmarks", new ColorAttribute(null, null, "#F7E9C6", EffectType.BORDERED, null, false, false));
-        map.put("Editor // Breadcrumbs // Border", new ColorAttribute("#393B40", null, false, false));
-        map.put("Editor // Breadcrumbs // Current", new ColorAttribute("#DFE1E5", "#2B2D30", null, EffectType.BORDERED, null, false, false));
-        map.put("Editor // Breadcrumbs // Default", new ColorAttribute("#848BA3", null, false, false));
-        map.put("Editor // Breadcrumbs // Hovered", new ColorAttribute("#DFE1E5", "#35373B", false, false));
-        map.put("Editor // Breadcrumbs // Inactive", new ColorAttribute("#5F6368", null, false, false));
-        map.put("Editor // Caret", new ColorAttribute("#DFE1E5", null, false, false));
-        map.put("Editor // Caret row", new ColorAttribute(null, "#1F2024", false, false));
-
-        // Guides (media_1790343452222.png)
-        map.put("Editor // Guides // Hard wrap guide", new ColorAttribute("#323438", null, false, false));
-        map.put("Editor // Guides // Indent guide", new ColorAttribute("#313438", null, false, false));
-        map.put("Editor // Guides // Indent guide selected", new ColorAttribute("#4E5157", null, false, false));
-        map.put("Editor // Guides // Matched brace guide", new ColorAttribute("#3B514D", null, false, false));
-        map.put("Editor // Guides // Visual guides", new ColorAttribute("#393B40", null, false, false));
-
-        map.put("Editor // Gutter background", new ColorAttribute(null, null, false, false));
-        map.put("Editor // Notification background", new ColorAttribute(null, "#25324D", false, false));
-        map.put("Editor // Selection background", new ColorAttribute(null, "#214283", false, false));
-        map.put("Editor // Selection foreground", new ColorAttribute(null, null, false, false));
-
-        // Sticky Lines (media_1790343472376.png, media_1790343485724.png, media_1790343496020.png)
-        map.put("Editor // Sticky Lines // Background", new ColorAttribute(null, null, false, false));
-
-        ColorAttribute stickyBorder = new ColorAttribute();
-        stickyBorder.setInherit(true);
-        stickyBorder.setInheritFrom("Editor // Guides // Hard wrap guide");
-        map.put("Editor // Sticky Lines // Border", stickyBorder);
-
-        ColorAttribute stickyHovered = new ColorAttribute();
-        stickyHovered.setInherit(true);
-        stickyHovered.setInheritFrom("Editor // Caret row");
-        map.put("Editor // Sticky Lines // Hovered", stickyHovered);
-
-        // Tabs (media_1790343516571.png)
-        map.put("Editor // Tabs // Modified icon color", new ColorAttribute("#4083C9", null, false, false));
-        map.put("Editor // Tabs // Selected Tab", new ColorAttribute(null, "#1E1F22", false, false));
-        map.put("Editor // Tabs // Selected Tab inactive", new ColorAttribute(null, "#2B2D30", false, false));
-        map.put("Editor // Tabs // Underline", new ColorAttribute("#3574F0", null, false, false));
-        map.put("Editor // Tabs // Underline inactive", new ColorAttribute("#4E5157", null, false, false));
-
-        map.put("Editor // Tear line", new ColorAttribute("#393B40", null, false, false));
-        map.put("Editor // Tear line selection", new ColorAttribute("#4E5157", null, false, false));
-        map.put("Editor // Vertical Scrollbar // Thumb", new ColorAttribute(null, "#4E5157", false, false));
-        map.put("Editor // Vertical Scrollbar // Thumb while scrolling", new ColorAttribute(null, "#A6A6A6", false, false));
-        map.put("Editor // Vertical Scrollbar // Track", new ColorAttribute(null, "#1E1F22", false, false));
-
-        // Errors and Warnings (media_1790345048357.png - media_1790345076709.png)
-        map.put("Errors and Warnings // Deprecated symbol", new ColorAttribute(null, null, null, EffectType.STRIKEOUT, "#8C8C8C", false, false));
-        map.put("Errors and Warnings // Deprecated symbol marked for removal", new ColorAttribute(null, null, null, EffectType.STRIKEOUT, "#F75464", false, false));
-        map.put("Errors and Warnings // Duplicate from server", new ColorAttribute(null, "#5E5339", null, EffectType.BORDERED, null, false, false));
-        map.put("Errors and Warnings // Error", new ColorAttribute(null, null, "#E5534B", EffectType.UNDERWAVED, "#F75464", false, false));
-        map.put("Errors and Warnings // Grammar error", new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#713D40", false, false));
-        map.put("Errors and Warnings // Problem from server", new ColorAttribute(null, null, null, EffectType.BORDERED, "#C29E4A", false, false));
-        map.put("Errors and Warnings // Runtime problem", new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#F75464", false, false));
-        map.put("Errors and Warnings // Text style suggestion", new ColorAttribute(null, null, null, EffectType.UNDERSCORED, "#589DF6", false, false));
-        map.put("Errors and Warnings // Typo", new ColorAttribute(null, null, null, EffectType.UNDERWAVED, "#4B7258", false, false));
-        map.put("Errors and Warnings // Unknown symbol", new ColorAttribute("#F75464", null, false, false));
-        map.put("Errors and Warnings // Unused code", new ColorAttribute("#70727B", null, false, false));
-        map.put("Errors and Warnings // Warning", new ColorAttribute(null, null, "#C29E4A", EffectType.UNDERWAVED, "#F2C55C", false, false));
-        map.put("Errors and Warnings // Weak Warning", new ColorAttribute(null, null, "#B9BECF", EffectType.UNDERWAVED, "#B9BECF", false, false));
-
-        // Hyperlinks
-        map.put("Hyperlinks // Inactive hyperlink", new ColorAttribute("#70727B", null, null, EffectType.UNDERSCORED, "#70727B", false, false));
-        map.put("Hyperlinks // Followed hyperlink", new ColorAttribute("#C77DBB", null, null, EffectType.UNDERSCORED, "#C77DBB", false, false));
-        map.put("Hyperlinks // Reference hyperlink", new ColorAttribute("#548AF7", null, null, EffectType.UNDERSCORED, "#548AF7", false, false));
-
-        // Identifiers
-        map.put("Identifiers // Identifier under caret", new ColorAttribute(null, "#373B39", "#5B786A", EffectType.UNDERSCORED, null, false, false));
-        map.put("Identifiers // Identifier under caret (write)", new ColorAttribute(null, "#402E3B", "#BA5F9E", EffectType.UNDERSCORED, null, false, false));
-
-        // Line Coverage
-        map.put("Line Coverage // Full coverage", new ColorAttribute("#499C54", null, false, false));
-        map.put("Line Coverage // Partial coverage", new ColorAttribute("#D8A657", null, false, false));
-        map.put("Line Coverage // Uncovered", new ColorAttribute("#E5534B", null, false, false));
-
-        // Live Templates
-        map.put("Live Templates // Active template", new ColorAttribute(null, null, null, EffectType.BORDERED, "#385E9D", false, false));
-        map.put("Live Templates // Inactive template", new ColorAttribute(null, null, null, EffectType.BORDERED, "#5A5D63", false, false));
-
-        // Popups and Hints
-        map.put("Popups and Hints // Parameter hint", new ColorAttribute("#848BA3", "#2B2D30", false, false));
-        map.put("Popups and Hints // Inlay hint", new ColorAttribute("#848BA3", "#2B2D30", false, false));
-
-        // Preview
-        map.put("Preview // Preview scope", new ColorAttribute("#56A8F5", null, false, false));
-
-        // Search Results
-        map.put("Search Results // Search result", new ColorAttribute(null, "#265261", "#2E5F7E", EffectType.NONE, null, false, false));
-        map.put("Search Results // Search result (write access)", new ColorAttribute(null, "#582E37", "#732936", EffectType.NONE, null, false, false));
-
-        // Text
-        map.put("Text // Default text", new ColorAttribute("#DFE1E5", "#1E1F22", false, false));
-        map.put("Text // Folded text", new ColorAttribute("#8C8C8C", "#393B40", false, false));
-        map.put("Text // Deleted text", new ColorAttribute("#E5534B", null, null, EffectType.STRIKEOUT, "#E5534B", false, false));
-        map.put("Text // Injected language fragment", new ColorAttribute(null, "#2B3838", false, false));
-
+        for (AttributesDescriptor desc : GENERAL_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
         return map;
     }
 
@@ -392,15 +686,32 @@ public final class EditorColorSchemeSettings {
     }
 
     public ColorAttribute getAttribute(String schemeName, String key) {
+        String normKey = normalizeKey(key);
         Map<String, ColorAttribute> map = getSchemeAttributes(schemeName);
-        return map.get(key);
+        ColorAttribute attr = map.get(normKey);
+        if (attr == null && !normKey.equals(key)) {
+            attr = map.get(key);
+        }
+        return attr;
     }
 
     public ColorAttribute resolveAttribute(String schemeName, String key) {
+        return resolveAttribute(schemeName, normalizeKey(key), new HashSet<>());
+    }
+
+    private ColorAttribute resolveAttribute(String schemeName, String key, Set<String> visited) {
+        if (key == null || !visited.add(key)) {
+            ColorAttribute raw = getAttribute(schemeName, key);
+            return raw != null ? raw : new ColorAttribute();
+        }
         ColorAttribute attr = getAttribute(schemeName, key);
         if (attr == null) return new ColorAttribute();
         if (attr.isInherit() && attr.getInheritFrom() != null && !attr.getInheritFrom().isBlank()) {
-            ColorAttribute parent = resolveAttribute(schemeName, attr.getInheritFrom());
+            String parentKey = normalizeKey(attr.getInheritFrom());
+            if (parentKey.equals(key) || visited.contains(parentKey)) {
+                return attr;
+            }
+            ColorAttribute parent = resolveAttribute(schemeName, parentKey, visited);
             ColorAttribute resolved = attr.clone();
             if (resolved.getForeground() == null) {
                 resolved.setForeground(parent.getForeground());
@@ -425,11 +736,12 @@ public final class EditorColorSchemeSettings {
     }
 
     public void setAttribute(String schemeName, String key, ColorAttribute attribute) {
+        String normKey = normalizeKey(key);
         Map<String, ColorAttribute> map = getSchemeAttributes(schemeName);
         if (attribute != null) {
-            map.put(key, attribute.clone());
+            map.put(normKey, attribute.clone());
         } else {
-            map.remove(key);
+            map.remove(normKey);
         }
         notifyListeners();
     }
