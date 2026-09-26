@@ -203,6 +203,10 @@ public class ColorSchemeHeaderBar extends HBox {
         return schemeCombo;
     }
 
+    public String getSelectedScheme() {
+        return schemeCombo.getValue() != null ? schemeCombo.getValue() : EditorColorSchemeSettings.getInstance().getActiveSchemeName();
+    }
+
     public Button getGearButton() {
         return gearButton;
     }
