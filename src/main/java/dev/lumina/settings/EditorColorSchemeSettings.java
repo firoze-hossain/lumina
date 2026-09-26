@@ -758,6 +758,268 @@ public final class EditorColorSchemeSettings {
                     null, null, true, true, true, true, EffectType.UNDERSCORED, true)
     );
 
+    private static final List<AttributesDescriptor> CONSOLE_COLORS_DESCRIPTORS = List.of(
+            // ANSI colors
+            new AttributesDescriptor("ANSI colors // Black", "Black", List.of("ANSI colors"),
+                    new ColorAttribute("#000000", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Blue", "Blue", List.of("ANSI colors"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Black", "Bright Black", List.of("ANSI colors"),
+                    new ColorAttribute("#595959", "#424242", false, false),
+                    "ANSI colors // White (Gray)", "(Console Colors)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Blue", "Bright Blue", List.of("ANSI colors"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Cyan", "Bright Cyan", List.of("ANSI colors"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Green", "Bright Green", List.of("ANSI colors"),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Magenta", "Bright Magenta", List.of("ANSI colors"),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Red", "Bright Red", List.of("ANSI colors"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright White", "Bright White", List.of("ANSI colors"),
+                    new ColorAttribute("#FFFFFF", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Bright Yellow", "Bright Yellow", List.of("ANSI colors"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Cyan", "Cyan", List.of("ANSI colors"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Green", "Green", List.of("ANSI colors"),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Magenta", "Magenta", List.of("ANSI colors"),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Red", "Red", List.of("ANSI colors"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // White (Gray)", "White (Gray)", List.of("ANSI colors"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("ANSI colors // Yellow", "Yellow", List.of("ANSI colors"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Console
+            new AttributesDescriptor("Console // Background", "Background", List.of("Console"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Console // Error output", "Error output", List.of("Console"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Console // Standard output", "Standard output", List.of("Console"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Console // System output", "System output", List.of("Console"),
+                    new ColorAttribute("#BCBEC4", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Console // User input", "User input", List.of("Console"),
+                    new ColorAttribute("#59A869", null, true, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Log console
+            new AttributesDescriptor("Log console // Debug", "Debug", List.of("Log console"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Log console // Error", "Error", List.of("Log console"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Log console // Expired entry", "Expired entry", List.of("Log console"),
+                    new ColorAttribute("#6F737A", null, "#6F737A", EffectType.STRIKEOUT, "#6F737A", false, false),
+                    null, null, true, true, true, true, EffectType.STRIKEOUT, true),
+            new AttributesDescriptor("Log console // Info", "Info", List.of("Log console"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Log console // Verbose", "Verbose", List.of("Log console"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Log console // Warning", "Warning", List.of("Log console"),
+                    new ColorAttribute("#E59E37", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Reworked terminal
+            new AttributesDescriptor("Reworked terminal // Black", "Black", List.of("Reworked terminal"),
+                    new ColorAttribute("#000000", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Blue", "Blue", List.of("Reworked terminal"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Black", "Bright Black", List.of("Reworked terminal"),
+                    new ColorAttribute("#4E5157", "#4E5157", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Blue", "Bright Blue", List.of("Reworked terminal"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Cyan", "Bright Cyan", List.of("Reworked terminal"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Green", "Bright Green", List.of("Reworked terminal"),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Magenta", "Bright Magenta", List.of("Reworked terminal"),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Red", "Bright Red", List.of("Reworked terminal"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright White", "Bright White", List.of("Reworked terminal"),
+                    new ColorAttribute("#FFFFFF", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Bright Yellow", "Bright Yellow", List.of("Reworked terminal"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Command", "Command", List.of("Reworked terminal"),
+                    new ColorAttribute(null, null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Current search entry", "Current search entry", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#32593D", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Cyan", "Cyan", List.of("Reworked terminal"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Default background", "Default background", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Default foreground", "Default foreground", List.of("Reworked terminal"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Error block border", "Error block border", List.of("Reworked terminal"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Generate command caret color", "Generate command caret color", List.of("Reworked terminal"),
+                    new ColorAttribute("#FFFFFF", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Generate command placeholder foreground", "Generate command placeholder foreground", List.of("Reworked terminal"),
+                    new ColorAttribute("#868991", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Generate command prompt text", "Generate command prompt text", List.of("Reworked terminal"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Green", "Green", List.of("Reworked terminal"),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Inactive selected block background", "Inactive selected block background", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#2B2D30", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Inactive selected block border", "Inactive selected block border", List.of("Reworked terminal"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#393B40", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Magenta", "Magenta", List.of("Reworked terminal"),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Prompt separator color", "Prompt separator color", List.of("Reworked terminal"),
+                    new ColorAttribute("#393B40", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Red", "Red", List.of("Reworked terminal"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Reworked background gradient end", "Reworked background gradient end", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Reworked background gradient start", "Reworked background gradient start", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#2B2D30", null, EffectType.UNDERSCORED, "#DFE1E5", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERSCORED, true),
+            new AttributesDescriptor("Reworked terminal // Reworked hovered background gradient end", "Reworked hovered background gradient end", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#24262B", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Reworked hovered background gradient start", "Reworked hovered background gradient start", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#313438", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Search entry", "Search entry", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#2E436E", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Selected block background", "Selected block background", List.of("Reworked terminal"),
+                    new ColorAttribute(null, "#2E436E", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Selected block border", "Selected block border", List.of("Reworked terminal"),
+                    new ColorAttribute(null, null, null, EffectType.BORDERED, "#3574F0", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // White", "White", List.of("Reworked terminal"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Reworked terminal // Yellow", "Yellow", List.of("Reworked terminal"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+
+            // Terminal
+            new AttributesDescriptor("Terminal // Command to run using IDE", "Command to run using IDE", List.of("Terminal"),
+                    new ColorAttribute(null, "#40503C", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Black", "Black", List.of("Terminal"),
+                    new ColorAttribute("#000000", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Blue", "Blue", List.of("Terminal"),
+                    new ColorAttribute("#3574F0", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Cyan", "Cyan", List.of("Terminal"),
+                    new ColorAttribute("#22B4D6", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Green", "Green", List.of("Terminal"),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Magenta", "Magenta", List.of("Terminal"),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Red", "Red", List.of("Terminal"),
+                    new ColorAttribute("#F75464", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // White", "White", List.of("Terminal"),
+                    new ColorAttribute("#DFE1E5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Terminal // Yellow", "Yellow", List.of("Terminal"),
+                    new ColorAttribute("#F5D259", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true)
+    );
+
+    private static final List<AttributesDescriptor> CODE_WITH_ME_DESCRIPTORS = List.of(
+            new AttributesDescriptor("User 1 cursor", "User 1 cursor", List.of(),
+                    new ColorAttribute("#59A869", "#59A869", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 1 selection", "User 1 selection", List.of(),
+                    new ColorAttribute(null, "#2D4733", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 2 cursor", "User 2 cursor", List.of(),
+                    new ColorAttribute("#F75464", "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 2 selection", "User 2 selection", List.of(),
+                    new ColorAttribute(null, "#5E3838", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 3 cursor", "User 3 cursor", List.of(),
+                    new ColorAttribute("#22B4D6", "#22B4D6", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 3 selection", "User 3 selection", List.of(),
+                    new ColorAttribute(null, "#204A57", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 4 cursor", "User 4 cursor", List.of(),
+                    new ColorAttribute("#C77DBB", "#C77DBB", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 4 selection", "User 4 selection", List.of(),
+                    new ColorAttribute(null, "#4C2D50", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 5 cursor", "User 5 cursor", List.of(),
+                    new ColorAttribute("#F5D259", "#F5D259", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 5 selection", "User 5 selection", List.of(),
+                    new ColorAttribute(null, "#544820", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 6 cursor", "User 6 cursor", List.of(),
+                    new ColorAttribute("#3574F0", "#3574F0", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("User 6 selection", "User 6 selection", List.of(),
+                    new ColorAttribute(null, "#24395E", false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true)
+    );
+
     private static final Map<String, AttributesDescriptor> DESCRIPTORS_BY_KEY;
     static {
         Map<String, AttributesDescriptor> map = new LinkedHashMap<>();
@@ -765,6 +1027,12 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc);
         }
         for (AttributesDescriptor desc : LANGUAGE_DEFAULTS_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : CONSOLE_COLORS_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : CODE_WITH_ME_DESCRIPTORS) {
             map.put(desc.getKey(), desc);
         }
         DESCRIPTORS_BY_KEY = Collections.unmodifiableMap(map);
@@ -776,6 +1044,14 @@ public final class EditorColorSchemeSettings {
 
     public static List<AttributesDescriptor> getLanguageDefaultsDescriptors() {
         return LANGUAGE_DEFAULTS_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getConsoleColorsDescriptors() {
+        return CONSOLE_COLORS_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getCodeWithMeDescriptors() {
+        return CODE_WITH_ME_DESCRIPTORS;
     }
 
     public static AttributesDescriptor getDescriptor(String key) {
@@ -797,6 +1073,7 @@ public final class EditorColorSchemeSettings {
             case "Popups and Hints // Parameter hint": return "Popups and Hints // Code lens";
             case "Popups and Hints // Inlay hint": return "Popups and Hints // Information hint";
             case "Preview // Preview scope": return "Preview // Background";
+            case "Log console // Expired": return "Log console // Expired entry";
             default: return key;
         }
     }
@@ -807,6 +1084,12 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         for (AttributesDescriptor desc : LANGUAGE_DEFAULTS_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : CONSOLE_COLORS_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : CODE_WITH_ME_DESCRIPTORS) {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         return map;
@@ -1000,9 +1283,67 @@ public final class EditorColorSchemeSettings {
         }
     }
 
+    private final Map<String, SchemeFontPreferences> schemeFonts = new ConcurrentHashMap<>();
+    private final Map<String, ConsoleFontPreferences> consoleFonts = new ConcurrentHashMap<>();
+
+    public SchemeFontPreferences getSchemeFontPreferences() {
+        return getSchemeFontPreferences(activeSchemeName);
+    }
+
+    public SchemeFontPreferences getSchemeFontPreferences(String schemeName) {
+        String scheme = schemeName != null ? schemeName : activeSchemeName;
+        return schemeFonts.computeIfAbsent(scheme, k -> new SchemeFontPreferences()).clone();
+    }
+
+    public void setSchemeFontPreferences(SchemeFontPreferences prefs) {
+        setSchemeFontPreferences(activeSchemeName, prefs);
+    }
+
+    public void setSchemeFontPreferences(String schemeName, SchemeFontPreferences prefs) {
+        String scheme = schemeName != null ? schemeName : activeSchemeName;
+        schemeFonts.put(scheme, prefs != null ? prefs.clone() : new SchemeFontPreferences());
+        notifyListeners();
+    }
+
+    public ConsoleFontPreferences getConsoleFontPreferences() {
+        return getConsoleFontPreferences(activeSchemeName);
+    }
+
+    public ConsoleFontPreferences getConsoleFontPreferences(String schemeName) {
+        String scheme = schemeName != null ? schemeName : activeSchemeName;
+        return consoleFonts.computeIfAbsent(scheme, k -> new ConsoleFontPreferences()).clone();
+    }
+
+    public void setConsoleFontPreferences(ConsoleFontPreferences prefs) {
+        setConsoleFontPreferences(activeSchemeName, prefs);
+    }
+
+    public void setConsoleFontPreferences(String schemeName, ConsoleFontPreferences prefs) {
+        String scheme = schemeName != null ? schemeName : activeSchemeName;
+        consoleFonts.put(scheme, prefs != null ? prefs.clone() : new ConsoleFontPreferences());
+        notifyListeners();
+    }
+
     public void save() {
         Settings.put("editor.colorscheme.active", activeSchemeName);
         Settings.put("editor.colorscheme.custom.names", String.join(",", customSchemes));
+
+        SchemeFontPreferences sfp = getSchemeFontPreferences(activeSchemeName);
+        Settings.put("editor.colorscheme.font.use", String.valueOf(sfp.isUseSchemeFont()));
+        Settings.put("editor.colorscheme.font.name", sfp.getFontFamily());
+        Settings.put("editor.colorscheme.font.size", String.valueOf(sfp.getFontSize()));
+        Settings.put("editor.colorscheme.font.lineheight", String.valueOf(sfp.getLineHeight()));
+        Settings.put("editor.colorscheme.font.fallback", sfp.getFallbackFont());
+        Settings.put("editor.colorscheme.font.ligatures", String.valueOf(sfp.isEnableLigatures()));
+
+        ConsoleFontPreferences cfp = getConsoleFontPreferences(activeSchemeName);
+        Settings.put("editor.console.font.use", String.valueOf(cfp.isUseConsoleFont()));
+        Settings.put("editor.console.font.name", cfp.getFontFamily());
+        Settings.put("editor.console.font.size", String.valueOf(cfp.getFontSize()));
+        Settings.put("editor.console.font.lineheight", String.valueOf(cfp.getLineHeight()));
+        Settings.put("editor.console.font.fallback", cfp.getFallbackFont());
+        Settings.put("editor.console.font.ligatures", String.valueOf(cfp.isEnableLigatures()));
+
         notifyListeners();
     }
 
@@ -1015,6 +1356,14 @@ public final class EditorColorSchemeSettings {
         for (Map.Entry<String, Map<String, ColorAttribute>> e : this.schemeAttributes.entrySet()) {
             c.schemeAttributes.put(e.getKey(), cloneAttributesMap(e.getValue()));
         }
+        c.schemeFonts.clear();
+        for (Map.Entry<String, SchemeFontPreferences> e : this.schemeFonts.entrySet()) {
+            c.schemeFonts.put(e.getKey(), e.getValue().clone());
+        }
+        c.consoleFonts.clear();
+        for (Map.Entry<String, ConsoleFontPreferences> e : this.consoleFonts.entrySet()) {
+            c.consoleFonts.put(e.getKey(), e.getValue().clone());
+        }
         return c;
     }
 
@@ -1026,6 +1375,14 @@ public final class EditorColorSchemeSettings {
         for (Map.Entry<String, Map<String, ColorAttribute>> e : other.schemeAttributes.entrySet()) {
             this.schemeAttributes.put(e.getKey(), cloneAttributesMap(e.getValue()));
         }
+        this.schemeFonts.clear();
+        for (Map.Entry<String, SchemeFontPreferences> e : other.schemeFonts.entrySet()) {
+            this.schemeFonts.put(e.getKey(), e.getValue().clone());
+        }
+        this.consoleFonts.clear();
+        for (Map.Entry<String, ConsoleFontPreferences> e : other.consoleFonts.entrySet()) {
+            this.consoleFonts.put(e.getKey(), e.getValue().clone());
+        }
         save();
         notifyListeners();
     }
@@ -1033,6 +1390,128 @@ public final class EditorColorSchemeSettings {
     public boolean isModified(EditorColorSchemeSettings original) {
         if (!Objects.equals(this.activeSchemeName, original.activeSchemeName)) return true;
         if (!this.customSchemes.equals(original.customSchemes)) return true;
+        if (!this.schemeFonts.equals(original.schemeFonts)) return true;
+        if (!this.consoleFonts.equals(original.consoleFonts)) return true;
         return !this.schemeAttributes.equals(original.schemeAttributes);
+    }
+
+    public static class SchemeFontPreferences {
+        private boolean useSchemeFont = false;
+        private String fontFamily = "JetBrains Mono";
+        private double fontSize = 13.0;
+        private double lineHeight = 1.2;
+        private String fallbackFont = "<None>";
+        private boolean showOnlyMonospaced = true;
+        private boolean enableLigatures = false;
+
+        public SchemeFontPreferences() {}
+
+        public SchemeFontPreferences(boolean useSchemeFont, String fontFamily, double fontSize, double lineHeight,
+                                     String fallbackFont, boolean showOnlyMonospaced, boolean enableLigatures) {
+            this.useSchemeFont = useSchemeFont;
+            this.fontFamily = fontFamily != null ? fontFamily : "JetBrains Mono";
+            this.fontSize = fontSize;
+            this.lineHeight = lineHeight;
+            this.fallbackFont = fallbackFont != null ? fallbackFont : "<None>";
+            this.showOnlyMonospaced = showOnlyMonospaced;
+            this.enableLigatures = enableLigatures;
+        }
+
+        public boolean isUseSchemeFont() { return useSchemeFont; }
+        public void setUseSchemeFont(boolean useSchemeFont) { this.useSchemeFont = useSchemeFont; }
+        public String getFontFamily() { return fontFamily; }
+        public void setFontFamily(String fontFamily) { this.fontFamily = fontFamily; }
+        public double getFontSize() { return fontSize; }
+        public void setFontSize(double fontSize) { this.fontSize = fontSize; }
+        public double getLineHeight() { return lineHeight; }
+        public void setLineHeight(double lineHeight) { this.lineHeight = lineHeight; }
+        public String getFallbackFont() { return fallbackFont; }
+        public void setFallbackFont(String fallbackFont) { this.fallbackFont = fallbackFont; }
+        public boolean isShowOnlyMonospaced() { return showOnlyMonospaced; }
+        public void setShowOnlyMonospaced(boolean showOnlyMonospaced) { this.showOnlyMonospaced = showOnlyMonospaced; }
+        public boolean isEnableLigatures() { return enableLigatures; }
+        public void setEnableLigatures(boolean enableLigatures) { this.enableLigatures = enableLigatures; }
+
+        public SchemeFontPreferences clone() {
+            return new SchemeFontPreferences(useSchemeFont, fontFamily, fontSize, lineHeight, fallbackFont, showOnlyMonospaced, enableLigatures);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof SchemeFontPreferences that)) return false;
+            return useSchemeFont == that.useSchemeFont &&
+                    Double.compare(that.fontSize, fontSize) == 0 &&
+                    Double.compare(that.lineHeight, lineHeight) == 0 &&
+                    showOnlyMonospaced == that.showOnlyMonospaced &&
+                    enableLigatures == that.enableLigatures &&
+                    Objects.equals(fontFamily, that.fontFamily) &&
+                    Objects.equals(fallbackFont, that.fallbackFont);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(useSchemeFont, fontFamily, fontSize, lineHeight, fallbackFont, showOnlyMonospaced, enableLigatures);
+        }
+    }
+
+    public static class ConsoleFontPreferences {
+        private boolean useConsoleFont = false;
+        private String fontFamily = "JetBrains Mono";
+        private double fontSize = 13.0;
+        private double lineHeight = 1.2;
+        private String fallbackFont = "<None>";
+        private boolean showOnlyMonospaced = true;
+        private boolean enableLigatures = false;
+
+        public ConsoleFontPreferences() {}
+
+        public ConsoleFontPreferences(boolean useConsoleFont, String fontFamily, double fontSize, double lineHeight,
+                                      String fallbackFont, boolean showOnlyMonospaced, boolean enableLigatures) {
+            this.useConsoleFont = useConsoleFont;
+            this.fontFamily = fontFamily != null ? fontFamily : "JetBrains Mono";
+            this.fontSize = fontSize;
+            this.lineHeight = lineHeight;
+            this.fallbackFont = fallbackFont != null ? fallbackFont : "<None>";
+            this.showOnlyMonospaced = showOnlyMonospaced;
+            this.enableLigatures = enableLigatures;
+        }
+
+        public boolean isUseConsoleFont() { return useConsoleFont; }
+        public void setUseConsoleFont(boolean useConsoleFont) { this.useConsoleFont = useConsoleFont; }
+        public String getFontFamily() { return fontFamily; }
+        public void setFontFamily(String fontFamily) { this.fontFamily = fontFamily; }
+        public double getFontSize() { return fontSize; }
+        public void setFontSize(double fontSize) { this.fontSize = fontSize; }
+        public double getLineHeight() { return lineHeight; }
+        public void setLineHeight(double lineHeight) { this.lineHeight = lineHeight; }
+        public String getFallbackFont() { return fallbackFont; }
+        public void setFallbackFont(String fallbackFont) { this.fallbackFont = fallbackFont; }
+        public boolean isShowOnlyMonospaced() { return showOnlyMonospaced; }
+        public void setShowOnlyMonospaced(boolean showOnlyMonospaced) { this.showOnlyMonospaced = showOnlyMonospaced; }
+        public boolean isEnableLigatures() { return enableLigatures; }
+        public void setEnableLigatures(boolean enableLigatures) { this.enableLigatures = enableLigatures; }
+
+        public ConsoleFontPreferences clone() {
+            return new ConsoleFontPreferences(useConsoleFont, fontFamily, fontSize, lineHeight, fallbackFont, showOnlyMonospaced, enableLigatures);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ConsoleFontPreferences that)) return false;
+            return useConsoleFont == that.useConsoleFont &&
+                    Double.compare(that.fontSize, fontSize) == 0 &&
+                    Double.compare(that.lineHeight, lineHeight) == 0 &&
+                    showOnlyMonospaced == that.showOnlyMonospaced &&
+                    enableLigatures == that.enableLigatures &&
+                    Objects.equals(fontFamily, that.fontFamily) &&
+                    Objects.equals(fallbackFont, that.fallbackFont);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(useConsoleFont, fontFamily, fontSize, lineHeight, fallbackFont, showOnlyMonospaced, enableLigatures);
+        }
     }
 }

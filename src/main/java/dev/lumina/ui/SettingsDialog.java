@@ -70,6 +70,10 @@ public class SettingsDialog {
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
     private SettingsColorSchemeLanguageDefaultsPage currentColorSchemeLanguageDefaultsPage;
+    private SettingsColorSchemeFontPage currentColorSchemeFontPage;
+    private SettingsConsoleFontPage currentConsoleFontPage;
+    private SettingsConsoleColorsPage currentConsoleColorsPage;
+    private SettingsCodeWithMePage currentCodeWithMePage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -661,21 +665,23 @@ public class SettingsDialog {
 
         // 4. Color Scheme subpages
         if (underColorScheme) {
+            Runnable navigateToTheme = () -> {
+                TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
+                if (appRoot != null) {
+                    TreeItem<String> appItem = findItem(appRoot, "Appearance");
+                    if (appItem != null) {
+                        expandAncestors(appItem);
+                        tree.getSelectionModel().select(appItem);
+                    }
+                }
+            };
+
             if ("General".equals(pageName)) {
                 if (currentColorSchemeGeneralPage == null) {
                     currentColorSchemeGeneralPage = new SettingsColorSchemeGeneralPage();
                 }
                 currentColorSchemeGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
-                currentColorSchemeGeneralPage.getHeaderBar().setOnNavigateToTheme(() -> {
-                    TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
-                    if (appRoot != null) {
-                        TreeItem<String> appItem = findItem(appRoot, "Appearance");
-                        if (appItem != null) {
-                            expandAncestors(appItem);
-                            tree.getSelectionModel().select(appItem);
-                        }
-                    }
-                });
+                currentColorSchemeGeneralPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
                 wrapInScroll(currentColorSchemeGeneralPage);
                 updateApplyButtonState();
                 return;
@@ -685,17 +691,48 @@ public class SettingsDialog {
                     currentColorSchemeLanguageDefaultsPage = new SettingsColorSchemeLanguageDefaultsPage();
                 }
                 currentColorSchemeLanguageDefaultsPage.setOnModifiedListener(this::updateApplyButtonState);
-                currentColorSchemeLanguageDefaultsPage.getHeaderBar().setOnNavigateToTheme(() -> {
-                    TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
-                    if (appRoot != null) {
-                        TreeItem<String> appItem = findItem(appRoot, "Appearance");
-                        if (appItem != null) {
-                            expandAncestors(appItem);
-                            tree.getSelectionModel().select(appItem);
-                        }
-                    }
-                });
+                currentColorSchemeLanguageDefaultsPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
                 wrapInScroll(currentColorSchemeLanguageDefaultsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Color Scheme Font".equals(pageName)) {
+                if (currentColorSchemeFontPage == null) {
+                    currentColorSchemeFontPage = new SettingsColorSchemeFontPage();
+                }
+                currentColorSchemeFontPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeFontPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                wrapInScroll(currentColorSchemeFontPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Console Font".equals(pageName)) {
+                if (currentConsoleFontPage == null) {
+                    currentConsoleFontPage = new SettingsConsoleFontPage();
+                }
+                currentConsoleFontPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentConsoleFontPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                wrapInScroll(currentConsoleFontPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Console Colors".equals(pageName)) {
+                if (currentConsoleColorsPage == null) {
+                    currentConsoleColorsPage = new SettingsConsoleColorsPage();
+                }
+                currentConsoleColorsPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentConsoleColorsPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                wrapInScroll(currentConsoleColorsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Code With Me".equals(pageName)) {
+                if (currentCodeWithMePage == null) {
+                    currentCodeWithMePage = new SettingsCodeWithMePage();
+                }
+                currentCodeWithMePage.setOnModifiedListener(this::updateApplyButtonState);
+                currentCodeWithMePage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                wrapInScroll(currentCodeWithMePage);
                 updateApplyButtonState();
                 return;
             }
@@ -1300,18 +1337,35 @@ public class SettingsDialog {
 
     private void buildColorSchemePage(String pageName) {
         if ("Color Scheme Font".equals(pageName)) {
-            SettingsColorSchemeFontPage page = new SettingsColorSchemeFontPage();
-            wrapInScroll(page);
+            if (currentColorSchemeFontPage == null) {
+                currentColorSchemeFontPage = new SettingsColorSchemeFontPage();
+            }
+            currentColorSchemeFontPage.setOnModifiedListener(this::updateApplyButtonState);
+            wrapInScroll(currentColorSchemeFontPage);
             return;
         }
         if ("Console Font".equals(pageName)) {
-            SettingsConsoleFontPage page = new SettingsConsoleFontPage();
-            wrapInScroll(page);
+            if (currentConsoleFontPage == null) {
+                currentConsoleFontPage = new SettingsConsoleFontPage();
+            }
+            currentConsoleFontPage.setOnModifiedListener(this::updateApplyButtonState);
+            wrapInScroll(currentConsoleFontPage);
             return;
         }
         if ("Console Colors".equals(pageName)) {
-            SettingsConsoleColorsPage page = new SettingsConsoleColorsPage();
-            wrapInScroll(page);
+            if (currentConsoleColorsPage == null) {
+                currentConsoleColorsPage = new SettingsConsoleColorsPage();
+            }
+            currentConsoleColorsPage.setOnModifiedListener(this::updateApplyButtonState);
+            wrapInScroll(currentConsoleColorsPage);
+            return;
+        }
+        if ("Code With Me".equals(pageName)) {
+            if (currentCodeWithMePage == null) {
+                currentCodeWithMePage = new SettingsCodeWithMePage();
+            }
+            currentCodeWithMePage.setOnModifiedListener(this::updateApplyButtonState);
+            wrapInScroll(currentCodeWithMePage);
             return;
         }
         VBox page = new VBox(12);
@@ -1785,6 +1839,18 @@ public class SettingsDialog {
         if (currentColorSchemeLanguageDefaultsPage != null && currentColorSchemeLanguageDefaultsPage.isModified()) {
             currentColorSchemeLanguageDefaultsPage.apply();
         }
+        if (currentColorSchemeFontPage != null && currentColorSchemeFontPage.isModified()) {
+            currentColorSchemeFontPage.apply();
+        }
+        if (currentConsoleFontPage != null && currentConsoleFontPage.isModified()) {
+            currentConsoleFontPage.apply();
+        }
+        if (currentConsoleColorsPage != null && currentConsoleColorsPage.isModified()) {
+            currentConsoleColorsPage.apply();
+        }
+        if (currentCodeWithMePage != null && currentCodeWithMePage.isModified()) {
+            currentCodeWithMePage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1818,7 +1884,11 @@ public class SettingsDialog {
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
-                || (currentColorSchemeLanguageDefaultsPage != null && currentColorSchemeLanguageDefaultsPage.isModified());
+                || (currentColorSchemeLanguageDefaultsPage != null && currentColorSchemeLanguageDefaultsPage.isModified())
+                || (currentColorSchemeFontPage != null && currentColorSchemeFontPage.isModified())
+                || (currentConsoleFontPage != null && currentConsoleFontPage.isModified())
+                || (currentConsoleColorsPage != null && currentConsoleColorsPage.isModified())
+                || (currentCodeWithMePage != null && currentCodeWithMePage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
