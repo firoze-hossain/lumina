@@ -1966,6 +1966,287 @@ public final class EditorColorSchemeSettings {
                     true, true, true, true, EffectType.BORDERED, true)
     );
 
+    private static final List<AttributesDescriptor> GITLAB_CI_EXPRESSION_DESCRIPTORS = List.of(
+            // media_1790430732315.png
+            new AttributesDescriptor("Bad character", "Bad character", List.of(),
+                    inheritAttr(null, null, "Errors and Warnings->Bad character", "(General)"),
+                    "Errors and Warnings->Bad character", "(General)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comparison operator (==, !=, =~, !~)", "Comparison operator (==, !=, =~, !~)", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Identifier", "Identifier", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Logical operator (, ||)", "Logical operator (, ||)", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Parentheses", "Parentheses", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Regular expression", "Regular expression", List.of(),
+                    inheritAttr("#42C3D4", null, "String->Regular expression", "(Language Defaults)"),
+                    "String->Regular expression", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String", "String", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variable prefix ($)", "Variable prefix ($)", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+    );
+
+    private static final List<AttributesDescriptor> GO_DESCRIPTORS = List.of(
+            // media_1790430810489.png, media_1790430833698.png, media_1790430882024.png, media_1790430911466.png
+            // 1. Bad character
+            new AttributesDescriptor("Bad character", "Bad character", List.of(),
+                    inheritAttr(null, null, "Errors and Warnings->Bad character", "(General)"),
+                    "Errors and Warnings->Bad character", "(General)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 2. Braces and operators
+            new AttributesDescriptor("Braces and operators // Braces", "Braces", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Braces", "(Language Defaults)"),
+                    "Braces and Operators->Braces", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Brackets", "Brackets", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Brackets", "(Language Defaults)"),
+                    "Braces and Operators->Brackets", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Colon", "Colon", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Colon", "(Language Defaults)"),
+                    "Braces and Operators->Colon", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Comma", "Comma", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Comma", "(Language Defaults)"),
+                    "Braces and Operators->Comma", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Dot", "Dot", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Dot", "(Language Defaults)"),
+                    "Braces and Operators->Dot", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Operator", "Operator", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Parentheses", "Parentheses", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and operators // Semicolon", "Semicolon", List.of("Braces and operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Semicolon", "(Language Defaults)"),
+                    "Braces and Operators->Semicolon", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 3. Comments
+            new AttributesDescriptor("Comments // Block comment", "Block comment", List.of("Comments"),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Block comment", "(Language Defaults)", true),
+                    "Comments->Block comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Build constraints // Operators", "Operators", List.of("Comments", "Build constraints"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Build constraints // Parentheses", "Parentheses", List.of("Comments", "Build constraints"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Build constraints // Tag", "Tag", List.of("Comments", "Build constraints"),
+                    inheritAttr("#9876AA", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Comment keyword", "Comment keyword", List.of("Comments"),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Comment reference", "Comment reference", List.of("Comments"),
+                    inheritAttr("#56A8F5", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comments // Line comment", "Line comment", List.of("Comments"),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Line comment", "(Language Defaults)", true),
+                    "Comments->Line comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 4. Declarations
+            new AttributesDescriptor("Declarations // Constants // Exported constant", "Exported constant", List.of("Declarations", "Constants"),
+                    inheritAttr("#9876AA", null, "Classes->Static field", "(Language Defaults)"),
+                    "Classes->Static field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Constants // Package local constant", "Package local constant", List.of("Declarations", "Constants"),
+                    inheritAttr("#9876AA", null, "Classes->Static field", "(Language Defaults)"),
+                    "Classes->Static field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Function parameter", "Function parameter", List.of("Declarations"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Parameter", "(Language Defaults)"),
+                    "Identifiers->Parameter", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Functions // Builtin function", "Builtin function", List.of("Declarations", "Functions"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method declaration", "(Language Defaults)"),
+                    "Functions and Methods->Method declaration", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Functions // Exported function", "Exported function", List.of("Declarations", "Functions"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method declaration", "(Language Defaults)"),
+                    "Functions and Methods->Method declaration", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Functions // Package local function", "Package local function", List.of("Declarations", "Functions"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method declaration", "(Language Defaults)"),
+                    "Functions and Methods->Method declaration", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Label", "Label", List.of("Declarations"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Method receiver", "Method receiver", List.of("Declarations"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Parameter", "(Language Defaults)"),
+                    "Identifiers->Parameter", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Package", "Package", List.of("Declarations"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Struct tags // Arbitrary text", "Arbitrary text", List.of("Declarations", "Struct tags"),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Struct tags // Colon", "Colon", List.of("Declarations", "Struct tags"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Colon", "(Language Defaults)"),
+                    "Braces and Operators->Colon", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Struct tags // Key", "Key", List.of("Declarations", "Struct tags"),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Struct tags // Value", "Value", List.of("Declarations", "Struct tags"),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Types // Package exported interface", "Package exported interface", List.of("Declarations", "Types"),
+                    inheritAttr("#BCBEC4", null, "Classes->Interface name", "(Language Defaults)"),
+                    "Classes->Interface name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Types // Package exported struct", "Package exported struct", List.of("Declarations", "Types"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Types // Package local interface", "Package local interface", List.of("Declarations", "Types"),
+                    inheritAttr("#BCBEC4", null, "Classes->Interface name", "(Language Defaults)"),
+                    "Classes->Interface name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Types // Package local struct", "Package local struct", List.of("Declarations", "Types"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Types // Type specification", "Type specification", List.of("Declarations", "Types"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Variables // Exported variable", "Exported variable", List.of("Declarations", "Variables"),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Variables // Local variable", "Local variable", List.of("Declarations", "Variables"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Local variable", "(Language Defaults)"),
+                    "Identifiers->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Declarations // Variables // Package local variable", "Package local variable", List.of("Declarations", "Variables"),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 5. Identifier
+            new AttributesDescriptor("Identifier", "Identifier", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 6. Keyword
+            new AttributesDescriptor("Keyword", "Keyword", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 7. Number
+            new AttributesDescriptor("Number", "Number", List.of(),
+                    inheritAttr("#2AACB8", null, "Number", "(Language Defaults)"),
+                    "Number", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 8. References
+            new AttributesDescriptor("References // Function calls // Builtin function call", "Builtin function call", List.of("References", "Function calls"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method call", "(Language Defaults)"),
+                    "Functions and Methods->Method call", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Function calls // Exported function call", "Exported function call", List.of("References", "Function calls"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method call", "(Language Defaults)"),
+                    "Functions and Methods->Method call", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Function calls // Local function call", "Local function call", List.of("References", "Function calls"),
+                    inheritAttr("#56A8F5", null, "Functions and Methods->Method call", "(Language Defaults)"),
+                    "Functions and Methods->Method call", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Builtin type reference", "Builtin type reference", List.of("References", "Type references"),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Package exported interface", "Package exported interface", List.of("References", "Type references"),
+                    inheritAttr("#BCBEC4", null, "Classes->Interface name", "(Language Defaults)"),
+                    "Classes->Interface name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Package exported struct", "Package exported struct", List.of("References", "Type references"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Package local interface", "Package local interface", List.of("References", "Type references"),
+                    inheritAttr("#BCBEC4", null, "Classes->Interface name", "(Language Defaults)"),
+                    "Classes->Interface name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Package local struct", "Package local struct", List.of("References", "Type references"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Type references // Type specification", "Type specification", List.of("References", "Type references"),
+                    inheritAttr("#BCBEC4", null, "Classes->Class name", "(Language Defaults)"),
+                    "Classes->Class name", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Variable calls // Exported variable", "Exported variable", List.of("References", "Variable calls"),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Variable calls // Local variable", "Local variable", List.of("References", "Variable calls"),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Local variable", "(Language Defaults)"),
+                    "Identifiers->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Variable calls // Package local variable", "Package local variable", List.of("References", "Variable calls"),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("References // Semantic highlighting", "Semantic highlighting", List.of("References"),
+                    inheritAttr("#4CD98B", null, "Semantic highlighting", "(Language Defaults)"),
+                    "Semantic highlighting", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+
+            // 9. String
+            new AttributesDescriptor("String // Invalid escape", "Invalid escape", List.of("String"),
+                    inheritAttr("#F75464", null, "String->Invalid escape sequence", "(Language Defaults)"),
+                    "String->Invalid escape sequence", "(Language Defaults)",
+                    true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("String // Text", "Text", List.of("String"),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String // Valid escape", "Valid escape", List.of("String"),
+                    inheritAttr("#CF8E6D", null, "String->Escape sequence->Valid", "(Language Defaults)"),
+                    "String->Escape sequence->Valid", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+    );
+
     private static final Map<String, AttributesDescriptor> DESCRIPTORS_BY_KEY;
     static {
         Map<String, AttributesDescriptor> map = new LinkedHashMap<>();
@@ -2027,6 +2308,12 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc);
         }
         for (AttributesDescriptor desc : FREEMARKER_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : GITLAB_CI_EXPRESSION_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : GO_DESCRIPTORS) {
             map.put(desc.getKey(), desc);
         }
         DESCRIPTORS_BY_KEY = Collections.unmodifiableMap(map);
@@ -2112,6 +2399,14 @@ public final class EditorColorSchemeSettings {
         return FREEMARKER_DESCRIPTORS;
     }
 
+    public static List<AttributesDescriptor> getGitLabCiExpressionDescriptors() {
+        return GITLAB_CI_EXPRESSION_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getGoDescriptors() {
+        return GO_DESCRIPTORS;
+    }
+
     public static AttributesDescriptor getDescriptor(String key) {
         if (key == null) return null;
         String norm = normalizeKey(key);
@@ -2154,6 +2449,9 @@ public final class EditorColorSchemeSettings {
             case "Classes->Type parameter": return "Classes // Type parameter";
             case "Identifiers->Local variable": return "Variables // Local variable";
             case "Errors and Warnings->Error": return "Errors and Warnings // Error";
+            case "Go // Comma": return "Braces and operators // Comma";
+            case "Go // Braces": return "Braces and operators // Braces";
+            case "Go // Parentheses": return "Braces and operators // Parentheses";
             default: return key;
         }
     }
@@ -2218,6 +2516,12 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         for (AttributesDescriptor desc : FREEMARKER_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : GITLAB_CI_EXPRESSION_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : GO_DESCRIPTORS) {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         return map;
