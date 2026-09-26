@@ -25,10 +25,25 @@ class SettingsColorSchemeConsoleAndFontPagesTest {
     @BeforeAll
     static void initJavaFX() {
         try {
-            Platform.startup(() -> javaFxAvailable = true);
-            javaFxAvailable = true;
+            CountDownLatch latch = new CountDownLatch(1);
+            Platform.startup(() -> {
+                Platform.setImplicitExit(false);
+                javaFxAvailable = true;
+                latch.countDown();
+            });
+            latch.await(3, TimeUnit.SECONDS);
         } catch (IllegalStateException alreadyStarted) {
-            javaFxAvailable = true;
+            try {
+                Platform.setImplicitExit(false);
+                CountDownLatch checkLatch = new CountDownLatch(1);
+                Platform.runLater(() -> {
+                    javaFxAvailable = true;
+                    checkLatch.countDown();
+                });
+                checkLatch.await(1, TimeUnit.SECONDS);
+            } catch (Throwable t) {
+                javaFxAvailable = false;
+            }
         } catch (Throwable ignored) {
             javaFxAvailable = false;
         }
