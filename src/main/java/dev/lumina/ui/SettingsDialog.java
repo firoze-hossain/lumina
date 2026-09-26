@@ -69,6 +69,7 @@ public class SettingsDialog {
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
+    private SettingsColorSchemeLanguageDefaultsPage currentColorSchemeLanguageDefaultsPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -550,6 +551,18 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Language Defaults".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeLanguageDefaultsPage != null) {
+                            currentColorSchemeLanguageDefaultsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -664,6 +677,25 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeGeneralPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Language Defaults".equals(pageName)) {
+                if (currentColorSchemeLanguageDefaultsPage == null) {
+                    currentColorSchemeLanguageDefaultsPage = new SettingsColorSchemeLanguageDefaultsPage();
+                }
+                currentColorSchemeLanguageDefaultsPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeLanguageDefaultsPage.getHeaderBar().setOnNavigateToTheme(() -> {
+                    TreeItem<String> appRoot = findItem(tree.getRoot(), "Appearance & Behavior");
+                    if (appRoot != null) {
+                        TreeItem<String> appItem = findItem(appRoot, "Appearance");
+                        if (appItem != null) {
+                            expandAncestors(appItem);
+                            tree.getSelectionModel().select(appItem);
+                        }
+                    }
+                });
+                wrapInScroll(currentColorSchemeLanguageDefaultsPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1282,11 +1314,6 @@ public class SettingsDialog {
             wrapInScroll(page);
             return;
         }
-        if ("Language Defaults".equals(pageName)) {
-            SettingsColorSchemeLanguageDefaultsPage page = new SettingsColorSchemeLanguageDefaultsPage();
-            wrapInScroll(page);
-            return;
-        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -1755,6 +1782,9 @@ public class SettingsDialog {
         if (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified()) {
             currentColorSchemeGeneralPage.apply();
         }
+        if (currentColorSchemeLanguageDefaultsPage != null && currentColorSchemeLanguageDefaultsPage.isModified()) {
+            currentColorSchemeLanguageDefaultsPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -1787,7 +1817,8 @@ public class SettingsDialog {
                 || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
-                || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified());
+                || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
+                || (currentColorSchemeLanguageDefaultsPage != null && currentColorSchemeLanguageDefaultsPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -1896,6 +1927,9 @@ public class SettingsDialog {
             }
             if (currentColorSchemeGeneralPage != null) {
                 currentColorSchemeGeneralPage.reset();
+            }
+            if (currentColorSchemeLanguageDefaultsPage != null) {
+                currentColorSchemeLanguageDefaultsPage.reset();
             }
             stage.close();
         });

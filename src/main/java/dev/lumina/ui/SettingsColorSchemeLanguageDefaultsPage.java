@@ -1,365 +1,997 @@
-// SettingsColorSchemeLanguageDefaultsPage.java
 package dev.lumina.ui;
 
+import dev.lumina.settings.EditorColorSchemeSettings;
+import dev.lumina.settings.EditorColorSchemeSettings.ColorAttribute;
+import dev.lumina.settings.EditorColorSchemeSettings.EffectType;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
+
+import java.util.*;
 
 /**
- * IntelliJ-style Editor > Color Scheme > Language Defaults page.
- * Complete implementation matching IntelliJ IDEA screenshots.
+ * Editor > Color Scheme > Language Defaults settings page.
+ * Provides dynamic descriptor-driven architecture, dynamic tree generation,
+ * inheritance resolution, and interactive live code preview with bidirectional selection
+ * exactly matching IntelliJ IDEA.
  */
 public class SettingsColorSchemeLanguageDefaultsPage extends VBox {
 
-    private Label selectedCategoryLabel;
+    private final ColorSchemeHeaderBar headerBar;
+    private final TreeView<String> categoryTree;
+    private final VBox attributeEditorBox;
+
+    // Checkboxes and controls for editing attributes
+    private final CheckBox boldCheck;
+    private final CheckBox italicCheck;
+
+    private final CheckBox foregroundCheck;
+    private final Button foregroundSwatch;
+
+    private final CheckBox backgroundCheck;
+    private final Button backgroundSwatch;
+
+    private final CheckBox errorStripeCheck;
+    private final Button errorStripeSwatch;
+
+    private final CheckBox effectsCheck;
+    private final Button effectsSwatch;
+    private final ComboBox<EffectType> effectTypeCombo;
+
+    // Inheritance controls
+    private final VBox inheritBox;
+    private final CheckBox inheritCheck;
+    private final Hyperlink inheritLink;
+    private final Label inheritScopeLabel;
+
+    // Live preview
+    private final VBox codeLinesBox;
+    private final Pane errorStripeGutter;
+    private final ScrollPane previewScrollPane;
+
+    // State
+    private String selectedKey = "Bad character";
+    private String currentInheritedTargetKey = null;
+    private String foregroundHex = "#F75464";
+    private String backgroundHex = null;
+    private String errorStripeHex = null;
+    private String effectsHex = null;
+    private boolean suppressEvents = false;
+
+    // Navigation history
+    private final List<String> navigationHistory = new ArrayList<>();
+    private int historyIndex = -1;
+    private boolean isNavigatingHistory = false;
+
+    private Runnable onModifiedListener;
 
     public SettingsColorSchemeLanguageDefaultsPage() {
-        getStyleClass().add("settings-page");
-        setPadding(new Insets(12, 20, 20, 20));
-        setSpacing(16);
+        setSpacing(12);
+        setPadding(new Insets(12, 16, 16, 16));
+        setStyle("-fx-background-color: #1E1F22;");
 
-        // ============================================================
-        // Header with Scheme dropdown
-        // ============================================================
-        HBox schemeRow = new HBox(12);
-        schemeRow.setAlignment(Pos.CENTER_LEFT);
+        // 1. Header Bar
+        headerBar = new ColorSchemeHeaderBar();
+        headerBar.setOnSchemeChanged(scheme -> {
+            loadAttributesForSelectedKey();
+            updatePreview();
+            notifyModified();
+        });
 
-        Label schemeLabel = new Label("Scheme:");
-        schemeLabel.getStyleClass().add("settings-label");
+        // 2. Tree View
+        categoryTree = new TreeView<>();
+        categoryTree.setShowRoot(false);
+        categoryTree.setStyle(
+                "-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; " +
+                "-fx-border-color: #2B2D30; -fx-border-radius: 4; -fx-background-radius: 4;"
+        );
+        categoryTree.setPrefWidth(320);
+        categoryTree.setMinWidth(260);
 
-        ComboBox<String> schemeCombo = new ComboBox<>();
-        schemeCombo.getItems().addAll("Islands Dark Theme default", "Darcula", "IntelliJ Light");
-        schemeCombo.getSelectionModel().selectFirst();
-        schemeCombo.getStyleClass().add("settings-combo");
-        schemeCombo.setPrefWidth(260);
+        TreeItem<String> root = new TreeItem<>("Root");
+        categoryTree.setRoot(root);
+        buildCategoryTree(root);
 
-        Hyperlink themeLink = new Hyperlink("Change IDE Theme...");
-        themeLink.getStyleClass().add("settings-link");
+        // 3. Attribute Editor Box (Right Pane)
+        attributeEditorBox = new VBox(10);
+        attributeEditorBox.setPadding(new Insets(8, 12, 8, 12));
+        attributeEditorBox.setStyle("-fx-background-color: #1E1F22;");
+        HBox.setHgrow(attributeEditorBox, Priority.ALWAYS);
 
-        schemeRow.getChildren().addAll(schemeLabel, schemeCombo, themeLink);
+        categoryTree.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected != null && selected.getValue() != null) {
+                // If category group with children is selected (e.g. Braces and Operators, Classes, Comments)
+                if (!selected.getChildren().isEmpty()) {
+                    selectedKey = selected.getValue();
+                    attributeEditorBox.setVisible(false);
+                    attributeEditorBox.setManaged(false);
+                    return;
+                }
+                attributeEditorBox.setVisible(true);
+                attributeEditorBox.setManaged(true);
 
-        // ============================================================
-        // Main content: Categories on left, Preview on right
-        // ============================================================
-        HBox mainContent = new HBox(20);
-        mainContent.setPadding(new Insets(12, 0, 0, 0));
-        mainContent.setAlignment(Pos.TOP_LEFT);
+                // Build full hierarchical key
+                selectedKey = buildFullKey(selected);
+                recordNavigation(selectedKey);
+                loadAttributesForSelectedKey();
+                updatePreview();
+            }
+        });
 
-        // ---- Left: Category list ----
-        VBox categoryBox = new VBox(2);
-        categoryBox.setPrefWidth(200);
-        categoryBox.setMinWidth(180);
+        // Bold & Italic checkboxes (top row, right aligned)
+        HBox fontStyleRow = new HBox(16);
+        fontStyleRow.setAlignment(Pos.CENTER_RIGHT);
+        boldCheck = new CheckBox("Bold");
+        boldCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        italicCheck = new CheckBox("Italic");
+        italicCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        fontStyleRow.getChildren().addAll(boldCheck, italicCheck);
 
-        String[] categories = {
-            "Bad character",
-            "Braces and Operators",
-            "Classes",
-            "Comments",
-            "Identifiers",
-            "Inline hints",
-            "Keyword",
-            "Markup",
-            "Metadata",
-            "Number",
-            "Semantic highlighting",
-            "String",
-            "Template language"
-        };
+        boldCheck.selectedProperty().addListener((o, ov, nv) -> onAttributeChanged());
+        italicCheck.selectedProperty().addListener((o, ov, nv) -> onAttributeChanged());
 
-        // Store reference to the selected category label for updating preview
-        selectedCategoryLabel = new Label("Bad character");
-        selectedCategoryLabel.getStyleClass().add("settings-label");
-        selectedCategoryLabel.setStyle("-fx-text-fill: #E8B450; -fx-font-weight: bold;");
+        // Foreground row
+        foregroundCheck = new CheckBox("Foreground");
+        foregroundCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        foregroundCheck.setPrefWidth(140);
+        foregroundSwatch = createSwatchButton();
+        setupSwatchButton(foregroundSwatch, color -> {
+            foregroundHex = color;
+            foregroundCheck.setSelected(color != null);
+            onAttributeChanged();
+        });
+        foregroundCheck.selectedProperty().addListener((o, ov, nv) -> {
+            if (!suppressEvents && !nv) {
+                foregroundHex = null;
+                updateSwatchButton(foregroundSwatch, null, false, false);
+                onAttributeChanged();
+            }
+        });
+        HBox foregroundRow = new HBox(8, foregroundCheck, foregroundSwatch);
+        foregroundRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox categoryList = new VBox(2);
-        for (String cat : categories) {
-            Label item = new Label(cat);
-            item.getStyleClass().add("settings-label");
-            if (cat.equals("Bad character")) {
-                item.setStyle("-fx-text-fill: #E8B450; -fx-font-weight: bold; -fx-background-color: #2A2416; -fx-background-radius: 4;");
+        // Background row
+        backgroundCheck = new CheckBox("Background");
+        backgroundCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        backgroundCheck.setPrefWidth(140);
+        backgroundSwatch = createSwatchButton();
+        setupSwatchButton(backgroundSwatch, color -> {
+            backgroundHex = color;
+            backgroundCheck.setSelected(color != null);
+            onAttributeChanged();
+        });
+        backgroundCheck.selectedProperty().addListener((o, ov, nv) -> {
+            if (!suppressEvents && !nv) {
+                backgroundHex = null;
+                updateSwatchButton(backgroundSwatch, null, false, false);
+                onAttributeChanged();
+            }
+        });
+        HBox backgroundRow = new HBox(8, backgroundCheck, backgroundSwatch);
+        backgroundRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Error stripe mark row
+        errorStripeCheck = new CheckBox("Error stripe mark");
+        errorStripeCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        errorStripeCheck.setPrefWidth(140);
+        errorStripeSwatch = createSwatchButton();
+        setupSwatchButton(errorStripeSwatch, color -> {
+            errorStripeHex = color;
+            errorStripeCheck.setSelected(color != null);
+            onAttributeChanged();
+        });
+        errorStripeCheck.selectedProperty().addListener((o, ov, nv) -> {
+            if (!suppressEvents && !nv) {
+                errorStripeHex = null;
+                updateSwatchButton(errorStripeSwatch, null, false, false);
+                onAttributeChanged();
+            }
+        });
+        HBox errorStripeRow = new HBox(8, errorStripeCheck, errorStripeSwatch);
+        errorStripeRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Effects row
+        effectsCheck = new CheckBox("Effects");
+        effectsCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        effectsCheck.setPrefWidth(140);
+        effectsSwatch = createSwatchButton();
+        setupSwatchButton(effectsSwatch, color -> {
+            effectsHex = color;
+            effectsCheck.setSelected(color != null);
+            onAttributeChanged();
+        });
+
+        effectTypeCombo = new ComboBox<>();
+        effectTypeCombo.getItems().addAll(
+                EffectType.UNDERSCORED,
+                EffectType.BOLD_UNDERSCORED,
+                EffectType.UNDERWAVED,
+                EffectType.BORDERED,
+                EffectType.STRIKEOUT
+        );
+        effectTypeCombo.setValue(EffectType.UNDERSCORED);
+        effectTypeCombo.setStyle(
+                "-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; " +
+                "-fx-background-radius: 4; -fx-text-fill: #DFE1E5; -fx-font-size: 12px;"
+        );
+        effectTypeCombo.setPrefWidth(130);
+        effectTypeCombo.valueProperty().addListener((o, ov, nv) -> onAttributeChanged());
+
+        effectsCheck.selectedProperty().addListener((o, ov, nv) -> {
+            if (!suppressEvents && !nv) {
+                effectsHex = null;
+                updateSwatchButton(effectsSwatch, null, false, false);
+                onAttributeChanged();
+            }
+        });
+
+        HBox effectsRow = new HBox(8, effectsCheck, effectsSwatch);
+        effectsRow.setAlignment(Pos.CENTER_LEFT);
+
+        HBox effectTypeRow = new HBox(8, new Region() {{ setPrefWidth(140); }}, effectTypeCombo);
+        effectTypeRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Inheritance Box
+        inheritBox = new VBox(4);
+        inheritBox.setPadding(new Insets(12, 0, 0, 0));
+
+        inheritCheck = new CheckBox("Inherit values from:");
+        inheritCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12.5px; -fx-cursor: hand;");
+        inheritCheck.selectedProperty().addListener((o, ov, nv) -> onInheritChanged(nv));
+
+        inheritLink = new Hyperlink();
+        inheritLink.setStyle(
+                "-fx-text-fill: #3574F0; -fx-font-size: 12.5px; -fx-padding: 0 0 0 22; " +
+                "-fx-underline: false; -fx-cursor: hand;"
+        );
+        inheritLink.setOnAction(e -> {
+            if (currentInheritedTargetKey != null) {
+                selectTreeItem(currentInheritedTargetKey);
+            }
+        });
+
+        inheritScopeLabel = new Label();
+        inheritScopeLabel.setStyle("-fx-text-fill: #868991; -fx-font-size: 12px; -fx-padding: 0 0 0 22;");
+
+        inheritBox.getChildren().addAll(inheritCheck, inheritLink, inheritScopeLabel);
+
+        attributeEditorBox.getChildren().addAll(
+                fontStyleRow,
+                foregroundRow,
+                backgroundRow,
+                errorStripeRow,
+                effectsRow,
+                effectTypeRow,
+                inheritBox
+        );
+
+        // Top horizontal split: Tree on left, Attribute Editor on right
+        HBox topArea = new HBox(16, categoryTree, attributeEditorBox);
+        topArea.setPrefHeight(230);
+        topArea.setMinHeight(200);
+
+        // 4. Code Preview Area
+        codeLinesBox = new VBox(2);
+        codeLinesBox.setStyle("-fx-background-color: #1E1F22; -fx-padding: 10 12 10 12;");
+        HBox.setHgrow(codeLinesBox, Priority.ALWAYS);
+
+        errorStripeGutter = new Pane();
+        errorStripeGutter.setPrefWidth(14);
+        errorStripeGutter.setMinWidth(14);
+        errorStripeGutter.setMaxWidth(14);
+        errorStripeGutter.setStyle("-fx-background-color: #1E1F22; -fx-border-color: transparent transparent transparent #2B2D30;");
+
+        HBox previewContainer = new HBox(0, codeLinesBox, errorStripeGutter);
+        previewContainer.setStyle("-fx-background-color: #1E1F22;");
+        HBox.setHgrow(previewContainer, Priority.ALWAYS);
+
+        previewScrollPane = new ScrollPane(previewContainer);
+        previewScrollPane.setFitToWidth(true);
+        previewScrollPane.setStyle(
+                "-fx-background: #1E1F22; -fx-background-color: #1E1F22; " +
+                "-fx-border-color: #2B2D30; -fx-border-radius: 4; -fx-background-radius: 4;"
+        );
+        previewScrollPane.setPrefHeight(320);
+        previewScrollPane.setMinHeight(220);
+        VBox.setVgrow(previewScrollPane, Priority.ALWAYS);
+
+        getChildren().addAll(headerBar, topArea, previewScrollPane);
+
+        // Initial selection: "Bad character"
+        selectTreeItem("Bad character");
+        updatePreview();
+    }
+
+    private void buildCategoryTree(TreeItem<String> root) {
+        Map<String, TreeItem<String>> nodeMap = new LinkedHashMap<>();
+        for (EditorColorSchemeSettings.AttributesDescriptor desc : EditorColorSchemeSettings.getLanguageDefaultsDescriptors()) {
+            TreeItem<String> parent = root;
+            StringBuilder pathAcc = new StringBuilder();
+            for (String cat : desc.getCategoryPath()) {
+                if (pathAcc.length() > 0) pathAcc.append(" // ");
+                pathAcc.append(cat);
+                String fullPath = pathAcc.toString();
+                TreeItem<String> catNode = nodeMap.get(fullPath);
+                if (catNode == null) {
+                    catNode = new TreeItem<>(cat);
+                    nodeMap.put(fullPath, catNode);
+                    parent.getChildren().add(catNode);
+                }
+                parent = catNode;
+            }
+            TreeItem<String> leaf = new TreeItem<>(desc.getDisplayName());
+            nodeMap.put(desc.getKey(), leaf);
+            parent.getChildren().add(leaf);
+        }
+    }
+
+    private String buildFullKey(TreeItem<String> item) {
+        List<String> parts = new ArrayList<>();
+        TreeItem<String> curr = item;
+        while (curr != null && curr.getParent() != null) {
+            parts.add(0, curr.getValue());
+            curr = curr.getParent();
+        }
+        return String.join(" // ", parts);
+    }
+
+    private Button createSwatchButton() {
+        Button btn = new Button();
+        btn.setPrefSize(55, 24);
+        btn.setMinSize(55, 24);
+        btn.setMaxSize(55, 24);
+        btn.setFont(Font.font("JetBrains Mono", FontWeight.NORMAL, 11));
+        return btn;
+    }
+
+    private void setupSwatchButton(Button btn, java.util.function.Consumer<String> onColorSelected) {
+        btn.setOnAction(e -> {
+            Color initial = Color.web(btn.getText() != null && !btn.getText().isBlank() ? "#" + btn.getText() : "#DFE1E5");
+            ColorPicker picker = new ColorPicker(initial);
+            picker.setOnAction(ev -> {
+                Color c = picker.getValue();
+                if (c != null) {
+                    String hex = toHex(c);
+                    onColorSelected.accept(hex);
+                }
+            });
+            picker.show();
+        });
+    }
+
+    private void updateSwatchButton(Button btn, String hex, boolean enabled, boolean isInherited) {
+        if (enabled && hex != null && !hex.isBlank()) {
+            String cleanHex = hex.startsWith("#") ? hex.substring(1) : hex;
+            String fullHex = "#" + cleanHex;
+            Color c = Color.web(fullHex);
+            double brightness = (c.getRed() * 299 + c.getGreen() * 587 + c.getBlue() * 114) / 1000;
+            String textFill = brightness > 0.6 ? "#000000" : "#FFFFFF";
+
+            btn.setText(cleanHex.toUpperCase());
+            btn.setStyle(String.format(
+                    "-fx-background-color: %s; -fx-text-fill: %s; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: %s; -fx-padding: 0; -fx-opacity: %s;",
+                    fullHex, textFill, isInherited ? "default" : "hand", isInherited ? "0.65" : "1.0"
+            ));
+            btn.setDisable(isInherited);
+        } else {
+            btn.setText("");
+            btn.setStyle("-fx-background-color: transparent; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 0;");
+            btn.setDisable(isInherited || !enabled);
+        }
+    }
+
+    private void onInheritChanged(boolean inherit) {
+        if (suppressEvents) return;
+        EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+        String active = s.getActiveSchemeName();
+        ColorAttribute attr = s.getAttribute(active, selectedKey);
+        if (attr == null) {
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
+            attr = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+        }
+        attr.setInherit(inherit);
+        s.setAttribute(active, selectedKey, attr);
+        loadAttributesForSelectedKey();
+        updatePreview();
+        notifyModified();
+    }
+
+    private void onAttributeChanged() {
+        if (suppressEvents) return;
+        EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+        String active = s.getActiveSchemeName();
+
+        ColorAttribute attr = s.getAttribute(active, selectedKey);
+        if (attr == null) {
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
+            attr = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+        }
+        attr.setInherit(inheritBox.isVisible() && inheritCheck.isSelected());
+
+        if (foregroundCheck.isSelected() && foregroundHex != null) {
+            attr.setForeground("#" + (foregroundHex.startsWith("#") ? foregroundHex.substring(1) : foregroundHex));
+        } else {
+            attr.setForeground(null);
+        }
+
+        if (backgroundCheck.isSelected() && backgroundHex != null) {
+            attr.setBackground("#" + (backgroundHex.startsWith("#") ? backgroundHex.substring(1) : backgroundHex));
+        } else {
+            attr.setBackground(null);
+        }
+
+        if (errorStripeCheck.isSelected() && errorStripeHex != null) {
+            attr.setErrorStripeColor("#" + (errorStripeHex.startsWith("#") ? errorStripeHex.substring(1) : errorStripeHex));
+        } else {
+            attr.setErrorStripeColor(null);
+        }
+
+        if (effectsCheck.isSelected() && effectsHex != null) {
+            attr.setEffectColor("#" + (effectsHex.startsWith("#") ? effectsHex.substring(1) : effectsHex));
+            attr.setEffectType(effectTypeCombo.getValue() != null ? effectTypeCombo.getValue() : EffectType.UNDERSCORED);
+        } else {
+            attr.setEffectColor(null);
+            attr.setEffectType(EffectType.NONE);
+        }
+
+        attr.setBold(boldCheck.isSelected());
+        attr.setItalic(italicCheck.isSelected());
+
+        s.setAttribute(active, selectedKey, attr);
+        updatePreview();
+        notifyModified();
+    }
+
+    private void loadAttributesForSelectedKey() {
+        suppressEvents = true;
+        try {
+            EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+            selectedKey = EditorColorSchemeSettings.normalizeKey(selectedKey);
+
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
+            ColorAttribute raw = s.getAttribute(s.getActiveSchemeName(), selectedKey);
+            if (raw == null) {
+                raw = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+            }
+
+            // Inheritance setup matching IntelliJ Language Defaults
+            boolean hasInheritDef = desc != null && desc.hasInheritance();
+            if (hasInheritDef || (raw.getInheritFrom() != null && !raw.getInheritFrom().isBlank())) {
+                inheritBox.setVisible(true);
+                inheritBox.setManaged(true);
+                inheritCheck.setSelected(raw.isInherit());
+                String target = raw.getInheritFrom() != null ? raw.getInheritFrom() : desc.getInheritFrom();
+                currentInheritedTargetKey = target;
+                inheritLink.setText(target.replace(" // ", "->"));
+                String scope = raw.getInheritScope() != null ? raw.getInheritScope() : (desc != null ? desc.getInheritScope() : "(Language Defaults)");
+                inheritScopeLabel.setText(scope != null ? scope : "(Language Defaults)");
             } else {
-                item.setStyle("-fx-text-fill: #B9BECF;");
+                inheritBox.setVisible(false);
+                inheritBox.setManaged(false);
+                currentInheritedTargetKey = null;
             }
-            item.setPadding(new Insets(4, 10, 4, 10));
-            final String categoryName = cat;
-            item.setOnMouseClicked(e -> {
-                // Update selection
-                for (javafx.scene.Node node : categoryList.getChildren()) {
-                    Label l = (Label) node;
-                    l.setStyle("-fx-text-fill: #B9BECF;");
-                    l.setStyle("-fx-background-color: transparent;");
-                }
-                item.setStyle("-fx-text-fill: #E8B450; -fx-font-weight: bold; -fx-background-color: #2A2416; -fx-background-radius: 4;");
-                selectedCategoryLabel.setText(categoryName);
-                updatePreview(categoryName);
-            });
-            item.setOnMouseEntered(e -> {
-                if (!item.getStyle().contains("#E8B450")) {
-                    item.setStyle("-fx-background-color: #1F2230; -fx-text-fill: #D8DBE6; -fx-background-radius: 4;");
-                }
-            });
-            item.setOnMouseExited(e -> {
-                if (!item.getStyle().contains("#E8B450")) {
-                    item.setStyle("-fx-text-fill: #B9BECF; -fx-background-color: transparent;");
-                }
-            });
-            categoryList.getChildren().add(item);
+
+            ColorAttribute effective = s.resolveAttribute(s.getActiveSchemeName(), selectedKey);
+
+            boolean isInherited = inheritBox.isVisible() && inheritCheck.isSelected();
+
+            boldCheck.setSelected(effective.isBold());
+            italicCheck.setSelected(effective.isItalic());
+            boldCheck.setDisable(isInherited);
+            italicCheck.setDisable(isInherited);
+
+            foregroundHex = effective.getForeground();
+            foregroundCheck.setSelected(foregroundHex != null);
+            foregroundCheck.setDisable(isInherited);
+            updateSwatchButton(foregroundSwatch, foregroundHex, foregroundCheck.isSelected(), isInherited);
+
+            backgroundHex = effective.getBackground();
+            backgroundCheck.setSelected(backgroundHex != null);
+            backgroundCheck.setDisable(isInherited);
+            updateSwatchButton(backgroundSwatch, backgroundHex, backgroundCheck.isSelected(), isInherited);
+
+            errorStripeHex = effective.getErrorStripeColor();
+            errorStripeCheck.setSelected(errorStripeHex != null);
+            errorStripeCheck.setDisable(isInherited);
+            updateSwatchButton(errorStripeSwatch, errorStripeHex, errorStripeCheck.isSelected(), isInherited);
+
+            boolean hasEffects = effective.getEffectType() != null && effective.getEffectType() != EffectType.NONE;
+            effectsCheck.setSelected(hasEffects);
+            effectsCheck.setDisable(isInherited);
+            effectsHex = effective.getEffectColor();
+            updateSwatchButton(effectsSwatch, effectsHex, hasEffects, isInherited);
+            effectTypeCombo.setDisable(isInherited || !hasEffects);
+
+            if (effective.getEffectType() != null && effective.getEffectType() != EffectType.NONE) {
+                effectTypeCombo.setValue(effective.getEffectType());
+            } else if (desc != null && desc.getDefaultEffectType() != null) {
+                effectTypeCombo.setValue(desc.getDefaultEffectType());
+            } else {
+                effectTypeCombo.setValue(EffectType.UNDERSCORED);
+            }
+        } finally {
+            suppressEvents = false;
         }
-
-        categoryBox.getChildren().addAll(categoryList);
-
-        // ---- Right: Preview area ----
-        VBox previewBox = new VBox(10);
-        previewBox.setPrefWidth(560);
-        previewBox.setMinWidth(400);
-        HBox.setHgrow(previewBox, Priority.ALWAYS);
-
-        Label previewTitle = new Label("Preview");
-        previewTitle.getStyleClass().add("settings-section");
-
-        // Code preview area with sample syntax
-        VBox codeArea = new VBox(3);
-        codeArea.getStyleClass().add("code-area");
-        codeArea.setPadding(new Insets(14));
-        codeArea.setSpacing(4);
-        codeArea.setStyle("-fx-background-color: #1F2230; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6;");
-        codeArea.setPrefHeight(400);
-
-        // We'll add the preview content dynamically
-        updatePreviewContent(codeArea, "Bad character");
-
-        ScrollPane codeScroll = new ScrollPane(codeArea);
-        codeScroll.setFitToWidth(true);
-        codeScroll.setPrefViewportHeight(380);
-        codeScroll.getStyleClass().add("settings-scroll");
-        codeScroll.setStyle("-fx-background-color: #1F2230;");
-
-        previewBox.getChildren().addAll(previewTitle, codeScroll);
-
-        mainContent.getChildren().addAll(categoryBox, previewBox);
-        HBox.setHgrow(previewBox, Priority.ALWAYS);
-
-        // ============================================================
-        // Assemble all sections
-        // ============================================================
-        getChildren().addAll(schemeRow, mainContent);
     }
 
-    private void updatePreview(String category) {
-        // Find the code area in the scene and update it
-        // This is called when a category is clicked
-        for (javafx.scene.Node node : getChildren()) {
-            if (node instanceof HBox) {
-                HBox main = (HBox) node;
-                for (javafx.scene.Node child : main.getChildren()) {
-                    if (child instanceof VBox) {
-                        VBox rightPanel = (VBox) child;
-                        if (rightPanel.getPrefWidth() > 300) {
-                            for (javafx.scene.Node inner : rightPanel.getChildren()) {
-                                if (inner instanceof ScrollPane) {
-                                    ScrollPane scroll = (ScrollPane) inner;
-                                    javafx.scene.Node content = scroll.getContent();
-                                    if (content instanceof VBox) {
-                                        VBox codeArea = (VBox) content;
-                                        updatePreviewContent(codeArea, category);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+    private void recordNavigation(String key) {
+        if (isNavigatingHistory) return;
+        if (historyIndex >= 0 && historyIndex < navigationHistory.size() && navigationHistory.get(historyIndex).equals(key)) {
+            return;
+        }
+        while (navigationHistory.size() > historyIndex + 1) {
+            navigationHistory.remove(navigationHistory.size() - 1);
+        }
+        navigationHistory.add(key);
+        historyIndex = navigationHistory.size() - 1;
+    }
+
+    public void navigateBack() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            isNavigatingHistory = true;
+            try {
+                selectTreeItem(navigationHistory.get(historyIndex));
+            } finally {
+                isNavigatingHistory = false;
             }
         }
     }
 
-    private void updatePreviewContent(VBox codeArea, String category) {
-        codeArea.getChildren().clear();
-
-        // Based on the category, show different highlighted samples
-        if (category.equals("Bad character")) {
-            addBadCharacterPreview(codeArea);
-        } else if (category.equals("Braces and Operators")) {
-            addBracesOperatorsPreview(codeArea);
-        } else if (category.equals("Classes")) {
-            addClassesPreview(codeArea);
-        } else if (category.equals("Comments")) {
-            addCommentsPreview(codeArea);
-        } else if (category.equals("Identifiers")) {
-            addIdentifiersPreview(codeArea);
-        } else if (category.equals("Inline hints")) {
-            addInlineHintsPreview(codeArea);
-        } else if (category.equals("Keyword")) {
-            addKeywordPreview(codeArea);
-        } else if (category.equals("Markup")) {
-            addMarkupPreview(codeArea);
-        } else if (category.equals("Metadata")) {
-            addMetadataPreview(codeArea);
-        } else if (category.equals("Number")) {
-            addNumberPreview(codeArea);
-        } else if (category.equals("Semantic highlighting")) {
-            addSemanticHighlightingPreview(codeArea);
-        } else if (category.equals("String")) {
-            addStringPreview(codeArea);
-        } else if (category.equals("Template language")) {
-            addTemplateLanguagePreview(codeArea);
-        }
-    }
-
-    private void addBadCharacterPreview(VBox codeArea) {
-        // Bad character: ????? shown with string highlighting
-        addLine(codeArea, new String[]{"Bad character: ", "sx-comment"}, new String[]{"?????", "sx-string"});
-        addLine(codeArea, new String[]{"Keyword ", "sx-keyword"}, new String[]{"Identifier ", "sx-type"}, new String[]{"String ", "sx-string"}, new String[]{"\\n\\?", "sx-string"});
-        addLine(codeArea, new String[]{"12345", "sx-number"}, new String[]{" Operator ", "sx-paren"}, new String[]{"Dot: . comma: , semicolon: ;", "sx-paren"});
-        addLine(codeArea, new String[]{"{ Braces } ", "sx-paren"}, new String[]{"( Parentheses ) ", "sx-paren"}, new String[]{"[ Brackets ]", "sx-paren"});
-        addLine(codeArea, new String[]{"// Line comment", "sx-comment"});
-        addLine(codeArea, new String[]{"/* Block comment */", "sx-comment"});
-        addLine(codeArea, new String[]{":Label ", "sx-annotation"}, new String[]{"predefined_symbol()", "sx-method"});
-        addLine(codeArea, new String[]{"CONSTANT", "sx-const"}, new String[]{" Global variable", "sx-field"});
-    }
-
-    private void addBracesOperatorsPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"{ Braces } ", "sx-paren"}, new String[]{"( Parentheses ) ", "sx-paren"}, new String[]{"[ Brackets ]", "sx-paren"});
-        addLine(codeArea, new String[]{"Operator ", "sx-paren"}, new String[]{"+ - * / = . , ; ! ?", "sx-paren"});
-        addLine(codeArea, new String[]{"// Line comment", "sx-comment"});
-        addLine(codeArea, new String[]{"/* Block comment */", "sx-comment"});
-    }
-
-    private void addClassesPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"class ", "sx-keyword"}, new String[]{"MyClass ", "sx-type"}, new String[]{"extends ", "sx-keyword"}, new String[]{"BaseClass", "sx-type"});
-        addLine(codeArea, new String[]{"interface ", "sx-keyword"}, new String[]{"MyInterface", "sx-type"});
-        addLine(codeArea, new String[]{"enum ", "sx-keyword"}, new String[]{"Status", "sx-type"});
-        addLine(codeArea, new String[]{"record ", "sx-keyword"}, new String[]{"Person", "sx-type"});
-        addLine(codeArea, new String[]{"@Metadata", "sx-annotation"});
-        addLine(codeArea, new String[]{"Class Name", "sx-type"});
-        addLine(codeArea, new String[]{"  instance method", "sx-method"});
-        addLine(codeArea, new String[]{"  instance field", "sx-field"});
-        addLine(codeArea, new String[]{"  static method", "sx-method"});
-        addLine(codeArea, new String[]{"  static field", "sx-field"});
-    }
-
-    private void addCommentsPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"// Single line comment", "sx-comment"});
-        addLine(codeArea, new String[]{"/* Multi-line", "sx-comment"});
-        addLine(codeArea, new String[]{"   comment block */", "sx-comment"});
-        addLine(codeArea, new String[]{"/**", "sx-comment"});
-        addLine(codeArea, new String[]{" * Doc comment", "sx-comment"});
-        addLine(codeArea, new String[]{" * @tag ", "sx-comment"}, new String[]{"<code>Markup</code>", "sx-string"});
-        addLine(codeArea, new String[]{" */", "sx-comment"});
-        addLine(codeArea, new String[]{"Rendered documentation with link", "sx-comment"});
-    }
-
-    private void addIdentifiersPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"Identifier ", "sx-type"}, new String[]{"variableName", "sx-field"});
-        addLine(codeArea, new String[]{"Function ", "sx-method"}, new String[]{"call(param1, param2)", "sx-paren"});
-        addLine(codeArea, new String[]{"CONSTANT", "sx-const"});
-        addLine(codeArea, new String[]{"Global variable", "sx-field"});
-        addLine(codeArea, new String[]{":Label", "sx-annotation"});
-        addLine(codeArea, new String[]{"predefined_symbol()", "sx-method"});
-        addLine(codeArea, new String[]{"instance method", "sx-method"});
-        addLine(codeArea, new String[]{"instance field", "sx-field"});
-        addLine(codeArea, new String[]{"static method", "sx-method"});
-        addLine(codeArea, new String[]{"static field", "sx-field"});
-    }
-
-    private void addInlineHintsPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"var ", "sx-keyword"}, new String[]{"result", "sx-field"}, new String[]{" = ", "sx-paren"}, new String[]{"compute", "sx-method"}, new String[]{"()", "sx-paren"});
-        addLine(codeArea, new String[]{"// Inline hint: ", "sx-comment"}, new String[]{"String", "sx-type"});
-        addLine(codeArea, new String[]{"Parameter ", "sx-field"}, new String[]{": ", "sx-paren"}, new String[]{"String", "sx-type"});
-        addLine(codeArea, new String[]{"Local variable ", "sx-field"}, new String[]{": ", "sx-paren"}, new String[]{"int", "sx-type"});
-    }
-
-    private void addKeywordPreview(VBox codeArea) {
-        String[] keywords = {"abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
-            "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float",
-            "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native",
-            "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp", "super",
-            "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while"};
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < Math.min(20, keywords.length); i++) {
-            sb.append(keywords[i]).append(" ");
-        }
-        addLine(codeArea, new String[]{sb.toString(), "sx-keyword"});
-        addLine(codeArea, new String[]{"// Keywords are highlighted in ", "sx-comment"}, new String[]{"bold amber", "sx-keyword"});
-        addLine(codeArea, new String[]{"public ", "sx-keyword"}, new String[]{"class ", "sx-keyword"}, new String[]{"MyClass ", "sx-type"}, new String[]{"extends ", "sx-keyword"}, new String[]{"Base", "sx-type"});
-    }
-
-    private void addMarkupPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"<html>", "sx-string"});
-        addLine(codeArea, new String[]{"  <body>", "sx-string"});
-        addLine(codeArea, new String[]{"    <h1>", "sx-string"}, new String[]{"Title", "sx-type"}, new String[]{"</h1>", "sx-string"});
-        addLine(codeArea, new String[]{"    <p>", "sx-string"}, new String[]{"Paragraph text", "sx-type"}, new String[]{"</p>", "sx-string"});
-        addLine(codeArea, new String[]{"  </body>", "sx-string"});
-        addLine(codeArea, new String[]{"</html>", "sx-string"});
-        addLine(codeArea, new String[]{"* @tag ", "sx-comment"}, new String[]{"<code>Markup</code>", "sx-string"});
-    }
-
-    private void addMetadataPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"@Metadata", "sx-annotation"});
-        addLine(codeArea, new String[]{"@Deprecated", "sx-annotation"});
-        addLine(codeArea, new String[]{"@Override", "sx-annotation"});
-        addLine(codeArea, new String[]{"@SuppressWarnings", "sx-annotation"});
-        addLine(codeArea, new String[]{"@TA6 ", "sx-annotation"}, new String[]{"attribute = ", "sx-paren"}, new String[]{"Value", "sx-string"});
-        addLine(codeArea, new String[]{"Entity: ", "sx-paren"}, new String[]{"&amp;", "sx-string"});
-        addLine(codeArea, new String[]{"{% ", "sx-paren"}, new String[]{"Template language", "sx-string"}, new String[]{" %}", "sx-paren"});
-    }
-
-    private void addNumberPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"12345", "sx-number"});
-        addLine(codeArea, new String[]{"3.14159", "sx-number"});
-        addLine(codeArea, new String[]{"0x1A", "sx-number"});
-        addLine(codeArea, new String[]{"1_000_000", "sx-number"});
-        addLine(codeArea, new String[]{"2.5e-3", "sx-number"});
-        addLine(codeArea, new String[]{"// Numbers are highlighted in ", "sx-comment"}, new String[]{"teal", "sx-number"});
-        addLine(codeArea, new String[]{"int ", "sx-keyword"}, new String[]{"count", "sx-field"}, new String[]{" = ", "sx-paren"}, new String[]{"42", "sx-number"});
-        addLine(codeArea, new String[]{"double ", "sx-keyword"}, new String[]{"pi", "sx-field"}, new String[]{" = ", "sx-paren"}, new String[]{"3.14159", "sx-number"});
-    }
-
-    private void addSemanticHighlightingPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"Semantic highlighting:", "sx-comment"});
-        addLine(codeArea, new String[]{"Generated spectrum to pick colors for local variables and parameters", "sx-comment"});
-        addLine(codeArea, new String[]{"Color#1: ", "sx-keyword"}, new String[]{"SC1.1 ", "sx-number"}, new String[]{"SC1.2 ", "sx-number"}, new String[]{"SC1.3 ", "sx-number"}, new String[]{"SC1.4 ", "sx-number"});
-        addLine(codeArea, new String[]{"Color#2: ", "sx-keyword"}, new String[]{"SC2.1 ", "sx-number"}, new String[]{"SC2.2 ", "sx-number"}, new String[]{"SC2.3 ", "sx-number"}, new String[]{"SC2.4 ", "sx-number"});
-        addLine(codeArea, new String[]{"Color#3: ", "sx-keyword"}, new String[]{"SC3.1 ", "sx-number"}, new String[]{"SC3.2 ", "sx-number"}, new String[]{"SC3.3 ", "sx-number"}, new String[]{"SC3.4 ", "sx-number"});
-        addLine(codeArea, new String[]{"localVar1 ", "sx-field"}, new String[]{"localVar2 ", "sx-field"}, new String[]{"localVar3", "sx-field"});
-        addLine(codeArea, new String[]{"parameter1 ", "sx-field"}, new String[]{"parameter2 ", "sx-field"}, new String[]{"parameter3", "sx-field"});
-    }
-
-    private void addStringPreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"\"Hello, World!\"", "sx-string"});
-        addLine(codeArea, new String[]{"'String \\n\\?'", "sx-string"});
-        addLine(codeArea, new String[]{"\"\"\"", "sx-string"});
-        addLine(codeArea, new String[]{"  Multi-line", "sx-string"});
-        addLine(codeArea, new String[]{"  string literal", "sx-string"});
-        addLine(codeArea, new String[]{"\"\"\"", "sx-string"});
-        addLine(codeArea, new String[]{"// Strings are highlighted in ", "sx-comment"}, new String[]{"green", "sx-string"});
-        addLine(codeArea, new String[]{"String ", "sx-keyword"}, new String[]{"name", "sx-field"}, new String[]{" = ", "sx-paren"}, new String[]{"\"John\"", "sx-string"});
-    }
-
-    private void addTemplateLanguagePreview(VBox codeArea) {
-        addLine(codeArea, new String[]{"{% ", "sx-paren"}, new String[]{"if user.isActive", "sx-string"}, new String[]{" %}", "sx-paren"});
-        addLine(codeArea, new String[]{"  {% ", "sx-paren"}, new String[]{"include 'header.html'", "sx-string"}, new String[]{" %}", "sx-paren"});
-        addLine(codeArea, new String[]{"  <h1>", "sx-string"}, new String[]{"{{ user.name }}", "sx-type"}, new String[]{"</h1>", "sx-string"});
-        addLine(codeArea, new String[]{"  <p>", "sx-string"}, new String[]{"{{ user.bio }}", "sx-type"}, new String[]{"</p>", "sx-string"});
-        addLine(codeArea, new String[]{"{% ", "sx-paren"}, new String[]{"endif", "sx-string"}, new String[]{" %}", "sx-paren"});
-        addLine(codeArea, new String[]{"Entity: ", "sx-paren"}, new String[]{"&amp;", "sx-string"});
-        addLine(codeArea, new String[]{"{% ", "sx-paren"}, new String[]{"Template language", "sx-string"}, new String[]{" %}", "sx-paren"});
-        addLine(codeArea, new String[]{"@TA6 ", "sx-annotation"}, new String[]{"attribute = ", "sx-paren"}, new String[]{"Value", "sx-string"});
-    }
-
-    private void addLine(VBox codeArea, String[]... parts) {
-        TextFlow flow = new TextFlow();
-        for (String[] part : parts) {
-            Text text = new Text(part[0]);
-            if (part.length > 1) {
-                text.getStyleClass().add(part[1]);
+    public void navigateForward() {
+        if (historyIndex < navigationHistory.size() - 1) {
+            historyIndex++;
+            isNavigatingHistory = true;
+            try {
+                selectTreeItem(navigationHistory.get(historyIndex));
+            } finally {
+                isNavigatingHistory = false;
             }
-            flow.getChildren().add(text);
         }
-        // Add a newline after each line
-        codeArea.getChildren().add(flow);
+    }
+
+    public void selectTreeItem(String fullKey) {
+        String normKey = EditorColorSchemeSettings.normalizeKey(fullKey);
+        String[] parts = normKey.split(" // ");
+        TreeItem<String> curr = categoryTree.getRoot();
+
+        for (String part : parts) {
+            TreeItem<String> matched = null;
+            for (TreeItem<String> child : curr.getChildren()) {
+                if (child.getValue().equalsIgnoreCase(part)) {
+                    matched = child;
+                    child.setExpanded(true);
+                    break;
+                }
+            }
+            if (matched == null) return;
+            curr = matched;
+        }
+
+        categoryTree.getSelectionModel().select(curr);
+        selectedKey = normKey;
+        if (curr.getChildren().isEmpty()) {
+            loadAttributesForSelectedKey();
+        } else {
+            attributeEditorBox.setVisible(false);
+            attributeEditorBox.setManaged(false);
+        }
+    }
+
+    private void updatePreview() {
+        codeLinesBox.getChildren().clear();
+        errorStripeGutter.getChildren().clear();
+
+        // Line 0: Bad characters: ???? (media_1790383980530.png)
+        addLine(
+                token("Bad characters: ", null),
+                token("????", "Bad character")
+        );
+
+        // Line 1: Keyword
+        addLine(
+                token("Keyword", "Keyword")
+        );
+
+        // Line 2: Identifier
+        addLine(
+                token("Identifier", "Identifiers // Default")
+        );
+
+        // Line 3: 'String \n\?'
+        addLine(
+                token("'String ", "String // String text"),
+                token("\\n", "String // Escape sequence"),
+                token("\\?", "String // Invalid escape sequence"),
+                token("'", "String // String text")
+        );
+
+        // Line 4: 12345
+        addLine(
+                token("12345", "Number")
+        );
+
+        // Line 5: Operator
+        addLine(
+                token("Operator", "Braces and Operators // Operation sign")
+        );
+
+        // Line 6: Dot: . comma: ,, semicolon: ;
+        addLine(
+                token("Dot: ", null),
+                token(".", "Braces and Operators // Dot"),
+                token(" comma: ", null),
+                token(",", "Braces and Operators // Comma"),
+                token(" semicolon: ", null),
+                token(";", "Braces and Operators // Semicolon")
+        );
+
+        // Line 7: { Braces }
+        addLine(
+                token("{", "Braces and Operators // Braces"),
+                token(" Braces ", null),
+                token("}", "Braces and Operators // Braces")
+        );
+
+        // Line 8: ( Parentheses )
+        addLine(
+                token("(", "Braces and Operators // Parentheses"),
+                token(" Parentheses ", null),
+                token(")", "Braces and Operators // Parentheses")
+        );
+
+        // Line 9: [ Brackets ] (media_1790383998278.png)
+        addLine(
+                token("[", "Braces and Operators // Brackets"),
+                token(" Brackets ", null),
+                token("]", "Braces and Operators // Brackets")
+        );
+
+        // Line 10: // Line comment
+        addLine(
+                token("// Line comment", "Comments // Line comment")
+        );
+
+        // Line 11: /* Block comment */
+        addLine(
+                token("/* Block comment */", "Comments // Block comment")
+        );
+
+        // Line 12: :Label
+        addLine(
+                token(":Label", "Identifiers // Label")
+        );
+
+        // Line 13: predefined_symbol()
+        addLine(
+                token("predefined_symbol", "Identifiers // Predefined symbol"),
+                token("()", null)
+        );
+
+        // Line 14: CONSTANT
+        addLine(
+                token("CONSTANT", "Identifiers // Constant")
+        );
+
+        // Line 15: Global variable
+        addLine(
+                token("Global variable", "Identifiers // Global variable")
+        );
+
+        // Line 16: | Rendered documentation with link (media_1790384048158.png)
+        addLine(
+                renderedDocGuide(),
+                token("Rendered documentation with ", null),
+                token("link", "Comments // Doc comment // Link in rendered view")
+        );
+
+        // Line 17: /**
+        addLine(
+                token("/**", "Comments // Doc comment // Text")
+        );
+
+        // Line 18:  * Doc comment
+        addLine(
+                token(" * Doc comment", "Comments // Doc comment // Text")
+        );
+
+        // Line 19:  * @tag <code>Markup</code>
+        addLine(
+                token(" * ", "Comments // Doc comment // Text"),
+                token("@tag", "Comments // Doc comment // Tag"),
+                token(" ", null),
+                token("<code>", "Comments // Doc comment // Text"),
+                token("Markup", "Comments // Doc comment // Markup"),
+                token("</code>", "Comments // Doc comment // Text")
+        );
+
+        // Line 20:  * Semantic highlighting:
+        addLine(
+                token(" * ", "Comments // Doc comment // Text"),
+                token("Semantic highlighting:", "Semantic highlighting")
+        );
+
+        // Line 21:  * Generated spectrum to pick colors for local variables and parameters:
+        addLine(
+                token(" * Generated spectrum to pick colors for local variables and parameters:", "Comments // Doc comment // Text")
+        );
+
+        // Line 22: Spectrum line 1
+        addLine(
+                spectrumLine1()
+        );
+
+        // Line 23: Spectrum line 2
+        addLine(
+                spectrumLine2()
+        );
+
+        // Line 24:  * @param parameter1 documentation
+        addLine(
+                token(" * ", "Comments // Doc comment // Text"),
+                token("@param", "Comments // Doc comment // Tag"),
+                token(" ", null),
+                token("parameter1", "Identifiers // Parameter"),
+                token(" documentation", "Comments // Doc comment // Text")
+        );
+
+        // Line 25:  */
+        addLine(
+                token(" */", "Comments // Doc comment // Text")
+        );
+
+        // Right gutter error stripes
+        addGutterStripe(0, "#F75464"); // Bad characters error mark
+        addGutterStripe(3, "#F75464"); // Invalid escape sequence mark
+    }
+
+    private void addLine(Node... nodes) {
+        HBox lineBox = new HBox(0);
+        lineBox.setAlignment(Pos.CENTER_LEFT);
+        lineBox.setPrefHeight(20);
+        lineBox.setMinHeight(20);
+        lineBox.setMaxHeight(20);
+        lineBox.getChildren().addAll(nodes);
+        codeLinesBox.getChildren().add(lineBox);
+    }
+
+    private Node token(String text, String key) {
+        EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+        ColorAttribute attr = (key != null) ? s.resolveAttribute(s.getActiveSchemeName(), key) : null;
+
+        Text t = new Text(text);
+        String fg = (attr != null && attr.getForeground() != null) ? attr.getForeground() : "#DFE1E5";
+        t.setFill(Color.web(fg));
+
+        FontWeight weight = (attr != null && attr.isBold()) ? FontWeight.BOLD : FontWeight.NORMAL;
+        FontPosture posture = (attr != null && attr.isItalic()) ? FontPosture.ITALIC : FontPosture.REGULAR;
+        t.setFont(Font.font("JetBrains Mono", weight, posture, 12.5));
+
+        if (attr != null) {
+            if (attr.getEffectType() == EffectType.UNDERSCORED || attr.getEffectType() == EffectType.BOLD_UNDERSCORED) {
+                t.setUnderline(true);
+            }
+            if (attr.getEffectType() == EffectType.STRIKEOUT) {
+                t.setStrikethrough(true);
+            }
+        }
+
+        Node visualNode = t;
+        if (attr != null && attr.getEffectType() == EffectType.UNDERWAVED) {
+            String waveColor = attr.getEffectColor() != null ? attr.getEffectColor() : fg;
+            double width = text.length() * 7.5;
+            Canvas wave = new Canvas(width, 3);
+            GraphicsContext gc = wave.getGraphicsContext2D();
+            gc.setStroke(Color.web(waveColor));
+            gc.setLineWidth(1.1);
+            for (double x = 0; x < width; x += 4) {
+                gc.strokeLine(x, 2, x + 2, 0);
+                gc.strokeLine(x + 2, 0, x + 4, 2);
+            }
+            VBox vb = new VBox(1, t, wave);
+            vb.setAlignment(Pos.CENTER_LEFT);
+            visualNode = vb;
+        }
+
+        StackPane container = new StackPane(visualNode);
+        container.setAlignment(Pos.CENTER_LEFT);
+
+        StringBuilder style = new StringBuilder();
+        if (attr != null && attr.getBackground() != null) {
+            style.append(String.format("-fx-background-color: %s; -fx-padding: 1 3 1 3; -fx-background-radius: 2; ", attr.getBackground()));
+        }
+        if (attr != null && attr.getEffectType() == EffectType.BORDERED) {
+            String bc = attr.getEffectColor() != null ? attr.getEffectColor() : "#393B40";
+            style.append(String.format("-fx-border-color: %s; -fx-border-width: 1; -fx-border-radius: 2; ", bc));
+        }
+
+        // Active selection focus border matching IntelliJ Screenshot 3
+        boolean isSelected = key != null && (key.equals(selectedKey) || selectedKey.endsWith(" // " + key) || key.endsWith(" // " + selectedKey));
+        if (isSelected) {
+            style.append("-fx-border-color: #525866; -fx-border-width: 1; -fx-border-radius: 2; ");
+        }
+
+        if (key != null) {
+            style.append("-fx-cursor: hand; ");
+            container.setOnMouseClicked(e -> selectTreeItem(key));
+        }
+        if (style.length() > 0) {
+            container.setStyle(style.toString());
+        }
+
+        return container;
+    }
+
+    private Node renderedDocGuide() {
+        Rectangle guide = new Rectangle(2, 14);
+        guide.setFill(Color.web("#3887A1"));
+        HBox box = new HBox(guide);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(0, 6, 0, 0));
+        return box;
+    }
+
+    private Node[] spectrumLine1() {
+        return new Node[] {
+                token(" * ", "Comments // Doc comment // Text"),
+                coloredToken("Color#1 ", "#4CD98B", "Semantic highlighting"),
+                coloredToken("SC1.1 ", "#4CD98B", "Semantic highlighting"),
+                coloredToken("SC1.2 ", "#4CD98B", "Semantic highlighting"),
+                coloredToken("SC1.3 ", "#4CD98B", "Semantic highlighting"),
+                coloredToken("SC1.4 ", "#4CD98B", "Semantic highlighting"),
+                coloredToken("Color#2 ", "#56A8F5", "Semantic highlighting"),
+                coloredToken("SC2.1 ", "#56A8F5", "Semantic highlighting"),
+                coloredToken("SC2.2 ", "#56A8F5", "Semantic highlighting"),
+                coloredToken("SC2.3 ", "#56A8F5", "Semantic highlighting"),
+                coloredToken("SC2.4 ", "#56A8F5", "Semantic highlighting"),
+                coloredToken("Color#3", "#C77DBB", "Semantic highlighting")
+        };
+    }
+
+    private Node[] spectrumLine2() {
+        return new Node[] {
+                token(" * ", "Comments // Doc comment // Text"),
+                coloredToken("Color#3 ", "#C77DBB", "Semantic highlighting"),
+                coloredToken("SC3.1 ", "#C77DBB", "Semantic highlighting"),
+                coloredToken("SC3.2 ", "#C77DBB", "Semantic highlighting"),
+                coloredToken("SC3.3 ", "#C77DBB", "Semantic highlighting"),
+                coloredToken("SC3.4 ", "#C77DBB", "Semantic highlighting"),
+                coloredToken("Color#4 ", "#E5B567", "Semantic highlighting"),
+                coloredToken("SC4.1 ", "#E5B567", "Semantic highlighting"),
+                coloredToken("SC4.2 ", "#E5B567", "Semantic highlighting"),
+                coloredToken("SC4.3 ", "#E5B567", "Semantic highlighting"),
+                coloredToken("SC4.4 ", "#E5B567", "Semantic highlighting"),
+                coloredToken("Color#5", "#F75464", "Semantic highlighting")
+        };
+    }
+
+    private Node coloredToken(String text, String colorHex, String key) {
+        Text t = new Text(text);
+        t.setFont(Font.font("JetBrains Mono", 12.0));
+        t.setFill(Color.web(colorHex));
+        HBox box = new HBox(t);
+        box.setAlignment(Pos.CENTER_LEFT);
+        if (key != null) {
+            box.setStyle("-fx-cursor: hand;");
+            box.setOnMouseClicked(e -> selectTreeItem(key));
+        }
+        return box;
+    }
+
+    private void addGutterStripe(int lineIndex, String colorHex) {
+        Rectangle stripe = new Rectangle(0, lineIndex * 20.0 + 4, 14, 2);
+        stripe.setFill(Color.web(colorHex));
+        errorStripeGutter.getChildren().add(stripe);
+    }
+
+    private String toHex(Color c) {
+        return String.format("#%02X%02X%02X",
+                (int) (c.getRed() * 255),
+                (int) (c.getGreen() * 255),
+                (int) (c.getBlue() * 255));
+    }
+
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
+
+    private void notifyModified() {
+        if (!suppressEvents && onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
+
+    public boolean isModified() {
+        String active = EditorColorSchemeSettings.getInstance().getActiveSchemeName();
+        return EditorColorSchemeSettings.getInstance().isSchemeModified(active);
+    }
+
+    public void apply() {
+        EditorColorSchemeSettings.getInstance().save();
+    }
+
+    public void reset() {
+        String active = EditorColorSchemeSettings.getInstance().getActiveSchemeName();
+        EditorColorSchemeSettings.getInstance().restoreDefaults(active);
+        loadAttributesForSelectedKey();
+        updatePreview();
+    }
+
+    public ColorSchemeHeaderBar getHeaderBar() {
+        return headerBar;
+    }
+
+    public TreeView<String> getCategoryTree() {
+        return categoryTree;
+    }
+
+    public CheckBox getForegroundCheck() {
+        return foregroundCheck;
+    }
+
+    public Button getForegroundSwatch() {
+        return foregroundSwatch;
+    }
+
+    public CheckBox getBackgroundCheck() {
+        return backgroundCheck;
+    }
+
+    public Button getBackgroundSwatch() {
+        return backgroundSwatch;
+    }
+
+    public CheckBox getErrorStripeCheck() {
+        return errorStripeCheck;
+    }
+
+    public Button getErrorStripeSwatch() {
+        return errorStripeSwatch;
+    }
+
+    public CheckBox getEffectsCheck() {
+        return effectsCheck;
+    }
+
+    public Button getEffectsSwatch() {
+        return effectsSwatch;
+    }
+
+    public ComboBox<EffectType> getEffectTypeCombo() {
+        return effectTypeCombo;
+    }
+
+    public CheckBox getBoldCheck() {
+        return boldCheck;
+    }
+
+    public CheckBox getItalicCheck() {
+        return italicCheck;
+    }
+
+    public VBox getInheritBox() {
+        return inheritBox;
+    }
+
+    public CheckBox getInheritCheck() {
+        return inheritCheck;
+    }
+
+    public Hyperlink getInheritLink() {
+        return inheritLink;
+    }
+
+    public VBox getAttributeEditorBox() {
+        return attributeEditorBox;
     }
 }
