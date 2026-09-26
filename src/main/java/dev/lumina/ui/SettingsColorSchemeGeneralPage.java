@@ -157,143 +157,37 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         TreeItem<String> root = new TreeItem<>("Root");
         root.setExpanded(true);
 
-        // Code (media_1790343290072.png & media_1790343304243.png)
-        addTreeCategory(root, "Code", List.of(
-                "Identifier under caret",
-                "Identifier under caret (write)",
-                "Injected language fragment",
-                "Line number",
-                "Line number on caret row",
-                "Matched brace",
-                "Method separator color",
-                "TODO defaults",
-                "Unmatched brace"
-        ));
+        Map<String, TreeItem<String>> categoryItems = new LinkedHashMap<>();
 
-        // Editor (media_1790343317824.png, media_1790343353746.png, media_1790343452222.png - media_1790343516571.png)
-        TreeItem<String> editorCat = new TreeItem<>("Editor");
-        editorCat.setExpanded(true);
-        editorCat.getChildren().add(new TreeItem<>("Bookmarks"));
+        for (EditorColorSchemeSettings.AttributesDescriptor desc : EditorColorSchemeSettings.getGeneralDescriptors()) {
+            List<String> path = desc.getCategoryPath();
+            TreeItem<String> parent = root;
+            StringBuilder currentPath = new StringBuilder();
 
-        TreeItem<String> breadcrumbs = new TreeItem<>("Breadcrumbs");
-        breadcrumbs.setExpanded(true);
-        breadcrumbs.getChildren().addAll(
-                new TreeItem<>("Border"),
-                new TreeItem<>("Current"),
-                new TreeItem<>("Default"),
-                new TreeItem<>("Hovered"),
-                new TreeItem<>("Inactive")
-        );
-        editorCat.getChildren().add(breadcrumbs);
+            for (String segment : path) {
+                if (currentPath.length() > 0) currentPath.append(" // ");
+                currentPath.append(segment);
+                String pathKey = currentPath.toString();
 
-        editorCat.getChildren().add(new TreeItem<>("Caret"));
-        editorCat.getChildren().add(new TreeItem<>("Caret row"));
+                if (!categoryItems.containsKey(pathKey)) {
+                    TreeItem<String> item = new TreeItem<>(segment);
+                    item.setExpanded(segment.equals("Editor") || segment.equals("Breadcrumbs") || segment.equals("Guides")
+                            || segment.equals("Sticky Lines") || segment.equals("Tabs") || segment.equals("Vertical Scrollbar")
+                            || segment.equals("Identifiers") || segment.equals("Preview"));
+                    categoryItems.put(pathKey, item);
+                    parent.getChildren().add(item);
+                    parent = item;
+                } else {
+                    parent = categoryItems.get(pathKey);
+                }
+            }
 
-        // Guides (media_1790343452222.png)
-        TreeItem<String> guides = new TreeItem<>("Guides");
-        guides.getChildren().addAll(
-                new TreeItem<>("Hard wrap guide"),
-                new TreeItem<>("Indent guide"),
-                new TreeItem<>("Indent guide selected"),
-                new TreeItem<>("Matched brace guide"),
-                new TreeItem<>("Visual guides")
-        );
-        editorCat.getChildren().add(guides);
-
-        editorCat.getChildren().addAll(
-                new TreeItem<>("Gutter background"),
-                new TreeItem<>("Notification background"),
-                new TreeItem<>("Selection background"),
-                new TreeItem<>("Selection foreground")
-        );
-
-        // Sticky Lines (media_1790343472376.png, media_1790343485724.png, media_1790343496020.png)
-        TreeItem<String> stickyLines = new TreeItem<>("Sticky Lines");
-        stickyLines.getChildren().addAll(
-                new TreeItem<>("Background"),
-                new TreeItem<>("Border"),
-                new TreeItem<>("Hovered")
-        );
-        editorCat.getChildren().add(stickyLines);
-
-        // Tabs (media_1790343516571.png)
-        TreeItem<String> tabs = new TreeItem<>("Tabs");
-        tabs.getChildren().addAll(
-                new TreeItem<>("Modified icon color"),
-                new TreeItem<>("Selected Tab"),
-                new TreeItem<>("Selected Tab inactive"),
-                new TreeItem<>("Underline"),
-                new TreeItem<>("Underline inactive")
-        );
-        editorCat.getChildren().add(tabs);
-
-        editorCat.getChildren().addAll(
-                new TreeItem<>("Tear line"),
-                new TreeItem<>("Tear line selection")
-        );
-
-        TreeItem<String> scrollbar = new TreeItem<>("Vertical Scrollbar");
-        scrollbar.getChildren().addAll(
-                new TreeItem<>("Thumb"),
-                new TreeItem<>("Thumb while scrolling"),
-                new TreeItem<>("Track")
-        );
-        editorCat.getChildren().add(scrollbar);
-
-        root.getChildren().add(editorCat);
-
-        // Errors and Warnings (media_1790345048357.png - media_1790345076709.png)
-        addTreeCategory(root, "Errors and Warnings", List.of(
-                "Deprecated symbol",
-                "Deprecated symbol marked for removal",
-                "Duplicate from server",
-                "Error",
-                "Grammar error",
-                "Problem from server",
-                "Runtime problem",
-                "Text style suggestion",
-                "Typo",
-                "Unknown symbol",
-                "Unused code",
-                "Warning",
-                "Weak Warning"
-        ));
-
-        // Hyperlinks
-        addTreeCategory(root, "Hyperlinks", List.of("Inactive hyperlink", "Followed hyperlink", "Reference hyperlink"));
-
-        // Identifiers
-        addTreeCategory(root, "Identifiers", List.of("Identifier under caret", "Identifier under caret (write)"));
-
-        // Line Coverage
-        addTreeCategory(root, "Line Coverage", List.of("Full coverage", "Partial coverage", "Uncovered"));
-
-        // Live Templates
-        addTreeCategory(root, "Live Templates", List.of("Active template", "Inactive template"));
-
-        // Popups and Hints
-        addTreeCategory(root, "Popups and Hints", List.of("Parameter hint", "Inlay hint"));
-
-        // Preview
-        addTreeCategory(root, "Preview", List.of("Preview scope"));
-
-        // Search Results
-        addTreeCategory(root, "Search Results", List.of("Search result", "Search result (write access)"));
-
-        // Text
-        addTreeCategory(root, "Text", List.of("Default text", "Folded text", "Deleted text", "Injected language fragment"));
+            TreeItem<String> leaf = new TreeItem<>(desc.getDisplayName());
+            parent.getChildren().add(leaf);
+        }
 
         categoryTree.setRoot(root);
         categoryTree.setShowRoot(false);
-    }
-
-    private void addTreeCategory(TreeItem<String> root, String category, List<String> children) {
-        TreeItem<String> catItem = new TreeItem<>(category);
-        catItem.setExpanded(false);
-        for (String child : children) {
-            catItem.getChildren().add(new TreeItem<>(child));
-        }
-        root.getChildren().add(catItem);
     }
 
     private void buildAttributeEditor() {
@@ -399,20 +293,24 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         btn.setFont(Font.font("JetBrains Mono", 11));
 
         btn.setOnAction(e -> {
-            if (inheritCheck.isSelected()) {
+            if (inheritBox.isVisible() && inheritCheck.isSelected()) {
                 inheritCheck.setSelected(false);
             }
             if (!boundCheck.isSelected()) {
                 boundCheck.setSelected(true);
             }
             openColorPickerDialog(btn.getText(), hex -> {
-                updateSwatchButton(btn, hex, true);
+                updateSwatchButton(btn, hex, true, false);
                 onHexChanged.accept(hex);
             });
         });
     }
 
     private void updateSwatchButton(Button btn, String hex, boolean enabled) {
+        updateSwatchButton(btn, hex, enabled, false);
+    }
+
+    private void updateSwatchButton(Button btn, String hex, boolean enabled, boolean isInherited) {
         if (enabled && hex != null && !hex.isBlank()) {
             String cleanHex = hex.startsWith("#") ? hex.substring(1) : hex;
             String fullHex = "#" + cleanHex;
@@ -428,14 +326,14 @@ public class SettingsColorSchemeGeneralPage extends VBox {
 
             btn.setText(cleanHex.toUpperCase());
             btn.setStyle(String.format(
-                    "-fx-background-color: %s; -fx-text-fill: %s; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 0;",
-                    fullHex, textFill
+                    "-fx-background-color: %s; -fx-text-fill: %s; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: %s; -fx-padding: 0; -fx-opacity: %s;",
+                    fullHex, textFill, isInherited ? "default" : "hand", isInherited ? "0.65" : "1.0"
             ));
-            btn.setDisable(false);
+            btn.setDisable(isInherited);
         } else {
             btn.setText("");
             btn.setStyle("-fx-background-color: transparent; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 0;");
-            btn.setDisable(!enabled);
+            btn.setDisable(isInherited || !enabled);
         }
     }
 
@@ -520,8 +418,8 @@ public class SettingsColorSchemeGeneralPage extends VBox {
 
         categoryTree.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (selected != null && selected.getValue() != null) {
-                // If top level category group with children is selected (e.g. Code in media_1790343268397.png)
-                if (selected.getParent() != null && selected.getParent().getValue().equals("Root")) {
+                // If category group with children is selected (e.g. Code, Breadcrumbs, Guides)
+                if (!selected.getChildren().isEmpty()) {
                     selectedKey = selected.getValue();
                     attributeEditorBox.setVisible(false);
                     attributeEditorBox.setManaged(false);
@@ -581,7 +479,10 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
         String active = s.getActiveSchemeName();
         ColorAttribute attr = s.getAttribute(active, selectedKey);
-        if (attr == null) attr = new ColorAttribute();
+        if (attr == null) {
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
+            attr = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+        }
         attr.setInherit(inherit);
         s.setAttribute(active, selectedKey, attr);
         loadAttributesForSelectedKey();
@@ -596,8 +497,11 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         String active = s.getActiveSchemeName();
 
         ColorAttribute attr = s.getAttribute(active, selectedKey);
-        if (attr == null) attr = new ColorAttribute();
-        attr.setInherit(inheritCheck.isSelected());
+        if (attr == null) {
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
+            attr = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+        }
+        attr.setInherit(inheritBox.isVisible() && inheritCheck.isSelected());
 
         if (foregroundCheck.isSelected() && foregroundHex != null) {
             attr.setForeground("#" + (foregroundHex.startsWith("#") ? foregroundHex.substring(1) : foregroundHex));
@@ -638,16 +542,25 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         suppressEvents = true;
         try {
             EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+            selectedKey = EditorColorSchemeSettings.normalizeKey(selectedKey);
+
+            EditorColorSchemeSettings.AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(selectedKey);
             ColorAttribute raw = s.getAttribute(s.getActiveSchemeName(), selectedKey);
-            if (raw == null) raw = new ColorAttribute();
+            if (raw == null) {
+                raw = (desc != null) ? desc.getDefaultAttribute() : new ColorAttribute();
+            }
 
             // Inheritance setup matching media_1790343485724.png & media_1790343496020.png
-            if (raw.getInheritFrom() != null && !raw.getInheritFrom().isBlank()) {
+            boolean hasInheritDef = desc != null && desc.hasInheritance();
+            if (hasInheritDef || (raw.getInheritFrom() != null && !raw.getInheritFrom().isBlank())) {
                 inheritBox.setVisible(true);
                 inheritBox.setManaged(true);
                 inheritCheck.setSelected(raw.isInherit());
-                currentInheritedTargetKey = raw.getInheritFrom();
-                inheritLink.setText(currentInheritedTargetKey.replace(" // ", "->"));
+                String target = raw.getInheritFrom() != null ? raw.getInheritFrom() : desc.getInheritFrom();
+                currentInheritedTargetKey = target;
+                inheritLink.setText(target.replace(" // ", "->"));
+                String scope = raw.getInheritScope() != null ? raw.getInheritScope() : (desc != null ? desc.getInheritScope() : "(General)");
+                inheritScopeLabel.setText(scope != null ? scope : "(General)");
             } else {
                 inheritBox.setVisible(false);
                 inheritBox.setManaged(false);
@@ -656,28 +569,39 @@ public class SettingsColorSchemeGeneralPage extends VBox {
 
             ColorAttribute effective = s.resolveAttribute(s.getActiveSchemeName(), selectedKey);
 
+            boolean isInherited = inheritBox.isVisible() && inheritCheck.isSelected();
+
             boldCheck.setSelected(effective.isBold());
             italicCheck.setSelected(effective.isItalic());
+            boldCheck.setDisable(isInherited);
+            italicCheck.setDisable(isInherited);
 
             foregroundHex = effective.getForeground();
             foregroundCheck.setSelected(foregroundHex != null);
-            updateSwatchButton(foregroundSwatch, foregroundHex, foregroundCheck.isSelected());
+            foregroundCheck.setDisable(isInherited);
+            updateSwatchButton(foregroundSwatch, foregroundHex, foregroundCheck.isSelected(), isInherited);
 
             backgroundHex = effective.getBackground();
             backgroundCheck.setSelected(backgroundHex != null);
-            updateSwatchButton(backgroundSwatch, backgroundHex, backgroundCheck.isSelected());
+            backgroundCheck.setDisable(isInherited);
+            updateSwatchButton(backgroundSwatch, backgroundHex, backgroundCheck.isSelected(), isInherited);
 
             errorStripeHex = effective.getErrorStripeColor();
             errorStripeCheck.setSelected(errorStripeHex != null);
-            updateSwatchButton(errorStripeSwatch, errorStripeHex, errorStripeCheck.isSelected());
+            errorStripeCheck.setDisable(isInherited);
+            updateSwatchButton(errorStripeSwatch, errorStripeHex, errorStripeCheck.isSelected(), isInherited);
 
             boolean hasEffects = effective.getEffectType() != null && effective.getEffectType() != EffectType.NONE;
             effectsCheck.setSelected(hasEffects);
+            effectsCheck.setDisable(isInherited);
             effectsHex = effective.getEffectColor();
-            updateSwatchButton(effectsSwatch, effectsHex, hasEffects);
-            effectTypeCombo.setDisable(!hasEffects);
+            updateSwatchButton(effectsSwatch, effectsHex, hasEffects, isInherited);
+            effectTypeCombo.setDisable(isInherited || !hasEffects);
+
             if (effective.getEffectType() != null && effective.getEffectType() != EffectType.NONE) {
                 effectTypeCombo.setValue(effective.getEffectType());
+            } else if (desc != null && desc.getDefaultEffectType() != null) {
+                effectTypeCombo.setValue(desc.getDefaultEffectType());
             } else {
                 effectTypeCombo.setValue(EffectType.UNDERSCORED);
             }
@@ -723,7 +647,8 @@ public class SettingsColorSchemeGeneralPage extends VBox {
     }
 
     public void selectTreeItem(String fullKey) {
-        String[] parts = fullKey.split(" // ");
+        String normKey = EditorColorSchemeSettings.normalizeKey(fullKey);
+        String[] parts = normKey.split(" // ");
         TreeItem<String> curr = categoryTree.getRoot();
 
         for (String part : parts) {
@@ -740,8 +665,13 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         }
 
         categoryTree.getSelectionModel().select(curr);
-        selectedKey = fullKey;
-        loadAttributesForSelectedKey();
+        selectedKey = normKey;
+        if (curr.getChildren().isEmpty()) {
+            loadAttributesForSelectedKey();
+        } else {
+            attributeEditorBox.setVisible(false);
+            attributeEditorBox.setManaged(false);
+        }
     }
 
     private void updatePreview() {
@@ -800,7 +730,9 @@ public class SettingsColorSchemeGeneralPage extends VBox {
 
         // Line 8:   i = result
         addLine(
-                token("  i = ", null),
+                token("  ", null),
+                token("i", "Identifiers // Reassigned local variable"),
+                token(" = ", null),
                 token("result", "Code // Identifier under caret")
         );
 
@@ -821,7 +753,7 @@ public class SettingsColorSchemeGeneralPage extends VBox {
 
         // Line 12: Folded text with highlighting
         addLine(
-                foldedBadge("Folded text with highlighting", "Text // Folded text")
+                foldedBadgeWithHighlighting("Folded text with highlighting", "Text // Folded text with highlighting")
         );
 
         // Line 13: Deleted text
@@ -832,11 +764,11 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         // Line 14: Live template: active inactive $VARIABLE$
         addLine(
                 token("Live template: ", null),
-                borderedToken("active", "Live Templates // Active template", "#385E9D"),
+                borderedToken("active", "Live Templates // Active Segment", "#385E9D"),
                 token(" ", null),
-                borderedToken("inactive", "Live Templates // Inactive template", "#5A5D63"),
+                borderedToken("inactive", "Live Templates // Inactive Segment", "#5A5D63"),
                 token(" ", null),
-                variableToken("$VARIABLE$", "#C77DBB")
+                variableToken("$VARIABLE$", "Live Templates // Template Variable", "#B189F5")
         );
 
         // Line 15: Injected language: \.(gif|jpg|png)$
@@ -1037,6 +969,38 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         return badge;
     }
 
+    private Node foldedBadgeWithHighlighting(String text, String key) {
+        EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+        ColorAttribute attr = s.resolveAttribute(s.getActiveSchemeName(), key);
+
+        String bg = (attr != null && attr.getBackground() != null) ? attr.getBackground() : "#393B40";
+        String fg = (attr != null && attr.getForeground() != null) ? attr.getForeground() : "#868991";
+        String waveColor = (attr != null && attr.getEffectColor() != null) ? attr.getEffectColor() : "#C29E4A";
+
+        Text t = new Text(text);
+        t.setFont(Font.font("JetBrains Mono", 12.0));
+        t.setFill(Color.web(fg));
+
+        double width = text.length() * 7.2;
+        Canvas wave = new Canvas(width, 3);
+        GraphicsContext gc = wave.getGraphicsContext2D();
+        gc.setStroke(Color.web(waveColor));
+        gc.setLineWidth(1.1);
+        for (double x = 0; x < width; x += 4) {
+            gc.strokeLine(x, 2, x + 2, 0);
+            gc.strokeLine(x + 2, 0, x + 4, 2);
+        }
+
+        VBox content = new VBox(0, t, wave);
+        content.setAlignment(Pos.CENTER);
+
+        HBox badge = new HBox(content);
+        badge.setAlignment(Pos.CENTER);
+        badge.setStyle(String.format("-fx-background-color: %s; -fx-background-radius: 3; -fx-padding: 1 6 1 6; -fx-cursor: hand;", bg));
+        badge.setOnMouseClicked(e -> selectTreeItem(key));
+        return badge;
+    }
+
     private Node deletedToken(String text, String key) {
         EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
         ColorAttribute attr = s.resolveAttribute(s.getActiveSchemeName(), key);
@@ -1073,10 +1037,25 @@ public class SettingsColorSchemeGeneralPage extends VBox {
     }
 
     private Node variableToken(String text, String fgColor) {
+        return variableToken(text, "Live Templates // Template Variable", fgColor);
+    }
+
+    private Node variableToken(String text, String key, String defaultFgColor) {
+        EditorColorSchemeSettings s = EditorColorSchemeSettings.getInstance();
+        ColorAttribute attr = (key != null) ? s.resolveAttribute(s.getActiveSchemeName(), key) : null;
+        String fg = (attr != null && attr.getForeground() != null) ? attr.getForeground() : defaultFgColor;
+
         Text t = new Text(text);
         t.setFont(Font.font("JetBrains Mono", 12.5));
-        t.setFill(Color.web(fgColor));
-        return new HBox(t);
+        t.setFill(Color.web(fg));
+
+        HBox box = new HBox(t);
+        box.setAlignment(Pos.CENTER_LEFT);
+        if (key != null) {
+            box.setStyle("-fx-cursor: hand;");
+            box.setOnMouseClicked(e -> selectTreeItem(key));
+        }
+        return box;
     }
 
     private Node injectedFragmentToken(String text, String key) {
