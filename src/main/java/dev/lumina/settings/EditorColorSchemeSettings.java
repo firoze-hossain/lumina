@@ -43,7 +43,7 @@ public final class EditorColorSchemeSettings {
         UNDERWAVED("Underwaved"),
         BORDERED("Bordered"),
         STRIKEOUT("Strikeout"),
-        DOTTED_LINE("Dotted line");
+        DOTTED_LINE("Dotted Line");
 
         private final String displayName;
 
@@ -1020,6 +1020,103 @@ public final class EditorColorSchemeSettings {
                     null, null, true, true, true, true, EffectType.BORDERED, true)
     );
 
+    private static final List<AttributesDescriptor> DEBUGGER_DESCRIPTORS = List.of(
+            new AttributesDescriptor("Breakpoint line", "Breakpoint line", List.of(),
+                    new ColorAttribute(null, "#3A2323", "#DB5860", EffectType.NONE, null, false, false),
+                    null, null, false, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Evaluated expression text", "Evaluated expression text", List.of(),
+                    new ColorAttribute("#868991", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Evaluated expression text for execution line", "Evaluated expression text for execution line", List.of(),
+                    new ColorAttribute("#868991", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Execution point", "Execution point", List.of(),
+                    new ColorAttribute(null, "#253B2F", "#3B7E58", EffectType.NONE, null, false, false),
+                    null, null, false, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Inline stack frames", "Inline stack frames", List.of(),
+                    new ColorAttribute("#70727B", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Inlined modified values", "Inlined modified values", List.of(),
+                    new ColorAttribute("#B2AE60", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Inlined values", "Inlined values", List.of(),
+                    new ColorAttribute("#868991", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Inlined values for execution line", "Inlined values for execution line", List.of(),
+                    new ColorAttribute("#868991", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Not top frame", "Not top frame", List.of(),
+                    new ColorAttribute(null, "#2D3238", false, false),
+                    null, null, false, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Smart step into selection", "Smart step into selection", List.of(),
+                    new ColorAttribute(null, "#223C4D", false, false),
+                    null, null, false, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Smart step into target", "Smart step into target", List.of(),
+                    new ColorAttribute(null, "#2E436E", false, false),
+                    null, null, false, true, true, true, EffectType.BORDERED, false)
+    );
+
+    private static final List<AttributesDescriptor> DIFF_MERGE_DESCRIPTORS = List.of(
+            new AttributesDescriptor("Changed lines // Changed", "Changed", List.of("Changed lines"),
+                    new ColorAttribute(null, "#385570", "#436980", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, false, EffectType.NONE, false),
+            new AttributesDescriptor("Changed lines // Conflict", "Conflict", List.of("Changed lines"),
+                    new ColorAttribute(null, "#4D3838", "#8F4545", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, false, EffectType.NONE, false),
+            new AttributesDescriptor("Changed lines // Deleted", "Deleted", List.of("Changed lines"),
+                    new ColorAttribute(null, "#454A4D", "#656E73", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, false, EffectType.NONE, false),
+            new AttributesDescriptor("Changed lines // Inserted", "Inserted", List.of("Changed lines"),
+                    new ColorAttribute(null, "#2E5938", "#3B7E58", EffectType.NONE, null, false, false),
+                    null, null, true, true, true, false, EffectType.NONE, false),
+            new AttributesDescriptor("Folded unchanged fragments // Wave", "Wave", List.of("Folded unchanged fragments"),
+                    new ColorAttribute("#5C616B", null, false, false),
+                    null, null, true, false, false, false, EffectType.NONE, false)
+    );
+
+    private static final List<AttributesDescriptor> JVM_LOGGING_DESCRIPTORS = List.of(
+            new AttributesDescriptor("Classes // Class name", "Class name", List.of("Classes"),
+                    new ColorAttribute(null, null, null, EffectType.DOTTED_LINE, "#888880", false, false),
+                    null, null, true, true, true, true, EffectType.DOTTED_LINE, true),
+            new AttributesDescriptor("Log string // Placeholder", "Placeholder", List.of("Log string"),
+                    inheritAttr("#CF8E6D", null, "String // Escape sequence", "(Language Defaults)"),
+                    "String // Escape sequence", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+    );
+
+    private static final List<AttributesDescriptor> USER_DEFINED_FILE_TYPES_DESCRIPTORS = List.of(
+            new AttributesDescriptor("Block comment", "Block comment", List.of(),
+                    new ColorAttribute("#7A7E85", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Invalid string escape", "Invalid string escape", List.of(),
+                    new ColorAttribute("#F75464", null, null, EffectType.UNDERWAVED, "#F75464", false, false),
+                    null, null, true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Keyword1", "Keyword1", List.of(),
+                    new ColorAttribute("#CF8E6D", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword2", "Keyword2", List.of(),
+                    new ColorAttribute("#C77DBB", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword3", "Keyword3", List.of(),
+                    new ColorAttribute("#56A8F5", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword4", "Keyword4", List.of(),
+                    new ColorAttribute("#59A869", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Line comment", "Line comment", List.of(),
+                    new ColorAttribute("#7A7E85", null, false, true),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Number", "Number", List.of(),
+                    new ColorAttribute("#2AACB8", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String", "String", List.of(),
+                    new ColorAttribute("#6AAB73", null, false, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Valid string escape", "Valid string escape", List.of(),
+                    new ColorAttribute("#CF8E6D", null, true, false),
+                    null, null, true, true, true, true, EffectType.BORDERED, true)
+    );
+
     private static final Map<String, AttributesDescriptor> DESCRIPTORS_BY_KEY;
     static {
         Map<String, AttributesDescriptor> map = new LinkedHashMap<>();
@@ -1033,6 +1130,18 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc);
         }
         for (AttributesDescriptor desc : CODE_WITH_ME_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : DEBUGGER_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : DIFF_MERGE_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : JVM_LOGGING_DESCRIPTORS) {
+            map.put(desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : USER_DEFINED_FILE_TYPES_DESCRIPTORS) {
             map.put(desc.getKey(), desc);
         }
         DESCRIPTORS_BY_KEY = Collections.unmodifiableMap(map);
@@ -1052,6 +1161,22 @@ public final class EditorColorSchemeSettings {
 
     public static List<AttributesDescriptor> getCodeWithMeDescriptors() {
         return CODE_WITH_ME_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getDebuggerDescriptors() {
+        return DEBUGGER_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getDiffMergeDescriptors() {
+        return DIFF_MERGE_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getJvmLoggingDescriptors() {
+        return JVM_LOGGING_DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getUserDefinedFileTypesDescriptors() {
+        return USER_DEFINED_FILE_TYPES_DESCRIPTORS;
     }
 
     public static AttributesDescriptor getDescriptor(String key) {
@@ -1074,6 +1199,8 @@ public final class EditorColorSchemeSettings {
             case "Popups and Hints // Inlay hint": return "Popups and Hints // Information hint";
             case "Preview // Preview scope": return "Preview // Background";
             case "Log console // Expired": return "Log console // Expired entry";
+            case "String->Escape sequence->Valid": return "String // Escape sequence";
+            case "String // Escape sequence // Valid": return "String // Escape sequence";
             default: return key;
         }
     }
@@ -1090,6 +1217,18 @@ public final class EditorColorSchemeSettings {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         for (AttributesDescriptor desc : CODE_WITH_ME_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : DEBUGGER_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : DIFF_MERGE_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : JVM_LOGGING_DESCRIPTORS) {
+            map.put(desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : USER_DEFINED_FILE_TYPES_DESCRIPTORS) {
             map.put(desc.getKey(), desc.getDefaultAttribute());
         }
         return map;
