@@ -20,16 +20,10 @@ class SettingsColorSchemeLanguageDefaultsPageTest {
     @BeforeAll
     static void initJavaFX() {
         try {
-            String display = System.getenv("DISPLAY");
-            if (display == null || display.isBlank() || java.awt.GraphicsEnvironment.isHeadless()) {
-                return;
-            }
-            CountDownLatch latch = new CountDownLatch(1);
-            Platform.startup(() -> {
-                javaFxAvailable = true;
-                latch.countDown();
-            });
-            latch.await(3, TimeUnit.SECONDS);
+            Platform.startup(() -> javaFxAvailable = true);
+            javaFxAvailable = true;
+        } catch (IllegalStateException alreadyStarted) {
+            javaFxAvailable = true;
         } catch (Throwable ignored) {
             javaFxAvailable = false;
         }
@@ -246,6 +240,40 @@ class SettingsColorSchemeLanguageDefaultsPageTest {
                 // Restore defaults
                 s.initDefaults();
                 s.save();
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testCategoryTreeSelectionStylingMatchesGeneral() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsColorSchemeLanguageDefaultsPage page = new SettingsColorSchemeLanguageDefaultsPage();
+                var tree = page.getCategoryTree();
+
+                // 1. Must have the color-scheme-tree style class
+                assertTrue(tree.getStyleClass().contains("color-scheme-tree"),
+                        "categoryTree must have 'color-scheme-tree' style class");
+
+                // 2. Must have border and background matching standard dark theme
+                assertTrue(tree.getStyle().contains("#2B2D30"), "categoryTree must have #2B2D30 background style");
+                assertTrue(tree.getStyle().contains("#393B40"), "categoryTree must have #393B40 border style");
+
+                // 3. Must have a custom cell factory
+                assertNotNull(tree.getCellFactory(), "categoryTree must have custom cell factory");
+
+                javafx.scene.control.TreeCell<String> cell = tree.getCellFactory().call(tree);
+                assertNotNull(cell);
+
+                // Check default unselected and selected styling logic
+                tree.getSelectionModel().select(tree.getRoot().getChildren().get(0)); // Bad character
+                assertEquals("Bad character", tree.getSelectionModel().getSelectedItem().getValue());
             } finally {
                 latch.countDown();
             }

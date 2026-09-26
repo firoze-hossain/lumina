@@ -111,6 +111,19 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         categoryTree.getStyleClass().add("color-scheme-tree");
         categoryTree.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         categoryTree.setCellFactory(tv -> new TreeCell<>() {
+            {
+                setOnMouseEntered(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: #35373B; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                    }
+                });
+                setOnMouseExited(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                    }
+                });
+            }
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -1175,19 +1188,22 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         this.onModifiedListener = listener;
     }
 
+    private boolean modified = false;
+
     private void notifyModified() {
+        this.modified = true;
         if (!suppressEvents && onModifiedListener != null) {
             onModifiedListener.run();
         }
     }
 
     public boolean isModified() {
-        String active = EditorColorSchemeSettings.getInstance().getActiveSchemeName();
-        return EditorColorSchemeSettings.getInstance().isSchemeModified(active);
+        return modified;
     }
 
     public void apply() {
         EditorColorSchemeSettings.getInstance().save();
+        this.modified = false;
     }
 
     public void reset() {
@@ -1195,6 +1211,7 @@ public class SettingsColorSchemeGeneralPage extends VBox {
         EditorColorSchemeSettings.getInstance().restoreDefaults(active);
         loadAttributesForSelectedKey();
         updatePreview();
+        this.modified = false;
     }
 
     public ColorSchemeHeaderBar getHeaderBar() {

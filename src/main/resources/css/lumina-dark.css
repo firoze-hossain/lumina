@@ -1840,13 +1840,16 @@
     -fx-text-fill: inherit;
 }
 
-/* Color Scheme Category Tree (fixing white background, matching IntelliJ dark theme #2B2D30) */
+/* Color Scheme Category Tree (matching standard dark theme #2B2D30) */
 .color-scheme-tree {
     -fx-background-color: #2B2D30;
     -fx-background-insets: 0;
     -fx-border-color: #393B40;
     -fx-border-radius: 4;
     -fx-background-radius: 4;
+    -fx-selection-bar: #2E436E;
+    -fx-selection-bar-non-focused: #2E436E;
+    -fx-accent: #2E436E;
 }
 
 .color-scheme-tree .tree-cell {
@@ -1866,9 +1869,17 @@
 
 .color-scheme-tree .tree-cell:selected,
 .color-scheme-tree .tree-cell:filled:selected,
-.color-scheme-tree .tree-cell:focused:selected {
+.color-scheme-tree .tree-cell:focused:selected,
+.color-scheme-tree:focused > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
+.color-scheme-tree > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected {
+    -fx-background: #2E436E;
     -fx-background-color: #2E436E;
     -fx-text-fill: #FFFFFF;
+}
+
+.color-scheme-tree .tree-cell:selected .text,
+.color-scheme-tree .tree-cell:filled:selected .text {
+    -fx-fill: #FFFFFF;
 }
 
 .color-scheme-tree .tree-cell .arrow {
