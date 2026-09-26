@@ -91,12 +91,56 @@ public class SettingsColorSchemeLanguageDefaultsPage extends VBox {
         // 2. Tree View
         categoryTree = new TreeView<>();
         categoryTree.setShowRoot(false);
+        categoryTree.getStyleClass().add("color-scheme-tree");
         categoryTree.setStyle(
-                "-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; " +
-                "-fx-border-color: #2B2D30; -fx-border-radius: 4; -fx-background-radius: 4;"
+                "-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; " +
+                "-fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;"
         );
         categoryTree.setPrefWidth(320);
         categoryTree.setMinWidth(260);
+        categoryTree.setCellFactory(tv -> new TreeCell<>() {
+            {
+                setOnMouseEntered(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: #35373B; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                    }
+                });
+                setOnMouseExited(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: #2B2D30;");
+                } else {
+                    setText(item);
+                    updateStyle();
+                }
+            }
+
+            @Override
+            public void updateSelected(boolean selected) {
+                super.updateSelected(selected);
+                updateStyle();
+            }
+
+            private void updateStyle() {
+                if (isEmpty() || getItem() == null) {
+                    setStyle("-fx-background-color: #2B2D30;");
+                } else if (isSelected()) {
+                    setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                } else {
+                    setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6 3 6;");
+                }
+            }
+        });
 
         TreeItem<String> root = new TreeItem<>("Root");
         categoryTree.setRoot(root);
@@ -905,19 +949,22 @@ public class SettingsColorSchemeLanguageDefaultsPage extends VBox {
         this.onModifiedListener = listener;
     }
 
+    private boolean modified = false;
+
     private void notifyModified() {
+        this.modified = true;
         if (!suppressEvents && onModifiedListener != null) {
             onModifiedListener.run();
         }
     }
 
     public boolean isModified() {
-        String active = EditorColorSchemeSettings.getInstance().getActiveSchemeName();
-        return EditorColorSchemeSettings.getInstance().isSchemeModified(active);
+        return modified;
     }
 
     public void apply() {
         EditorColorSchemeSettings.getInstance().save();
+        this.modified = false;
     }
 
     public void reset() {
@@ -925,6 +972,7 @@ public class SettingsColorSchemeLanguageDefaultsPage extends VBox {
         EditorColorSchemeSettings.getInstance().restoreDefaults(active);
         loadAttributesForSelectedKey();
         updatePreview();
+        this.modified = false;
     }
 
     public ColorSchemeHeaderBar getHeaderBar() {
