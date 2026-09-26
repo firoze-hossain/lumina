@@ -90,6 +90,8 @@ public class SettingsDialog {
     private SettingsColorSchemeEditorConfigPage currentColorSchemeEditorConfigPage;
     private SettingsColorSchemeErbPage currentColorSchemeErbPage;
     private SettingsColorSchemeFreeMarkerPage currentColorSchemeFreeMarkerPage;
+    private SettingsColorSchemeGitLabCiExpressionPage currentColorSchemeGitLabCiExpressionPage;
+    private SettingsColorSchemeGoPage currentColorSchemeGoPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -775,6 +777,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("GitLab CI Expression".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeGitLabCiExpressionPage != null) {
+                            currentColorSchemeGitLabCiExpressionPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Go".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeGoPage != null) {
+                            currentColorSchemeGoPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -1149,6 +1175,38 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeFreeMarkerPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("GitLab CI Expression".equals(pageName)) {
+                if (currentColorSchemeGitLabCiExpressionPage == null) {
+                    currentColorSchemeGitLabCiExpressionPage = new SettingsColorSchemeGitLabCiExpressionPage();
+                }
+                currentColorSchemeGitLabCiExpressionPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeGitLabCiExpressionPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeGitLabCiExpressionPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeGitLabCiExpressionPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Go".equals(pageName)) {
+                if (currentColorSchemeGoPage == null) {
+                    currentColorSchemeGoPage = new SettingsColorSchemeGoPage();
+                }
+                currentColorSchemeGoPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeGoPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeGoPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeGoPage);
                 updateApplyButtonState();
                 return;
             }
@@ -1936,6 +1994,36 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeFreeMarkerPage);
             return;
         }
+        if ("GitLab CI Expression".equals(pageName)) {
+            if (currentColorSchemeGitLabCiExpressionPage == null) {
+                currentColorSchemeGitLabCiExpressionPage = new SettingsColorSchemeGitLabCiExpressionPage();
+            }
+            currentColorSchemeGitLabCiExpressionPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeGitLabCiExpressionPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeGitLabCiExpressionPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeGitLabCiExpressionPage);
+            return;
+        }
+        if ("Go".equals(pageName)) {
+            if (currentColorSchemeGoPage == null) {
+                currentColorSchemeGoPage = new SettingsColorSchemeGoPage();
+            }
+            currentColorSchemeGoPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeGoPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeGoPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeGoPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -2090,6 +2178,7 @@ public class SettingsDialog {
                 new TreeItem<>("ERB"),
                 new TreeItem<>("FreeMarker"),
                 new TreeItem<>("GitLab CI Expression"),
+                new TreeItem<>("Go"),
                 new TreeItem<>("Gradle Declarative Configuration"),
                 new TreeItem<>("Groovy"),
                 new TreeItem<>("HTML"),
@@ -2477,6 +2566,12 @@ public class SettingsDialog {
         if (currentColorSchemeFreeMarkerPage != null && currentColorSchemeFreeMarkerPage.isModified()) {
             currentColorSchemeFreeMarkerPage.apply();
         }
+        if (currentColorSchemeGitLabCiExpressionPage != null && currentColorSchemeGitLabCiExpressionPage.isModified()) {
+            currentColorSchemeGitLabCiExpressionPage.apply();
+        }
+        if (currentColorSchemeGoPage != null && currentColorSchemeGoPage.isModified()) {
+            currentColorSchemeGoPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -2530,7 +2625,9 @@ public class SettingsDialog {
                 || (currentColorSchemeDockerfilePage != null && currentColorSchemeDockerfilePage.isModified())
                 || (currentColorSchemeEditorConfigPage != null && currentColorSchemeEditorConfigPage.isModified())
                 || (currentColorSchemeErbPage != null && currentColorSchemeErbPage.isModified())
-                || (currentColorSchemeFreeMarkerPage != null && currentColorSchemeFreeMarkerPage.isModified());
+                || (currentColorSchemeFreeMarkerPage != null && currentColorSchemeFreeMarkerPage.isModified())
+                || (currentColorSchemeGitLabCiExpressionPage != null && currentColorSchemeGitLabCiExpressionPage.isModified())
+                || (currentColorSchemeGoPage != null && currentColorSchemeGoPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -2691,6 +2788,12 @@ public class SettingsDialog {
             if (currentColorSchemeFreeMarkerPage != null) {
                 currentColorSchemeFreeMarkerPage.reset();
             }
+            if (currentColorSchemeGitLabCiExpressionPage != null) {
+                currentColorSchemeGitLabCiExpressionPage.reset();
+            }
+            if (currentColorSchemeGoPage != null) {
+                currentColorSchemeGoPage.reset();
+            }
             stage.close();
         });
 
@@ -2771,6 +2874,14 @@ public class SettingsDialog {
 
     public SettingsColorSchemeFreeMarkerPage getCurrentColorSchemeFreeMarkerPage() {
         return currentColorSchemeFreeMarkerPage;
+    }
+
+    public SettingsColorSchemeGitLabCiExpressionPage getCurrentColorSchemeGitLabCiExpressionPage() {
+        return currentColorSchemeGitLabCiExpressionPage;
+    }
+
+    public SettingsColorSchemeGoPage getCurrentColorSchemeGoPage() {
+        return currentColorSchemeGoPage;
     }
 
     public Button getApplyButton() {
