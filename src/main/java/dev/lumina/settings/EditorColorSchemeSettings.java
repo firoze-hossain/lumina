@@ -6246,6 +6246,118 @@ public final class EditorColorSchemeSettings {
         );
     }
 
+    private static final class XsltHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("XSLT Directive", "XSLT Directive", List.of(),
+                    inheritAttr(null, "#2B2D30", "Template language", "(Language Defaults)"),
+                    "Template language", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class YamlHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("'>' block", "'>' block", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("'|' block", "'|' block", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Anchor/Alias", "Anchor/Alias", List.of(),
+                    inheritAttr("#E0C46C", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comment", "Comment", List.of(),
+                    inheritAttr("#5F826B", null, false, true, "Comments->Doc comment->Text", "(Language Defaults)", true),
+                    "Comments->Doc comment->Text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Double quoted string", "Double quoted string", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Key", "Key", List.of(),
+                    inheritAttr("#CF8E6D", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Sign: brace, comma, etc", "Sign: brace, comma, etc", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String", "String", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Text", "Text", List.of(),
+                    inheritAttr("#BCBEC4", null, "Text->Default text", "(Language Defaults)"),
+                    "Text->Default text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class ByScopeHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("All", "All", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("All Changed Files", "All Changed Files", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Generated Files", "Generated Files", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Non-Project Files", "Non-Project Files", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Open Files", "Open Files", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Production", "Production", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Project Files", "Project Files", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Scratches and Consoles", "Scratches and Consoles", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Tests", "Tests", List.of(),
+                    new ColorAttribute(null, null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false)
+        );
+    }
+
+    private static final class ImagesHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("'Black' cell", "'Black' cell", List.of(),
+                    new ColorAttribute(null, "#000000", false, false),
+                    null, null,
+                    true, true, true, true, EffectType.UNDERSCORED, false),
+            new AttributesDescriptor("'White' cell", "'White' cell", List.of(),
+                    new ColorAttribute(null, "#3C3F41", false, false),
+                    null, null,
+                    true, true, true, true, EffectType.UNDERSCORED, false),
+            new AttributesDescriptor("Background", "Background", List.of(),
+                    new ColorAttribute(null, "#2B2D30", false, false),
+                    null, null,
+                    true, true, true, true, EffectType.UNDERSCORED, false),
+            new AttributesDescriptor("Grid line", "Grid line", List.of(),
+                    new ColorAttribute("#383B40", null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.UNDERSCORED, false)
+        );
+    }
+
     private static final class DescriptorsByKeyHolder {
         private static final Map<String, AttributesDescriptor> MAP = buildDescriptorsByKey();
     }
@@ -6453,6 +6565,22 @@ public final class EditorColorSchemeSettings {
         for (AttributesDescriptor desc : XmlHolder.DESCRIPTORS) {
             map.putIfAbsent(desc.getKey(), desc);
             map.put("XML // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : XsltHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("XSLT // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : YamlHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("YAML // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : ByScopeHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("By Scope // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : ImagesHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("Images // " + desc.getKey(), desc);
         }
         return Collections.unmodifiableMap(map);
     }
@@ -6707,6 +6835,22 @@ public final class EditorColorSchemeSettings {
 
     public static List<AttributesDescriptor> getXmlDescriptors() {
         return XmlHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getXsltDescriptors() {
+        return XsltHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getYamlDescriptors() {
+        return YamlHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getByScopeDescriptors() {
+        return ByScopeHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getImagesDescriptors() {
+        return ImagesHolder.DESCRIPTORS;
     }
 
     public static AttributesDescriptor getDescriptor(String key) {
@@ -6970,6 +7114,22 @@ public final class EditorColorSchemeSettings {
         for (AttributesDescriptor desc : XmlHolder.DESCRIPTORS) {
             map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
             map.put("XML // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : XsltHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("XSLT // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : YamlHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("YAML // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : ByScopeHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("By Scope // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : ImagesHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("Images // " + desc.getKey(), desc.getDefaultAttribute());
         }
         return map;
     }
