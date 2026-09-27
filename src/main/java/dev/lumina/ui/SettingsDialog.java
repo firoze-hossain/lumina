@@ -1,5 +1,8 @@
 package dev.lumina.ui;
 
+import dev.lumina.settings.EditorColorSchemeSettings;
+import dev.lumina.settings.EditorColorSchemeSettings.AttributesDescriptor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -121,6 +124,8 @@ public class SettingsDialog {
     private SettingsColorSchemeRegExpPage currentColorSchemeRegExpPage;
     private SettingsColorSchemeRubyPage currentColorSchemeRubyPage;
     private SettingsColorSchemeRustPage currentColorSchemeRustPage;
+    private SettingsColorSchemeSassPage currentColorSchemeSassPage;
+    private SettingsColorSchemeScalaPage currentColorSchemeScalaPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -1178,6 +1183,30 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Sass/SCSS".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeSassPage != null) {
+                            currentColorSchemeSassPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Scala".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeScalaPage != null) {
+                            currentColorSchemeScalaPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -2053,6 +2082,56 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeRustPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Sass/SCSS".equals(pageName)) {
+                if (currentColorSchemeSassPage == null) {
+                    currentColorSchemeSassPage = new SettingsColorSchemeSassPage();
+                }
+                currentColorSchemeSassPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeSassPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeSassPage.setOnNavigateToInheritedListener(targetKey -> {
+                    AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(currentColorSchemeSassPage.getSelectedKey());
+                    String scope = desc != null ? desc.getInheritScope() : "(CSS)";
+                    if (scope != null && scope.contains("CSS")) {
+                        selectCategory("CSS");
+                        if (currentColorSchemeCssPage != null) {
+                            currentColorSchemeCssPage.selectTreeItem(targetKey);
+                        }
+                    } else {
+                        selectCategory("Language Defaults");
+                        if (currentColorSchemeLanguageDefaultsPage != null) {
+                            currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                        }
+                    }
+                });
+                wrapInScroll(currentColorSchemeSassPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Scala".equals(pageName)) {
+                if (currentColorSchemeScalaPage == null) {
+                    currentColorSchemeScalaPage = new SettingsColorSchemeScalaPage();
+                }
+                currentColorSchemeScalaPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeScalaPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeScalaPage.setOnNavigateToInheritedListener(targetKey -> {
+                    AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(currentColorSchemeScalaPage.getSelectedKey());
+                    String scope = desc != null ? desc.getInheritScope() : "(Java)";
+                    if (scope != null && scope.contains("Java")) {
+                        selectCategory("Java");
+                        if (currentColorSchemeJavaPage != null) {
+                            currentColorSchemeJavaPage.selectTreeItem(targetKey);
+                        }
+                    } else {
+                        selectCategory("Language Defaults");
+                        if (currentColorSchemeLanguageDefaultsPage != null) {
+                            currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                        }
+                    }
+                });
+                wrapInScroll(currentColorSchemeScalaPage);
                 updateApplyButtonState();
                 return;
             }
@@ -3310,6 +3389,54 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeRustPage);
             return;
         }
+        if ("Sass/SCSS".equals(pageName)) {
+            if (currentColorSchemeSassPage == null) {
+                currentColorSchemeSassPage = new SettingsColorSchemeSassPage();
+            }
+            currentColorSchemeSassPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeSassPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeSassPage.setOnNavigateToInheritedListener(targetKey -> {
+                AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(currentColorSchemeSassPage.getSelectedKey());
+                String scope = desc != null ? desc.getInheritScope() : "(CSS)";
+                if (scope != null && scope.contains("CSS")) {
+                    selectCategory("CSS");
+                    if (currentColorSchemeCssPage != null) {
+                        currentColorSchemeCssPage.selectTreeItem(targetKey);
+                    }
+                } else {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                }
+            });
+            wrapInScroll(currentColorSchemeSassPage);
+            return;
+        }
+        if ("Scala".equals(pageName)) {
+            if (currentColorSchemeScalaPage == null) {
+                currentColorSchemeScalaPage = new SettingsColorSchemeScalaPage();
+            }
+            currentColorSchemeScalaPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeScalaPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeScalaPage.setOnNavigateToInheritedListener(targetKey -> {
+                AttributesDescriptor desc = EditorColorSchemeSettings.getDescriptor(currentColorSchemeScalaPage.getSelectedKey());
+                String scope = desc != null ? desc.getInheritScope() : "(Java)";
+                if (scope != null && scope.contains("Java")) {
+                    selectCategory("Java");
+                    if (currentColorSchemeJavaPage != null) {
+                        currentColorSchemeJavaPage.selectTreeItem(targetKey);
+                    }
+                } else {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                }
+            });
+            wrapInScroll(currentColorSchemeScalaPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -3495,6 +3622,7 @@ public class SettingsDialog {
                 new TreeItem<>("Ruby"),
                 new TreeItem<>("Rust"),
                 new TreeItem<>("Sass/SCSS"),
+                new TreeItem<>("Scala"),
                 new TreeItem<>("Shell Script"),
                 new TreeItem<>("Spring EL"),
                 new TreeItem<>("SQL"),
@@ -3950,6 +4078,12 @@ public class SettingsDialog {
         if (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified()) {
             currentColorSchemeRustPage.apply();
         }
+        if (currentColorSchemeSassPage != null && currentColorSchemeSassPage.isModified()) {
+            currentColorSchemeSassPage.apply();
+        }
+        if (currentColorSchemeScalaPage != null && currentColorSchemeScalaPage.isModified()) {
+            currentColorSchemeScalaPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -4034,7 +4168,9 @@ public class SettingsDialog {
                 || (currentColorSchemeRDocPage != null && currentColorSchemeRDocPage.isModified())
                 || (currentColorSchemeRegExpPage != null && currentColorSchemeRegExpPage.isModified())
                 || (currentColorSchemeRubyPage != null && currentColorSchemeRubyPage.isModified())
-                || (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified());
+                || (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified())
+                || (currentColorSchemeSassPage != null && currentColorSchemeSassPage.isModified())
+                || (currentColorSchemeScalaPage != null && currentColorSchemeScalaPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -4288,6 +4424,12 @@ public class SettingsDialog {
             if (currentColorSchemeRustPage != null) {
                 currentColorSchemeRustPage.reset();
             }
+            if (currentColorSchemeSassPage != null) {
+                currentColorSchemeSassPage.reset();
+            }
+            if (currentColorSchemeScalaPage != null) {
+                currentColorSchemeScalaPage.reset();
+            }
             stage.close();
         });
 
@@ -4496,6 +4638,14 @@ public class SettingsDialog {
 
     public SettingsColorSchemeRustPage getCurrentColorSchemeRustPage() {
         return currentColorSchemeRustPage;
+    }
+
+    public SettingsColorSchemeSassPage getCurrentColorSchemeSassPage() {
+        return currentColorSchemeSassPage;
+    }
+
+    public SettingsColorSchemeScalaPage getCurrentColorSchemeScalaPage() {
+        return currentColorSchemeScalaPage;
     }
 
     public Button getApplyButton() {
