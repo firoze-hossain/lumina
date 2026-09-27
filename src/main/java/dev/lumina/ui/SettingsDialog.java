@@ -131,6 +131,11 @@ public class SettingsDialog {
     private SettingsColorSchemeSpringELPage currentColorSchemeSpringELPage;
     private SettingsColorSchemeSQLPage currentColorSchemeSQLPage;
     private SettingsColorSchemeTableDiffPage currentColorSchemeTableDiffPage;
+    private SettingsColorSchemeTOMLPage currentColorSchemeTomlPage;
+    private SettingsColorSchemeTypeScriptPage currentColorSchemeTypeScriptPage;
+    private SettingsColorSchemeVelocityPage currentColorSchemeVelocityPage;
+    private SettingsColorSchemeXMLPage currentColorSchemeXmlPage;
+    private SettingsColorSchemeXPathPage currentColorSchemeXPathPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -1272,6 +1277,66 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TOML".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeTomlPage != null) {
+                            currentColorSchemeTomlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TypeScript".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeTypeScriptPage != null) {
+                            currentColorSchemeTypeScriptPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Velocity".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeVelocityPage != null) {
+                            currentColorSchemeVelocityPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XML".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeXmlPage != null) {
+                            currentColorSchemeXmlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XPath".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeXPathPage != null) {
+                            currentColorSchemeXPathPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -2277,6 +2342,90 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeTableDiffPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("TOML".equals(pageName)) {
+                if (currentColorSchemeTomlPage == null) {
+                    currentColorSchemeTomlPage = new SettingsColorSchemeTOMLPage();
+                }
+                currentColorSchemeTomlPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeTomlPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeTomlPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeTomlPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("TypeScript".equals(pageName)) {
+                if (currentColorSchemeTypeScriptPage == null) {
+                    currentColorSchemeTypeScriptPage = new SettingsColorSchemeTypeScriptPage();
+                }
+                currentColorSchemeTypeScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeTypeScriptPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeTypeScriptPage.setOnNavigateToInheritedListener(targetKey -> {
+                    if (targetKey.contains("Static property")) {
+                        currentColorSchemeTypeScriptPage.selectTreeItem(targetKey);
+                    } else {
+                        selectCategory("Language Defaults");
+                        if (currentColorSchemeLanguageDefaultsPage != null) {
+                            currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                        }
+                    }
+                });
+                wrapInScroll(currentColorSchemeTypeScriptPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Velocity".equals(pageName)) {
+                if (currentColorSchemeVelocityPage == null) {
+                    currentColorSchemeVelocityPage = new SettingsColorSchemeVelocityPage();
+                }
+                currentColorSchemeVelocityPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeVelocityPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeVelocityPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeVelocityPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("XML".equals(pageName)) {
+                if (currentColorSchemeXmlPage == null) {
+                    currentColorSchemeXmlPage = new SettingsColorSchemeXMLPage();
+                }
+                currentColorSchemeXmlPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeXmlPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeXmlPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeXmlPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("XPath".equals(pageName)) {
+                if (currentColorSchemeXPathPage == null) {
+                    currentColorSchemeXPathPage = new SettingsColorSchemeXPathPage();
+                }
+                currentColorSchemeXPathPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeXPathPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeXPathPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeXPathPage);
                 updateApplyButtonState();
                 return;
             }
@@ -3657,6 +3806,85 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeTableDiffPage);
             return;
         }
+        if ("TOML".equals(pageName)) {
+            if (currentColorSchemeTomlPage == null) {
+                currentColorSchemeTomlPage = new SettingsColorSchemeTOMLPage();
+            }
+            currentColorSchemeTomlPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeTomlPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeTomlPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeTomlPage);
+            return;
+        }
+        if ("TypeScript".equals(pageName)) {
+            if (currentColorSchemeTypeScriptPage == null) {
+                currentColorSchemeTypeScriptPage = new SettingsColorSchemeTypeScriptPage();
+            }
+            currentColorSchemeTypeScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeTypeScriptPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeTypeScriptPage.setOnNavigateToInheritedListener(targetKey -> {
+                if (targetKey.contains("Static property")) {
+                    currentColorSchemeTypeScriptPage.selectTreeItem(targetKey);
+                } else {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                }
+            });
+            wrapInScroll(currentColorSchemeTypeScriptPage);
+            return;
+        }
+        if ("Velocity".equals(pageName)) {
+            if (currentColorSchemeVelocityPage == null) {
+                currentColorSchemeVelocityPage = new SettingsColorSchemeVelocityPage();
+            }
+            currentColorSchemeVelocityPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeVelocityPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeVelocityPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeVelocityPage);
+            return;
+        }
+        if ("XML".equals(pageName)) {
+            if (currentColorSchemeXmlPage == null) {
+                currentColorSchemeXmlPage = new SettingsColorSchemeXMLPage();
+            }
+            currentColorSchemeXmlPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeXmlPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeXmlPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeXmlPage);
+            return;
+        }
+        if ("XPath".equals(pageName)) {
+            if (currentColorSchemeXPathPage == null) {
+                currentColorSchemeXPathPage = new SettingsColorSchemeXPathPage();
+            }
+            currentColorSchemeXPathPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeXPathPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeXPathPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeXPathPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -4360,6 +4588,21 @@ public class SettingsDialog {
         if (currentColorSchemeTableDiffPage != null && currentColorSchemeTableDiffPage.isModified()) {
             currentColorSchemeTableDiffPage.apply();
         }
+        if (currentColorSchemeTomlPage != null && currentColorSchemeTomlPage.isModified()) {
+            currentColorSchemeTomlPage.apply();
+        }
+        if (currentColorSchemeTypeScriptPage != null && currentColorSchemeTypeScriptPage.isModified()) {
+            currentColorSchemeTypeScriptPage.apply();
+        }
+        if (currentColorSchemeVelocityPage != null && currentColorSchemeVelocityPage.isModified()) {
+            currentColorSchemeVelocityPage.apply();
+        }
+        if (currentColorSchemeXmlPage != null && currentColorSchemeXmlPage.isModified()) {
+            currentColorSchemeXmlPage.apply();
+        }
+        if (currentColorSchemeXPathPage != null && currentColorSchemeXPathPage.isModified()) {
+            currentColorSchemeXPathPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -4451,7 +4694,12 @@ public class SettingsDialog {
                 || (currentColorSchemeSmartyPage != null && currentColorSchemeSmartyPage.isModified())
                 || (currentColorSchemeSpringELPage != null && currentColorSchemeSpringELPage.isModified())
                 || (currentColorSchemeSQLPage != null && currentColorSchemeSQLPage.isModified())
-                || (currentColorSchemeTableDiffPage != null && currentColorSchemeTableDiffPage.isModified());
+                || (currentColorSchemeTableDiffPage != null && currentColorSchemeTableDiffPage.isModified())
+                || (currentColorSchemeTomlPage != null && currentColorSchemeTomlPage.isModified())
+                || (currentColorSchemeTypeScriptPage != null && currentColorSchemeTypeScriptPage.isModified())
+                || (currentColorSchemeVelocityPage != null && currentColorSchemeVelocityPage.isModified())
+                || (currentColorSchemeXmlPage != null && currentColorSchemeXmlPage.isModified())
+                || (currentColorSchemeXPathPage != null && currentColorSchemeXPathPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -4726,6 +4974,21 @@ public class SettingsDialog {
             if (currentColorSchemeTableDiffPage != null) {
                 currentColorSchemeTableDiffPage.reset();
             }
+            if (currentColorSchemeTomlPage != null) {
+                currentColorSchemeTomlPage.reset();
+            }
+            if (currentColorSchemeTypeScriptPage != null) {
+                currentColorSchemeTypeScriptPage.reset();
+            }
+            if (currentColorSchemeVelocityPage != null) {
+                currentColorSchemeVelocityPage.reset();
+            }
+            if (currentColorSchemeXmlPage != null) {
+                currentColorSchemeXmlPage.reset();
+            }
+            if (currentColorSchemeXPathPage != null) {
+                currentColorSchemeXPathPage.reset();
+            }
             stage.close();
         });
 
@@ -4962,6 +5225,26 @@ public class SettingsDialog {
 
     public SettingsColorSchemeTableDiffPage getCurrentColorSchemeTableDiffPage() {
         return currentColorSchemeTableDiffPage;
+    }
+
+    public SettingsColorSchemeTOMLPage getCurrentColorSchemeTOMLPage() {
+        return currentColorSchemeTomlPage;
+    }
+
+    public SettingsColorSchemeTypeScriptPage getCurrentColorSchemeTypeScriptPage() {
+        return currentColorSchemeTypeScriptPage;
+    }
+
+    public SettingsColorSchemeVelocityPage getCurrentColorSchemeVelocityPage() {
+        return currentColorSchemeVelocityPage;
+    }
+
+    public SettingsColorSchemeXMLPage getCurrentColorSchemeXMLPage() {
+        return currentColorSchemeXmlPage;
+    }
+
+    public SettingsColorSchemeXPathPage getCurrentColorSchemeXPathPage() {
+        return currentColorSchemeXPathPage;
     }
 
     public Button getApplyButton() {
