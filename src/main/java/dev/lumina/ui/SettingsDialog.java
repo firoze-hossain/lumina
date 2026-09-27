@@ -117,6 +117,10 @@ public class SettingsDialog {
     private SettingsColorSchemeProtocolBufferTextPage currentColorSchemeProtocolBufferTextPage;
     private SettingsColorSchemePythonPage currentColorSchemePythonPage;
     private SettingsColorSchemeQutePage currentColorSchemeQutePage;
+    private SettingsColorSchemeRDocPage currentColorSchemeRDocPage;
+    private SettingsColorSchemeRegExpPage currentColorSchemeRegExpPage;
+    private SettingsColorSchemeRubyPage currentColorSchemeRubyPage;
+    private SettingsColorSchemeRustPage currentColorSchemeRustPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -1126,6 +1130,54 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("RDoc".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeRDocPage != null) {
+                            currentColorSchemeRDocPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("RegExp".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeRegExpPage != null) {
+                            currentColorSchemeRegExpPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Ruby".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeRubyPage != null) {
+                            currentColorSchemeRubyPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Rust".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeRustPage != null) {
+                            currentColorSchemeRustPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -1937,6 +1989,70 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeQutePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("RDoc".equals(pageName)) {
+                if (currentColorSchemeRDocPage == null) {
+                    currentColorSchemeRDocPage = new SettingsColorSchemeRDocPage();
+                }
+                currentColorSchemeRDocPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeRDocPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeRDocPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeRDocPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("RegExp".equals(pageName)) {
+                if (currentColorSchemeRegExpPage == null) {
+                    currentColorSchemeRegExpPage = new SettingsColorSchemeRegExpPage();
+                }
+                currentColorSchemeRegExpPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeRegExpPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeRegExpPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeRegExpPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Ruby".equals(pageName)) {
+                if (currentColorSchemeRubyPage == null) {
+                    currentColorSchemeRubyPage = new SettingsColorSchemeRubyPage();
+                }
+                currentColorSchemeRubyPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeRubyPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeRubyPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeRubyPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Rust".equals(pageName)) {
+                if (currentColorSchemeRustPage == null) {
+                    currentColorSchemeRustPage = new SettingsColorSchemeRustPage();
+                }
+                currentColorSchemeRustPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeRustPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeRustPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeRustPage);
                 updateApplyButtonState();
                 return;
             }
@@ -3134,6 +3250,66 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeQutePage);
             return;
         }
+        if ("RDoc".equals(pageName)) {
+            if (currentColorSchemeRDocPage == null) {
+                currentColorSchemeRDocPage = new SettingsColorSchemeRDocPage();
+            }
+            currentColorSchemeRDocPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeRDocPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeRDocPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeRDocPage);
+            return;
+        }
+        if ("RegExp".equals(pageName)) {
+            if (currentColorSchemeRegExpPage == null) {
+                currentColorSchemeRegExpPage = new SettingsColorSchemeRegExpPage();
+            }
+            currentColorSchemeRegExpPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeRegExpPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeRegExpPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeRegExpPage);
+            return;
+        }
+        if ("Ruby".equals(pageName)) {
+            if (currentColorSchemeRubyPage == null) {
+                currentColorSchemeRubyPage = new SettingsColorSchemeRubyPage();
+            }
+            currentColorSchemeRubyPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeRubyPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeRubyPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeRubyPage);
+            return;
+        }
+        if ("Rust".equals(pageName)) {
+            if (currentColorSchemeRustPage == null) {
+                currentColorSchemeRustPage = new SettingsColorSchemeRustPage();
+            }
+            currentColorSchemeRustPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeRustPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeRustPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeRustPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -3762,6 +3938,18 @@ public class SettingsDialog {
         if (currentColorSchemeQutePage != null && currentColorSchemeQutePage.isModified()) {
             currentColorSchemeQutePage.apply();
         }
+        if (currentColorSchemeRDocPage != null && currentColorSchemeRDocPage.isModified()) {
+            currentColorSchemeRDocPage.apply();
+        }
+        if (currentColorSchemeRegExpPage != null && currentColorSchemeRegExpPage.isModified()) {
+            currentColorSchemeRegExpPage.apply();
+        }
+        if (currentColorSchemeRubyPage != null && currentColorSchemeRubyPage.isModified()) {
+            currentColorSchemeRubyPage.apply();
+        }
+        if (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified()) {
+            currentColorSchemeRustPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -3842,7 +4030,11 @@ public class SettingsDialog {
                 || (currentColorSchemePropertiesPage != null && currentColorSchemePropertiesPage.isModified())
                 || (currentColorSchemeProtocolBufferTextPage != null && currentColorSchemeProtocolBufferTextPage.isModified())
                 || (currentColorSchemePythonPage != null && currentColorSchemePythonPage.isModified())
-                || (currentColorSchemeQutePage != null && currentColorSchemeQutePage.isModified());
+                || (currentColorSchemeQutePage != null && currentColorSchemeQutePage.isModified())
+                || (currentColorSchemeRDocPage != null && currentColorSchemeRDocPage.isModified())
+                || (currentColorSchemeRegExpPage != null && currentColorSchemeRegExpPage.isModified())
+                || (currentColorSchemeRubyPage != null && currentColorSchemeRubyPage.isModified())
+                || (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -4084,6 +4276,18 @@ public class SettingsDialog {
             if (currentColorSchemeQutePage != null) {
                 currentColorSchemeQutePage.reset();
             }
+            if (currentColorSchemeRDocPage != null) {
+                currentColorSchemeRDocPage.reset();
+            }
+            if (currentColorSchemeRegExpPage != null) {
+                currentColorSchemeRegExpPage.reset();
+            }
+            if (currentColorSchemeRubyPage != null) {
+                currentColorSchemeRubyPage.reset();
+            }
+            if (currentColorSchemeRustPage != null) {
+                currentColorSchemeRustPage.reset();
+            }
             stage.close();
         });
 
@@ -4276,6 +4480,22 @@ public class SettingsDialog {
 
     public SettingsColorSchemeQutePage getCurrentColorSchemeQutePage() {
         return currentColorSchemeQutePage;
+    }
+
+    public SettingsColorSchemeRDocPage getCurrentColorSchemeRDocPage() {
+        return currentColorSchemeRDocPage;
+    }
+
+    public SettingsColorSchemeRegExpPage getCurrentColorSchemeRegExpPage() {
+        return currentColorSchemeRegExpPage;
+    }
+
+    public SettingsColorSchemeRubyPage getCurrentColorSchemeRubyPage() {
+        return currentColorSchemeRubyPage;
+    }
+
+    public SettingsColorSchemeRustPage getCurrentColorSchemeRustPage() {
+        return currentColorSchemeRustPage;
     }
 
     public Button getApplyButton() {
