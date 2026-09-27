@@ -97,6 +97,11 @@ public class SettingsDialog {
     private SettingsColorSchemeHtmlPage currentColorSchemeHtmlPage;
     private SettingsColorSchemeHttpRequestPage currentColorSchemeHttpRequestPage;
     private SettingsColorSchemeJavaScriptPage currentColorSchemeJavaScriptPage;
+    private SettingsColorSchemeJpaHibernateQlPage currentColorSchemeJpaHibernateQlPage;
+    private SettingsColorSchemeJsonPage currentColorSchemeJsonPage;
+    private SettingsColorSchemeJsonPathPage currentColorSchemeJsonPathPage;
+    private SettingsColorSchemeJspPage currentColorSchemeJspPage;
+    private SettingsColorSchemeJupyterNotebooksPage currentColorSchemeJupyterNotebooksPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -866,6 +871,66 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JPA/Hibernate QL".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeJpaHibernateQlPage != null) {
+                            currentColorSchemeJpaHibernateQlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSON".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeJsonPage != null) {
+                            currentColorSchemeJsonPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSONPath".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeJsonPathPage != null) {
+                            currentColorSchemeJsonPathPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSP".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeJspPage != null) {
+                            currentColorSchemeJspPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Jupyter Notebooks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeJupyterNotebooksPage != null) {
+                            currentColorSchemeJupyterNotebooksPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -1357,6 +1422,86 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeJavaScriptPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JPA/Hibernate QL".equals(pageName)) {
+                if (currentColorSchemeJpaHibernateQlPage == null) {
+                    currentColorSchemeJpaHibernateQlPage = new SettingsColorSchemeJpaHibernateQlPage();
+                }
+                currentColorSchemeJpaHibernateQlPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeJpaHibernateQlPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeJpaHibernateQlPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeJpaHibernateQlPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JSON".equals(pageName)) {
+                if (currentColorSchemeJsonPage == null) {
+                    currentColorSchemeJsonPage = new SettingsColorSchemeJsonPage();
+                }
+                currentColorSchemeJsonPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeJsonPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeJsonPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeJsonPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JSONPath".equals(pageName)) {
+                if (currentColorSchemeJsonPathPage == null) {
+                    currentColorSchemeJsonPathPage = new SettingsColorSchemeJsonPathPage();
+                }
+                currentColorSchemeJsonPathPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeJsonPathPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeJsonPathPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeJsonPathPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("JSP".equals(pageName)) {
+                if (currentColorSchemeJspPage == null) {
+                    currentColorSchemeJspPage = new SettingsColorSchemeJspPage();
+                }
+                currentColorSchemeJspPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeJspPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeJspPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeJspPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Jupyter Notebooks".equals(pageName)) {
+                if (currentColorSchemeJupyterNotebooksPage == null) {
+                    currentColorSchemeJupyterNotebooksPage = new SettingsColorSchemeJupyterNotebooksPage();
+                }
+                currentColorSchemeJupyterNotebooksPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeJupyterNotebooksPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeJupyterNotebooksPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeJupyterNotebooksPage);
                 updateApplyButtonState();
                 return;
             }
@@ -2254,6 +2399,81 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeJavaScriptPage);
             return;
         }
+        if ("JPA/Hibernate QL".equals(pageName)) {
+            if (currentColorSchemeJpaHibernateQlPage == null) {
+                currentColorSchemeJpaHibernateQlPage = new SettingsColorSchemeJpaHibernateQlPage();
+            }
+            currentColorSchemeJpaHibernateQlPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeJpaHibernateQlPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeJpaHibernateQlPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeJpaHibernateQlPage);
+            return;
+        }
+        if ("JSON".equals(pageName)) {
+            if (currentColorSchemeJsonPage == null) {
+                currentColorSchemeJsonPage = new SettingsColorSchemeJsonPage();
+            }
+            currentColorSchemeJsonPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeJsonPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeJsonPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeJsonPage);
+            return;
+        }
+        if ("JSONPath".equals(pageName)) {
+            if (currentColorSchemeJsonPathPage == null) {
+                currentColorSchemeJsonPathPage = new SettingsColorSchemeJsonPathPage();
+            }
+            currentColorSchemeJsonPathPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeJsonPathPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeJsonPathPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeJsonPathPage);
+            return;
+        }
+        if ("JSP".equals(pageName)) {
+            if (currentColorSchemeJspPage == null) {
+                currentColorSchemeJspPage = new SettingsColorSchemeJspPage();
+            }
+            currentColorSchemeJspPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeJspPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeJspPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeJspPage);
+            return;
+        }
+        if ("Jupyter Notebooks".equals(pageName)) {
+            if (currentColorSchemeJupyterNotebooksPage == null) {
+                currentColorSchemeJupyterNotebooksPage = new SettingsColorSchemeJupyterNotebooksPage();
+            }
+            currentColorSchemeJupyterNotebooksPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeJupyterNotebooksPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeJupyterNotebooksPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeJupyterNotebooksPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -2817,6 +3037,21 @@ public class SettingsDialog {
         if (currentColorSchemeJavaScriptPage != null && currentColorSchemeJavaScriptPage.isModified()) {
             currentColorSchemeJavaScriptPage.apply();
         }
+        if (currentColorSchemeJpaHibernateQlPage != null && currentColorSchemeJpaHibernateQlPage.isModified()) {
+            currentColorSchemeJpaHibernateQlPage.apply();
+        }
+        if (currentColorSchemeJsonPage != null && currentColorSchemeJsonPage.isModified()) {
+            currentColorSchemeJsonPage.apply();
+        }
+        if (currentColorSchemeJsonPathPage != null && currentColorSchemeJsonPathPage.isModified()) {
+            currentColorSchemeJsonPathPage.apply();
+        }
+        if (currentColorSchemeJspPage != null && currentColorSchemeJspPage.isModified()) {
+            currentColorSchemeJspPage.apply();
+        }
+        if (currentColorSchemeJupyterNotebooksPage != null && currentColorSchemeJupyterNotebooksPage.isModified()) {
+            currentColorSchemeJupyterNotebooksPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -2877,7 +3112,12 @@ public class SettingsDialog {
                 || (currentColorSchemeGroovyPage != null && currentColorSchemeGroovyPage.isModified())
                 || (currentColorSchemeHtmlPage != null && currentColorSchemeHtmlPage.isModified())
                 || (currentColorSchemeHttpRequestPage != null && currentColorSchemeHttpRequestPage.isModified())
-                || (currentColorSchemeJavaScriptPage != null && currentColorSchemeJavaScriptPage.isModified());
+                || (currentColorSchemeJavaScriptPage != null && currentColorSchemeJavaScriptPage.isModified())
+                || (currentColorSchemeJpaHibernateQlPage != null && currentColorSchemeJpaHibernateQlPage.isModified())
+                || (currentColorSchemeJsonPage != null && currentColorSchemeJsonPage.isModified())
+                || (currentColorSchemeJsonPathPage != null && currentColorSchemeJsonPathPage.isModified())
+                || (currentColorSchemeJspPage != null && currentColorSchemeJspPage.isModified())
+                || (currentColorSchemeJupyterNotebooksPage != null && currentColorSchemeJupyterNotebooksPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -3059,6 +3299,21 @@ public class SettingsDialog {
             if (currentColorSchemeJavaScriptPage != null) {
                 currentColorSchemeJavaScriptPage.reset();
             }
+            if (currentColorSchemeJpaHibernateQlPage != null) {
+                currentColorSchemeJpaHibernateQlPage.reset();
+            }
+            if (currentColorSchemeJsonPage != null) {
+                currentColorSchemeJsonPage.reset();
+            }
+            if (currentColorSchemeJsonPathPage != null) {
+                currentColorSchemeJsonPathPage.reset();
+            }
+            if (currentColorSchemeJspPage != null) {
+                currentColorSchemeJspPage.reset();
+            }
+            if (currentColorSchemeJupyterNotebooksPage != null) {
+                currentColorSchemeJupyterNotebooksPage.reset();
+            }
             stage.close();
         });
 
@@ -3167,6 +3422,26 @@ public class SettingsDialog {
 
     public SettingsColorSchemeJavaScriptPage getCurrentColorSchemeJavaScriptPage() {
         return currentColorSchemeJavaScriptPage;
+    }
+
+    public SettingsColorSchemeJpaHibernateQlPage getCurrentColorSchemeJpaHibernateQlPage() {
+        return currentColorSchemeJpaHibernateQlPage;
+    }
+
+    public SettingsColorSchemeJsonPage getCurrentColorSchemeJsonPage() {
+        return currentColorSchemeJsonPage;
+    }
+
+    public SettingsColorSchemeJsonPathPage getCurrentColorSchemeJsonPathPage() {
+        return currentColorSchemeJsonPathPage;
+    }
+
+    public SettingsColorSchemeJspPage getCurrentColorSchemeJspPage() {
+        return currentColorSchemeJspPage;
+    }
+
+    public SettingsColorSchemeJupyterNotebooksPage getCurrentColorSchemeJupyterNotebooksPage() {
+        return currentColorSchemeJupyterNotebooksPage;
     }
 
     public Button getApplyButton() {
