@@ -116,15 +116,59 @@ public class SettingsColorSchemeMicronautELPage extends VBox {
 
         categoryTree = new TreeView<>(rootItem);
         categoryTree.setShowRoot(false);
-        categoryTree.getStyleClass().add("settings-tree-view");
+        categoryTree.getStyleClass().addAll("color-scheme-tree", "settings-tree-view");
         categoryTree.setPrefWidth(300);
         categoryTree.setPrefHeight(270);
-        categoryTree.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #BCBEC4; -fx-border-color: #393B40; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+        categoryTree.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #393B40; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px;");
+        categoryTree.setCellFactory(tv -> new TreeCell<>() {
+            {
+                setOnMouseEntered(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: #35373B; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8;");
+                    }
+                });
+                setOnMouseExited(e -> {
+                    if (!isEmpty() && getItem() != null && !isSelected()) {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8;");
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    updateStyle();
+                }
+            }
+
+            @Override
+            public void updateSelected(boolean selected) {
+                super.updateSelected(selected);
+                updateStyle();
+            }
+
+            private void updateStyle() {
+                if (isEmpty() || getItem() == null) {
+                    setStyle("-fx-background-color: transparent;");
+                } else if (isSelected()) {
+                    setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 3 8 3 8;");
+                } else {
+                    setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8 3 8;");
+                }
+            }
+        });
 
         // Filter search field above tree
         TextField searchField = new TextField();
         searchField.setPromptText("Search");
-        searchField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #BCBEC4; -fx-prompt-text-fill: #5F6166; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 4 8;");
+        searchField.getStyleClass().add("settings-search-field");
+        searchField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #6F737A; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 4 8;");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterTree(newVal));
 
         VBox treeBox = new VBox(6, searchField, categoryTree);

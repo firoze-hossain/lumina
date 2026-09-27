@@ -1840,9 +1840,12 @@
     -fx-text-fill: inherit;
 }
 
-/* Color Scheme Category Tree (matching standard dark theme #2B2D30) */
-.color-scheme-tree {
+/* Color Scheme Category Tree & Settings Inner TreeViews (matching standard dark theme #2B2D30) */
+.color-scheme-tree,
+.settings-tree-view,
+.settings-page .tree-view {
     -fx-background-color: #2B2D30;
+    -fx-control-inner-background: #2B2D30;
     -fx-background-insets: 0;
     -fx-border-color: #393B40;
     -fx-border-radius: 4;
@@ -1852,18 +1855,36 @@
     -fx-accent: #2E436E;
 }
 
-.color-scheme-tree .tree-cell {
+.color-scheme-tree > .virtual-flow,
+.color-scheme-tree > .virtual-flow > .clipped-container,
+.color-scheme-tree > .virtual-flow > .clipped-container > .sheet,
+.settings-tree-view > .virtual-flow,
+.settings-tree-view > .virtual-flow > .clipped-container,
+.settings-tree-view > .virtual-flow > .clipped-container > .sheet,
+.settings-page .tree-view > .virtual-flow,
+.settings-page .tree-view > .virtual-flow > .clipped-container,
+.settings-page .tree-view > .virtual-flow > .clipped-container > .sheet {
+    -fx-background-color: #2B2D30;
+}
+
+.color-scheme-tree .tree-cell,
+.settings-tree-view .tree-cell,
+.settings-page .tree-view .tree-cell {
     -fx-background-color: #2B2D30;
     -fx-text-fill: #DFE1E5;
     -fx-padding: 3 8 3 8;
     -fx-font-size: 13px;
 }
 
-.color-scheme-tree .tree-cell:empty {
+.color-scheme-tree .tree-cell:empty,
+.settings-tree-view .tree-cell:empty,
+.settings-page .tree-view .tree-cell:empty {
     -fx-background-color: #2B2D30;
 }
 
-.color-scheme-tree .tree-cell:hover {
+.color-scheme-tree .tree-cell:hover,
+.settings-tree-view .tree-cell:hover,
+.settings-page .tree-view .tree-cell:hover {
     -fx-background-color: #35373B;
 }
 
@@ -1871,31 +1892,67 @@
 .color-scheme-tree .tree-cell:filled:selected,
 .color-scheme-tree .tree-cell:focused:selected,
 .color-scheme-tree:focused > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
-.color-scheme-tree > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected {
+.color-scheme-tree > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
+.settings-tree-view .tree-cell:selected,
+.settings-tree-view .tree-cell:filled:selected,
+.settings-tree-view .tree-cell:focused:selected,
+.settings-tree-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
+.settings-tree-view > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
+.settings-page .tree-view .tree-cell:selected,
+.settings-page .tree-view .tree-cell:filled:selected,
+.settings-page .tree-view .tree-cell:focused:selected,
+.settings-page .tree-view:focused > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected,
+.settings-page .tree-view > .virtual-flow > .clipped-container > .sheet > .tree-cell:filled:selected {
     -fx-background: #2E436E;
     -fx-background-color: #2E436E;
     -fx-text-fill: #FFFFFF;
 }
 
 .color-scheme-tree .tree-cell:selected .text,
-.color-scheme-tree .tree-cell:filled:selected .text {
+.color-scheme-tree .tree-cell:filled:selected .text,
+.settings-tree-view .tree-cell:selected .text,
+.settings-tree-view .tree-cell:filled:selected .text,
+.settings-page .tree-view .tree-cell:selected .text,
+.settings-page .tree-view .tree-cell:filled:selected .text {
     -fx-fill: #FFFFFF;
 }
 
-.color-scheme-tree .tree-cell .arrow {
+.color-scheme-tree .tree-cell .arrow,
+.settings-tree-view .tree-cell .arrow,
+.settings-page .tree-view .tree-cell .arrow {
     -fx-background-color: #848BA3;
 }
 
-.color-scheme-tree .tree-cell:selected .arrow {
+.color-scheme-tree .tree-cell:selected .arrow,
+.settings-tree-view .tree-cell:selected .arrow,
+.settings-page .tree-view .tree-cell:selected .arrow {
     -fx-background-color: #FFFFFF;
 }
 
-.color-scheme-tree .tree-cell .tree-disclosure-node {
+.color-scheme-tree .tree-cell .tree-disclosure-node,
+.settings-tree-view .tree-cell .tree-disclosure-node,
+.settings-page .tree-view .tree-cell .tree-disclosure-node {
     -fx-padding: 2 6 2 0;
 }
 
-.color-scheme-tree .tree-cell .label {
+.color-scheme-tree .tree-cell .label,
+.settings-tree-view .tree-cell .label,
+.settings-page .tree-view .tree-cell .label {
     -fx-text-fill: inherit;
+}
+
+/* Settings Search Field */
+.settings-search-field {
+    -fx-background-color: #2B2D30;
+    -fx-text-fill: #DFE1E5;
+    -fx-prompt-text-fill: #6F737A;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 4 8;
+}
+.settings-search-field:focused {
+    -fx-border-color: #3574F0;
 }
 
 .settings-page {
