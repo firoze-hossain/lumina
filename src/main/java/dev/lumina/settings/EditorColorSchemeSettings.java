@@ -271,6 +271,7 @@ public final class EditorColorSchemeSettings {
         public String getKey() { return key; }
         public String getDisplayName() { return displayName; }
         public List<String> getCategoryPath() { return categoryPath; }
+        public List<String> getGroupPath() { return categoryPath; }
         public ColorAttribute getDefaultAttribute() { return defaultAttribute.clone(); }
         public String getInheritFrom() { return inheritFrom; }
         public String getInheritTarget() { return inheritFrom; }
@@ -5543,8 +5544,344 @@ public final class EditorColorSchemeSettings {
                     true, true, true, true, EffectType.BORDERED, true)
     );
 
-    private static final Map<String, AttributesDescriptor> DESCRIPTORS_BY_KEY;
-    static {
+    private static final class ShellScriptHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("Backquotes", "Backquotes", List.of(),
+                    inheritAttr("#CF8E6D", null, "String->Escape sequence->Valid", "(Language Defaults)"),
+                    "String->Escape sequence->Valid", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces // curly brackets", "curly brackets", List.of("Braces"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Braces", "(Language Defaults)"),
+                    "Braces and Operators->Braces", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces // Parentheses", "Parentheses", List.of("Braces"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces // square brackets", "square brackets", List.of("Braces"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Brackets", "(Language Defaults)"),
+                    "Braces and Operators->Brackets", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Commands // Builtin command", "Builtin command", List.of("Commands"),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Commands // External command", "External command", List.of("Commands"),
+                    inheritAttr("#56A8F5", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Conditional operators", "Conditional operators", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Function declaration", "Function declaration", List.of(),
+                    inheritAttr("#56A8F5", null, "Functions->Function declaration", "(Language Defaults)"),
+                    "Functions->Function declaration", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Here documents", "Here documents", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Here documents end", "Here documents end", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Here documents start", "Here documents start", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword", "Keyword", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Line comment", "Line comment", List.of(),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Line comment", "(Language Defaults)", true),
+                    "Comments->Line comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Number", "Number", List.of(),
+                    inheritAttr("#2AACB8", null, "Number", "(Language Defaults)"),
+                    "Number", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Raw string", "Raw string", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Redirection", "Redirection", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Shebang comment", "Shebang comment", List.of(),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Line comment", "(Language Defaults)", true),
+                    "Comments->Line comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String", "String", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variables // Composed variable", "Composed variable", List.of("Variables"),
+                    inheritAttr("#56A8F5", null, "Variables->Local variable", "(Language Defaults)"),
+                    "Variables->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variables // Positional parameter", "Positional parameter", List.of("Variables"),
+                    inheritAttr("#2AACB8", null, "Variables->Parameter", "(Language Defaults)"),
+                    "Variables->Parameter", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variables // Subshell command substitution", "Subshell command substitution", List.of("Variables"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Braces", "(Language Defaults)"),
+                    "Braces and Operators->Braces", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variables // Variable declaration", "Variable declaration", List.of("Variables"),
+                    inheritAttr("#BCBEC4", null, "Variables->Local variable", "(Language Defaults)"),
+                    "Variables->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variables // Variable use", "Variable use", List.of("Variables"),
+                    inheritAttr("#56A8F5", null, "Variables->Local variable", "(Language Defaults)"),
+                    "Variables->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class TableDiffHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("Excluded from diff", "Excluded from diff", List.of(),
+                    new ColorAttribute("#7A7E85", "#2A2D33", false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Fuzzy match - matched", "Fuzzy match - matched", List.of(),
+                    inheritAttr(null, "#1B3B2B", "#499C54", EffectType.BORDERED, "#2E683E", "Search Results->Text search result", "(General)"),
+                    "Search Results->Text search result", "(General)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Fuzzy match - mismatched", "Fuzzy match - mismatched", List.of(),
+                    inheritAttr(null, "#114957", "#72D6D6", EffectType.BORDERED, "#165E70", "Search Results->Text search result", "(General)"),
+                    "Search Results->Text search result", "(General)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class SqlHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("Bad token", "Bad token", List.of(),
+                    inheritAttr(null, "#402626", "#F75464", EffectType.UNDERWAVED, "#F75464", "Bad character", "(Language Defaults)"),
+                    "Bad character", "(Language Defaults)",
+                    true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Braces", "Braces", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Braces", "(Language Defaults)"),
+                    "Braces and Operators->Braces", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Brackets", "Brackets", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Brackets", "(Language Defaults)"),
+                    "Braces and Operators->Brackets", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Column", "Column", List.of(),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comma", "Comma", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Comma", "(Language Defaults)"),
+                    "Braces and Operators->Comma", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comment", "Comment", List.of(),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Line comment", "(Language Defaults)", true),
+                    "Comments->Line comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Database object", "Database object", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Dot", "Dot", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Dot", "(Language Defaults)"),
+                    "Braces and Operators->Dot", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("External command", "External command", List.of(),
+                    inheritAttr("#56A8F5", null, "Identifiers->Function call", "(Language Defaults)"),
+                    "Identifiers->Function call", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword", "Keyword", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Label", "Label", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Number token", "Number token", List.of(),
+                    inheritAttr("#2AACB8", null, "Number", "(Language Defaults)"),
+                    "Number", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Outer query column", "Outer query column", List.of(),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Parameter", "Parameter", List.of(),
+                    inheritAttr("#BCBEC4", null, "Variables->Parameter", "(Language Defaults)"),
+                    "Variables->Parameter", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Parentheses", "Parentheses", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Procedure or function", "Procedure or function", List.of(),
+                    inheritAttr("#56A8F5", null, "Identifiers->Function call", "(Language Defaults)"),
+                    "Identifiers->Function call", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Schema", "Schema", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Semicolon", "Semicolon", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Semicolon", "(Language Defaults)"),
+                    "Braces and Operators->Semicolon", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String token", "String token", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Synthetic entity", "Synthetic entity", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Table", "Table", List.of(),
+                    inheritAttr("#BCBEC4", null, "Classes and Interfaces->Class", "(Language Defaults)"),
+                    "Classes and Interfaces->Class", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Table or column alias", "Table or column alias", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Type", "Type", List.of(),
+                    inheritAttr("#CF8E6D", null, "Classes and Interfaces->Class", "(Language Defaults)"),
+                    "Classes and Interfaces->Class", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Variable", "Variable", List.of(),
+                    inheritAttr("#BCBEC4", null, "Variables->Local variable", "(Language Defaults)"),
+                    "Variables->Local variable", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class SmartyHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("Bad character", "Bad character", List.of(),
+                    inheritAttr(null, "#402626", "#F75464", EffectType.UNDERWAVED, "#F75464", "Bad character", "(Language Defaults)"),
+                    "Bad character", "(Language Defaults)",
+                    true, true, true, true, EffectType.UNDERWAVED, true),
+            new AttributesDescriptor("Brackets", "Brackets", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Brackets", "(Language Defaults)"),
+                    "Braces and Operators->Brackets", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Comment", "Comment", List.of(),
+                    inheritAttr("#7A7E85", null, false, true, "Comments->Block comment", "(Language Defaults)", true),
+                    "Comments->Block comment", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Identifier", "Identifier", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword", "Keyword", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Number", "Number", List.of(),
+                    inheritAttr("#2AACB8", null, "Number", "(Language Defaults)"),
+                    "Number", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Operator", "Operator", List.of(),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Smarty code", "Smarty code", List.of(),
+                    new ColorAttribute("#BCBEC4", null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("String", "String", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class SpringELHolder {
+        private static final List<AttributesDescriptor> DESCRIPTORS = List.of(
+            new AttributesDescriptor("Background", "Background", List.of(),
+                    new ColorAttribute(null, "#1E1F22", false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Bean prefix", "Bean prefix", List.of(),
+                    new ColorAttribute("#E0C46C", null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Braces and Operators // Braces", "Braces", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Braces", "(Language Defaults)"),
+                    "Braces and Operators->Braces", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Brackets", "Brackets", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Brackets", "(Language Defaults)"),
+                    "Braces and Operators->Brackets", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Colon", "Colon", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Colon", "(Language Defaults)"),
+                    "Braces and Operators->Colon", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Comma", "Comma", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Comma", "(Language Defaults)"),
+                    "Braces and Operators->Comma", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Dot", "Dot", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Dot", "(Language Defaults)"),
+                    "Braces and Operators->Dot", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Operation sign", "Operation sign", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Operation sign", "(Language Defaults)"),
+                    "Braces and Operators->Operation sign", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Braces and Operators // Parentheses", "Parentheses", List.of("Braces and Operators"),
+                    inheritAttr("#BCBEC4", null, "Braces and Operators->Parentheses", "(Language Defaults)"),
+                    "Braces and Operators->Parentheses", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Expression bounds", "Expression bounds", List.of(),
+                    new ColorAttribute("#CF8E6D", null, false, false),
+                    null, null,
+                    true, true, true, true, EffectType.BORDERED, false),
+            new AttributesDescriptor("Identifier", "Identifier", List.of(),
+                    inheritAttr("#BCBEC4", null, "Identifiers->Default", "(Language Defaults)"),
+                    "Identifiers->Default", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Keyword", "Keyword", List.of(),
+                    inheritAttr("#CF8E6D", null, "Keyword", "(Language Defaults)"),
+                    "Keyword", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Method call", "Method call", List.of(),
+                    inheritAttr("#56A8F5", null, "Classes->Instance method", "(Language Defaults)"),
+                    "Classes->Instance method", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Number", "Number", List.of(),
+                    inheritAttr("#2AACB8", null, "Number", "(Language Defaults)"),
+                    "Number", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Property key", "Property key", List.of(),
+                    inheritAttr("#C77DBB", null, "Classes->Instance field", "(Language Defaults)"),
+                    "Classes->Instance field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Qualified type", "Qualified type", List.of(),
+                    inheritAttr("#BCBEC4", null, "Classes and Interfaces->Class", "(Language Defaults)"),
+                    "Classes and Interfaces->Class", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("Static field", "Static field", List.of(),
+                    inheritAttr("#C77DBB", null, false, true, "Classes->Static field", "(Language Defaults)", true),
+                    "Classes->Static field", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true),
+            new AttributesDescriptor("String text", "String text", List.of(),
+                    inheritAttr("#6AAB73", null, "String->String text", "(Language Defaults)"),
+                    "String->String text", "(Language Defaults)",
+                    true, true, true, true, EffectType.BORDERED, true)
+        );
+    }
+
+    private static final class DescriptorsByKeyHolder {
+        private static final Map<String, AttributesDescriptor> MAP = buildDescriptorsByKey();
+    }
+
+    private static Map<String, AttributesDescriptor> buildDescriptorsByKey() {
         Map<String, AttributesDescriptor> map = new LinkedHashMap<>();
         for (AttributesDescriptor desc : GENERAL_DESCRIPTORS) {
             map.put(desc.getKey(), desc);
@@ -5708,7 +6045,27 @@ public final class EditorColorSchemeSettings {
             map.putIfAbsent(desc.getKey(), desc);
             map.put("Scala // " + desc.getKey(), desc);
         }
-        DESCRIPTORS_BY_KEY = Collections.unmodifiableMap(map);
+        for (AttributesDescriptor desc : ShellScriptHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("Shell Script // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : TableDiffHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("Table Diff // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : SqlHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("SQL // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : SmartyHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("Smarty // " + desc.getKey(), desc);
+        }
+        for (AttributesDescriptor desc : SpringELHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc);
+            map.put("Spring EL // " + desc.getKey(), desc);
+        }
+        return Collections.unmodifiableMap(map);
     }
 
     public static List<AttributesDescriptor> getGeneralDescriptors() {
@@ -5923,15 +6280,35 @@ public final class EditorColorSchemeSettings {
         return SCALA_DESCRIPTORS;
     }
 
+    public static List<AttributesDescriptor> getShellScriptDescriptors() {
+        return ShellScriptHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getTableDiffDescriptors() {
+        return TableDiffHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getSqlDescriptors() {
+        return SqlHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getSmartyDescriptors() {
+        return SmartyHolder.DESCRIPTORS;
+    }
+
+    public static List<AttributesDescriptor> getSpringELDescriptors() {
+        return SpringELHolder.DESCRIPTORS;
+    }
+
     public static AttributesDescriptor getDescriptor(String key) {
         if (key == null) return null;
         String norm = normalizeKey(key);
-        return DESCRIPTORS_BY_KEY.get(norm);
+        return DescriptorsByKeyHolder.MAP.get(norm);
     }
 
     public static AttributesDescriptor getDescriptor(String language, String key) {
         if (language != null && key != null) {
-            AttributesDescriptor desc = DESCRIPTORS_BY_KEY.get(language + " // " + key);
+            AttributesDescriptor desc = DescriptorsByKeyHolder.MAP.get(language + " // " + key);
             if (desc != null) return desc;
         }
         return getDescriptor(key);
@@ -6144,6 +6521,26 @@ public final class EditorColorSchemeSettings {
         for (AttributesDescriptor desc : SCALA_DESCRIPTORS) {
             map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
             map.put("Scala // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : ShellScriptHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("Shell Script // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : TableDiffHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("Table Diff // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : SqlHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("SQL // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : SmartyHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("Smarty // " + desc.getKey(), desc.getDefaultAttribute());
+        }
+        for (AttributesDescriptor desc : SpringELHolder.DESCRIPTORS) {
+            map.putIfAbsent(desc.getKey(), desc.getDefaultAttribute());
+            map.put("Spring EL // " + desc.getKey(), desc.getDefaultAttribute());
         }
         return map;
     }

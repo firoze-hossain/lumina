@@ -126,6 +126,11 @@ public class SettingsDialog {
     private SettingsColorSchemeRustPage currentColorSchemeRustPage;
     private SettingsColorSchemeSassPage currentColorSchemeSassPage;
     private SettingsColorSchemeScalaPage currentColorSchemeScalaPage;
+    private SettingsColorSchemeShellScriptPage currentColorSchemeShellScriptPage;
+    private SettingsColorSchemeSmartyPage currentColorSchemeSmartyPage;
+    private SettingsColorSchemeSpringELPage currentColorSchemeSpringELPage;
+    private SettingsColorSchemeSQLPage currentColorSchemeSQLPage;
+    private SettingsColorSchemeTableDiffPage currentColorSchemeTableDiffPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -1207,6 +1212,66 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Shell Script".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeShellScriptPage != null) {
+                            currentColorSchemeShellScriptPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Smarty".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeSmartyPage != null) {
+                            currentColorSchemeSmartyPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Spring EL".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeSpringELPage != null) {
+                            currentColorSchemeSpringELPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SQL".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeSQLPage != null) {
+                            currentColorSchemeSQLPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Table Diff".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Color Scheme".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentColorSchemeTableDiffPage != null) {
+                            currentColorSchemeTableDiffPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -2132,6 +2197,86 @@ public class SettingsDialog {
                     }
                 });
                 wrapInScroll(currentColorSchemeScalaPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Shell Script".equals(pageName)) {
+                if (currentColorSchemeShellScriptPage == null) {
+                    currentColorSchemeShellScriptPage = new SettingsColorSchemeShellScriptPage();
+                }
+                currentColorSchemeShellScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeShellScriptPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeShellScriptPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeShellScriptPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Smarty".equals(pageName)) {
+                if (currentColorSchemeSmartyPage == null) {
+                    currentColorSchemeSmartyPage = new SettingsColorSchemeSmartyPage();
+                }
+                currentColorSchemeSmartyPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeSmartyPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeSmartyPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeSmartyPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Spring EL".equals(pageName)) {
+                if (currentColorSchemeSpringELPage == null) {
+                    currentColorSchemeSpringELPage = new SettingsColorSchemeSpringELPage();
+                }
+                currentColorSchemeSpringELPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeSpringELPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeSpringELPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeSpringELPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("SQL".equals(pageName)) {
+                if (currentColorSchemeSQLPage == null) {
+                    currentColorSchemeSQLPage = new SettingsColorSchemeSQLPage();
+                }
+                currentColorSchemeSQLPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeSQLPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeSQLPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Language Defaults");
+                    if (currentColorSchemeLanguageDefaultsPage != null) {
+                        currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeSQLPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Table Diff".equals(pageName)) {
+                if (currentColorSchemeTableDiffPage == null) {
+                    currentColorSchemeTableDiffPage = new SettingsColorSchemeTableDiffPage();
+                }
+                currentColorSchemeTableDiffPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentColorSchemeTableDiffPage.getHeaderBar().setOnNavigateToTheme(navigateToTheme);
+                currentColorSchemeTableDiffPage.setOnNavigateToInheritedListener(targetKey -> {
+                    selectCategory("Color Scheme", "General");
+                    if (currentColorSchemeGeneralPage != null) {
+                        currentColorSchemeGeneralPage.selectTreeItem(targetKey);
+                    }
+                });
+                wrapInScroll(currentColorSchemeTableDiffPage);
                 updateApplyButtonState();
                 return;
             }
@@ -3437,6 +3582,81 @@ public class SettingsDialog {
             wrapInScroll(currentColorSchemeScalaPage);
             return;
         }
+        if ("Shell Script".equals(pageName)) {
+            if (currentColorSchemeShellScriptPage == null) {
+                currentColorSchemeShellScriptPage = new SettingsColorSchemeShellScriptPage();
+            }
+            currentColorSchemeShellScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeShellScriptPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeShellScriptPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeShellScriptPage);
+            return;
+        }
+        if ("Smarty".equals(pageName)) {
+            if (currentColorSchemeSmartyPage == null) {
+                currentColorSchemeSmartyPage = new SettingsColorSchemeSmartyPage();
+            }
+            currentColorSchemeSmartyPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeSmartyPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeSmartyPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeSmartyPage);
+            return;
+        }
+        if ("Spring EL".equals(pageName)) {
+            if (currentColorSchemeSpringELPage == null) {
+                currentColorSchemeSpringELPage = new SettingsColorSchemeSpringELPage();
+            }
+            currentColorSchemeSpringELPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeSpringELPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeSpringELPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeSpringELPage);
+            return;
+        }
+        if ("SQL".equals(pageName)) {
+            if (currentColorSchemeSQLPage == null) {
+                currentColorSchemeSQLPage = new SettingsColorSchemeSQLPage();
+            }
+            currentColorSchemeSQLPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeSQLPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeSQLPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Language Defaults");
+                if (currentColorSchemeLanguageDefaultsPage != null) {
+                    currentColorSchemeLanguageDefaultsPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeSQLPage);
+            return;
+        }
+        if ("Table Diff".equals(pageName)) {
+            if (currentColorSchemeTableDiffPage == null) {
+                currentColorSchemeTableDiffPage = new SettingsColorSchemeTableDiffPage();
+            }
+            currentColorSchemeTableDiffPage.setOnModifiedListener(this::updateApplyButtonState);
+            currentColorSchemeTableDiffPage.getHeaderBar().setOnNavigateToTheme(() -> selectCategory("Appearance"));
+            currentColorSchemeTableDiffPage.setOnNavigateToInheritedListener(targetKey -> {
+                selectCategory("Color Scheme", "General");
+                if (currentColorSchemeGeneralPage != null) {
+                    currentColorSchemeGeneralPage.selectTreeItem(targetKey);
+                }
+            });
+            wrapInScroll(currentColorSchemeTableDiffPage);
+            return;
+        }
         VBox page = new VBox(12);
         page.setPadding(new Insets(16, 24, 20, 24));
         page.setStyle("-fx-background-color: #1E1F22;");
@@ -3624,6 +3844,7 @@ public class SettingsDialog {
                 new TreeItem<>("Sass/SCSS"),
                 new TreeItem<>("Scala"),
                 new TreeItem<>("Shell Script"),
+                new TreeItem<>("Smarty"),
                 new TreeItem<>("Spring EL"),
                 new TreeItem<>("SQL"),
                 new TreeItem<>("Table Diff"),
@@ -3803,7 +4024,8 @@ public class SettingsDialog {
         return null;
     }
 
-    private TreeItem<String> findItem(TreeItem<String> root, String text) {
+    public TreeItem<String> findItem(TreeItem<String> root, String text) {
+        if (root == null || text == null) return null;
         if (root.getValue() != null && root.getValue().equals(text)) {
             return root;
         }
@@ -3816,11 +4038,50 @@ public class SettingsDialog {
 
     public void selectCategory(String categoryName) {
         if (categoryName == null || tree == null) return;
-        TreeItem<String> item = findItem(tree.getRoot(), categoryName);
+        TreeItem<String> item = null;
+        TreeItem<String> selected = tree.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            TreeItem<String> p = selected;
+            boolean underCS = false;
+            while (p != null) {
+                if ("Color Scheme".equals(p.getValue())) {
+                    underCS = true;
+                    break;
+                }
+                p = p.getParent();
+            }
+            if (underCS) {
+                TreeItem<String> csRoot = findItem(tree.getRoot(), "Color Scheme");
+                if (csRoot != null) {
+                    item = findItem(csRoot, categoryName);
+                }
+            }
+        }
+        if (item == null) {
+            item = findItem(tree.getRoot(), categoryName);
+        }
         if (item != null) {
             expandAncestors(item);
             tree.getSelectionModel().select(item);
         }
+    }
+
+    public void selectCategory(String parentCategory, String categoryName) {
+        if (categoryName == null || tree == null) return;
+        if (parentCategory == null) {
+            selectCategory(categoryName);
+            return;
+        }
+        TreeItem<String> parentItem = findItem(tree.getRoot(), parentCategory);
+        if (parentItem != null) {
+            TreeItem<String> item = findItem(parentItem, categoryName);
+            if (item != null) {
+                expandAncestors(item);
+                tree.getSelectionModel().select(item);
+                return;
+            }
+        }
+        selectCategory(categoryName);
     }
 
     private void expandAncestors(TreeItem<String> item) {
@@ -4084,6 +4345,21 @@ public class SettingsDialog {
         if (currentColorSchemeScalaPage != null && currentColorSchemeScalaPage.isModified()) {
             currentColorSchemeScalaPage.apply();
         }
+        if (currentColorSchemeShellScriptPage != null && currentColorSchemeShellScriptPage.isModified()) {
+            currentColorSchemeShellScriptPage.apply();
+        }
+        if (currentColorSchemeSmartyPage != null && currentColorSchemeSmartyPage.isModified()) {
+            currentColorSchemeSmartyPage.apply();
+        }
+        if (currentColorSchemeSpringELPage != null && currentColorSchemeSpringELPage.isModified()) {
+            currentColorSchemeSpringELPage.apply();
+        }
+        if (currentColorSchemeSQLPage != null && currentColorSchemeSQLPage.isModified()) {
+            currentColorSchemeSQLPage.apply();
+        }
+        if (currentColorSchemeTableDiffPage != null && currentColorSchemeTableDiffPage.isModified()) {
+            currentColorSchemeTableDiffPage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -4170,7 +4446,12 @@ public class SettingsDialog {
                 || (currentColorSchemeRubyPage != null && currentColorSchemeRubyPage.isModified())
                 || (currentColorSchemeRustPage != null && currentColorSchemeRustPage.isModified())
                 || (currentColorSchemeSassPage != null && currentColorSchemeSassPage.isModified())
-                || (currentColorSchemeScalaPage != null && currentColorSchemeScalaPage.isModified());
+                || (currentColorSchemeScalaPage != null && currentColorSchemeScalaPage.isModified())
+                || (currentColorSchemeShellScriptPage != null && currentColorSchemeShellScriptPage.isModified())
+                || (currentColorSchemeSmartyPage != null && currentColorSchemeSmartyPage.isModified())
+                || (currentColorSchemeSpringELPage != null && currentColorSchemeSpringELPage.isModified())
+                || (currentColorSchemeSQLPage != null && currentColorSchemeSQLPage.isModified())
+                || (currentColorSchemeTableDiffPage != null && currentColorSchemeTableDiffPage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -4430,6 +4711,21 @@ public class SettingsDialog {
             if (currentColorSchemeScalaPage != null) {
                 currentColorSchemeScalaPage.reset();
             }
+            if (currentColorSchemeShellScriptPage != null) {
+                currentColorSchemeShellScriptPage.reset();
+            }
+            if (currentColorSchemeSmartyPage != null) {
+                currentColorSchemeSmartyPage.reset();
+            }
+            if (currentColorSchemeSpringELPage != null) {
+                currentColorSchemeSpringELPage.reset();
+            }
+            if (currentColorSchemeSQLPage != null) {
+                currentColorSchemeSQLPage.reset();
+            }
+            if (currentColorSchemeTableDiffPage != null) {
+                currentColorSchemeTableDiffPage.reset();
+            }
             stage.close();
         });
 
@@ -4646,6 +4942,26 @@ public class SettingsDialog {
 
     public SettingsColorSchemeScalaPage getCurrentColorSchemeScalaPage() {
         return currentColorSchemeScalaPage;
+    }
+
+    public SettingsColorSchemeShellScriptPage getCurrentColorSchemeShellScriptPage() {
+        return currentColorSchemeShellScriptPage;
+    }
+
+    public SettingsColorSchemeSmartyPage getCurrentColorSchemeSmartyPage() {
+        return currentColorSchemeSmartyPage;
+    }
+
+    public SettingsColorSchemeSpringELPage getCurrentColorSchemeSpringELPage() {
+        return currentColorSchemeSpringELPage;
+    }
+
+    public SettingsColorSchemeSQLPage getCurrentColorSchemeSQLPage() {
+        return currentColorSchemeSQLPage;
+    }
+
+    public SettingsColorSchemeTableDiffPage getCurrentColorSchemeTableDiffPage() {
+        return currentColorSchemeTableDiffPage;
     }
 
     public Button getApplyButton() {
