@@ -122,6 +122,7 @@ public class SettingsColorSchemeLessPage extends VBox {
 
         categoryTree = new TreeView<>(rootItem);
         categoryTree.setShowRoot(false);
+        categoryTree.getStyleClass().add("color-scheme-tree");
         categoryTree.setPrefWidth(330);
         categoryTree.setMinWidth(260);
         categoryTree.setMaxWidth(420);
