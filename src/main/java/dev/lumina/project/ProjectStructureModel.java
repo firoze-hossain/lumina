@@ -578,8 +578,22 @@ public final class ProjectStructureModel {
                     if (relMatch.find()) {
                         model.setLanguageLevel(relMatch.group(1).trim());
                         module.setLanguageLevel(relMatch.group(1).trim());
+                    } else {
+                        Matcher javaVerMatch = Pattern.compile("<java\\.version>([^<]+)</java\\.version>").matcher(pom);
+                        if (javaVerMatch.find()) {
+                            model.setLanguageLevel(javaVerMatch.group(1).trim());
+                            module.setLanguageLevel(javaVerMatch.group(1).trim());
+                        } else {
+                            Matcher targetMatch = Pattern.compile("<maven\\.compiler\\.target>([^<]+)</maven\\.compiler\\.target>").matcher(pom);
+                            if (targetMatch.find()) {
+                                model.setLanguageLevel(targetMatch.group(1).trim());
+                                module.setLanguageLevel(targetMatch.group(1).trim());
+                            }
+                        }
                     }
                 }
+
+                applyProjectSpecificJdk(root, model, module, allSdks);
 
                 // Extract Maven properties to resolve ${...} in versions/classifiers
                 Map<String, String> properties = new HashMap<>();
@@ -696,6 +710,7 @@ public final class ProjectStructureModel {
                         model.setLanguageLevel(ver);
                         module.setLanguageLevel(ver);
                     }
+                    applyProjectSpecificJdk(root, model, module, allSdks);
                     if (content.contains("org.springframework.boot")) {
                         model.getFacets().add(new FacetModel("Spring Boot", "Spring", module.getName()));
                     }
@@ -845,6 +860,48 @@ public final class ProjectStructureModel {
                 if (item.type() == type) return item;
             }
             return !sdks.isEmpty() ? sdks.getFirst() : null;
+        }
+
+        private static void applyProjectSpecificJdk(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
+            try {
+                ExternalLibrariesService.JdkCandidate cand = ExternalLibrariesService.detectJdkForProject(root);
+                if (cand != null && cand.homePath() != null && !cand.homePath().isBlank()) {
+                    ProjectSdk.SdkItem matched = null;
+                    for (ProjectSdk.SdkItem s : allSdks) {
+                        if (s.homePath() != null && s.homePath().equals(cand.homePath())) {
+                            matched = s;
+                            break;
+                        }
+                    }
+                    if (matched == null) {
+                        for (ProjectSdk.SdkItem s : allSdks) {
+                            if (s.type() == ProjectSdk.SdkType.JDK && s.name().equalsIgnoreCase(cand.name())) {
+                                matched = s;
+                                break;
+                            }
+                        }
+                    }
+                    if (matched == null) {
+                        matched = new ProjectSdk.SdkItem(
+                                "jdk-" + cand.majorVersion() + "-" + Math.abs(cand.homePath().hashCode()),
+                                cand.name(),
+                                ProjectSdk.SdkType.JDK,
+                                cand.homePath(),
+                                String.valueOf(cand.majorVersion()),
+                                false,
+                                true,
+                                List.of()
+                        );
+                    }
+                    model.setProjectSdk(matched);
+                    for (int i = 0; i < module.getDependencies().size(); i++) {
+                        if (module.getDependencies().get(i).isSdk()) {
+                            module.getDependencies().set(i, DependencyItem.forSdk(matched));
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
         private static void readIdeaMetadata(Path root, ProjectStructureModel model, ModuleModel module, List<ProjectSdk.SdkItem> allSdks) {
