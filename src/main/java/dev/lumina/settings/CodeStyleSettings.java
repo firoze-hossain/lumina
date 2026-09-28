@@ -1094,21 +1094,7 @@ public class Foo {
         LanguageCodeStyleProvider.register(JavaScriptCodeStyleSettings.createProvider());
 
         // 12. JSON
-        registerSimpleProvider("JSON", "JSON", 2, 2, 4, """
-{
-  "name": "lumina-ide",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "core": "^1.0.0",
-    "parser": "^2.1.0"
-  },
-  "scripts": {
-    "build": "mvn compile",
-    "test": "mvn test"
-  }
-}
-""");
+        LanguageCodeStyleProvider.register(JsonCodeStyleSettings.createProvider());
 
         // 13. JSP
         registerSimpleProvider("JSP", "JSP", 2, 2, 4, """
@@ -1395,8 +1381,8 @@ services:
         }
 
         int targetIndent = settings.getIndent();
-        int baseIndentUnit = 4; // All sample snippets are written with 4 spaces per standard indent level
-        if (targetIndent <= 0) targetIndent = 4;
+        int baseIndentUnit = "JSON".equals(settings.getLanguageId()) ? 2 : 4;
+        if (targetIndent <= 0) targetIndent = baseIndentUnit;
 
         String[] lines = sample.split("\r?\n", -1);
         StringBuilder result = new StringBuilder();

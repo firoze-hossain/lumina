@@ -14,6 +14,7 @@ import dev.lumina.settings.GroovyCodeStyleSettings;
 import dev.lumina.settings.HtmlCodeStyleSettings;
 import dev.lumina.settings.HttpRequestCodeStyleSettings;
 import dev.lumina.settings.JavaScriptCodeStyleSettings;
+import dev.lumina.settings.JsonCodeStyleSettings;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
@@ -2370,6 +2371,158 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testJsonCodeStyleSettingsDefaultsAndProperties() {
+        JsonCodeStyleSettings settings = new JsonCodeStyleSettings("JSON");
+        assertEquals("JSON", settings.getLanguageId());
+
+        // Tab 1: Tabs and Indents defaults (media_1790604939250.png)
+        assertEquals(4, settings.getTabSize());
+        assertEquals(2, settings.getIndent());
+        assertEquals(8, settings.getContinuationIndent());
+        assertFalse(settings.isUseTabCharacter());
+        assertFalse(settings.isSmartTabs());
+        assertFalse(settings.isKeepIndentsOnEmptyLines());
+
+        // Tab 2: Spaces defaults (media_1790604950902.png)
+        assertFalse(settings.isSpaceWithinBraces());
+        assertFalse(settings.isSpaceWithinBrackets());
+        assertFalse(settings.isSpaceBeforeComma());
+        assertTrue(settings.isSpaceAfterComma());
+        assertFalse(settings.isSpaceBeforeColon());
+        assertTrue(settings.isSpaceAfterColon());
+
+        // Tab 3: Blank Lines defaults (media_1790604967970.png)
+        assertEquals(0, settings.getBlankLinesKeepInCode());
+
+        // Tab 4: Wrapping and Braces defaults (media_1790604979247.png)
+        assertEquals(120, settings.getHardWrapAt());
+        assertEquals("Default: No", settings.getWrapOnTyping());
+        assertEquals("Default: None", settings.getVisualGuides());
+        assertTrue(settings.isKeepLineBreaks());
+        assertFalse(settings.isKeepTrailingComma());
+        assertFalse(settings.isWrapLongLines());
+        assertEquals("Wrap always", settings.getArrayWrapping());
+        assertEquals("Wrap always", settings.getObjectWrapping());
+        assertEquals("Do not align", settings.getObjectAlign());
+
+        // Test mutating and copy
+        settings.setIndent(4);
+        settings.setSpaceWithinBraces(true);
+        settings.setSpaceBeforeColon(true);
+        settings.setSpaceAfterComma(false);
+        settings.setBlankLinesKeepInCode(1);
+        settings.setKeepTrailingComma(true);
+        settings.setArrayWrapping("Do not wrap");
+        settings.setObjectAlign("On colon");
+
+        JsonCodeStyleSettings copy = settings.copy();
+        assertEquals(4, copy.getIndent());
+        assertTrue(copy.isSpaceWithinBraces());
+        assertTrue(copy.isSpaceBeforeColon());
+        assertFalse(copy.isSpaceAfterComma());
+        assertEquals(1, copy.getBlankLinesKeepInCode());
+        assertTrue(copy.isKeepTrailingComma());
+        assertEquals("Do not wrap", copy.getArrayWrapping());
+        assertEquals("On colon", copy.getObjectAlign());
+    }
+
+    @Test
+    void testJsonLanguageCodeStyleProvider() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("JSON");
+        assertNotNull(provider, "JSON provider must be registered");
+        assertEquals("JSON", provider.getLanguageId());
+        assertEquals("JSON", provider.getDisplayName());
+
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of("Tabs and Indents", "Spaces", "Blank Lines", "Wrapping and Braces"), tabs);
+
+        // Check Tabs and Indents options
+        List<CodeStyleSettings.CodeStyleGroup> indentsGroups = provider.getOptionGroups("Tabs and Indents");
+        assertFalse(indentsGroups.isEmpty());
+        assertEquals(6, indentsGroups.get(0).getOptions().size());
+
+        // Check Spaces options
+        List<CodeStyleSettings.CodeStyleGroup> spacesGroups = provider.getOptionGroups("Spaces");
+        assertEquals(2, spacesGroups.size());
+        assertEquals("Within", spacesGroups.get(0).getName());
+        assertEquals(2, spacesGroups.get(0).getOptions().size());
+        assertEquals("Other", spacesGroups.get(1).getName());
+        assertEquals(4, spacesGroups.get(1).getOptions().size());
+
+        // Check Blank Lines options
+        List<CodeStyleSettings.CodeStyleGroup> blankGroups = provider.getOptionGroups("Blank Lines");
+        assertEquals(1, blankGroups.size());
+        assertEquals("Keep maximum blank lines", blankGroups.get(0).getName());
+        assertTrue(blankGroups.get(0).isDivider());
+        assertEquals(1, blankGroups.get(0).getOptions().size());
+        assertEquals("In code:", blankGroups.get(0).getOptions().get(0).getLabel());
+
+        // Check Wrapping and Braces options
+        List<CodeStyleSettings.CodeStyleGroup> wrapGroups = provider.getOptionGroups("Wrapping and Braces");
+        assertEquals(4, wrapGroups.size());
+        assertEquals("General", wrapGroups.get(0).getName());
+        assertEquals("Keep when reformatting", wrapGroups.get(1).getName());
+        assertTrue(wrapGroups.get(1).isCollapsible());
+        assertEquals("Arrays", wrapGroups.get(2).getName());
+        assertEquals("Objects", wrapGroups.get(3).getName());
+        assertTrue(wrapGroups.get(3).isCollapsible());
+        assertNotNull(wrapGroups.get(3).getHeaderComboKey());
+
+        // Sample code validation
+        String sample = provider.getSampleCode();
+        assertNotNull(sample);
+        assertTrue(sample.contains("\"json literals are\""));
+        assertTrue(sample.contains("6.62606975e-34"));
+        assertTrue(sample.contains("\\u0062\\u0061\\u0072"));
+        assertTrue(sample.contains("null"));
+    }
+
+    @Test
+    void testJsonSettingsCodeStyleLanguagePage() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testJsonSettingsCodeStyleLanguagePage");
+            return;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("JSON");
+                assertEquals("JSON", page.getLanguageId());
+                assertEquals("Tabs and Indents", page.getActiveTab());
+
+                // Switch tabs
+                page.setActiveTab("Spaces");
+                assertEquals("Spaces", page.getActiveTab());
+
+                page.setActiveTab("Blank Lines");
+                assertEquals("Blank Lines", page.getActiveTab());
+
+                page.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", page.getActiveTab());
+
+                assertFalse(page.isModified());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "JSON language page test timed out");
+        } catch (InterruptedException e) {
+            fail("JSON language page test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
@@ -2386,6 +2539,7 @@ class SettingsCodeStyleTest {
                 "src/main/java/dev/lumina/settings/HtmlCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/HttpRequestCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/JavaScriptCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/JsonCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",
