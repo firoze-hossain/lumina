@@ -140,6 +140,9 @@ public class SettingsDialog {
     private SettingsColorSchemeYAMLPage currentColorSchemeYamlPage;
     private SettingsColorSchemeByScopePage currentColorSchemeByScopePage;
     private SettingsColorSchemeImagesPage currentColorSchemeImagesPage;
+    private SettingsCodeStylePage currentCodeStylePage;
+    private SettingsCodeStyleLanguagePage currentCodeStyleLanguagePage;
+    private SettingsCodeStyleJavaPage currentCodeStyleJavaPage;
     private Button applyButton;
 
     public SettingsDialog(Stage owner) {
@@ -1385,6 +1388,42 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentColorSchemeImagesPage != null) {
                             currentColorSchemeImagesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Code Style".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCodeStylePage != null) {
+                            currentCodeStylePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Java".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Code Style".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCodeStyleJavaPage != null) {
+                            currentCodeStyleJavaPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if (chain.stream().anyMatch(ci -> "Code Style".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCodeStyleLanguagePage != null) {
+                            currentCodeStyleLanguagePage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -2844,6 +2883,40 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Code Style".equals(pageName)) {
+                if (currentCodeStylePage == null) {
+                    currentCodeStylePage = new SettingsCodeStylePage();
+                }
+                currentCodeStylePage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentCodeStylePage);
+                updateApplyButtonState();
+                return;
+            }
+
+            boolean isCodeStyleLang = false;
+            TreeItem<String> parentIt = selected.getParent();
+            while (parentIt != null) {
+                if ("Code Style".equals(parentIt.getValue())) {
+                    isCodeStyleLang = true;
+                    break;
+                }
+                parentIt = parentIt.getParent();
+            }
+
+            if (isCodeStyleLang || dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider.getProvider(pageName) != null) {
+                if ("Java".equals(pageName)) {
+                    currentCodeStyleJavaPage = new SettingsCodeStyleJavaPage();
+                    currentCodeStyleJavaPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentCodeStyleJavaPage);
+                    updateApplyButtonState();
+                    return;
+                }
+                currentCodeStyleLanguagePage = new SettingsCodeStyleLanguagePage(pageName);
+                currentCodeStyleLanguagePage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentCodeStyleLanguagePage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -4081,7 +4154,7 @@ public class SettingsDialog {
                 "Live Templates", "File Types", "Copyright", "Inlay Hints", "Duplicates",
                 "Emmet", "Intentions", "Language Injections", "Natural Languages",
                 "Reader Mode", "TextMate Bundles", "TODO"
-        ).contains(pageName);
+        ).contains(pageName) || dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider.getProvider(pageName) != null;
     }
 
     private boolean isKeymapPage(String pageName) {
@@ -4094,6 +4167,14 @@ public class SettingsDialog {
     }
 
     // --------------------------------------------------- Category Tree
+
+    private TreeItem<String> buildCodeStyleTree() {
+        TreeItem<String> codeStyle = new TreeItem<>("Code Style");
+        for (dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider p : dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider.getAllProviders()) {
+            codeStyle.getChildren().add(new TreeItem<>(p.getDisplayName()));
+        }
+        return codeStyle;
+    }
 
     private TreeView<String> buildCategoryTree() {
         TreeItem<String> root = new TreeItem<>("Settings");
@@ -4261,7 +4342,7 @@ public class SettingsDialog {
                 new TreeItem<>("Code Editing"),
                 new TreeItem<>("Font"),
                 colorSchemeNode,
-                new TreeItem<>("Code Style"),
+                buildCodeStyleTree(),
                 new TreeItem<>("Inspections"),
                 new TreeItem<>("File and Code Templates"),
                 new TreeItem<>("File Encodings"),
@@ -4769,6 +4850,15 @@ public class SettingsDialog {
         if (currentColorSchemeImagesPage != null && currentColorSchemeImagesPage.isModified()) {
             currentColorSchemeImagesPage.apply();
         }
+        if (currentCodeStylePage != null && currentCodeStylePage.isModified()) {
+            currentCodeStylePage.apply();
+        }
+        if (currentCodeStyleJavaPage != null && currentCodeStyleJavaPage.isModified()) {
+            currentCodeStyleJavaPage.apply();
+        }
+        if (currentCodeStyleLanguagePage != null && currentCodeStyleLanguagePage.isModified()) {
+            currentCodeStyleLanguagePage.apply();
+        }
         updateApplyButtonState();
     }
 
@@ -4869,7 +4959,10 @@ public class SettingsDialog {
                 || (currentColorSchemeXsltPage != null && currentColorSchemeXsltPage.isModified())
                 || (currentColorSchemeYamlPage != null && currentColorSchemeYamlPage.isModified())
                 || (currentColorSchemeByScopePage != null && currentColorSchemeByScopePage.isModified())
-                || (currentColorSchemeImagesPage != null && currentColorSchemeImagesPage.isModified());
+                || (currentColorSchemeImagesPage != null && currentColorSchemeImagesPage.isModified())
+                || (currentCodeStylePage != null && currentCodeStylePage.isModified())
+                || (currentCodeStyleJavaPage != null && currentCodeStyleJavaPage.isModified())
+                || (currentCodeStyleLanguagePage != null && currentCodeStyleLanguagePage.isModified());
         applyButton.setDisable(!modified);
         applyButton.setStyle(modified
                 ? "-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 6 16 6 16; -fx-background-radius: 4; -fx-cursor: hand;"
@@ -5443,6 +5536,18 @@ public class SettingsDialog {
 
     public SettingsColorSchemeImagesPage getCurrentColorSchemeImagesPage() {
         return currentColorSchemeImagesPage;
+    }
+
+    public SettingsCodeStylePage getCurrentCodeStylePage() {
+        return currentCodeStylePage;
+    }
+
+    public SettingsCodeStyleJavaPage getCurrentCodeStyleJavaPage() {
+        return currentCodeStyleJavaPage;
+    }
+
+    public SettingsCodeStyleLanguagePage getCurrentCodeStyleLanguagePage() {
+        return currentCodeStyleLanguagePage;
     }
 
     public Button getApplyButton() {
