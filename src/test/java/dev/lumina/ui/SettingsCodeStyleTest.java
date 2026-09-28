@@ -11,6 +11,9 @@ import dev.lumina.settings.ErbCodeStyleSettings;
 import dev.lumina.settings.GoCodeStyleSettings;
 import dev.lumina.settings.GradleDeclarativeCodeStyleSettings;
 import dev.lumina.settings.GroovyCodeStyleSettings;
+import dev.lumina.settings.HtmlCodeStyleSettings;
+import dev.lumina.settings.HttpRequestCodeStyleSettings;
+import dev.lumina.settings.JavaScriptCodeStyleSettings;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
@@ -122,7 +125,7 @@ class SettingsCodeStyleTest {
 
         LanguageCodeStyleProvider jsProvider = LanguageCodeStyleProvider.getProvider("JavaScript");
         LanguageCodeStyleSettings jsSettings = jsProvider.createDefaultSettings();
-        assertEquals(2, jsSettings.getIndent(), "JavaScript default indent should be 2");
+        assertEquals(4, jsSettings.getIndent(), "JavaScript default indent should be 4");
     }
 
     @Test
@@ -576,6 +579,20 @@ class SettingsCodeStyleTest {
                 assertNotNull(dialog.getCurrentCodeStyleLanguagePage(), "Code Style Language page should be loaded for Kotlin");
                 assertEquals("Kotlin", dialog.getCurrentCodeStyleLanguagePage().getLanguageId());
 
+                // Test selecting JavaScript under Code Style -> SettingsCodeStyleLanguagePage (NOT Smart Keys!)
+                dialog.selectCategory("JavaScript");
+                assertNotNull(dialog.getCurrentCodeStyleLanguagePage(), "Code Style Language page should be loaded for JavaScript");
+                assertEquals("JavaScript", dialog.getCurrentCodeStyleLanguagePage().getLanguageId());
+                assertNull(dialog.getCurrentSmartKeysJsPage(), "Smart Keys JavaScript page must NOT be loaded when selecting Code Style > JavaScript");
+
+                // Test selecting Smart Keys > JavaScript -> Dedicated SettingsSmartKeysJavaScriptPage
+                dialog.selectCategory("Smart Keys", "JavaScript");
+                assertNotNull(dialog.getCurrentSmartKeysJsPage(), "Smart Keys JavaScript page should be loaded for Smart Keys > JavaScript");
+
+                // Test selecting Code Style > JavaScript again -> SettingsCodeStyleLanguagePage
+                dialog.selectCategory("Code Style", "JavaScript");
+                assertNotNull(dialog.getCurrentCodeStyleLanguagePage(), "Code Style Language page should be loaded for Code Style > JavaScript");
+                assertEquals("JavaScript", dialog.getCurrentCodeStyleLanguagePage().getLanguageId());
             } finally {
                 latch.countDown();
             }
@@ -1845,6 +1862,514 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testHtmlCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("HTML");
+        assertNotNull(provider, "HTML provider must be registered");
+        assertEquals("HTML", provider.getLanguageId());
+        assertEquals("HTML", provider.getDisplayName());
+
+        // 4 tabs matching reference images
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of("Tabs and Indents", "Other", "Arrangement", "Code Generation"), tabs);
+
+        // Previews
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Other"));
+        assertFalse(provider.hasPreview("Arrangement"));
+        assertFalse(provider.hasPreview("Code Generation"));
+
+        // Defaults
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof HtmlCodeStyleSettings);
+        HtmlCodeStyleSettings html = (HtmlCodeStyleSettings) settings;
+
+        // Tab 1: Tabs and Indents
+        assertEquals(4, html.getTabSize());
+        assertEquals(4, html.getIndent());
+        assertEquals(8, html.getContinuationIndent());
+        assertFalse(html.isUseTabCharacter());
+        assertFalse(html.isSmartTabs());
+        assertFalse(html.isKeepIndentsOnEmptyLines());
+        assertFalse(html.isUseHtmlIndentsWithinStyleAndScript());
+
+        // Tab 2: Other
+        assertEquals(120, html.getHardWrapAt());
+        assertEquals("Default: No", html.getWrapOnTyping());
+        assertTrue(html.isKeepLineBreaks());
+        assertTrue(html.isKeepLineBreaksInText());
+        assertEquals(2, html.getKeepBlankLines());
+        assertEquals("Wrap if long", html.getWrapAttributes());
+        assertTrue(html.isWrapText());
+        assertTrue(html.isAlignAttributes());
+        assertFalse(html.isAlignText());
+        assertFalse(html.isKeepWhiteSpaces());
+        assertFalse(html.isSpacesAroundEqualityInAttribute());
+        assertFalse(html.isSpacesAfterTagName());
+        assertFalse(html.isSpacesInEmptyTag());
+        assertEquals("body,div,p,form,h1,h2,h3", html.getInsertNewLineBefore());
+        assertEquals("br", html.getRemoveNewLineBefore());
+        assertEquals("html,body,thead,tbody,tfoot", html.getDoNotIndentChildrenOf());
+        assertEquals("strong,sub,sup,textarea,tt,u,var", html.getInlineElements());
+        assertEquals("span,pre,textarea", html.getKeepWhiteSpacesInside());
+        assertEquals("title,h1,h2,h3,h4,h5,h6,p", html.getDontBreakIfInlineContent());
+        assertEquals("Never", html.getNewLineBeforeFirstAttribute());
+        assertEquals("Never", html.getNewLineAfterLastAttribute());
+        assertEquals("Braces", html.getAddForJsxAttributes());
+        assertEquals("Double", html.getGeneratedQuoteMarks());
+        assertFalse(html.isEnforceOnFormat());
+
+        // Tab 3: Arrangement
+        assertEquals(List.of("attribute"), html.getMatchingRules());
+
+        // Tab 4: Code Generation
+        assertTrue(html.getBoolean(HtmlCodeStyleSettings.CODE_GEN_LINE_COMMENT_AT_FIRST_COLUMN, false));
+        assertTrue(html.getBoolean(HtmlCodeStyleSettings.CODE_GEN_BLOCK_COMMENT_AT_FIRST_COLUMN, false));
+        assertFalse(html.getBoolean(HtmlCodeStyleSettings.CODE_GEN_ADD_SPACES_AROUND_BLOCK_COMMENTS, true));
+
+        // Copy
+        HtmlCodeStyleSettings copy = html.copy();
+        assertEquals(html.getTabSize(), copy.getTabSize());
+        assertEquals(html.getHardWrapAt(), copy.getHardWrapAt());
+        assertEquals(html.getWrapAttributes(), copy.getWrapAttributes());
+        assertEquals(html.getMatchingRules(), copy.getMatchingRules());
+        assertNotSame(html.getMatchingRules(), copy.getMatchingRules());
+    }
+
+    @Test
+    void testHtmlLanguagePage() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testHtmlLanguagePage");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("HTML");
+                assertNotNull(page);
+                assertEquals("Tabs and Indents", page.getActiveTab());
+
+                page.setActiveTab("Other");
+                assertEquals("Other", page.getActiveTab());
+
+                page.setActiveTab("Arrangement");
+                assertEquals("Arrangement", page.getActiveTab());
+
+                page.setActiveTab("Code Generation");
+                assertEquals("Code Generation", page.getActiveTab());
+
+                assertFalse(page.isModified());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "HTML language page test timed out");
+        } catch (InterruptedException e) {
+            fail("HTML language page test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
+    void testHttpRequestCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("HTTP Request");
+        assertNotNull(provider, "HTTP Request provider must be registered");
+        assertEquals("HTTP Request", provider.getLanguageId());
+        assertEquals("HTTP Request", provider.getDisplayName());
+
+        // 3 tabs matching reference screenshots
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of("Tabs and Indents", "Wrapping and Braces", "Spaces"), tabs);
+
+        // Previews
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertTrue(provider.hasPreview("Spaces"));
+
+        // Defaults
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof HttpRequestCodeStyleSettings);
+        HttpRequestCodeStyleSettings http = (HttpRequestCodeStyleSettings) settings;
+
+        // Tab 1: Tabs and Indents (media_1790582880182.png)
+        assertEquals(4, http.getIndent());
+        assertEquals(4, http.getTabSize());
+        assertEquals(4, http.getUrlPartsIndent());
+
+        // Tab 2: Wrapping and Braces (media_1790582889076.png)
+        assertEquals("Default: None", http.getVisualGuides());
+        assertEquals("Wrap always", http.getFormUrlencodedParamsWrap());
+        assertEquals("Wrap if long", http.getQueryParamsWrap());
+
+        // Tab 3: Spaces (media_1790582896367.png)
+        assertTrue(http.isSpacesAroundEqualityInForm());
+        assertTrue(http.isSpaceBeforeAmpersandInForm());
+
+        // Copy
+        HttpRequestCodeStyleSettings copy = http.copy();
+        assertEquals(http.getIndent(), copy.getIndent());
+        assertEquals(http.getUrlPartsIndent(), copy.getUrlPartsIndent());
+        assertEquals(http.getVisualGuides(), copy.getVisualGuides());
+        assertEquals(http.getFormUrlencodedParamsWrap(), copy.getFormUrlencodedParamsWrap());
+        assertEquals(http.getQueryParamsWrap(), copy.getQueryParamsWrap());
+        assertEquals(http.isSpacesAroundEqualityInForm(), copy.isSpacesAroundEqualityInForm());
+        assertEquals(http.isSpaceBeforeAmpersandInForm(), copy.isSpaceBeforeAmpersandInForm());
+
+        copy.setUrlPartsIndent(8);
+        assertEquals(4, http.getUrlPartsIndent());
+        assertEquals(8, copy.getUrlPartsIndent());
+    }
+
+    @Test
+    void testHttpRequestLanguagePage() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testHttpRequestLanguagePage");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("HTTP Request");
+                assertNotNull(page);
+                assertEquals("Tabs and Indents", page.getActiveTab());
+
+                page.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", page.getActiveTab());
+
+                page.setActiveTab("Spaces");
+                assertEquals("Spaces", page.getActiveTab());
+
+                assertFalse(page.isModified());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "HTTP Request language page test timed out");
+        } catch (InterruptedException e) {
+            fail("HTTP Request language page test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
+    void testJavaScriptCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("JavaScript");
+        assertNotNull(provider, "JavaScript provider must be registered");
+        assertEquals("JavaScript", provider.getLanguageId());
+        assertEquals("JavaScript", provider.getDisplayName());
+
+        // 8 tabs matching reference screenshots
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of(
+                "Tabs and Indents",
+                "Spaces",
+                "Wrapping and Braces",
+                "Blank Lines",
+                "Punctuation",
+                "Code Generation",
+                "Imports",
+                "Arrangement"
+        ), tabs);
+
+        // Previews
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Spaces"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertTrue(provider.hasPreview("Blank Lines"));
+        assertTrue(provider.hasPreview("Punctuation"));
+        assertFalse(provider.hasPreview("Code Generation"));
+        assertFalse(provider.hasPreview("Imports"));
+        assertFalse(provider.hasPreview("Arrangement"));
+
+        // Defaults
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof JavaScriptCodeStyleSettings);
+        JavaScriptCodeStyleSettings js = (JavaScriptCodeStyleSettings) settings;
+
+        // Tab 1: Tabs and Indents (media_1790582906008.png)
+        assertEquals(4, js.getTabSize());
+        assertEquals(4, js.getIndent());
+        assertEquals(4, js.getContinuationIndent());
+        assertFalse(js.isUseTabCharacter());
+        assertFalse(js.isSmartTabs());
+        assertFalse(js.isKeepIndentsOnEmptyLines());
+        assertTrue(js.isIndentChainedMethods());
+        assertFalse(js.isIndentAllChainedCallsInGroup());
+
+        // Tab 2: Spaces (media_1790582923812.png)
+        assertFalse(js.isSpaceBeforeFunctionDeclarationParentheses());
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FUNCTION_CALL_PARENTHESES, false));
+        assertTrue(js.isSpaceBeforeIfParentheses());
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FOR_PARENTHESES, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_WHILE_PARENTHESES, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_SWITCH_PARENTHESES, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_CATCH_PARENTHESES, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FUNCTION_EXPRESSION_PARENTHESES, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_ASYNC_ARROW_PARENTHESES, true));
+
+        assertTrue(js.isSpaceAroundAssignmentOperators());
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_LOGICAL_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_EQUALITY_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_RELATIONAL_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_BITWISE_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_ADDITIVE_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_MULTIPLICATIVE_OPERATORS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_SHIFT_OPERATORS, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_UNARY_ADDITIVE_OPERATORS, false));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_ARROW_FUNCTION, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_UNARY_NOT, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_UNARY_NOT, false));
+
+        assertTrue(js.isSpaceBeforeFunctionLeftBrace());
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_IF_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_ELSE_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FOR_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_WHILE_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_DO_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_SWITCH_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_TRY_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_CATCH_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FINALLY_LEFT_BRACE, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_CLASS_LEFT_BRACE, true));
+
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_ELSE_KEYWORD, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_WHILE_KEYWORD, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_CATCH_KEYWORD, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FINALLY_KEYWORD, true));
+
+        assertFalse(js.isSpacesWithinCodeBraces());
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_INDEX_ACCESS_BRACKETS, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_GROUPING_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_FUNCTION_DECLARATION_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_FUNCTION_CALL_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_IF_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_FOR_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_WHILE_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_SWITCH_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_CATCH_PARENTHESES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_OBJECT_LITERAL_BRACES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_ES6_IMPORT_EXPORT_BRACES, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_ARRAY_BRACKETS, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_INTERPOLATION_EXPRESSIONS, false));
+
+        assertTrue(js.isSpaceBeforeTernaryQuestion());
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_TERNARY_QUESTION, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_TERNARY_COLON, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_TERNARY_COLON, true));
+
+        assertFalse(js.isSpaceBeforeComma());
+        assertTrue(js.isSpaceAfterComma());
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FOR_SEMICOLON, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_PROPERTY_NAME_VALUE_SEPARATOR, false));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_PROPERTY_NAME_VALUE_SEPARATOR, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_REST_SPREAD, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_GENERATOR_STAR, false));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_GENERATOR_STAR, true));
+
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.FLOW_SPACE_BEFORE_TYPE_REFERENCE_COLON, false));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.FLOW_SPACE_AFTER_TYPE_REFERENCE_COLON, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.FLOW_OBJECT_LITERAL_TYPE_BRACES, false));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.FLOW_UNION_AND_INTERSECTION_TYPES, true));
+
+        // Tab 3: Wrapping and Braces (media_1790584332985.png, media_1790584373383.png, media_1790584397014.png)
+        assertEquals(120, js.getInt(JavaScriptCodeStyleSettings.HARD_WRAP_AT, 120));
+        assertEquals("Default: No", js.getString(JavaScriptCodeStyleSettings.WRAP_ON_TYPING, "Default: No"));
+        assertEquals("Default: None", js.getString(JavaScriptCodeStyleSettings.VISUAL_GUIDES, "Default: None"));
+
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.KEEP_LINE_BREAKS, true));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.KEEP_COMMENT_AT_FIRST_COLUMN, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.KEEP_SIMPLE_BLOCKS_IN_ONE_LINE, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.KEEP_SIMPLE_METHODS_IN_ONE_LINE, false));
+
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.WRAP_COMMENTS_AT_RIGHT_MARGIN, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.ALIGN_MULTILINE_COMMENTS, false));
+
+        assertEquals("End of line", js.getBracePlacementFunction());
+        assertEquals("End of line", js.getString(JavaScriptCodeStyleSettings.BRACE_PLACEMENT_CLASS, "End of line"));
+        assertEquals("End of line", js.getString(JavaScriptCodeStyleSettings.BRACE_PLACEMENT_FUNCTION_EXPRESSION, "End of line"));
+        assertEquals("End of line", js.getString(JavaScriptCodeStyleSettings.BRACE_PLACEMENT_OTHER, "End of line"));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_EXTENDS_LIST, "Do not wrap"));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.ALIGN_MULTILINE_EXTENDS_LIST, false));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_EXTENDS_KEYWORD, "Do not wrap"));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_FUNCTION_PARAMETERS, "Do not wrap"));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.ALIGN_MULTILINE_FUNCTION_PARAMETERS, true));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_FUNCTION_ARGUMENTS, "Do not wrap"));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.ALIGN_MULTILINE_FUNCTION_ARGUMENTS, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.CALL_ARGUMENTS_TAKE_PRIORITY_OVER_CALL_CHAIN, false));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_CHAINED_METHOD_CALLS, "Do not wrap"));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.CHAINED_METHOD_DOT_ON_NEW_LINE, true));
+
+        assertEquals("Do not force", js.getString(JavaScriptCodeStyleSettings.IF_FORCE_BRACES, "Do not force"));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.SPECIAL_ELSE_IF_TREATMENT, true));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_FOR_STATEMENT, "Do not wrap"));
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.ALIGN_MULTILINE_FOR_STATEMENT, true));
+        assertEquals("Do not force", js.getString(JavaScriptCodeStyleSettings.FOR_FORCE_BRACES, "Do not force"));
+
+        assertEquals("Do not force", js.getString(JavaScriptCodeStyleSettings.WHILE_FORCE_BRACES, "Do not force"));
+        assertEquals("Do not force", js.getString(JavaScriptCodeStyleSettings.DO_WHILE_FORCE_BRACES, "Do not force"));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.WRAP_DO_WHILE_ON_NEW_LINE, false));
+
+        assertTrue(js.getBoolean(JavaScriptCodeStyleSettings.WRAP_SWITCH_INDENT_CASE_BRANCHES, true));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.WRAP_TRY_CATCH_ON_NEW_LINE, false));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.WRAP_TRY_FINALLY_ON_NEW_LINE, false));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_BINARY_EXPRESSIONS, "Do not wrap"));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_ASSIGNMENT_STATEMENT, "Do not wrap"));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_TERNARY_OPERATION, "Do not wrap"));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_ARRAYS, "Do not wrap"));
+
+        assertEquals("Chop down if long", js.getString(JavaScriptCodeStyleSettings.WRAP_OBJECTS, "Chop down if long"));
+        assertEquals("Do not align", js.getString(JavaScriptCodeStyleSettings.OBJECTS_ALIGN, "Do not align"));
+
+        assertEquals("Wrap if long", js.getString(JavaScriptCodeStyleSettings.WRAP_VARIABLE_DECLARATIONS, "Wrap if long"));
+        assertEquals("Do not align", js.getString(JavaScriptCodeStyleSettings.VARIABLE_DECLARATIONS_ALIGN, "Do not align"));
+
+        assertEquals("Chop down if long", js.getString(JavaScriptCodeStyleSettings.WRAP_ES6_IMPORT_EXPORT, "Chop down if long"));
+        assertFalse(js.getBoolean(JavaScriptCodeStyleSettings.ES6_ALIGN_FROM_CLAUSES, false));
+
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_FUNCTION_PARAMETER_DECORATORS, "Do not wrap"));
+        assertEquals("Wrap always", js.getString(JavaScriptCodeStyleSettings.WRAP_CLASS_DECORATORS, "Wrap always"));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_CLASS_FIELD_DECORATORS, "Do not wrap"));
+        assertEquals("Do not wrap", js.getString(JavaScriptCodeStyleSettings.WRAP_CLASS_METHOD_DECORATORS, "Do not wrap"));
+
+        // Tab 4: Blank Lines (media_1790587078488.png)
+        assertEquals(2, js.getBlankLinesKeepInCode());
+        assertEquals(2, js.getBlankLinesKeepInDeclarations());
+        assertEquals(1, js.getBlankLinesAfterImports());
+        assertEquals(1, js.getBlankLinesAroundClass());
+        assertEquals(0, js.getBlankLinesAroundField());
+        assertEquals(1, js.getBlankLinesAroundMethod());
+        assertEquals(1, js.getBlankLinesAroundFunction());
+
+        // Tab 5: Punctuation (media_1790587087019.png)
+        assertEquals("Use", js.getUseSemicolon());
+        assertEquals("in code generated by IDE", js.getSemicolonScope());
+        assertEquals("double", js.getQuoteStyle());
+        assertEquals("in code generated by IDE", js.getQuoteScope());
+        assertEquals("Keep", js.getTrailingComma());
+
+        // Tab 6: Code Generation (media_1790587100814.png)
+        assertEquals("_", js.getFieldPrefix());
+        assertEquals("", js.getPropertyPrefix());
+        assertEquals("Reuse case of current file", js.getFilenameConvention());
+        assertFalse(js.isCodeGenLineCommentAtFirstColumn());
+        assertTrue(js.isCodeGenAddSpaceAtLineCommentStart());
+        assertTrue(js.isCodeGenBlockCommentAtFirstColumn());
+        assertFalse(js.isCodeGenAddSpacesAroundBlockComments());
+
+        // Tab 7: Imports (media_1790587112114.png)
+        assertTrue(js.isMergeImportsSameModule());
+        assertFalse(js.isUseRelativePaths());
+        assertTrue(js.isUseDirectoryImport());
+        assertEquals("Auto", js.getUseFileExtension());
+        assertEquals("Always", js.getUsePathAliases());
+        assertEquals("rxjs,@angular/material/typings/**", js.getDoNotImportExactlyFrom());
+        assertTrue(js.isSortImportedMembers());
+        assertFalse(js.isSortImportsByModules());
+
+        // Tab 8: Arrangement (media_1790587120119.png)
+        assertTrue(js.isGroupPropertyFieldWithGetterSetter());
+        assertTrue(js.isGroupFieldsWithArrowFunctions());
+        assertFalse(js.isKeepOverriddenMethodsTogether());
+        assertEquals("keep order", js.getOverriddenMethodsOrder());
+        assertEquals(List.of("field, static", "field", "constructor", "property, static", "property", "method, static", "method"), js.getMatchingRules());
+
+        // Copy
+        JavaScriptCodeStyleSettings copy = js.copy();
+        assertEquals(js.getTabSize(), copy.getTabSize());
+        assertEquals(js.getIndent(), copy.getIndent());
+        assertEquals(js.getContinuationIndent(), copy.getContinuationIndent());
+        assertEquals(js.isIndentChainedMethods(), copy.isIndentChainedMethods());
+        assertEquals(js.getMatchingRules(), copy.getMatchingRules());
+        assertNotSame(js.getMatchingRules(), copy.getMatchingRules());
+
+        copy.getMatchingRules().add("other");
+        assertEquals(7, js.getMatchingRules().size());
+        assertEquals(8, copy.getMatchingRules().size());
+    }
+
+    @Test
+    void testJavaScriptLanguagePage() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testJavaScriptLanguagePage");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("JavaScript");
+                assertNotNull(page);
+                assertEquals("Tabs and Indents", page.getActiveTab());
+
+                page.setActiveTab("Spaces");
+                assertEquals("Spaces", page.getActiveTab());
+
+                page.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", page.getActiveTab());
+
+                page.setActiveTab("Blank Lines");
+                assertEquals("Blank Lines", page.getActiveTab());
+                assertTrue(page.getSampleForActiveTab().contains("class Foo"));
+
+                page.setActiveTab("Punctuation");
+                assertEquals("Punctuation", page.getActiveTab());
+                assertTrue(page.getSampleForActiveTab().contains("const myLink ="));
+
+                page.setActiveTab("Code Generation");
+                assertEquals("Code Generation", page.getActiveTab());
+
+                page.setActiveTab("Imports");
+                assertEquals("Imports", page.getActiveTab());
+
+                page.setActiveTab("Arrangement");
+                assertEquals("Arrangement", page.getActiveTab());
+
+                assertFalse(page.isModified());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "JavaScript language page test timed out");
+        } catch (InterruptedException e) {
+            fail("JavaScript language page test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
@@ -1858,6 +2383,9 @@ class SettingsCodeStyleTest {
                 "src/main/java/dev/lumina/settings/GoCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/GradleDeclarativeCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/GroovyCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/HtmlCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/HttpRequestCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/JavaScriptCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",

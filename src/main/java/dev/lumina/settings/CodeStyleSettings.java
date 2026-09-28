@@ -425,7 +425,8 @@ public final class CodeStyleSettings {
         CHECKBOX,
         NUMBER,
         COMBO,
-        SEPARATOR
+        SEPARATOR,
+        TEXT
     }
 
     public static class CodeStyleOption {
@@ -477,6 +478,10 @@ public final class CodeStyleSettings {
 
         public static CodeStyleOption combo(String key, String label, List<String> choices, String defaultValue) {
             return new CodeStyleOption(key, label, CodeStyleOptionType.COMBO, defaultValue, choices, 0, false);
+        }
+
+        public static CodeStyleOption text(String key, String label, String defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.TEXT, defaultValue, null, 0, false);
         }
 
         public static CodeStyleOption separator(String label) {
@@ -1080,56 +1085,13 @@ public class Foo {
         LanguageCodeStyleProvider.register(GroovyCodeStyleSettings.createProvider());
 
         // 9. HTML
-        registerSimpleProvider("HTML", "HTML", 2, 2, 4, """
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Sample Application</title>
-  </head>
-  <body>
-    <header class="app-header">
-      <nav>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/settings">Settings</a></li>
-        </ul>
-      </nav>
-    </header>
-  </body>
-</html>
-""");
+        LanguageCodeStyleProvider.register(HtmlCodeStyleSettings.createProvider());
 
         // 10. HTTP Request
-        registerSimpleProvider("HTTP Request", "HTTP Request", 2, 2, 4, """
-### Get User Profile
-GET https://api.example.com/v1/users/42
-Authorization: Bearer {{auth_token}}
-Accept: application/json
-
-### Update Settings
-POST https://api.example.com/v1/settings
-Content-Type: application/json
-
-{
-  "theme": "Dark",
-  "autoSave": true
-}
-""");
+        LanguageCodeStyleProvider.register(HttpRequestCodeStyleSettings.createProvider());
 
         // 11. JavaScript
-        registerSimpleProvider("JavaScript", "JavaScript", 2, 2, 4, """
-function calculateTotal(items, discountRate = 0) {
-  let subtotal = 0;
-  for (const item of items) {
-    if (item.available) {
-      subtotal += item.price * item.quantity;
-    }
-  }
-  const discount = subtotal * discountRate;
-  return subtotal - discount;
-}
-""");
+        LanguageCodeStyleProvider.register(JavaScriptCodeStyleSettings.createProvider());
 
         // 12. JSON
         registerSimpleProvider("JSON", "JSON", 2, 2, 4, """

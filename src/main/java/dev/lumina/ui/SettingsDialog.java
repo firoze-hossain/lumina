@@ -1506,6 +1506,8 @@ public class SettingsDialog {
         boolean underAppearanceGroup = false;
         boolean underEditorGroup = false;
         boolean underColorScheme = false;
+        boolean underCodeStyle = false;
+        boolean underSmartKeys = false;
 
         while (ancestor != null) {
             String v = ancestor.getValue();
@@ -1513,6 +1515,8 @@ public class SettingsDialog {
                 if (v.equals("Appearance & Behavior")) underAppearanceGroup = true;
                 if (v.equals("Editor")) underEditorGroup = true;
                 if (v.equals("Color Scheme")) underColorScheme = true;
+                if (v.equals("Code Style")) underCodeStyle = true;
+                if (v.equals("Smart Keys")) underSmartKeys = true;
             }
             ancestor = ancestor.getParent();
         }
@@ -2577,6 +2581,31 @@ public class SettingsDialog {
             return;
         }
 
+        // Code Style and its language subpages
+        if (underCodeStyle || "Code Style".equals(pageName)) {
+            if ("Code Style".equals(pageName)) {
+                if (currentCodeStylePage == null) {
+                    currentCodeStylePage = new SettingsCodeStylePage();
+                }
+                currentCodeStylePage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentCodeStylePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Java".equals(pageName)) {
+                currentCodeStyleJavaPage = new SettingsCodeStyleJavaPage();
+                currentCodeStyleJavaPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentCodeStyleJavaPage);
+                updateApplyButtonState();
+                return;
+            }
+            currentCodeStyleLanguagePage = new SettingsCodeStyleLanguagePage(pageName);
+            currentCodeStyleLanguagePage.setOnModifiedListener(this::updateApplyButtonState);
+            wrapInScroll(currentCodeStyleLanguagePage);
+            updateApplyButtonState();
+            return;
+        }
+
         // 5. Editor and subpages
         if (underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) {
             if ("General".equals(pageName)) {
@@ -2718,104 +2747,106 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
-            if ("YAML".equals(pageName)) {
-                if (currentSmartKeysYamlPage == null) {
-                    currentSmartKeysYamlPage = new SettingsSmartKeysYAMLPage();
+            if (underSmartKeys) {
+                if ("YAML".equals(pageName)) {
+                    if (currentSmartKeysYamlPage == null) {
+                        currentSmartKeysYamlPage = new SettingsSmartKeysYAMLPage();
+                    }
+                    currentSmartKeysYamlPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysYamlPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysYamlPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysYamlPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("HTML/CSS".equals(pageName)) {
-                if (currentSmartKeysHtmlCssPage == null) {
-                    currentSmartKeysHtmlCssPage = new SettingsSmartKeysHTMLCSSPage();
+                if ("HTML/CSS".equals(pageName)) {
+                    if (currentSmartKeysHtmlCssPage == null) {
+                        currentSmartKeysHtmlCssPage = new SettingsSmartKeysHTMLCSSPage();
+                    }
+                    currentSmartKeysHtmlCssPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysHtmlCssPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysHtmlCssPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysHtmlCssPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Python".equals(pageName)) {
-                if (currentSmartKeysPythonPage == null) {
-                    currentSmartKeysPythonPage = new SettingsSmartKeysPythonPage();
+                if ("Python".equals(pageName)) {
+                    if (currentSmartKeysPythonPage == null) {
+                        currentSmartKeysPythonPage = new SettingsSmartKeysPythonPage();
+                    }
+                    currentSmartKeysPythonPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysPythonPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysPythonPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysPythonPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("JSON".equals(pageName)) {
-                if (currentSmartKeysJsonPage == null) {
-                    currentSmartKeysJsonPage = new SettingsSmartKeysJSONPage();
+                if ("JSON".equals(pageName)) {
+                    if (currentSmartKeysJsonPage == null) {
+                        currentSmartKeysJsonPage = new SettingsSmartKeysJSONPage();
+                    }
+                    currentSmartKeysJsonPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysJsonPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysJsonPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysJsonPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Rust".equals(pageName)) {
-                if (currentSmartKeysRustPage == null) {
-                    currentSmartKeysRustPage = new SettingsSmartKeysRustPage();
+                if ("Rust".equals(pageName)) {
+                    if (currentSmartKeysRustPage == null) {
+                        currentSmartKeysRustPage = new SettingsSmartKeysRustPage();
+                    }
+                    currentSmartKeysRustPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysRustPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysRustPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysRustPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Markdown".equals(pageName)) {
-                if (currentSmartKeysMarkdownPage == null) {
-                    currentSmartKeysMarkdownPage = new SettingsSmartKeysMarkdownPage();
+                if ("Markdown".equals(pageName)) {
+                    if (currentSmartKeysMarkdownPage == null) {
+                        currentSmartKeysMarkdownPage = new SettingsSmartKeysMarkdownPage();
+                    }
+                    currentSmartKeysMarkdownPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysMarkdownPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysMarkdownPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysMarkdownPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Scala".equals(pageName)) {
-                if (currentSmartKeysScalaPage == null) {
-                    currentSmartKeysScalaPage = new SettingsSmartKeysScalaPage();
+                if ("Scala".equals(pageName)) {
+                    if (currentSmartKeysScalaPage == null) {
+                        currentSmartKeysScalaPage = new SettingsSmartKeysScalaPage();
+                    }
+                    currentSmartKeysScalaPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysScalaPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysScalaPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysScalaPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("SQL".equals(pageName)) {
-                if (currentSmartKeysSqlPage == null) {
-                    currentSmartKeysSqlPage = new SettingsSmartKeysSQLPage();
+                if ("SQL".equals(pageName)) {
+                    if (currentSmartKeysSqlPage == null) {
+                        currentSmartKeysSqlPage = new SettingsSmartKeysSQLPage();
+                    }
+                    currentSmartKeysSqlPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysSqlPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysSqlPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysSqlPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Ruby".equals(pageName)) {
-                if (currentSmartKeysRubyPage == null) {
-                    currentSmartKeysRubyPage = new SettingsSmartKeysRubyPage();
+                if ("Ruby".equals(pageName)) {
+                    if (currentSmartKeysRubyPage == null) {
+                        currentSmartKeysRubyPage = new SettingsSmartKeysRubyPage();
+                    }
+                    currentSmartKeysRubyPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysRubyPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysRubyPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysRubyPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("JavaScript".equals(pageName)) {
-                if (currentSmartKeysJsPage == null) {
-                    currentSmartKeysJsPage = new SettingsSmartKeysJavaScriptPage();
+                if ("JavaScript".equals(pageName)) {
+                    if (currentSmartKeysJsPage == null) {
+                        currentSmartKeysJsPage = new SettingsSmartKeysJavaScriptPage();
+                    }
+                    currentSmartKeysJsPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysJsPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysJsPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysJsPage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("PHP".equals(pageName)) {
-                if (currentSmartKeysPhpPage == null) {
-                    currentSmartKeysPhpPage = new SettingsSmartKeysPHPPage();
+                if ("PHP".equals(pageName)) {
+                    if (currentSmartKeysPhpPage == null) {
+                        currentSmartKeysPhpPage = new SettingsSmartKeysPHPPage();
+                    }
+                    currentSmartKeysPhpPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentSmartKeysPhpPage);
+                    updateApplyButtonState();
+                    return;
                 }
-                currentSmartKeysPhpPage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentSmartKeysPhpPage);
-                updateApplyButtonState();
-                return;
             }
             if ("Sticky Lines".equals(pageName)) {
                 if (currentStickyLinesPage == null) {
@@ -2880,40 +2911,6 @@ public class SettingsDialog {
                 });
                 currentColorSchemePage.setOnModifiedListener(this::updateApplyButtonState);
                 wrapInScroll(currentColorSchemePage);
-                updateApplyButtonState();
-                return;
-            }
-            if ("Code Style".equals(pageName)) {
-                if (currentCodeStylePage == null) {
-                    currentCodeStylePage = new SettingsCodeStylePage();
-                }
-                currentCodeStylePage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentCodeStylePage);
-                updateApplyButtonState();
-                return;
-            }
-
-            boolean isCodeStyleLang = false;
-            TreeItem<String> parentIt = selected.getParent();
-            while (parentIt != null) {
-                if ("Code Style".equals(parentIt.getValue())) {
-                    isCodeStyleLang = true;
-                    break;
-                }
-                parentIt = parentIt.getParent();
-            }
-
-            if (isCodeStyleLang || dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider.getProvider(pageName) != null) {
-                if ("Java".equals(pageName)) {
-                    currentCodeStyleJavaPage = new SettingsCodeStyleJavaPage();
-                    currentCodeStyleJavaPage.setOnModifiedListener(this::updateApplyButtonState);
-                    wrapInScroll(currentCodeStyleJavaPage);
-                    updateApplyButtonState();
-                    return;
-                }
-                currentCodeStyleLanguagePage = new SettingsCodeStyleLanguagePage(pageName);
-                currentCodeStyleLanguagePage.setOnModifiedListener(this::updateApplyButtonState);
-                wrapInScroll(currentCodeStyleLanguagePage);
                 updateApplyButtonState();
                 return;
             }
@@ -4506,9 +4503,19 @@ public class SettingsDialog {
         if (selected != null) {
             TreeItem<String> p = selected;
             boolean underCS = false;
+            boolean underCodeStyle = false;
+            boolean underSmartKeys = false;
             while (p != null) {
                 if ("Color Scheme".equals(p.getValue())) {
                     underCS = true;
+                    break;
+                }
+                if ("Code Style".equals(p.getValue())) {
+                    underCodeStyle = true;
+                    break;
+                }
+                if ("Smart Keys".equals(p.getValue())) {
+                    underSmartKeys = true;
                     break;
                 }
                 p = p.getParent();
@@ -4517,6 +4524,16 @@ public class SettingsDialog {
                 TreeItem<String> csRoot = findItem(tree.getRoot(), "Color Scheme");
                 if (csRoot != null) {
                     item = findItem(csRoot, categoryName);
+                }
+            } else if (underCodeStyle) {
+                TreeItem<String> csRoot = findItem(tree.getRoot(), "Code Style");
+                if (csRoot != null) {
+                    item = findItem(csRoot, categoryName);
+                }
+            } else if (underSmartKeys) {
+                TreeItem<String> skRoot = findItem(tree.getRoot(), "Smart Keys");
+                if (skRoot != null) {
+                    item = findItem(skRoot, categoryName);
                 }
             }
         }
@@ -5264,6 +5281,15 @@ public class SettingsDialog {
             if (currentColorSchemeImagesPage != null) {
                 currentColorSchemeImagesPage.reset();
             }
+            if (currentCodeStylePage != null) {
+                currentCodeStylePage.reset();
+            }
+            if (currentCodeStyleJavaPage != null) {
+                currentCodeStyleJavaPage.reset();
+            }
+            if (currentCodeStyleLanguagePage != null) {
+                currentCodeStyleLanguagePage.reset();
+            }
             stage.close();
         });
 
@@ -5548,6 +5574,10 @@ public class SettingsDialog {
 
     public SettingsCodeStyleLanguagePage getCurrentCodeStyleLanguagePage() {
         return currentCodeStyleLanguagePage;
+    }
+
+    public SettingsSmartKeysJavaScriptPage getCurrentSmartKeysJsPage() {
+        return currentSmartKeysJsPage;
     }
 
     public Button getApplyButton() {
