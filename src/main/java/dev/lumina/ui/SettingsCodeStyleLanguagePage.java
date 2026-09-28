@@ -9,6 +9,10 @@ import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleSettings;
 import dev.lumina.settings.AngularHtmlCodeStyleSettings;
 import dev.lumina.settings.EditorConfigCodeStyleSettings;
+import dev.lumina.settings.ErbCodeStyleSettings;
+import dev.lumina.settings.GoCodeStyleSettings;
+import dev.lumina.settings.GradleDeclarativeCodeStyleSettings;
+import dev.lumina.settings.GroovyCodeStyleSettings;
 import dev.lumina.settings.KotlinCodeStyleSettings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -88,6 +92,44 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             KotlinCodeStyleSettings.TRAILING_COMMA_INDICES,
             KotlinCodeStyleSettings.TRAILING_COMMA_VALUE_ARGUMENT_LIST
     );
+
+    // Controls for Go Imports Tab
+    private CheckBox goBackquotesCb;
+    private CheckBox goSingleImportParensCb;
+    private CheckBox goRemoveRedundantCb;
+    private ComboBox<String> goSortingCombo;
+    private CheckBox goMoveAllSingleDeclCb;
+    private CheckBox goGroupSdkCb;
+    private CheckBox goMoveAllSingleGroupCb;
+    private CheckBox goGroupCb;
+    private ToggleGroup goGroupModeGroup;
+    private RadioButton goRbProject;
+    private RadioButton goRbPrefixes;
+    private TextArea goPrefixesArea;
+
+    // Controls for Go Other Tab
+    private CheckBox goLeadingSpaceCb;
+    private TextField goColWidthField;
+    private CheckBox goRunGofmtCb;
+
+    // Controls for Groovy Imports Tab
+    private CheckBox groovyUseSingleClassImportCb;
+    private CheckBox groovyUseFqClassNamesCb;
+    private CheckBox groovyInsertForInnerClassesCb;
+    private CheckBox groovyUseFqClassNamesInJavadocCb;
+    private TextField groovyClassCountStarField;
+    private TextField groovyStaticCountStarField;
+    private TableView<GroovyCodeStyleSettings.GroovyImportEntry> groovyPackagesOnDemandTable;
+    private CheckBox groovyLayoutStaticSeparatelyCb;
+    private TableView<GroovyCodeStyleSettings.GroovyImportEntry> groovyImportLayoutTable;
+
+    // Controls for Groovy Code Generation Tab
+    private ListView<String> groovyOrderOfMembersListView;
+    private CheckBox groovyLineCommentFirstColCb;
+    private CheckBox groovyAddSpaceLineCommentCb;
+    private CheckBox groovyEnforceOnReformatCb;
+    private CheckBox groovyBlockCommentFirstColCb;
+    private CheckBox groovyAddSpacesAroundBlockCommentsCb;
 
     private Runnable onModifiedListener;
     private boolean suppressEvents = false;
@@ -278,7 +320,23 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         }
 
         if ("Imports".equals(activeTab)) {
-            renderImportsTab();
+            if ("Go".equals(languageId)) {
+                renderGoImportsTab();
+            } else if ("Groovy".equals(languageId)) {
+                renderGroovyImportsTab();
+            } else {
+                renderImportsTab();
+            }
+            return;
+        }
+
+        if ("Code Generation".equals(activeTab) && "Groovy".equals(languageId)) {
+            renderGroovyCodeGenerationTab();
+            return;
+        }
+
+        if ("Other".equals(activeTab) && "Go".equals(languageId)) {
+            renderGoOtherTab();
             return;
         }
 
@@ -575,7 +633,8 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 || "tab_size".equals(key)
                 || "indent".equals(key)
                 || "continuation_indent".equals(key)
-                || "keep_indents_on_empty_lines".equals(key);
+                || "keep_indents_on_empty_lines".equals(key)
+                || "label_indent".equals(key);
     }
 
     private boolean getStandardIndentBoolean(String key) {
@@ -600,6 +659,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             case "tab_size" -> workingSettings.getTabSize();
             case "indent" -> workingSettings.getIndent();
             case "continuation_indent" -> workingSettings.getContinuationIndent();
+            case "label_indent" -> workingSettings.getLabelIndent();
             default -> 4;
         };
     }
@@ -609,6 +669,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             case "tab_size" -> workingSettings.setTabSize(val);
             case "indent" -> workingSettings.setIndent(val);
             case "continuation_indent" -> workingSettings.setContinuationIndent(val);
+            case "label_indent" -> workingSettings.setLabelIndent(val);
         }
     }
 
@@ -882,7 +943,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
     private TableView<KotlinCodeStyleSettings.ImportEntry> createImportTable(boolean isLayoutTable) {
         TableView<KotlinCodeStyleSettings.ImportEntry> table = new TableView<>();
-        table.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        table.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-control-inner-background-alt: #1E1F22; -fx-background: #1E1F22; -fx-selection-bar: #35538F; -fx-selection-bar-non-focused: #35538F; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         table.setPrefHeight(115);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -1088,7 +1149,903 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         leftContentBox.getChildren().add(sectionBox);
     }
 
+    private void renderGoImportsTab() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(2, 0, 6, 0));
+
+        goBackquotesCb = new CheckBox("Use backquotes for imports");
+        goBackquotesCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goBackquotesCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_USE_BACKQUOTES, false));
+        goBackquotesCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_USE_BACKQUOTES, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        goSingleImportParensCb = new CheckBox("Add parentheses for a single import");
+        goSingleImportParensCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goSingleImportParensCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_ADD_PARENTHESES_SINGLE, false));
+        goSingleImportParensCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_ADD_PARENTHESES_SINGLE, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        goRemoveRedundantCb = new CheckBox("Remove redundant import aliases");
+        goRemoveRedundantCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goRemoveRedundantCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_REMOVE_REDUNDANT_ALIASES, false));
+        goRemoveRedundantCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_REMOVE_REDUNDANT_ALIASES, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        HBox sortingRow = new HBox(12);
+        sortingRow.setAlignment(Pos.CENTER_LEFT);
+        Label sortingLabel = new Label("Sorting type");
+        sortingLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goSortingCombo = new ComboBox<>();
+        goSortingCombo.getItems().addAll("goimports", "gofmt", "none");
+        goSortingCombo.setValue(workingSettings.getString(GoCodeStyleSettings.IMPORTS_SORTING_TYPE, "goimports"));
+        styleComboBox(goSortingCombo);
+        goSortingCombo.setOnAction(e -> {
+            if (!suppressEvents && goSortingCombo.getValue() != null) {
+                workingSettings.setString(GoCodeStyleSettings.IMPORTS_SORTING_TYPE, goSortingCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+        sortingRow.getChildren().addAll(sortingLabel, goSortingCombo);
+
+        goMoveAllSingleDeclCb = new CheckBox("Move all imports to a single declaration");
+        goMoveAllSingleDeclCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goMoveAllSingleDeclCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_DECLARATION, false));
+        goMoveAllSingleDeclCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_DECLARATION, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        goGroupSdkCb = new CheckBox("Group packages from Go SDK");
+        goGroupSdkCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goGroupSdkCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_GROUP_SDK_PACKAGES, false));
+        goGroupSdkCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_GROUP_SDK_PACKAGES, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        goMoveAllSingleGroupCb = new CheckBox("Move all packages to a single group");
+        goMoveAllSingleGroupCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goMoveAllSingleGroupCb.setPadding(new Insets(0, 0, 0, 20));
+        goMoveAllSingleGroupCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_GROUP, false));
+        goMoveAllSingleGroupCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_GROUP, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        goGroupCb = new CheckBox("Group");
+        goGroupCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        boolean groupEnabled = workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_GROUP_ENABLED, false);
+        goGroupCb.setSelected(groupEnabled);
+
+        VBox groupSubBox = new VBox(6);
+        groupSubBox.setPadding(new Insets(0, 0, 0, 20));
+
+        goGroupModeGroup = new ToggleGroup();
+        goRbProject = new RadioButton("Current project packages");
+        goRbProject.setUserData("PROJECT");
+        goRbProject.setToggleGroup(goGroupModeGroup);
+        styleRadioButton(goRbProject);
+
+        goRbPrefixes = new RadioButton("Imports starting with:");
+        goRbPrefixes.setUserData("PREFIXES");
+        goRbPrefixes.setToggleGroup(goGroupModeGroup);
+        styleRadioButton(goRbPrefixes);
+
+        String mode = workingSettings.getString(GoCodeStyleSettings.IMPORTS_GROUP_MODE, "PROJECT");
+        if ("PREFIXES".equals(mode)) {
+            goRbPrefixes.setSelected(true);
+        } else {
+            goRbProject.setSelected(true);
+        }
+
+        goPrefixesArea = new TextArea(workingSettings.getString(GoCodeStyleSettings.IMPORTS_CUSTOM_PREFIXES, ""));
+        goPrefixesArea.setPrefRowCount(3);
+        goPrefixesArea.setPrefHeight(65);
+        goPrefixesArea.setStyle("-fx-control-inner-background: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-family: monospace; -fx-font-size: 12px;");
+        goPrefixesArea.textProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setString(GoCodeStyleSettings.IMPORTS_CUSTOM_PREFIXES, n);
+                notifyModified();
+            }
+        });
+
+        Label prefixesHint = new Label("Comma-separated list of prefixes, same as 'goimports -local'");
+        prefixesHint.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px;");
+
+        groupSubBox.getChildren().addAll(goRbProject, goRbPrefixes, goPrefixesArea, prefixesHint);
+
+        groupSubBox.disableProperty().bind(goGroupCb.selectedProperty().not());
+        goPrefixesArea.disableProperty().bind(goGroupCb.selectedProperty().not().or(goRbPrefixes.selectedProperty().not()));
+
+        goGroupCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_GROUP_ENABLED, n);
+                notifyModified();
+            }
+        });
+
+        goGroupModeGroup.selectedToggleProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents && n != null && n.getUserData() != null) {
+                workingSettings.setString(GoCodeStyleSettings.IMPORTS_GROUP_MODE, n.getUserData().toString());
+                notifyModified();
+            }
+        });
+
+        box.getChildren().addAll(
+                goBackquotesCb,
+                goSingleImportParensCb,
+                goRemoveRedundantCb,
+                sortingRow,
+                goMoveAllSingleDeclCb,
+                goGroupSdkCb,
+                goMoveAllSingleGroupCb,
+                goGroupCb,
+                groupSubBox
+        );
+
+        leftContentBox.getChildren().add(box);
+    }
+
+    private void renderGoOtherTab() {
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(2, 0, 6, 0));
+
+        goLeadingSpaceCb = new CheckBox("Add a leading space to comments");
+        goLeadingSpaceCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        boolean leadingSpace = workingSettings.getBoolean(GoCodeStyleSettings.OTHER_ADD_LEADING_SPACE_COMMENTS, false);
+        goLeadingSpaceCb.setSelected(leadingSpace);
+
+        VBox exceptionsBox = new VBox(6);
+        exceptionsBox.setPadding(new Insets(0, 0, 0, 20));
+
+        Label exceptLabel = new Label("Except for comments starting with:");
+        exceptLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        HBox toolbar = new HBox(4);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        Button addBtn = createToolbarButton("+");
+        Button removeBtn = createToolbarButton("−");
+        Button editBtn = createToolbarButton("✎");
+        toolbar.getChildren().addAll(addBtn, removeBtn, editBtn);
+
+        VBox listContainer = new VBox(4);
+        listContainer.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;");
+        listContainer.setMinHeight(120);
+
+        List<String> exceptionsList;
+        if (workingSettings instanceof GoCodeStyleSettings gSettings) {
+            exceptionsList = gSettings.getCommentExceptions();
+        } else {
+            exceptionsList = new ArrayList<>();
+        }
+
+        final int[] selectedIdx = new int[]{-1};
+        Runnable rebuildExceptionsView = new Runnable() {
+            @Override
+            public void run() {
+                listContainer.getChildren().clear();
+                if (exceptionsList.isEmpty()) {
+                    Label noExceptions = new Label("No exceptions");
+                    noExceptions.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px; -fx-padding: 30 0 0 0;");
+                    HBox centerBox = new HBox(noExceptions);
+                    centerBox.setAlignment(Pos.CENTER);
+                    listContainer.getChildren().add(centerBox);
+                } else {
+                    for (int i = 0; i < exceptionsList.size(); i++) {
+                        final int idx = i;
+                        String item = exceptionsList.get(i);
+                        HBox row = new HBox(8);
+                        row.setAlignment(Pos.CENTER_LEFT);
+                        row.setPadding(new Insets(3, 8, 3, 8));
+                        row.setStyle(idx == selectedIdx[0]
+                                ? "-fx-background-color: #2E436E; -fx-background-radius: 4; -fx-cursor: hand;"
+                                : "-fx-background-color: transparent; -fx-background-radius: 4; -fx-cursor: hand;");
+                        Label textLbl = new Label(item);
+                        textLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-family: monospace; -fx-font-size: 12px;");
+                        row.getChildren().add(textLbl);
+                        row.setOnMouseClicked(e -> {
+                            selectedIdx[0] = idx;
+                            run();
+                        });
+                        listContainer.getChildren().add(row);
+                    }
+                }
+            }
+        };
+
+        rebuildExceptionsView.run();
+
+        addBtn.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog("//");
+            dialog.setTitle("Add Comment Prefix Exception");
+            dialog.setHeaderText("Enter comment prefix exception:");
+            dialog.showAndWait().ifPresent(text -> {
+                if (!text.isBlank()) {
+                    exceptionsList.add(text.trim());
+                    selectedIdx[0] = exceptionsList.size() - 1;
+                    rebuildExceptionsView.run();
+                    notifyModified();
+                }
+            });
+        });
+
+        removeBtn.setOnAction(e -> {
+            if (selectedIdx[0] >= 0 && selectedIdx[0] < exceptionsList.size()) {
+                exceptionsList.remove(selectedIdx[0]);
+                if (selectedIdx[0] >= exceptionsList.size()) {
+                    selectedIdx[0] = exceptionsList.size() - 1;
+                }
+                rebuildExceptionsView.run();
+                notifyModified();
+            }
+        });
+
+        editBtn.setOnAction(e -> {
+            if (selectedIdx[0] >= 0 && selectedIdx[0] < exceptionsList.size()) {
+                String current = exceptionsList.get(selectedIdx[0]);
+                TextInputDialog dialog = new TextInputDialog(current);
+                dialog.setTitle("Edit Comment Prefix Exception");
+                dialog.setHeaderText("Edit comment prefix exception:");
+                dialog.showAndWait().ifPresent(text -> {
+                    if (!text.isBlank()) {
+                        exceptionsList.set(selectedIdx[0], text.trim());
+                        rebuildExceptionsView.run();
+                        notifyModified();
+                    }
+                });
+            }
+        });
+
+        exceptionsBox.getChildren().addAll(exceptLabel, toolbar, listContainer);
+        exceptionsBox.disableProperty().bind(goLeadingSpaceCb.selectedProperty().not());
+
+        goLeadingSpaceCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.OTHER_ADD_LEADING_SPACE_COMMENTS, n);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        // Column width for Fill paragraph
+        HBox colWidthRow = new HBox(12);
+        colWidthRow.setAlignment(Pos.CENTER_LEFT);
+        Label colWidthLabel = new Label("Column width for Fill paragraph:");
+        colWidthLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goColWidthField = new TextField(String.valueOf(workingSettings.getInt(GoCodeStyleSettings.OTHER_COLUMN_WIDTH_FILL_PARAGRAPH, 80)));
+        goColWidthField.setPrefWidth(55);
+        styleNumberField(goColWidthField);
+        goColWidthField.textProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                try {
+                    int val = Integer.parseInt(n.trim());
+                    workingSettings.setInt(GoCodeStyleSettings.OTHER_COLUMN_WIDTH_FILL_PARAGRAPH, val);
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+        colWidthRow.getChildren().addAll(colWidthLabel, goColWidthField);
+
+        // Run gofmt section
+        HBox runGofmtHeader = createDividerHeader("Run gofmt");
+
+        HBox runGofmtRow = new HBox(12);
+        runGofmtRow.setAlignment(Pos.CENTER_LEFT);
+        goRunGofmtCb = new CheckBox("On Reformat Code action");
+        goRunGofmtCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        goRunGofmtCb.setSelected(workingSettings.getBoolean(GoCodeStyleSettings.OTHER_RUN_GOFMT_ON_REFORMAT, true));
+        goRunGofmtCb.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GoCodeStyleSettings.OTHER_RUN_GOFMT_ON_REFORMAT, n);
+                notifyModified();
+            }
+        });
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label shortcutLabel = new Label("Ctrl+Alt+L");
+        shortcutLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px;");
+
+        runGofmtRow.getChildren().addAll(goRunGofmtCb, spacer, shortcutLabel);
+
+        box.getChildren().addAll(
+                goLeadingSpaceCb,
+                exceptionsBox,
+                colWidthRow,
+                runGofmtHeader,
+                runGofmtRow
+        );
+
+        leftContentBox.getChildren().add(box);
+    }
+
+    private void renderGroovyImportsTab() {
+        GroovyCodeStyleSettings gSettings = workingSettings instanceof GroovyCodeStyleSettings gs ? gs : null;
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(2, 0, 10, 0));
+
+        // 1. General
+        VBox generalBox = new VBox(6);
+        HBox generalHeader = createDividerHeader("General");
+
+        groovyUseSingleClassImportCb = new CheckBox("Use single class import");
+        groovyUseSingleClassImportCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyUseSingleClassImportCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_SINGLE_CLASS_IMPORT, true));
+        groovyUseSingleClassImportCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_SINGLE_CLASS_IMPORT, newV);
+                notifyModified();
+            }
+        });
+
+        groovyUseFqClassNamesCb = new CheckBox("Use fully qualified class names");
+        groovyUseFqClassNamesCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyUseFqClassNamesCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES, false));
+        groovyUseFqClassNamesCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES, newV);
+                notifyModified();
+            }
+        });
+
+        groovyInsertForInnerClassesCb = new CheckBox("Insert imports for inner classes");
+        groovyInsertForInnerClassesCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyInsertForInnerClassesCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.IMPORTS_INSERT_FOR_INNER_CLASSES, false));
+        groovyInsertForInnerClassesCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_INSERT_FOR_INNER_CLASSES, newV);
+                notifyModified();
+            }
+        });
+
+        groovyUseFqClassNamesInJavadocCb = new CheckBox("Use fully qualified class names in javadoc");
+        groovyUseFqClassNamesInJavadocCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyUseFqClassNamesInJavadocCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES_IN_JAVADOC, true));
+        groovyUseFqClassNamesInJavadocCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES_IN_JAVADOC, newV);
+                notifyModified();
+            }
+        });
+
+        HBox classCountRow = new HBox(8);
+        classCountRow.setAlignment(Pos.CENTER_LEFT);
+        Label classCountLabel = new Label("Class count to use import with '*':");
+        classCountLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyClassCountStarField = new TextField(String.valueOf(workingSettings.getInt(GroovyCodeStyleSettings.IMPORTS_CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND, 5)));
+        groovyClassCountStarField.setPrefWidth(50);
+        styleNumberField(groovyClassCountStarField);
+        groovyClassCountStarField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                try {
+                    int val = Integer.parseInt(newV.trim());
+                    workingSettings.setInt(GroovyCodeStyleSettings.IMPORTS_CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND, val);
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+        classCountRow.getChildren().addAll(classCountLabel, groovyClassCountStarField);
+
+        HBox staticCountRow = new HBox(8);
+        staticCountRow.setAlignment(Pos.CENTER_LEFT);
+        Label staticCountLabel = new Label("Names count to use static import with '*':");
+        staticCountLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyStaticCountStarField = new TextField(String.valueOf(workingSettings.getInt(GroovyCodeStyleSettings.IMPORTS_NAMES_COUNT_TO_USE_STATIC_IMPORT_ON_DEMAND, 3)));
+        groovyStaticCountStarField.setPrefWidth(50);
+        styleNumberField(groovyStaticCountStarField);
+        groovyStaticCountStarField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                try {
+                    int val = Integer.parseInt(newV.trim());
+                    workingSettings.setInt(GroovyCodeStyleSettings.IMPORTS_NAMES_COUNT_TO_USE_STATIC_IMPORT_ON_DEMAND, val);
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+        staticCountRow.getChildren().addAll(staticCountLabel, groovyStaticCountStarField);
+
+        generalBox.getChildren().addAll(
+                generalHeader,
+                groovyUseSingleClassImportCb,
+                groovyUseFqClassNamesCb,
+                groovyInsertForInnerClassesCb,
+                groovyUseFqClassNamesInJavadocCb,
+                classCountRow,
+                staticCountRow
+        );
+
+        // 2. Packages to Use Import with '*'
+        VBox packagesBox = new VBox(6);
+        Label packagesLabel = new Label("Packages to Use Import with '*':");
+        packagesLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        HBox packagesToolbar = new HBox(4);
+        Button addPkgBtn = createToolbarButton("+");
+        Button remPkgBtn = createToolbarButton("−");
+        packagesToolbar.getChildren().addAll(addPkgBtn, remPkgBtn);
+
+        groovyPackagesOnDemandTable = createGroovyImportTable(false);
+        if (gSettings != null) {
+            groovyPackagesOnDemandTable.getItems().setAll(gSettings.getPackagesToUseImportOnDemand());
+        }
+
+        addPkgBtn.setOnAction(e -> {
+            GroovyCodeStyleSettings.GroovyImportEntry newEntry = new GroovyCodeStyleSettings.GroovyImportEntry(false, "import com.example.*", false);
+            groovyPackagesOnDemandTable.getItems().add(newEntry);
+            groovyPackagesOnDemandTable.getSelectionModel().select(newEntry);
+            notifyModified();
+        });
+        remPkgBtn.setOnAction(e -> {
+            GroovyCodeStyleSettings.GroovyImportEntry sel = groovyPackagesOnDemandTable.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                groovyPackagesOnDemandTable.getItems().remove(sel);
+                notifyModified();
+            }
+        });
+
+        packagesBox.getChildren().addAll(packagesLabel, packagesToolbar, groovyPackagesOnDemandTable);
+
+        // 3. Layout static imports separately
+        groovyLayoutStaticSeparatelyCb = new CheckBox("Layout static imports separately");
+        groovyLayoutStaticSeparatelyCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyLayoutStaticSeparatelyCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.IMPORTS_LAYOUT_STATIC_IMPORTS_SEPARATELY, true));
+        groovyLayoutStaticSeparatelyCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_LAYOUT_STATIC_IMPORTS_SEPARATELY, newV);
+                notifyModified();
+            }
+        });
+
+        // 4. Import layout:
+        VBox layoutBox = new VBox(6);
+        Label layoutLabel = new Label("Import layout:");
+        layoutLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        HBox layoutToolbar = new HBox(4);
+        Button addLayoutBtn = createToolbarButton("+");
+        Button remLayoutBtn = createToolbarButton("−");
+        Button upLayoutBtn = createToolbarButton("↑");
+        Button downLayoutBtn = createToolbarButton("↓");
+        layoutToolbar.getChildren().addAll(addLayoutBtn, remLayoutBtn, upLayoutBtn, downLayoutBtn);
+
+        groovyImportLayoutTable = createGroovyImportTable(true);
+        if (gSettings != null) {
+            groovyImportLayoutTable.getItems().setAll(gSettings.getImportLayout());
+        }
+
+        addLayoutBtn.setOnAction(e -> {
+            GroovyCodeStyleSettings.GroovyImportEntry newEntry = new GroovyCodeStyleSettings.GroovyImportEntry(false, "import java.*", true);
+            groovyImportLayoutTable.getItems().add(newEntry);
+            groovyImportLayoutTable.getSelectionModel().select(newEntry);
+            notifyModified();
+        });
+        remLayoutBtn.setOnAction(e -> {
+            GroovyCodeStyleSettings.GroovyImportEntry sel = groovyImportLayoutTable.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                groovyImportLayoutTable.getItems().remove(sel);
+                notifyModified();
+            }
+        });
+        upLayoutBtn.setOnAction(e -> {
+            int idx = groovyImportLayoutTable.getSelectionModel().getSelectedIndex();
+            if (idx > 0) {
+                GroovyCodeStyleSettings.GroovyImportEntry item = groovyImportLayoutTable.getItems().remove(idx);
+                groovyImportLayoutTable.getItems().add(idx - 1, item);
+                groovyImportLayoutTable.getSelectionModel().select(idx - 1);
+                notifyModified();
+            }
+        });
+        downLayoutBtn.setOnAction(e -> {
+            int idx = groovyImportLayoutTable.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < groovyImportLayoutTable.getItems().size() - 1) {
+                GroovyCodeStyleSettings.GroovyImportEntry item = groovyImportLayoutTable.getItems().remove(idx);
+                groovyImportLayoutTable.getItems().add(idx + 1, item);
+                groovyImportLayoutTable.getSelectionModel().select(idx + 1);
+                notifyModified();
+            }
+        });
+
+        layoutBox.getChildren().addAll(layoutLabel, layoutToolbar, groovyImportLayoutTable);
+
+        box.getChildren().addAll(generalBox, packagesBox, groovyLayoutStaticSeparatelyCb, layoutBox);
+        leftContentBox.getChildren().add(box);
+    }
+
+    private TableView<GroovyCodeStyleSettings.GroovyImportEntry> createGroovyImportTable(boolean isLayoutTable) {
+        TableView<GroovyCodeStyleSettings.GroovyImportEntry> table = new TableView<>();
+        table.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-control-inner-background-alt: #1E1F22; -fx-background: #1E1F22; -fx-selection-bar: #35538F; -fx-selection-bar-non-focused: #35538F; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        table.setPrefHeight(isLayoutTable ? 150 : 100);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // Column 1: Static
+        TableColumn<GroovyCodeStyleSettings.GroovyImportEntry, Boolean> staticCol = new TableColumn<>("Static");
+        staticCol.setPrefWidth(65);
+        staticCol.setMaxWidth(80);
+        staticCol.setCellValueFactory(data -> new javafx.beans.property.SimpleBooleanProperty(data.getValue().isStatic()));
+        staticCol.setCellFactory(col -> new TableCell<>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setOnAction(e -> {
+                    GroovyCodeStyleSettings.GroovyImportEntry entry = getTableView().getItems().get(getIndex());
+                    entry.setStatic(cb.isSelected());
+                    notifyModified();
+                });
+            }
+
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    GroovyCodeStyleSettings.GroovyImportEntry entry = getTableView().getItems().get(getIndex());
+                    if (isLayoutTable && entry != null && entry.isSpecial()) {
+                        setGraphic(null);
+                    } else {
+                        cb.setSelected(item != null && item);
+                        setGraphic(cb);
+                    }
+                }
+            }
+        });
+
+        // Column 2: Package
+        TableColumn<GroovyCodeStyleSettings.GroovyImportEntry, String> pkgCol = new TableColumn<>("Package");
+        pkgCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getPackageName()));
+        pkgCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    if ("<blank line>".equals(item)) {
+                        Text t = new Text("<blank line>");
+                        t.setFill(Color.web("#848BA3"));
+                        t.setFont(Font.font("monospace", 12));
+                        setGraphic(t);
+                    } else if (item.startsWith("import static ")) {
+                        TextFlow flow = new TextFlow();
+                        Text kw = new Text("import static ");
+                        kw.setFill(Color.web("#CF8E6D"));
+                        kw.setFont(Font.font("monospace", 12));
+                        Text rest = new Text(item.substring("import static ".length()));
+                        rest.setFill(Color.web("#DFE1E5"));
+                        rest.setFont(Font.font("monospace", 12));
+                        flow.getChildren().addAll(kw, rest);
+                        setGraphic(flow);
+                    } else if (item.startsWith("import ")) {
+                        TextFlow flow = new TextFlow();
+                        Text kw = new Text("import ");
+                        kw.setFill(Color.web("#CF8E6D"));
+                        kw.setFont(Font.font("monospace", 12));
+                        Text rest = new Text(item.substring("import ".length()));
+                        rest.setFill(Color.web("#DFE1E5"));
+                        rest.setFont(Font.font("monospace", 12));
+                        flow.getChildren().addAll(kw, rest);
+                        setGraphic(flow);
+                    } else {
+                        Text t = new Text(item);
+                        t.setFill(Color.web("#DFE1E5"));
+                        t.setFont(Font.font("monospace", 12));
+                        setGraphic(t);
+                    }
+                    setText(null);
+                }
+            }
+        });
+
+        // Column 3: With Subpackages
+        TableColumn<GroovyCodeStyleSettings.GroovyImportEntry, Boolean> subCol = new TableColumn<>("With Subpackages");
+        subCol.setPrefWidth(140);
+        subCol.setMaxWidth(160);
+        subCol.setCellValueFactory(data -> new javafx.beans.property.SimpleBooleanProperty(data.getValue().isWithSubpackages()));
+        subCol.setCellFactory(col -> new TableCell<>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setOnAction(e -> {
+                    GroovyCodeStyleSettings.GroovyImportEntry entry = getTableView().getItems().get(getIndex());
+                    entry.setWithSubpackages(cb.isSelected());
+                    notifyModified();
+                });
+            }
+
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    GroovyCodeStyleSettings.GroovyImportEntry entry = getTableView().getItems().get(getIndex());
+                    if (isLayoutTable && entry != null && entry.isSpecial()) {
+                        setGraphic(null);
+                    } else {
+                        cb.setSelected(item != null && item);
+                        setGraphic(cb);
+                    }
+                }
+            }
+        });
+
+        table.getColumns().addAll(staticCol, pkgCol, subCol);
+        return table;
+    }
+
+    private void renderGroovyCodeGenerationTab() {
+        GroovyCodeStyleSettings gSettings = workingSettings instanceof GroovyCodeStyleSettings gs ? gs : null;
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(2, 0, 10, 0));
+
+        // 1. Order of Members
+        VBox orderBox = new VBox(6);
+        Label orderLabel = new Label("Order of Members");
+        orderLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        HBox orderToolbar = new HBox(4);
+        Button upBtn = createToolbarButton("↑");
+        Button downBtn = createToolbarButton("↓");
+        orderToolbar.getChildren().addAll(upBtn, downBtn);
+
+        groovyOrderOfMembersListView = new ListView<>();
+        groovyOrderOfMembersListView.setStyle(
+            "-fx-background-color: #1E1F22; " +
+            "-fx-control-inner-background: #1E1F22; " +
+            "-fx-control-inner-background-alt: #1E1F22; " +
+            "-fx-background: #1E1F22; " +
+            "-fx-selection-bar: #35538F; " +
+            "-fx-selection-bar-non-focused: #35538F; " +
+            "-fx-border-color: #393B40; " +
+            "-fx-border-radius: 4; " +
+            "-fx-background-radius: 4;"
+        );
+        groovyOrderOfMembersListView.setPrefHeight(180);
+        if (gSettings != null) {
+            groovyOrderOfMembersListView.getItems().setAll(gSettings.getOrderOfMembers());
+        }
+
+        groovyOrderOfMembersListView.setCellFactory(lv -> new ListCell<>() {
+            {
+                setOnMouseEntered(e -> {
+                    if (!isEmpty() && !isSelected()) {
+                        setStyle("-fx-background-color: #26282E; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 8 3 8;");
+                    }
+                });
+                setOnMouseExited(e -> {
+                    if (!isEmpty() && !isSelected()) {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 8 3 8;");
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                updateCell(item, empty, isSelected());
+            }
+
+            @Override
+            public void updateSelected(boolean selected) {
+                super.updateSelected(selected);
+                updateCell(getItem(), isEmpty(), selected);
+            }
+
+            private void updateCell(String item, boolean empty, boolean selected) {
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    String bg = selected ? "-fx-background-color: #35538F;" : "-fx-background-color: transparent;";
+                    setStyle(bg + " -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 8 3 8;");
+                }
+            }
+        });
+
+        if (!groovyOrderOfMembersListView.getItems().isEmpty()) {
+            groovyOrderOfMembersListView.getSelectionModel().select(0);
+        }
+
+        upBtn.setOnAction(e -> {
+            int idx = groovyOrderOfMembersListView.getSelectionModel().getSelectedIndex();
+            if (idx > 0) {
+                String item = groovyOrderOfMembersListView.getItems().remove(idx);
+                groovyOrderOfMembersListView.getItems().add(idx - 1, item);
+                groovyOrderOfMembersListView.getSelectionModel().select(idx - 1);
+                notifyModified();
+            }
+        });
+
+        downBtn.setOnAction(e -> {
+            int idx = groovyOrderOfMembersListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < groovyOrderOfMembersListView.getItems().size() - 1) {
+                String item = groovyOrderOfMembersListView.getItems().remove(idx);
+                groovyOrderOfMembersListView.getItems().add(idx + 1, item);
+                groovyOrderOfMembersListView.getSelectionModel().select(idx + 1);
+                notifyModified();
+            }
+        });
+
+        orderBox.getChildren().addAll(orderLabel, orderToolbar, groovyOrderOfMembersListView);
+
+        // 2. Comment Code
+        VBox commentCodeBox = new VBox(6);
+        HBox commentHeader = createDividerHeader("Comment Code");
+
+        groovyLineCommentFirstColCb = new CheckBox("Line comment at first column");
+        groovyLineCommentFirstColCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyLineCommentFirstColCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.CODE_GEN_LINE_COMMENT_AT_FIRST_COLUMN, true));
+        groovyLineCommentFirstColCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_LINE_COMMENT_AT_FIRST_COLUMN, newV);
+                notifyModified();
+            }
+        });
+
+        groovyAddSpaceLineCommentCb = new CheckBox("Add a space at line comment start");
+        groovyAddSpaceLineCommentCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyAddSpaceLineCommentCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACE_AT_LINE_COMMENT_START, false));
+
+        groovyEnforceOnReformatCb = new CheckBox("Enforce on reformat");
+        groovyEnforceOnReformatCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyEnforceOnReformatCb.setPadding(new Insets(0, 0, 0, 22));
+        groovyEnforceOnReformatCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ENFORCE_ON_REFORMAT, false));
+        groovyEnforceOnReformatCb.setDisable(!groovyAddSpaceLineCommentCb.isSelected());
+
+        groovyAddSpaceLineCommentCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            groovyEnforceOnReformatCb.setDisable(!newV);
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACE_AT_LINE_COMMENT_START, newV);
+                notifyModified();
+            }
+        });
+
+        groovyEnforceOnReformatCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ENFORCE_ON_REFORMAT, newV);
+                notifyModified();
+            }
+        });
+
+        groovyBlockCommentFirstColCb = new CheckBox("Block comment at first column");
+        groovyBlockCommentFirstColCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyBlockCommentFirstColCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.CODE_GEN_BLOCK_COMMENT_AT_FIRST_COLUMN, true));
+        groovyBlockCommentFirstColCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_BLOCK_COMMENT_AT_FIRST_COLUMN, newV);
+                notifyModified();
+            }
+        });
+
+        groovyAddSpacesAroundBlockCommentsCb = new CheckBox("Add spaces around block comments");
+        groovyAddSpacesAroundBlockCommentsCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        groovyAddSpacesAroundBlockCommentsCb.setSelected(workingSettings.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACES_AROUND_BLOCK_COMMENTS, false));
+        groovyAddSpacesAroundBlockCommentsCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACES_AROUND_BLOCK_COMMENTS, newV);
+                notifyModified();
+            }
+        });
+
+        commentCodeBox.getChildren().addAll(
+                commentHeader,
+                groovyLineCommentFirstColCb,
+                groovyAddSpaceLineCommentCb,
+                groovyEnforceOnReformatCb,
+                groovyBlockCommentFirstColCb,
+                groovyAddSpacesAroundBlockCommentsCb
+        );
+
+        box.getChildren().addAll(orderBox, commentCodeBox);
+        leftContentBox.getChildren().add(box);
+    }
+
     private void saveCurrentTabUiToWorkingSettings() {
+        if ("Groovy".equals(languageId)) {
+            if ("Imports".equals(activeTab)) {
+                if (groovyUseSingleClassImportCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_SINGLE_CLASS_IMPORT, groovyUseSingleClassImportCb.isSelected());
+                if (groovyUseFqClassNamesCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES, groovyUseFqClassNamesCb.isSelected());
+                if (groovyInsertForInnerClassesCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_INSERT_FOR_INNER_CLASSES, groovyInsertForInnerClassesCb.isSelected());
+                if (groovyUseFqClassNamesInJavadocCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES_IN_JAVADOC, groovyUseFqClassNamesInJavadocCb.isSelected());
+                if (groovyClassCountStarField != null) {
+                    try {
+                        workingSettings.setInt(GroovyCodeStyleSettings.IMPORTS_CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND, Integer.parseInt(groovyClassCountStarField.getText().trim()));
+                    } catch (Exception ignored) {}
+                }
+                if (groovyStaticCountStarField != null) {
+                    try {
+                        workingSettings.setInt(GroovyCodeStyleSettings.IMPORTS_NAMES_COUNT_TO_USE_STATIC_IMPORT_ON_DEMAND, Integer.parseInt(groovyStaticCountStarField.getText().trim()));
+                    } catch (Exception ignored) {}
+                }
+                if (groovyLayoutStaticSeparatelyCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.IMPORTS_LAYOUT_STATIC_IMPORTS_SEPARATELY, groovyLayoutStaticSeparatelyCb.isSelected());
+
+                if (workingSettings instanceof GroovyCodeStyleSettings gSettings) {
+                    if (groovyPackagesOnDemandTable != null) {
+                        gSettings.getPackagesToUseImportOnDemand().clear();
+                        for (GroovyCodeStyleSettings.GroovyImportEntry e : groovyPackagesOnDemandTable.getItems()) {
+                            gSettings.getPackagesToUseImportOnDemand().add(e.copy());
+                        }
+                    }
+                    if (groovyImportLayoutTable != null) {
+                        gSettings.getImportLayout().clear();
+                        for (GroovyCodeStyleSettings.GroovyImportEntry e : groovyImportLayoutTable.getItems()) {
+                            gSettings.getImportLayout().add(e.copy());
+                        }
+                    }
+                }
+                return;
+            } else if ("Code Generation".equals(activeTab)) {
+                if (groovyLineCommentFirstColCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_LINE_COMMENT_AT_FIRST_COLUMN, groovyLineCommentFirstColCb.isSelected());
+                if (groovyAddSpaceLineCommentCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACE_AT_LINE_COMMENT_START, groovyAddSpaceLineCommentCb.isSelected());
+                if (groovyEnforceOnReformatCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ENFORCE_ON_REFORMAT, groovyEnforceOnReformatCb.isSelected());
+                if (groovyBlockCommentFirstColCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_BLOCK_COMMENT_AT_FIRST_COLUMN, groovyBlockCommentFirstColCb.isSelected());
+                if (groovyAddSpacesAroundBlockCommentsCb != null) workingSettings.setBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACES_AROUND_BLOCK_COMMENTS, groovyAddSpacesAroundBlockCommentsCb.isSelected());
+
+                if (workingSettings instanceof GroovyCodeStyleSettings gSettings) {
+                    if (groovyOrderOfMembersListView != null) {
+                        gSettings.getOrderOfMembers().clear();
+                        gSettings.getOrderOfMembers().addAll(groovyOrderOfMembersListView.getItems());
+                    }
+                }
+                return;
+            }
+        }
+        if ("Go".equals(languageId)) {
+            if ("Imports".equals(activeTab)) {
+                if (goBackquotesCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_USE_BACKQUOTES, goBackquotesCb.isSelected());
+                if (goSingleImportParensCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_ADD_PARENTHESES_SINGLE, goSingleImportParensCb.isSelected());
+                if (goRemoveRedundantCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_REMOVE_REDUNDANT_ALIASES, goRemoveRedundantCb.isSelected());
+                if (goSortingCombo != null && goSortingCombo.getValue() != null) workingSettings.setString(GoCodeStyleSettings.IMPORTS_SORTING_TYPE, goSortingCombo.getValue());
+                if (goMoveAllSingleDeclCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_DECLARATION, goMoveAllSingleDeclCb.isSelected());
+                if (goGroupSdkCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_GROUP_SDK_PACKAGES, goGroupSdkCb.isSelected());
+                if (goMoveAllSingleGroupCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_GROUP, goMoveAllSingleGroupCb.isSelected());
+                if (goGroupCb != null) workingSettings.setBoolean(GoCodeStyleSettings.IMPORTS_GROUP_ENABLED, goGroupCb.isSelected());
+                if (goGroupModeGroup != null && goGroupModeGroup.getSelectedToggle() != null) {
+                    workingSettings.setString(GoCodeStyleSettings.IMPORTS_GROUP_MODE, goGroupModeGroup.getSelectedToggle().getUserData().toString());
+                }
+                if (goPrefixesArea != null) workingSettings.setString(GoCodeStyleSettings.IMPORTS_CUSTOM_PREFIXES, goPrefixesArea.getText());
+                return;
+            } else if ("Other".equals(activeTab)) {
+                if (goLeadingSpaceCb != null) workingSettings.setBoolean(GoCodeStyleSettings.OTHER_ADD_LEADING_SPACE_COMMENTS, goLeadingSpaceCb.isSelected());
+                if (goColWidthField != null) {
+                    try {
+                        workingSettings.setInt(GoCodeStyleSettings.OTHER_COLUMN_WIDTH_FILL_PARAGRAPH, Integer.parseInt(goColWidthField.getText().trim()));
+                    } catch (Exception ignored) {}
+                }
+                if (goRunGofmtCb != null) workingSettings.setBoolean(GoCodeStyleSettings.OTHER_RUN_GOFMT_ON_REFORMAT, goRunGofmtCb.isSelected());
+                return;
+            }
+        }
+
         if ("Imports".equals(activeTab)) {
             if (topLevelGroup != null && topLevelGroup.getSelectedToggle() != null) {
                 Object ud = topLevelGroup.getSelectedToggle().getUserData();
@@ -1213,6 +2170,24 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 aTarget.getMatchingRules().clear();
                 aTarget.getMatchingRules().addAll(aCur.getMatchingRules());
             }
+
+            if (workingSettings instanceof GoCodeStyleSettings gCur && target instanceof GoCodeStyleSettings gTarget) {
+                gTarget.getCommentExceptions().clear();
+                gTarget.getCommentExceptions().addAll(gCur.getCommentExceptions());
+            }
+
+            if (workingSettings instanceof GroovyCodeStyleSettings gCur && target instanceof GroovyCodeStyleSettings gTarget) {
+                gTarget.getPackagesToUseImportOnDemand().clear();
+                for (GroovyCodeStyleSettings.GroovyImportEntry e : gCur.getPackagesToUseImportOnDemand()) {
+                    gTarget.getPackagesToUseImportOnDemand().add(e.copy());
+                }
+                gTarget.getImportLayout().clear();
+                for (GroovyCodeStyleSettings.GroovyImportEntry e : gCur.getImportLayout()) {
+                    gTarget.getImportLayout().add(e.copy());
+                }
+                gTarget.getOrderOfMembers().clear();
+                gTarget.getOrderOfMembers().addAll(gCur.getOrderOfMembers());
+            }
         }
 
         CodeStyleSettings.getInstance().saveSettings();
@@ -1248,6 +2223,16 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
         if (workingSettings instanceof AngularHtmlCodeStyleSettings aCur && baselineSettings instanceof AngularHtmlCodeStyleSettings aBase) {
             if (!Objects.equals(aCur.getMatchingRules(), aBase.getMatchingRules())) return true;
+        }
+
+        if (workingSettings instanceof GoCodeStyleSettings gCur && baselineSettings instanceof GoCodeStyleSettings gBase) {
+            if (!Objects.equals(gCur.getCommentExceptions(), gBase.getCommentExceptions())) return true;
+        }
+
+        if (workingSettings instanceof GroovyCodeStyleSettings gCur && baselineSettings instanceof GroovyCodeStyleSettings gBase) {
+            if (!Objects.equals(gCur.getPackagesToUseImportOnDemand(), gBase.getPackagesToUseImportOnDemand())) return true;
+            if (!Objects.equals(gCur.getImportLayout(), gBase.getImportLayout())) return true;
+            if (!Objects.equals(gCur.getOrderOfMembers(), gBase.getOrderOfMembers())) return true;
         }
 
         Map<String, Object> curProps = workingSettings.getAllProperties();
@@ -1303,6 +2288,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             workingSettings.setIndent(other.getIndent());
             workingSettings.setContinuationIndent(other.getContinuationIndent());
             workingSettings.setKeepIndentsOnEmptyLines(other.isKeepIndentsOnEmptyLines());
+            workingSettings.setLabelIndent(other.getLabelIndent());
             renderActiveTabControls();
         } finally {
             suppressEvents = false;
@@ -1429,6 +2415,122 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             }
         }
 
+        // Go transforms
+        if (workingSettings instanceof GoCodeStyleSettings || "Go".equals(languageId)) {
+            boolean leadingSpace = workingSettings.getBoolean(GoCodeStyleSettings.OTHER_ADD_LEADING_SPACE_COMMENTS, false);
+            if (leadingSpace) {
+                code = code.replace("//Foo docs", "// Foo docs");
+            } else {
+                code = code.replace("// Foo docs", "//Foo docs");
+            }
+
+            boolean useBackquotes = workingSettings.getBoolean(GoCodeStyleSettings.IMPORTS_USE_BACKQUOTES, false);
+            if (useBackquotes) {
+                code = code.replace("\"bytes\"", "`bytes`")
+                           .replace("\"fmt\"", "`fmt`")
+                           .replace("\"localPackage\"", "`localPackage`")
+                           .replace("\"appengine\"", "`appengine`")
+                           .replace("\"errors\"", "`errors`");
+            }
+        }
+
+        // Groovy transforms
+        if (workingSettings instanceof GroovyCodeStyleSettings || "Groovy".equals(languageId)) {
+            // Before parentheses
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_IF_PARENTHESES, true)) {
+                code = code.replace("if (", "if(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FOR_PARENTHESES, true)) {
+                code = code.replace("for (", "for(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_WHILE_PARENTHESES, true)) {
+                code = code.replace("while (", "while(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CATCH_PARENTHESES, true)) {
+                code = code.replace("catch (", "catch(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SWITCH_PARENTHESES, true)) {
+                code = code.replace("switch (", "switch(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TRY_PARENTHESES, true)) {
+                code = code.replace("try (", "try(");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SYNCHRONIZED_PARENTHESES, true)) {
+                code = code.replace("synchronized (", "synchronized(");
+            }
+            if (workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_METHOD_DECLARATION_PARENTHESES, false)) {
+                code = code.replace("foo(int x", "foo (int x").replace("inject(x)", "inject (x)");
+            }
+            if (workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_METHOD_CALL_PARENTHESES, false)) {
+                code = code.replace("obtainResource()", "obtainResource ()")
+                           .replace("getCode()", "getCode ()")
+                           .replace("operation()", "operation ()")
+                           .replace("ckl(2)", "ckl (2)");
+            }
+
+            // Around operators
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_ASSIGNMENT_OPERATORS, true)) {
+                code = code.replace(" = ", "=").replace(" += ", "+=");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_LOGICAL_OPERATORS, true)) {
+                code = code.replace(" && ", "&&");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_EQUALITY_OPERATORS, true)) {
+                code = code.replace(" != ", "!=");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_RELATIONAL_OPERATORS, true)) {
+                code = code.replace(" < ", "<").replace(" >= ", ">=");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_LAMBDA_ARROW, true)) {
+                code = code.replace(" -> ", "->");
+            }
+
+            // Ternary
+            boolean beforeQ = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TERNARY_QUESTION, true);
+            boolean afterQ = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_TERNARY_QUESTION, true);
+            boolean beforeC = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TERNARY_COLON, true);
+            boolean afterC = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_TERNARY_COLON, true);
+            String q = (beforeQ ? " " : "") + "?" + (afterQ ? " " : "");
+            String c = (beforeC ? " " : "") + ":" + (afterC ? " " : "");
+            code = code.replace(" ? ", q).replace(" : ", c);
+
+            // Assert
+            boolean beforeAssert = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ASSERT_SEPARATOR, false);
+            boolean afterAssert = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_ASSERT_SEPARATOR, true);
+            String assertSep = (beforeAssert ? " " : "") + ":" + (afterAssert ? " " : "");
+            code = code.replace(": message", assertSep + "message");
+
+            // Named argument
+            boolean beforeNamed = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_IN_NAMED_ARGUMENT_BEFORE_COLON, false);
+            boolean afterNamed = workingSettings.getBoolean(GroovyCodeStyleSettings.SPACE_IN_NAMED_ARGUMENT_AFTER_COLON, true);
+            String namedSep = (beforeNamed ? " " : "") + ":" + (afterNamed ? " " : "");
+            code = code.replace(": \"foo\"", namedSep + "\"foo\"").replace(": e", namedSep + "e");
+
+            // Wrapping and Braces transforms
+            String classBrace = workingSettings.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_CLASS, "End of line");
+            if ("Next line".equals(classBrace)) {
+                code = code.replace("class Foo {", "class Foo\n{")
+                           .replace("I4, I5 {", "I4, I5\n{");
+            }
+            String methodBrace = workingSettings.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_METHOD, "End of line");
+            if ("Next line".equals(methodBrace)) {
+                code = code.replace(") {", ")\n{");
+            }
+            if (workingSettings.getBoolean(GroovyCodeStyleSettings.WRAP_IF_ELSE_ON_NEW_LINE, false)) {
+                code = code.replace("} else", "}\nelse");
+            }
+            if (workingSettings.getBoolean(GroovyCodeStyleSettings.WRAP_TRY_CATCH_ON_NEW_LINE, false)) {
+                code = code.replace("} catch", "}\ncatch");
+            }
+            if (workingSettings.getBoolean(GroovyCodeStyleSettings.WRAP_TRY_FINALLY_ON_NEW_LINE, false)) {
+                code = code.replace("} finally", "}\nfinally");
+            }
+            if (!workingSettings.getBoolean(GroovyCodeStyleSettings.WRAP_SWITCH_INDENT_CASE_BRANCHES, true)) {
+                code = code.replace("            case 0:", "        case 0:")
+                           .replace("            default:", "        default:");
+            }
+        }
+
         return code;
     }
 
@@ -1469,8 +2571,8 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         if (code.isEmpty()) return;
 
         Pattern tokenPattern = Pattern.compile(
-                "(</?[A-Za-z0-9_-]+)|" +
-                "(/?>|>)|" +
+                "(</?[A-Za-z0-9_-]+|/?>|>)|" +
+                "(<%={1,2}|<%-?|-?%>|%>)|" +
                 "(@(if|else\\s+if|else))|" +
                 "(\\{\\{|\\}\\})|" +
                 "(\\*ng[A-Za-z0-9_]+|#[A-Za-z0-9_-]+|\\[[^\\]\\r\\n]+\\])|" +
@@ -1478,9 +2580,10 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 "\\b(public|private|protected|class|interface|enum|record|void|int|long|boolean|char|float|double|" +
                 "try|catch|finally|throw|throws|if|else|do|while|for|switch|case|default|break|continue|return|" +
                 "new|package|import|extends|implements|static|final|fun|val|var|open|where|in|init|context|def|type|func|struct|fn|let|mut|" +
-                "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false)\\b|" +
-                "(@[A-Za-z0-9_]+(\\([^)]*\\))?)|" +
-                "(\"[^\"]*\")|" +
+                "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false|" +
+                "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end)\\b|" +
+                "(:[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+(\\([^)]*\\))?)|" +
+                "(\"[^\"]*\"|'[^']*'|`[^`]*`)|" +
                 "(\\b\\d+\\b)|" +
                 "(\\b[A-Z][a-zA-Z0-9_]*\\b)"
         );
@@ -1499,8 +2602,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             Text token = new Text(matcher.group());
             token.setFont(Font.font("monospace", 12));
 
-            if (matcher.group(1) != null || matcher.group(2) != null) {
+            if (matcher.group(1) != null) {
                 // HTML tag or bracket
+                token.setFill(Color.web("#E8BF6A"));
+            } else if (matcher.group(2) != null) {
+                // ERB delimiter
                 token.setFill(Color.web("#E8BF6A"));
             } else if (matcher.group(3) != null) {
                 // Angular control flow
@@ -1518,7 +2624,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 // Keyword (orange/peach)
                 token.setFill(Color.web("#CF8E6D"));
             } else if (matcher.group(8) != null) {
-                // Annotation (gold/amber)
+                // Ruby symbol or annotation (gold/amber)
                 token.setFill(Color.web("#BBB529"));
             } else if (matcher.group(9) != null) {
                 // String (green)

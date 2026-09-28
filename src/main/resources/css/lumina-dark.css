@@ -840,9 +840,48 @@
     -fx-table-cell-border-color: transparent;
     -fx-table-header-border-color: transparent;
     -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-control-inner-background-alt: #1E1F22;
     -fx-border-color: #393B40;
     -fx-border-radius: 4;
     -fx-background-radius: 4;
+}
+
+.list-view,
+.list-view:focused {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+    -fx-control-inner-background-alt: #1E1F22;
+    -fx-background: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.list-view .list-cell {
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-size: 12px;
+    -fx-padding: 3 8 3 8;
+}
+
+.list-view .list-cell:empty {
+    -fx-background-color: #1E1F22;
+}
+
+.list-view .list-cell:filled:hover {
+    -fx-background-color: #26282E;
+    -fx-text-fill: #DFE1E5;
+}
+
+.list-view .list-cell:filled:selected {
+    -fx-background-color: #35538F;
+    -fx-text-fill: #FFFFFF;
+}
+
+.list-view .placeholder .label {
+    -fx-text-fill: #6C7387;
+    -fx-font-size: 13px;
 }
 .table-view .column-header-background,
 .env-variables-table .column-header-background {

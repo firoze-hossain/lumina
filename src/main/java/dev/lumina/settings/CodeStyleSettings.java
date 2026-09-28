@@ -1068,83 +1068,16 @@ public class Foo {
         LanguageCodeStyleProvider.register(EditorConfigCodeStyleSettings.createProvider());
 
         // 5. ERB
-        registerSimpleProvider("ERB", "ERB", 2, 2, 4, """
-<% if @user.admin? %>
-  <div class="admin-panel">
-    <h1>Welcome, <%= @user.name %></h1>
-    <% @projects.each do |project| %>
-      <p><%= project.title %></p>
-    <% end %>
-  </div>
-<% end %>
-""");
+        LanguageCodeStyleProvider.register(ErbCodeStyleSettings.createProvider());
 
         // 6. Go
-        LanguageCodeStyleProvider.register(new LanguageCodeStyleProvider() {
-            @Override public String getLanguageId() { return "Go"; }
-            @Override public String getDisplayName() { return "Go"; }
-            @Override public List<String> getSupportedTabs() { return List.of("Tabs and Indents", "Spaces", "Wrapping and Braces", "Blank Lines", "Imports"); }
-            @Override public LanguageCodeStyleSettings createDefaultSettings() {
-                LanguageCodeStyleSettings s = new LanguageCodeStyleSettings("Go");
-                s.setUseTabCharacter(true);
-                s.setTabSize(4);
-                s.setIndent(4);
-                s.setContinuationIndent(8);
-                return s;
-            }
-            @Override public String getSampleCode() {
-                return """
-package main
-
-import (
-\t"fmt"
-\t"net/http"
-)
-
-type Server struct {
-\tPort int
-\tHost string
-}
-
-func (s *Server) Start() error {
-\thttp.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-\t\tfmt.Fprintf(w, "Hello, Lumina!")
-\t})
-\treturn http.ListenAndServe(fmt.Sprintf("%s:%d", s.Host, s.Port), nil)
-}
-""";
-            }
-        });
+        LanguageCodeStyleProvider.register(GoCodeStyleSettings.createProvider());
 
         // 7. Gradle Declarative Configuration
-        registerSimpleProvider("Gradle Declarative Configuration", "Gradle Declarative Configuration", 4, 4, 8, """
-plugins {
-    id("java")
-    id("application")
-}
-
-application {
-    mainClass.set("dev.lumina.Main")
-}
-
-dependencies {
-    implementation("org.slf4j:slf4j-api:2.0.9")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-}
-""");
+        LanguageCodeStyleProvider.register(GradleDeclarativeCodeStyleSettings.createProvider());
 
         // 8. Groovy
-        registerSimpleProvider("Groovy", "Groovy", 4, 4, 8, """
-class Person {
-    String name
-    int age
-
-    def greet() {
-        def greeting = "Hello, ${name}"
-        println greeting
-    }
-}
-""");
+        LanguageCodeStyleProvider.register(GroovyCodeStyleSettings.createProvider());
 
         // 9. HTML
         registerSimpleProvider("HTML", "HTML", 2, 2, 4, """

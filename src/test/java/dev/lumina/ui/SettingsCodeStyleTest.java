@@ -7,6 +7,10 @@ import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleSettings;
 import dev.lumina.settings.CodeStyleSettings.LineSeparator;
 import dev.lumina.settings.EditorConfigCodeStyleSettings;
+import dev.lumina.settings.ErbCodeStyleSettings;
+import dev.lumina.settings.GoCodeStyleSettings;
+import dev.lumina.settings.GradleDeclarativeCodeStyleSettings;
+import dev.lumina.settings.GroovyCodeStyleSettings;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
@@ -1292,6 +1296,555 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testErbCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("ERB");
+        assertNotNull(provider, "ERB provider must be registered");
+        assertEquals("ERB", provider.getLanguageId());
+        assertEquals("ERB", provider.getDisplayName());
+
+        assertEquals(List.of("Tabs and Indents"), provider.getSupportedTabs());
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof ErbCodeStyleSettings);
+        ErbCodeStyleSettings es = (ErbCodeStyleSettings) settings;
+
+        // Tabs and indents defaults (media_1790578204402.png)
+        assertEquals(2, es.getTabSize());
+        assertEquals(2, es.getIndent());
+        assertEquals(2, es.getContinuationIndent(), "ERB continuation indent must be 2");
+        assertFalse(es.isUseTabCharacter());
+        assertFalse(es.isSmartTabs());
+        assertFalse(es.isKeepIndentsOnEmptyLines());
+
+        // Sample code
+        assertEquals(ErbCodeStyleSettings.SAMPLE_ERB, provider.getSampleCode());
+
+        // Copy independence
+        ErbCodeStyleSettings copy = es.copy();
+        assertEquals(es.getContinuationIndent(), copy.getContinuationIndent());
+        copy.setContinuationIndent(4);
+        assertNotEquals(es.getContinuationIndent(), copy.getContinuationIndent());
+    }
+
+    @Test
+    void testGoCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Go");
+        assertNotNull(provider, "Go provider must be registered");
+        assertEquals("Go", provider.getLanguageId());
+        assertEquals("Go", provider.getDisplayName());
+
+        assertEquals(List.of("Tabs and Indents", "Wrapping and Braces", "Imports", "Other"), provider.getSupportedTabs());
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertTrue(provider.hasPreview("Imports"));
+        assertTrue(provider.hasPreview("Other"));
+
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof GoCodeStyleSettings);
+        GoCodeStyleSettings gs = (GoCodeStyleSettings) settings;
+
+        // Tabs and indents defaults (media_1790578230039.png)
+        assertEquals(4, gs.getTabSize());
+        assertEquals(4, gs.getIndent());
+        assertEquals(4, gs.getContinuationIndent(), "Go continuation indent must be 4");
+        assertTrue(gs.isUseTabCharacter(), "Go must default to using tab character");
+        assertFalse(gs.isSmartTabs());
+        assertFalse(gs.isKeepIndentsOnEmptyLines());
+
+        // Wrapping and Braces defaults (media_1790578216851.png)
+        assertEquals("Default: 120", gs.getString(GoCodeStyleSettings.WRAP_HARD_WRAP_AT, ""));
+        assertEquals("Default: No", gs.getString(GoCodeStyleSettings.WRAP_ON_TYPING, ""));
+        assertEquals("Default: None", gs.getString(GoCodeStyleSettings.WRAP_VISUAL_GUIDES, ""));
+        assertEquals("Do not wrap", gs.getString(GoCodeStyleSettings.WRAP_CALL_ARGUMENTS, ""));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_CALL_ARGUMENTS_NEW_LINE_AFTER_LPAREN, false));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_CALL_ARGUMENTS_RPAREN_ON_NEW_LINE, false));
+        assertEquals("Do not wrap", gs.getString(GoCodeStyleSettings.WRAP_COMPOSITE_LITERALS, ""));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_COMPOSITE_LITERALS_NEW_LINE_AFTER_LBRACE, false));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_COMPOSITE_LITERALS_RBRACE_ON_NEW_LINE, false));
+        assertEquals("Do not wrap", gs.getString(GoCodeStyleSettings.WRAP_FUNCTION_PARAMETERS, ""));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_FUNCTION_PARAMETERS_NEW_LINE_AFTER_LPAREN, false));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_FUNCTION_PARAMETERS_RPAREN_ON_NEW_LINE, false));
+        assertEquals("Do not wrap", gs.getString(GoCodeStyleSettings.WRAP_FUNCTION_RESULT_PARAMETERS, ""));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_FUNCTION_RESULT_PARAMETERS_NEW_LINE_AFTER_LPAREN, false));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.WRAP_FUNCTION_RESULT_PARAMETERS_RPAREN_ON_NEW_LINE, false));
+
+        // Imports defaults (media_1790578241168.png)
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_USE_BACKQUOTES, true));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_ADD_PARENTHESES_SINGLE, true));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_REMOVE_REDUNDANT_ALIASES, true));
+        assertEquals("goimports", gs.getString(GoCodeStyleSettings.IMPORTS_SORTING_TYPE, ""));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_DECLARATION, true));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_GROUP_SDK_PACKAGES, true));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_MOVE_ALL_SINGLE_GROUP, true));
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.IMPORTS_GROUP_ENABLED, true));
+        assertEquals("PROJECT", gs.getString(GoCodeStyleSettings.IMPORTS_GROUP_MODE, ""));
+
+        // Other defaults (media_1790578252165.png)
+        assertFalse(gs.getBoolean(GoCodeStyleSettings.OTHER_ADD_LEADING_SPACE_COMMENTS, true));
+        assertEquals(80, gs.getInt(GoCodeStyleSettings.OTHER_COLUMN_WIDTH_FILL_PARAGRAPH, 0));
+        assertTrue(gs.getBoolean(GoCodeStyleSettings.OTHER_RUN_GOFMT_ON_REFORMAT, false));
+        assertTrue(gs.getCommentExceptions().isEmpty());
+
+        // Sample codes per tab
+        assertEquals(GoCodeStyleSettings.SAMPLE_TABS_AND_INDENTS, provider.getSampleCode("Tabs and Indents"));
+        assertEquals(GoCodeStyleSettings.SAMPLE_WRAPPING_AND_BRACES, provider.getSampleCode("Wrapping and Braces"));
+        assertEquals(GoCodeStyleSettings.SAMPLE_IMPORTS, provider.getSampleCode("Imports"));
+        assertEquals(GoCodeStyleSettings.SAMPLE_OTHER, provider.getSampleCode("Other"));
+
+        // Copy independence
+        GoCodeStyleSettings copy = gs.copy();
+        assertEquals(gs.getCommentExceptions(), copy.getCommentExceptions());
+        copy.getCommentExceptions().add("//custom");
+        assertNotEquals(gs.getCommentExceptions(), copy.getCommentExceptions());
+    }
+
+    @Test
+    void testErbAndGoLanguagePages() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testErbAndGoLanguagePages");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                // Test ERB page
+                SettingsCodeStyleLanguagePage erbPage = new SettingsCodeStyleLanguagePage("ERB");
+                assertNotNull(erbPage);
+                assertEquals("Tabs and Indents", erbPage.getActiveTab(), "ERB must have Tabs and Indents as active tab");
+                assertFalse(erbPage.isModified());
+
+                // Test Go page
+                SettingsCodeStyleLanguagePage goPage = new SettingsCodeStyleLanguagePage("Go");
+                assertNotNull(goPage);
+                assertEquals("Tabs and Indents", goPage.getActiveTab(), "Go must default to Tabs and Indents tab");
+
+                goPage.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", goPage.getActiveTab());
+
+                goPage.setActiveTab("Imports");
+                assertEquals("Imports", goPage.getActiveTab());
+
+                goPage.setActiveTab("Other");
+                assertEquals("Other", goPage.getActiveTab());
+                assertFalse(goPage.isModified());
+
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "Language pages test timed out");
+        } catch (InterruptedException e) {
+            fail("Language pages test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
+    void testGradleDeclarativeCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Gradle Declarative Configuration");
+        assertNotNull(provider, "Gradle Declarative provider must be registered");
+        assertEquals("Gradle Declarative Configuration", provider.getLanguageId());
+        assertEquals("Gradle Declarative Configuration", provider.getDisplayName());
+        assertEquals(List.of("Tabs and Indents"), provider.getSupportedTabs(), "Must support exactly 1 tab: Tabs and Indents");
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+
+        LanguageCodeStyleSettings defaultSettings = provider.createDefaultSettings();
+        assertTrue(defaultSettings instanceof GradleDeclarativeCodeStyleSettings);
+        GradleDeclarativeCodeStyleSettings gds = (GradleDeclarativeCodeStyleSettings) defaultSettings;
+
+        // Tabs and Indents defaults (media_1790578358987.png)
+        assertEquals(4, gds.getTabSize());
+        assertEquals(4, gds.getIndent());
+        assertEquals(8, gds.getContinuationIndent());
+        assertFalse(gds.isUseTabCharacter());
+        assertFalse(gds.isSmartTabs());
+        assertFalse(gds.isKeepIndentsOnEmptyLines());
+
+        // Sample code
+        assertEquals(GradleDeclarativeCodeStyleSettings.SAMPLE_GRADLE_DECLARATIVE, provider.getSampleCode("Tabs and Indents"));
+
+        // Copy independence
+        GradleDeclarativeCodeStyleSettings copy = gds.copy();
+        assertEquals(gds.getTabSize(), copy.getTabSize());
+        copy.setTabSize(2);
+        assertNotEquals(gds.getTabSize(), copy.getTabSize());
+    }
+
+    @Test
+    void testGroovyCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Groovy");
+        assertNotNull(provider, "Groovy provider must be registered");
+        assertEquals("Groovy", provider.getLanguageId());
+        assertEquals("Groovy", provider.getDisplayName());
+        assertEquals(List.of("Tabs and Indents", "Spaces", "Wrapping and Braces", "Blank Lines", "GroovyDoc", "Imports", "Code Generation"),
+                provider.getSupportedTabs(), "Must support exactly 7 tabs matching reference screenshots");
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Spaces"));
+
+        LanguageCodeStyleSettings defaultSettings = provider.createDefaultSettings();
+        assertTrue(defaultSettings instanceof GroovyCodeStyleSettings);
+        GroovyCodeStyleSettings gs = (GroovyCodeStyleSettings) defaultSettings;
+
+        // Tabs and Indents defaults (media_1790578371136.png)
+        assertEquals(4, gs.getTabSize());
+        assertEquals(4, gs.getIndent());
+        assertEquals(8, gs.getContinuationIndent());
+        assertFalse(gs.isUseTabCharacter());
+        assertFalse(gs.isSmartTabs());
+        assertFalse(gs.isKeepIndentsOnEmptyLines());
+        assertEquals(0, gs.getLabelIndent());
+        assertEquals("Indent statements after label", gs.getString(GroovyCodeStyleSettings.LABEL_INDENT_STYLE, ""));
+
+        // Spaces - Before parentheses (media_1790578385278.png)
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_METHOD_DECLARATION_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_METHOD_CALL_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_EMPTY_METHOD_CALL_PARENTHESES, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_IF_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FOR_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_WHILE_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SWITCH_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TRY_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CATCH_PARENTHESES, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SYNCHRONIZED_PARENTHESES, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TYPE_CAST_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ANNOTATION_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_LIST_AND_MAPS_LITERALS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_GSTRING_INJECTION_BRACES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TUPLE_ASSIGNMENT, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_RECORD_PARAMETER_LIST, true));
+
+        // Spaces - Around operators (media_1790578385278.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_ASSIGNMENT_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_LOGICAL_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_EQUALITY_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_RELATIONAL_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_BITWISE_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_ADDITIVE_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_MULTIPLICATIVE_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_SHIFT_OPERATORS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_LAMBDA_ARROW, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AROUND_REGEXP_OPERATORS, false));
+
+        // Spaces - Before left brace (media_1790578385278.png, media_1790578412189.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CLASS_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_METHOD_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_IF_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ELSE_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FOR_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_WHILE_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_DO_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SWITCH_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TRY_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CATCH_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FINALLY_LBRACE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_SYNCHRONIZED_LBRACE, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ARRAY_INITIALIZER_LBRACE, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CLOSURE_LBRACE_IN_CALLS, true));
+
+        // Spaces - Before keywords (media_1790578412189.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ELSE_KEYWORD, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_WHILE_KEYWORD, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_CATCH_KEYWORD, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FINALLY_KEYWORD, false));
+
+        // Spaces - Within (media_1790578412189.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_CODE_BRACES, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_BRACKETS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_ARRAY_INITIALIZER_BRACES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_EMPTY_ARRAY_INITIALIZER_BRACES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_GROUPING_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_METHOD_DECLARATION_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_METHOD_CALL_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_EMPTY_METHOD_CALL_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_IF_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_FOR_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_WHILE_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_SWITCH_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_TRY_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_CATCH_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_SYNCHRONIZED_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_TYPE_CAST_PARENTHESES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_WITHIN_ANNOTATION_PARENTHESES, true));
+
+        // Spaces - In ternary operator (media_1790578441103.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TERNARY_QUESTION, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_TERNARY_QUESTION, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_TERNARY_COLON, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_TERNARY_COLON, false));
+
+        // Spaces - Within type arguments (media_1790578441103.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_COMMA_IN_TYPE_ARGUMENTS, false));
+
+        // Spaces - Other (media_1790578441103.png)
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_COMMA, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_COMMA, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_FOR_SEMICOLON, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_FOR_SEMICOLON, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_TYPE_CAST, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_IN_NAMED_ARGUMENT_BEFORE_COLON, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_IN_NAMED_ARGUMENT_AFTER_COLON, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.SPACE_BEFORE_ASSERT_SEPARATOR, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.SPACE_AFTER_ASSERT_SEPARATOR, false));
+
+        // Wrapping and Braces defaults (media_1790578808143.png, media_1790578849775.png, media_1790578902174.png, media_1790578944643.png)
+        assertEquals(120, gs.getInt(GroovyCodeStyleSettings.HARD_WRAP_AT, 0));
+        assertEquals("Default: No", gs.getString(GroovyCodeStyleSettings.WRAP_ON_TYPING, ""));
+        assertEquals("Default: None", gs.getString(GroovyCodeStyleSettings.VISUAL_GUIDES, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_LINE_BREAKS, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_COMMENT_AT_FIRST_COLUMN, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_CONTROL_STATEMENT_IN_ONE_LINE, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_MULTIPLE_EXPRESSIONS_IN_ONE_LINE, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_SIMPLE_BLOCKS_IN_ONE_LINE, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_SIMPLE_METHODS_IN_ONE_LINE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_SIMPLE_LAMBDAS_IN_ONE_LINE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_KEEP_SIMPLE_CLASSES_IN_ONE_LINE, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ENSURE_RIGHT_MARGIN_NOT_EXCEEDED, true));
+        assertEquals("End of line", gs.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_CLASS, ""));
+        assertEquals("End of line", gs.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_METHOD, ""));
+        assertEquals("End of line", gs.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_LAMBDA, ""));
+        assertEquals("End of line", gs.getString(GroovyCodeStyleSettings.BRACE_PLACEMENT_OTHER, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.BRACE_USE_FLYING_GEESE, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_EXTENDS_LIST, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_EXTENDS_LIST, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_EXTENDS_KEYWORD, ""));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_THROWS_LIST, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_THROWS_LIST, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_THROWS_TO_METHOD_START, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_THROWS_KEYWORD, ""));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_METHOD_PARAMETERS, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_METHOD_PARAMETERS, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LPAREN_METHOD_PARAMETERS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RPAREN_ON_NEW_LINE_METHOD_PARAMETERS, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_METHOD_ARGUMENTS, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_METHOD_ARGUMENTS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_METHOD_ARGUMENTS_TAKE_PRIORITY_OVER_CALL_CHAIN, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LPAREN_METHOD_ARGUMENTS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RPAREN_ON_NEW_LINE_METHOD_ARGUMENTS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_METHOD_PARENTHESES, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_CHAINED_CALLS, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_CHAINED_CALLS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_CHAINED_CALLS_WRAP_AFTER_DOT, true));
+        assertEquals("Do not force", gs.getString(GroovyCodeStyleSettings.WRAP_IF_FORCE_BRACES, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_IF_ELSE_ON_NEW_LINE, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_IF_SPECIAL_ELSE_IF, false));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_FOR_STATEMENT, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_FOR_STATEMENT, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LPAREN_FOR, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RPAREN_ON_NEW_LINE_FOR, true));
+        assertEquals("Do not force", gs.getString(GroovyCodeStyleSettings.WRAP_FOR_FORCE_BRACES, ""));
+        assertEquals("Do not force", gs.getString(GroovyCodeStyleSettings.WRAP_WHILE_FORCE_BRACES, ""));
+        assertEquals("Do not force", gs.getString(GroovyCodeStyleSettings.WRAP_DO_WHILE_FORCE_BRACES, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_DO_WHILE_ON_NEW_LINE, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_SWITCH_INDENT_CASE_BRANCHES, false));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_TRY_WITH_RESOURCES, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_TRY_WITH_RESOURCES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LPAREN_TRY_WITH_RESOURCES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RPAREN_ON_NEW_LINE_TRY_WITH_RESOURCES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_TRY_CATCH_ON_NEW_LINE, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_TRY_FINALLY_ON_NEW_LINE, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_BINARY_EXPRESSIONS, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_BINARY_EXPRESSIONS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LPAREN_BINARY_EXPRESSIONS, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RPAREN_ON_NEW_LINE_BINARY_EXPRESSIONS, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_ASSIGNMENT_STATEMENT, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_ASSIGNMENT_STATEMENT, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_FIELDS_IN_COLUMNS, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_TERNARY_OPERATION, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_TERNARY_OPERATION, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_ARRAY_INITIALIZER, ""));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_ARRAY_INITIALIZER, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_NEW_LINE_AFTER_LBRACE_ARRAY_INITIALIZER, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_PLACE_RBRACE_ON_NEW_LINE_ARRAY_INITIALIZER, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.WRAP_AFTER_MODIFIER_LIST, true));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_ASSERT_STATEMENT, ""));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_ENUM_CONSTANTS, ""));
+        assertEquals("Wrap always", gs.getString(GroovyCodeStyleSettings.WRAP_CLASS_ANNOTATIONS, ""));
+        assertEquals("Wrap always", gs.getString(GroovyCodeStyleSettings.WRAP_METHOD_ANNOTATIONS, ""));
+        assertEquals("Wrap always", gs.getString(GroovyCodeStyleSettings.WRAP_FIELD_ANNOTATIONS, ""));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_PARAMETER_ANNOTATIONS, ""));
+        assertEquals("Do not wrap", gs.getString(GroovyCodeStyleSettings.WRAP_LOCAL_VARIABLE_ANNOTATIONS, ""));
+        assertEquals("Wrap always", gs.getString(GroovyCodeStyleSettings.WRAP_IMPORT_ANNOTATIONS, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_LIST_MAP_MULTIPLE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_ALIGN_LIST_MAP_MULTILINE_NAMED_ARGS, false));
+        assertEquals("Wrap always", gs.getString(GroovyCodeStyleSettings.WRAP_GINQ_CLAUSES, ""));
+        assertEquals("Wrap if long", gs.getString(GroovyCodeStyleSettings.WRAP_GINQ_ON_CLAUSE, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_GINQ_INDENT_ON_CLAUSE, false));
+        assertEquals("Wrap if long", gs.getString(GroovyCodeStyleSettings.WRAP_GINQ_HAVING_CLAUSE, ""));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_GINQ_INDENT_HAVING_CLAUSE, false));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.WRAP_GINQ_PUT_SPACE_AFTER_KEYWORDS, false));
+
+        // Blank Lines defaults (media_1790578964702.png)
+        assertEquals(2, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, 0));
+        assertEquals(2, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_KEEP_IN_CODE, 0));
+        assertEquals(2, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_KEEP_BEFORE_RBRACE, 0));
+        assertEquals(0, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_BEFORE_PACKAGE, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AFTER_PACKAGE, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_BEFORE_IMPORTS, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AFTER_IMPORTS, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AROUND_CLASS, -1));
+        assertEquals(0, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AFTER_CLASS_HEADER, -1));
+        assertEquals(0, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AROUND_FIELD_IN_INTERFACE, -1));
+        assertEquals(0, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AROUND_FIELD, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AROUND_METHOD_IN_INTERFACE, -1));
+        assertEquals(1, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_AROUND_METHOD, -1));
+        assertEquals(0, gs.getInt(GroovyCodeStyleSettings.BLANK_LINES_BEFORE_METHOD_BODY, -1));
+
+        // Has Preview verification (media_1790579404607.png, media_1790579415188.png, media_1790579425910.png)
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Spaces"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertTrue(provider.hasPreview("Blank Lines"));
+        assertFalse(provider.hasPreview("GroovyDoc"));
+        assertFalse(provider.hasPreview("Imports"));
+        assertFalse(provider.hasPreview("Code Generation"));
+
+        // GroovyDoc defaults (media_1790579404607.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.GROOVY_DOC_ENABLE_FORMATTING, false));
+
+        // Imports defaults (media_1790579415188.png)
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_SINGLE_CLASS_IMPORT, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.IMPORTS_INSERT_FOR_INNER_CLASSES, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.IMPORTS_USE_FQ_CLASS_NAMES_IN_JAVADOC, false));
+        assertEquals(5, gs.getInt(GroovyCodeStyleSettings.IMPORTS_CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND, 0));
+        assertEquals(3, gs.getInt(GroovyCodeStyleSettings.IMPORTS_NAMES_COUNT_TO_USE_STATIC_IMPORT_ON_DEMAND, 0));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.IMPORTS_LAYOUT_STATIC_IMPORTS_SEPARATELY, false));
+
+        assertEquals(2, gs.getPackagesToUseImportOnDemand().size());
+        assertEquals("import java.awt.*", gs.getPackagesToUseImportOnDemand().get(0).getPackageName());
+        assertFalse(gs.getPackagesToUseImportOnDemand().get(0).isStatic());
+        assertFalse(gs.getPackagesToUseImportOnDemand().get(0).isWithSubpackages());
+
+        assertEquals("import javax.swing.*", gs.getPackagesToUseImportOnDemand().get(1).getPackageName());
+        assertFalse(gs.getPackagesToUseImportOnDemand().get(1).isStatic());
+        assertFalse(gs.getPackagesToUseImportOnDemand().get(1).isWithSubpackages());
+
+        assertEquals(6, gs.getImportLayout().size());
+        assertEquals("import all other imports", gs.getImportLayout().get(0).getPackageName());
+        assertTrue(gs.getImportLayout().get(0).isSpecial());
+        assertEquals("<blank line>", gs.getImportLayout().get(1).getPackageName());
+        assertTrue(gs.getImportLayout().get(1).isSpecial());
+        assertEquals("import javax.*", gs.getImportLayout().get(2).getPackageName());
+        assertTrue(gs.getImportLayout().get(2).isWithSubpackages());
+        assertFalse(gs.getImportLayout().get(2).isSpecial());
+        assertEquals("import java.*", gs.getImportLayout().get(3).getPackageName());
+        assertTrue(gs.getImportLayout().get(3).isWithSubpackages());
+        assertFalse(gs.getImportLayout().get(3).isSpecial());
+        assertEquals("<blank line>", gs.getImportLayout().get(4).getPackageName());
+        assertTrue(gs.getImportLayout().get(4).isSpecial());
+        assertEquals("import static all other imports", gs.getImportLayout().get(5).getPackageName());
+        assertTrue(gs.getImportLayout().get(5).isSpecial());
+
+        // Code Generation defaults (media_1790579425910.png)
+        assertEquals(7, gs.getOrderOfMembers().size());
+        assertEquals("Static fields", gs.getOrderOfMembers().get(0));
+        assertEquals("Instance fields", gs.getOrderOfMembers().get(1));
+        assertEquals("Constructors", gs.getOrderOfMembers().get(2));
+        assertEquals("Static methods", gs.getOrderOfMembers().get(3));
+        assertEquals("Instance methods", gs.getOrderOfMembers().get(4));
+        assertEquals("Static inner classes", gs.getOrderOfMembers().get(5));
+        assertEquals("Inner classes", gs.getOrderOfMembers().get(6));
+
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.CODE_GEN_LINE_COMMENT_AT_FIRST_COLUMN, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACE_AT_LINE_COMMENT_START, true));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ENFORCE_ON_REFORMAT, true));
+        assertTrue(gs.getBoolean(GroovyCodeStyleSettings.CODE_GEN_BLOCK_COMMENT_AT_FIRST_COLUMN, false));
+        assertFalse(gs.getBoolean(GroovyCodeStyleSettings.CODE_GEN_ADD_SPACES_AROUND_BLOCK_COMMENTS, true));
+
+        // Sample codes
+        assertEquals(GroovyCodeStyleSettings.SAMPLE_TABS_AND_INDENTS, provider.getSampleCode("Tabs and Indents"));
+        assertEquals(GroovyCodeStyleSettings.SAMPLE_SPACES, provider.getSampleCode("Spaces"));
+        assertEquals(GroovyCodeStyleSettings.SAMPLE_WRAPPING_AND_BRACES, provider.getSampleCode("Wrapping and Braces"));
+        assertEquals(GroovyCodeStyleSettings.SAMPLE_BLANK_LINES, provider.getSampleCode("Blank Lines"));
+
+        // Copy independence
+        GroovyCodeStyleSettings copy = gs.copy();
+        assertEquals(gs.getLabelIndent(), copy.getLabelIndent());
+        copy.setLabelIndent(4);
+        assertNotEquals(gs.getLabelIndent(), copy.getLabelIndent());
+
+        copy.getPackagesToUseImportOnDemand().remove(0);
+        assertNotEquals(gs.getPackagesToUseImportOnDemand().size(), copy.getPackagesToUseImportOnDemand().size());
+
+        copy.getImportLayout().remove(0);
+        assertNotEquals(gs.getImportLayout().size(), copy.getImportLayout().size());
+
+        copy.getOrderOfMembers().remove(0);
+        assertNotEquals(gs.getOrderOfMembers().size(), copy.getOrderOfMembers().size());
+    }
+
+    @Test
+    void testGradleDeclarativeAndGroovyLanguagePages() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testGradleDeclarativeAndGroovyLanguagePages");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                // Test Gradle Declarative page
+                SettingsCodeStyleLanguagePage gradlePage = new SettingsCodeStyleLanguagePage("Gradle Declarative Configuration");
+                assertNotNull(gradlePage);
+                assertEquals("Tabs and Indents", gradlePage.getActiveTab(), "Gradle Declarative must have Tabs and Indents as active tab");
+                assertFalse(gradlePage.isModified());
+
+                // Test Groovy page
+                SettingsCodeStyleLanguagePage groovyPage = new SettingsCodeStyleLanguagePage("Groovy");
+                assertNotNull(groovyPage);
+                assertEquals("Tabs and Indents", groovyPage.getActiveTab(), "Groovy must default to Tabs and Indents tab");
+
+                groovyPage.setActiveTab("Spaces");
+                assertEquals("Spaces", groovyPage.getActiveTab());
+
+                groovyPage.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", groovyPage.getActiveTab());
+
+                groovyPage.setActiveTab("Blank Lines");
+                assertEquals("Blank Lines", groovyPage.getActiveTab());
+
+                groovyPage.setActiveTab("GroovyDoc");
+                assertEquals("GroovyDoc", groovyPage.getActiveTab());
+
+                groovyPage.setActiveTab("Imports");
+                assertEquals("Imports", groovyPage.getActiveTab());
+
+                groovyPage.setActiveTab("Code Generation");
+                assertEquals("Code Generation", groovyPage.getActiveTab());
+                assertFalse(groovyPage.isModified());
+
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "Language pages test timed out");
+        } catch (InterruptedException e) {
+            fail("Language pages test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
@@ -1301,6 +1854,10 @@ class SettingsCodeStyleTest {
                 "src/main/java/dev/lumina/settings/KotlinCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/AngularHtmlCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/EditorConfigCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/ErbCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/GoCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/GradleDeclarativeCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/GroovyCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",
