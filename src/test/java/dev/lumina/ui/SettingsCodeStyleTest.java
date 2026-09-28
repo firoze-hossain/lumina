@@ -1,10 +1,12 @@
 package dev.lumina.ui;
 
+import dev.lumina.settings.AngularHtmlCodeStyleSettings;
 import dev.lumina.settings.CodeStyleSettings;
 import dev.lumina.settings.CodeStyleSettings.CodeStyleScheme;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleSettings;
 import dev.lumina.settings.CodeStyleSettings.LineSeparator;
+import dev.lumina.settings.EditorConfigCodeStyleSettings;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
@@ -1145,6 +1147,151 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testAngularHtmlCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Angular HTML template");
+        assertNotNull(provider, "Angular HTML template provider must be registered");
+        assertEquals("Angular HTML template", provider.getLanguageId());
+        assertEquals("Angular HTML template", provider.getDisplayName());
+
+        assertEquals(List.of("Spaces", "Wrapping and Braces", "Arrangement"), provider.getSupportedTabs());
+        assertTrue(provider.hasPreview("Spaces"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertFalse(provider.hasPreview("Arrangement"), "Arrangement tab must have no preview pane");
+
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof AngularHtmlCodeStyleSettings);
+        AngularHtmlCodeStyleSettings as = (AngularHtmlCodeStyleSettings) settings;
+
+        // Tabs and indents defaults
+        assertEquals(2, as.getTabSize());
+        assertEquals(2, as.getIndent());
+        assertEquals(4, as.getContinuationIndent());
+        assertFalse(as.isUseTabCharacter());
+
+        // Spaces tab defaults (media_1790574549424.png)
+        assertTrue(as.isSpacesWithinInterpolations());
+
+        // Wrapping and Braces defaults (media_1790574558704.png)
+        assertEquals("Default: None", as.getVisualGuides());
+        assertEquals("Do not wrap", as.getInterpolationsWrap());
+        assertTrue(as.isNewLineAfterOpenInterpolation());
+        assertTrue(as.isNewLineBeforeCloseInterpolation());
+
+        // Arrangement tab defaults (media_1790574570361.png)
+        assertEquals(List.of("attribute"), as.getMatchingRules());
+
+        // Copy independence
+        AngularHtmlCodeStyleSettings copy = as.copy();
+        assertEquals(as.getMatchingRules(), copy.getMatchingRules());
+        copy.getMatchingRules().add("tag");
+        assertNotEquals(as.getMatchingRules(), copy.getMatchingRules());
+    }
+
+    @Test
+    void testEditorConfigCodeStyleSettings() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("EditorConfig");
+        assertNotNull(provider, "EditorConfig provider must be registered");
+        assertEquals("EditorConfig", provider.getLanguageId());
+        assertEquals("EditorConfig", provider.getDisplayName());
+
+        assertEquals(List.of("Spaces", "Wrapping and Braces"), provider.getSupportedTabs());
+        assertTrue(provider.hasPreview("Spaces"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof EditorConfigCodeStyleSettings);
+        EditorConfigCodeStyleSettings es = (EditorConfigCodeStyleSettings) settings;
+
+        // Tabs and indents defaults
+        assertEquals(4, es.getTabSize());
+        assertEquals(4, es.getIndent());
+        assertEquals(8, es.getContinuationIndent());
+        assertFalse(es.isUseTabCharacter());
+
+        // Spaces tab defaults (media_1790574580900.png)
+        assertTrue(es.isSpacesAroundSeparator());
+        assertFalse(es.isSpacesBeforeColon());
+        assertFalse(es.isSpacesAfterColon());
+        assertFalse(es.isSpacesBeforeComma());
+        assertTrue(es.isSpacesAfterComma());
+
+        // Wrapping and Braces defaults (media_1790574588939.png)
+        assertEquals("Default: None", es.getVisualGuides());
+        assertFalse(es.isAlignFieldsInColumns());
+
+        // Option groups and right-aligned checkbox verification
+        List<CodeStyleSettings.CodeStyleGroup> wrappingGroups = provider.getOptionGroups("Wrapping and Braces");
+        assertNotNull(wrappingGroups);
+        boolean foundAlignFields = false;
+        for (CodeStyleSettings.CodeStyleGroup g : wrappingGroups) {
+            for (CodeStyleSettings.CodeStyleOption opt : g.getOptions()) {
+                if (EditorConfigCodeStyleSettings.WRAP_ALIGN_FIELDS_IN_COLUMNS.equals(opt.getKey())) {
+                    assertTrue(opt.isRightAligned(), "Align fields in columns must be right aligned");
+                    foundAlignFields = true;
+                }
+            }
+        }
+        assertTrue(foundAlignFields, "Align fields in columns option must be present in Wrapping and Braces");
+
+        // Copy independence
+        EditorConfigCodeStyleSettings copy = es.copy();
+        assertEquals(es.isAlignFieldsInColumns(), copy.isAlignFieldsInColumns());
+        copy.setAlignFieldsInColumns(true);
+        assertNotEquals(es.isAlignFieldsInColumns(), copy.isAlignFieldsInColumns());
+    }
+
+    @Test
+    void testAngularHtmlAndEditorConfigLanguagePages() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testAngularHtmlAndEditorConfigLanguagePages");
+            return;
+        }
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Platform.runLater(() -> {
+            try {
+                // Test Angular HTML template page
+                SettingsCodeStyleLanguagePage angularPage = new SettingsCodeStyleLanguagePage("Angular HTML template");
+                assertNotNull(angularPage);
+                assertEquals("Spaces", angularPage.getActiveTab(), "Angular HTML template must default to Spaces tab");
+
+                angularPage.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", angularPage.getActiveTab());
+
+                angularPage.setActiveTab("Arrangement");
+                assertEquals("Arrangement", angularPage.getActiveTab());
+                assertFalse(angularPage.isModified());
+
+                // Test EditorConfig page
+                SettingsCodeStyleLanguagePage editorConfigPage = new SettingsCodeStyleLanguagePage("EditorConfig");
+                assertNotNull(editorConfigPage);
+                assertEquals("Spaces", editorConfigPage.getActiveTab(), "EditorConfig must default to Spaces tab");
+
+                editorConfigPage.setActiveTab("Wrapping and Braces");
+                assertEquals("Wrapping and Braces", editorConfigPage.getActiveTab());
+                assertFalse(editorConfigPage.isModified());
+
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "Language pages test timed out");
+        } catch (InterruptedException e) {
+            fail("Language pages test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
@@ -1152,6 +1299,8 @@ class SettingsCodeStyleTest {
                 "src/main/java/dev/lumina/settings/CodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/JavaCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/KotlinCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/AngularHtmlCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/EditorConfigCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",

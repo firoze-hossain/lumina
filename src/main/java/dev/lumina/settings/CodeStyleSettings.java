@@ -435,42 +435,52 @@ public final class CodeStyleSettings {
         private final Object defaultValue;
         private final List<String> choices;
         private final int indentLevel;
+        private final boolean rightAligned;
 
         public CodeStyleOption(String key, String label, CodeStyleOptionType type, Object defaultValue, List<String> choices, boolean indented) {
-            this(key, label, type, defaultValue, choices, indented ? 1 : 0);
+            this(key, label, type, defaultValue, choices, indented ? 1 : 0, false);
         }
 
         public CodeStyleOption(String key, String label, CodeStyleOptionType type, Object defaultValue, List<String> choices, int indentLevel) {
+            this(key, label, type, defaultValue, choices, indentLevel, false);
+        }
+
+        public CodeStyleOption(String key, String label, CodeStyleOptionType type, Object defaultValue, List<String> choices, int indentLevel, boolean rightAligned) {
             this.key = key;
             this.label = label;
             this.type = type;
             this.defaultValue = defaultValue;
             this.choices = choices != null ? List.copyOf(choices) : Collections.emptyList();
             this.indentLevel = indentLevel;
+            this.rightAligned = rightAligned;
         }
 
         public static CodeStyleOption checkbox(String key, String label, boolean defaultValue) {
-            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 0);
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 0, false);
         }
 
         public static CodeStyleOption indentedCheckbox(String key, String label, boolean defaultValue) {
-            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 1);
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 1, false);
         }
 
         public static CodeStyleOption doubleIndentedCheckbox(String key, String label, boolean defaultValue) {
-            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 2);
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 2, false);
+        }
+
+        public static CodeStyleOption rightAlignedCheckbox(String key, String label, boolean defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 0, true);
         }
 
         public static CodeStyleOption number(String key, String label, int defaultValue) {
-            return new CodeStyleOption(key, label, CodeStyleOptionType.NUMBER, defaultValue, null, 0);
+            return new CodeStyleOption(key, label, CodeStyleOptionType.NUMBER, defaultValue, null, 0, false);
         }
 
         public static CodeStyleOption combo(String key, String label, List<String> choices, String defaultValue) {
-            return new CodeStyleOption(key, label, CodeStyleOptionType.COMBO, defaultValue, choices, 0);
+            return new CodeStyleOption(key, label, CodeStyleOptionType.COMBO, defaultValue, choices, 0, false);
         }
 
         public static CodeStyleOption separator(String label) {
-            return new CodeStyleOption(null, label, CodeStyleOptionType.SEPARATOR, null, null, 0);
+            return new CodeStyleOption(null, label, CodeStyleOptionType.SEPARATOR, null, null, 0, false);
         }
 
         public String getKey() { return key; }
@@ -480,6 +490,7 @@ public final class CodeStyleSettings {
         public List<String> getChoices() { return choices; }
         public boolean isIndented() { return indentLevel > 0; }
         public int getIndentLevel() { return indentLevel; }
+        public boolean isRightAligned() { return rightAligned; }
     }
 
     public static class CodeStyleGroup {
@@ -548,6 +559,7 @@ public final class CodeStyleSettings {
         void addCheckbox(String groupName, String key, String label, boolean defaultValue);
         void addIndentedCheckbox(String groupName, String key, String label, boolean defaultValue);
         void addDoubleIndentedCheckbox(String groupName, String key, String label, boolean defaultValue);
+        void addRightAlignedCheckbox(String groupName, String key, String label, boolean defaultValue);
         void addCombo(String groupName, String key, String label, List<String> choices, String defaultValue);
         void addNumber(String groupName, String key, String label, int defaultValue);
         List<CodeStyleGroup> getGroups();
@@ -602,6 +614,11 @@ public final class CodeStyleSettings {
         @Override
         public void addDoubleIndentedCheckbox(String groupName, String key, String label, boolean defaultValue) {
             findOrCreateGroup(groupName).addOption(CodeStyleOption.doubleIndentedCheckbox(key, label, defaultValue));
+        }
+
+        @Override
+        public void addRightAlignedCheckbox(String groupName, String key, String label, boolean defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.rightAlignedCheckbox(key, label, defaultValue));
         }
 
         @Override
@@ -1045,31 +1062,10 @@ public class Foo {
         LanguageCodeStyleProvider.register(KotlinCodeStyleSettings.createProvider());
 
         // 3. Angular HTML template
-        registerSimpleProvider("Angular HTML template", "Angular HTML template", 2, 2, 4, """
-<div class="user-profile" *ngIf="user$ | async as user">
-  <h2>{{ user.name }}</h2>
-  <ul class="roles">
-    <li *ngFor="let role of user.roles; trackBy: trackByRole">
-      <span [class.active]="role.isActive">{{ role.name }}</span>
-    </li>
-  </ul>
-</div>
-""");
+        LanguageCodeStyleProvider.register(AngularHtmlCodeStyleSettings.createProvider());
 
         // 4. EditorConfig
-        registerSimpleProvider("EditorConfig", "EditorConfig", 4, 4, 8, """
-root = true
-
-[*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
-
-[*.{js,ts,json}]
-indent_style = space
-indent_size = 2
-""");
+        LanguageCodeStyleProvider.register(EditorConfigCodeStyleSettings.createProvider());
 
         // 5. ERB
         registerSimpleProvider("ERB", "ERB", 2, 2, 4, """

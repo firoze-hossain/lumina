@@ -7,6 +7,8 @@ import dev.lumina.settings.CodeStyleSettings.CodeStyleOptionType;
 import dev.lumina.settings.CodeStyleSettings.CodeStyleScheme;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider;
 import dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleSettings;
+import dev.lumina.settings.AngularHtmlCodeStyleSettings;
+import dev.lumina.settings.EditorConfigCodeStyleSettings;
 import dev.lumina.settings.KotlinCodeStyleSettings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -92,6 +94,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
     public SettingsCodeStyleLanguagePage(String languageId) {
         this.languageId = languageId != null ? languageId : "Kotlin";
+
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider(this.languageId);
+        if (provider != null && !provider.getSupportedTabs().isEmpty()) {
+            this.activeTab = provider.getSupportedTabs().get(0);
+        }
 
         getStyleClass().add("settings-page");
         setStyle("-fx-background-color: #1E1F22;");
@@ -193,6 +200,10 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider(languageId);
         List<String> tabs = provider != null ? provider.getSupportedTabs() : List.of("Tabs and Indents", "Spaces", "Wrapping and Braces", "Blank Lines");
 
+        if (!tabs.contains(activeTab) && !tabs.isEmpty()) {
+            activeTab = tabs.get(0);
+        }
+
         for (String tabTitle : tabs) {
             ToggleButton btn = new ToggleButton(tabTitle);
             btn.setToggleGroup(tabGroup);
@@ -268,6 +279,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
         if ("Imports".equals(activeTab)) {
             renderImportsTab();
+            return;
+        }
+
+        if ("Arrangement".equals(activeTab)) {
+            renderArrangementTab();
             return;
         }
 
@@ -375,6 +391,42 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
     private Node buildOptionNode(CodeStyleOption opt) {
         if (opt.getType() == CodeStyleOptionType.CHECKBOX) {
+            if (opt.isRightAligned()) {
+                HBox row = new HBox(12);
+                row.setAlignment(Pos.CENTER_LEFT);
+
+                Label lbl = new Label(opt.getLabel());
+                lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                CheckBox cb = new CheckBox();
+                cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+                boolean val = isStandardIndentOption(opt.getKey())
+                        ? getStandardIndentBoolean(opt.getKey())
+                        : workingSettings.getBoolean(opt.getKey(), (Boolean) opt.getDefaultValue());
+                cb.setSelected(val);
+
+                cb.selectedProperty().addListener((obs, oldV, newV) -> {
+                    if (!suppressEvents) {
+                        if (isStandardIndentOption(opt.getKey())) {
+                            setStandardIndentBoolean(opt.getKey(), newV);
+                        } else {
+                            workingSettings.setBoolean(opt.getKey(), newV);
+                        }
+                        updateDependentControls(opt.getKey(), newV);
+                        updatePreview();
+                        notifyModified();
+                    }
+                });
+
+                checkboxControls.put(opt.getKey(), cb);
+                row.getChildren().addAll(lbl, spacer, cb);
+                return row;
+            }
+
             CheckBox cb = new CheckBox(opt.getLabel());
             cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
             if (opt.getIndentLevel() > 0) {
@@ -926,6 +978,116 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         return btn;
     }
 
+    private void renderArrangementTab() {
+        VBox sectionBox = new VBox(8);
+        sectionBox.setPadding(new Insets(4, 0, 8, 4));
+
+        Label sectionLabel = new Label("Matching rules:");
+        sectionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        HBox toolbar = new HBox(4);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+
+        Button addBtn = createToolbarButton("+");
+        Button removeBtn = createToolbarButton("−");
+        Button upBtn = createToolbarButton("↑");
+        Button downBtn = createToolbarButton("↓");
+        toolbar.getChildren().addAll(addBtn, removeBtn, upBtn, downBtn);
+
+        VBox rulesContainer = new VBox(4);
+        rulesContainer.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;");
+        rulesContainer.setMinHeight(160);
+
+        List<String> rulesList;
+        if (workingSettings instanceof AngularHtmlCodeStyleSettings aSettings) {
+            rulesList = aSettings.getMatchingRules();
+        } else {
+            rulesList = new ArrayList<>();
+        }
+
+        final int[] selectedIndex = new int[]{-1};
+        Runnable rebuildRulesView = new Runnable() {
+            @Override
+            public void run() {
+                rulesContainer.getChildren().clear();
+                for (int i = 0; i < rulesList.size(); i++) {
+                    final int idx = i;
+                    String ruleText = rulesList.get(i);
+
+                    HBox ruleRow = new HBox(8);
+                    ruleRow.setAlignment(Pos.CENTER_LEFT);
+                    ruleRow.setPadding(new Insets(4, 8, 4, 8));
+                    ruleRow.setStyle(idx == selectedIndex[0]
+                            ? "-fx-background-color: #2E436E; -fx-background-radius: 4; -fx-cursor: hand;"
+                            : "-fx-background-color: transparent; -fx-background-radius: 4; -fx-cursor: hand;");
+
+                    // Circle badge with index: (1)
+                    Label circleBadge = new Label(String.valueOf(idx + 1));
+                    circleBadge.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 11px; -fx-font-weight: bold; -fx-min-width: 18px; -fx-min-height: 18px; -fx-max-width: 18px; -fx-max-height: 18px; -fx-alignment: center; -fx-background-radius: 9px;");
+
+                    // Sort arrow ⇅
+                    Label sortIcon = new Label("⇅");
+                    sortIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px;");
+
+                    // Pill badge with rule name
+                    Label pillBadge = new Label(ruleText);
+                    pillBadge.setStyle("-fx-background-color: #35538F; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 2 10 2 10; -fx-background-radius: 12px;");
+
+                    ruleRow.getChildren().addAll(circleBadge, sortIcon, pillBadge);
+                    ruleRow.setOnMouseClicked(e -> {
+                        selectedIndex[0] = idx;
+                        run();
+                    });
+
+                    rulesContainer.getChildren().add(ruleRow);
+                }
+            }
+        };
+
+        rebuildRulesView.run();
+
+        addBtn.setOnAction(e -> {
+            rulesList.add("attribute");
+            selectedIndex[0] = rulesList.size() - 1;
+            rebuildRulesView.run();
+            notifyModified();
+        });
+
+        removeBtn.setOnAction(e -> {
+            if (selectedIndex[0] >= 0 && selectedIndex[0] < rulesList.size()) {
+                rulesList.remove(selectedIndex[0]);
+                if (selectedIndex[0] >= rulesList.size()) {
+                    selectedIndex[0] = rulesList.size() - 1;
+                }
+                rebuildRulesView.run();
+                notifyModified();
+            }
+        });
+
+        upBtn.setOnAction(e -> {
+            if (selectedIndex[0] > 0 && selectedIndex[0] < rulesList.size()) {
+                String item = rulesList.remove(selectedIndex[0]);
+                selectedIndex[0]--;
+                rulesList.add(selectedIndex[0], item);
+                rebuildRulesView.run();
+                notifyModified();
+            }
+        });
+
+        downBtn.setOnAction(e -> {
+            if (selectedIndex[0] >= 0 && selectedIndex[0] < rulesList.size() - 1) {
+                String item = rulesList.remove(selectedIndex[0]);
+                selectedIndex[0]++;
+                rulesList.add(selectedIndex[0], item);
+                rebuildRulesView.run();
+                notifyModified();
+            }
+        });
+
+        sectionBox.getChildren().addAll(sectionLabel, toolbar, rulesContainer);
+        leftContentBox.getChildren().add(sectionBox);
+    }
+
     private void saveCurrentTabUiToWorkingSettings() {
         if ("Imports".equals(activeTab)) {
             if (topLevelGroup != null && topLevelGroup.getSelectedToggle() != null) {
@@ -1046,6 +1208,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                     kTarget.getImportLayout().add(e.copy());
                 }
             }
+
+            if (workingSettings instanceof AngularHtmlCodeStyleSettings aCur && target instanceof AngularHtmlCodeStyleSettings aTarget) {
+                aTarget.getMatchingRules().clear();
+                aTarget.getMatchingRules().addAll(aCur.getMatchingRules());
+            }
         }
 
         CodeStyleSettings.getInstance().saveSettings();
@@ -1077,6 +1244,10 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         if (workingSettings instanceof KotlinCodeStyleSettings kCur && baselineSettings instanceof KotlinCodeStyleSettings kBase) {
             if (!Objects.equals(kCur.getPackagesToUseImportOnDemand(), kBase.getPackagesToUseImportOnDemand())) return true;
             if (!Objects.equals(kCur.getImportLayout(), kBase.getImportLayout())) return true;
+        }
+
+        if (workingSettings instanceof AngularHtmlCodeStyleSettings aCur && baselineSettings instanceof AngularHtmlCodeStyleSettings aBase) {
+            if (!Objects.equals(aCur.getMatchingRules(), aBase.getMatchingRules())) return true;
         }
 
         Map<String, Object> curProps = workingSettings.getAllProperties();
@@ -1206,6 +1377,58 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             code = code.replaceAll(" (\\{)", "\n$1");
         }
 
+        // Angular HTML template transforms
+        if (workingSettings instanceof AngularHtmlCodeStyleSettings || "Angular HTML template".equals(languageId)) {
+            boolean spacesWithin = workingSettings.getBoolean(AngularHtmlCodeStyleSettings.SPACES_WITHIN_INTERPOLATIONS, true);
+            if (!spacesWithin) {
+                code = code.replace("{{ user.name }}", "{{user.name}}");
+            }
+
+            boolean newLineAfterOpen = workingSettings.getBoolean(AngularHtmlCodeStyleSettings.WRAP_NEW_LINE_AFTER_OPEN_INTERPOLATION, true);
+            boolean newLineBeforeClose = workingSettings.getBoolean(AngularHtmlCodeStyleSettings.WRAP_NEW_LINE_BEFORE_CLOSE_INTERPOLATION, true);
+            if (!newLineAfterOpen && !newLineBeforeClose) {
+                code = code.replace("{{\n      user.name\n   }}", "{{ user.name }}");
+            } else if (!newLineAfterOpen) {
+                code = code.replace("{{\n      user.name", "{{ user.name");
+            } else if (!newLineBeforeClose) {
+                code = code.replace("user.name\n   }}", "user.name }}");
+            }
+        }
+
+        // EditorConfig transforms
+        if (workingSettings instanceof EditorConfigCodeStyleSettings || "EditorConfig".equals(languageId)) {
+            boolean spacesAroundSep = workingSettings.getBoolean(EditorConfigCodeStyleSettings.SPACES_AROUND_SEPARATOR, true);
+            if (!spacesAroundSep) {
+                code = code.replace(" = ", "=");
+            }
+
+            boolean beforeColon = workingSettings.getBoolean(EditorConfigCodeStyleSettings.SPACES_BEFORE_COLON, false);
+            boolean afterColon = workingSettings.getBoolean(EditorConfigCodeStyleSettings.SPACES_AFTER_COLON, false);
+            if (beforeColon && afterColon) {
+                code = code.replace("value4:value5", "value4 : value5");
+            } else if (beforeColon) {
+                code = code.replace("value4:value5", "value4 :value5");
+            } else if (afterColon) {
+                code = code.replace("value4:value5", "value4: value5");
+            }
+
+            boolean beforeComma = workingSettings.getBoolean(EditorConfigCodeStyleSettings.SPACES_BEFORE_COMMA, false);
+            boolean afterComma = workingSettings.getBoolean(EditorConfigCodeStyleSettings.SPACES_AFTER_COMMA, true);
+            if (beforeComma && !afterComma) {
+                code = code.replace("value1, value2, value3", "value1 ,value2 ,value3");
+            } else if (beforeComma) {
+                code = code.replace("value1, value2, value3", "value1 , value2 , value3");
+            } else if (!afterComma) {
+                code = code.replace("value1, value2, value3", "value1,value2,value3");
+            }
+
+            boolean alignColumns = workingSettings.getBoolean(EditorConfigCodeStyleSettings.WRAP_ALIGN_FIELDS_IN_COLUMNS, false);
+            if (alignColumns) {
+                code = code.replace("charset = utf-8\nkey = value1", "charset = utf-8\nkey     = value1")
+                           .replace("key = value1, value2, value3\nkey2 = value4:value5", "key     = value1, value2, value3\nkey2    = value4:value5");
+            }
+        }
+
         return code;
     }
 
@@ -1246,15 +1469,20 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         if (code.isEmpty()) return;
 
         Pattern tokenPattern = Pattern.compile(
+                "(</?[A-Za-z0-9_-]+)|" +
+                "(/?>|>)|" +
+                "(@(if|else\\s+if|else))|" +
+                "(\\{\\{|\\}\\})|" +
+                "(\\*ng[A-Za-z0-9_]+|#[A-Za-z0-9_-]+|\\[[^\\]\\r\\n]+\\])|" +
+                "(//.*|/\\*.*?\\*/|;.*|<!--.*?-->)|" +
                 "\\b(public|private|protected|class|interface|enum|record|void|int|long|boolean|char|float|double|" +
                 "try|catch|finally|throw|throws|if|else|do|while|for|switch|case|default|break|continue|return|" +
                 "new|package|import|extends|implements|static|final|fun|val|var|open|where|in|init|context|def|type|func|struct|fn|let|mut|" +
-                "async|await|const|export|from|when)\\b|" +
+                "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false)\\b|" +
                 "(@[A-Za-z0-9_]+(\\([^)]*\\))?)|" +
                 "(\"[^\"]*\")|" +
                 "(\\b\\d+\\b)|" +
-                "(\\b[A-Z][a-zA-Z0-9_]*\\b)|" +
-                "(//.*|/\\*.*\\*/)"
+                "(\\b[A-Z][a-zA-Z0-9_]*\\b)"
         );
 
         Matcher matcher = tokenPattern.matcher(code);
@@ -1271,24 +1499,36 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             Text token = new Text(matcher.group());
             token.setFont(Font.font("monospace", 12));
 
-            if (matcher.group(1) != null) {
-                // Keyword (orange/peach)
-                token.setFill(Color.web("#CF8E6D"));
-            } else if (matcher.group(2) != null) {
-                // Annotation (gold/amber)
-                token.setFill(Color.web("#BBB529"));
+            if (matcher.group(1) != null || matcher.group(2) != null) {
+                // HTML tag or bracket
+                token.setFill(Color.web("#E8BF6A"));
             } else if (matcher.group(3) != null) {
-                // String (green)
-                token.setFill(Color.web("#6AAB73"));
+                // Angular control flow
+                token.setFill(Color.web("#CF8E6D"));
             } else if (matcher.group(4) != null) {
-                // Number (cyan)
-                token.setFill(Color.web("#2AACB8"));
+                // Interpolation {{ }}
+                token.setFill(Color.web("#E8BF6A"));
             } else if (matcher.group(5) != null) {
-                // Class/Type (yellow/teal)
-                token.setFill(Color.web("#56A8F5"));
+                // Directives / bindings / Section headers
+                token.setFill(Color.web("#BBB529"));
             } else if (matcher.group(6) != null) {
                 // Comment (gray)
                 token.setFill(Color.web("#7A7E85"));
+            } else if (matcher.group(7) != null) {
+                // Keyword (orange/peach)
+                token.setFill(Color.web("#CF8E6D"));
+            } else if (matcher.group(8) != null) {
+                // Annotation (gold/amber)
+                token.setFill(Color.web("#BBB529"));
+            } else if (matcher.group(9) != null) {
+                // String (green)
+                token.setFill(Color.web("#6AAB73"));
+            } else if (matcher.group(10) != null) {
+                // Number (cyan)
+                token.setFill(Color.web("#2AACB8"));
+            } else if (matcher.group(11) != null) {
+                // Class/Type (yellow/teal)
+                token.setFill(Color.web("#56A8F5"));
             } else {
                 token.setFill(Color.web("#BCBEC4"));
             }
