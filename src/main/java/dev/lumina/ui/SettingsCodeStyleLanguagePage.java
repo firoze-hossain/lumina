@@ -17,6 +17,8 @@ import dev.lumina.settings.HtmlCodeStyleSettings;
 import dev.lumina.settings.HttpRequestCodeStyleSettings;
 import dev.lumina.settings.JavaScriptCodeStyleSettings;
 import dev.lumina.settings.JsonCodeStyleSettings;
+import dev.lumina.settings.JspCodeStyleSettings;
+import dev.lumina.settings.JspxCodeStyleSettings;
 import dev.lumina.settings.KotlinCodeStyleSettings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -363,10 +365,18 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             } else if ("Groovy".equals(languageId)) {
                 renderGroovyImportsTab();
                 return;
+            } else if ("JSP".equals(languageId) || "JSPX".equals(languageId)) {
+                renderJspImportsTab();
+                return;
             } else if (!"JavaScript".equals(languageId)) {
                 renderImportsTab();
                 return;
             }
+        }
+
+        if ("Wrapping".equals(activeTab)) {
+            renderWrappingTab();
+            return;
         }
 
         if ("Punctuation".equals(activeTab) && "JavaScript".equals(languageId)) {
@@ -1055,6 +1065,190 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         for (CodeStyleOption opt : g.getOptions()) {
             leftContentBox.getChildren().add(buildOptionNode(opt));
         }
+    }
+
+    private void renderWrappingTab() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(12, 16, 12, 16));
+
+        String hardWrapKey = "JSPX".equals(languageId) ? "jspx_hard_wrap_at" : JspCodeStyleSettings.HARD_WRAP_AT;
+        String wrapOnTypingKey = "JSPX".equals(languageId) ? "jspx_wrap_on_typing" : JspCodeStyleSettings.WRAP_ON_TYPING;
+        String visualGuidesKey = "JSPX".equals(languageId) ? "jspx_visual_guides" : JspCodeStyleSettings.VISUAL_GUIDES;
+
+        // Row 1: Hard wrap at: [ Default: 120 ] columns
+        HBox hardWrapRow = new HBox(12);
+        hardWrapRow.setAlignment(Pos.CENTER_LEFT);
+        Label hardWrapLabel = new Label("Hard wrap at:");
+        hardWrapLabel.setMinWidth(110);
+        hardWrapLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        TextField hardWrapField = new TextField();
+        int hardWrapVal = workingSettings.getInt(hardWrapKey, 120);
+        hardWrapField.setText(hardWrapVal == 120 ? "Default: 120" : String.valueOf(hardWrapVal));
+        hardWrapField.setPrefWidth(95);
+        styleCompactTextField(hardWrapField);
+        hardWrapField.focusedProperty().addListener((obs, oldF, newF) -> {
+            if (newF) {
+                if (hardWrapField.getText().startsWith("Default: ")) {
+                    hardWrapField.setText(hardWrapField.getText().replace("Default: ", "").trim());
+                }
+            } else {
+                try {
+                    int v = Integer.parseInt(hardWrapField.getText().trim());
+                    workingSettings.setInt(hardWrapKey, v);
+                    if (v == 120) {
+                        hardWrapField.setText("Default: 120");
+                    }
+                } catch (Exception ignored) {}
+            }
+        });
+        hardWrapField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                try {
+                    int v = Integer.parseInt(newV.replace("Default: ", "").trim());
+                    workingSettings.setInt(hardWrapKey, v);
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+
+        Label hardWrapSuffix = new Label("columns");
+        hardWrapSuffix.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        hardWrapRow.getChildren().addAll(hardWrapLabel, hardWrapField, hardWrapSuffix);
+
+        // Row 2: Wrap on typing [ Default: No v ]
+        HBox wrapOnTypingRow = new HBox(12);
+        wrapOnTypingRow.setAlignment(Pos.CENTER_LEFT);
+        Label wrapOnTypingLabel = new Label("Wrap on typing");
+        wrapOnTypingLabel.setMinWidth(110);
+        wrapOnTypingLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ComboBox<String> wrapOnTypingCombo = new ComboBox<>();
+        wrapOnTypingCombo.getItems().addAll(JspCodeStyleSettings.WRAP_ON_TYPING_OPTIONS);
+        wrapOnTypingCombo.setValue(workingSettings.getString(wrapOnTypingKey, "Default: No"));
+        wrapOnTypingCombo.setPrefWidth(100);
+        styleCompactComboBox(wrapOnTypingCombo);
+        wrapOnTypingCombo.valueProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents && newV != null) {
+                workingSettings.setString(wrapOnTypingKey, newV);
+                notifyModified();
+            }
+        });
+
+        wrapOnTypingRow.getChildren().addAll(wrapOnTypingLabel, wrapOnTypingCombo);
+
+        // Row 3: Visual guides: [ Default: ] columns
+        HBox visualGuidesRow = new HBox(12);
+        visualGuidesRow.setAlignment(Pos.CENTER_LEFT);
+        Label visualGuidesLabel = new Label("Visual guides:");
+        visualGuidesLabel.setMinWidth(110);
+        visualGuidesLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        TextField visualGuidesField = new TextField();
+        String vgVal = workingSettings.getString(visualGuidesKey, "");
+        visualGuidesField.setPromptText("Default:");
+        visualGuidesField.setText(vgVal);
+        visualGuidesField.setPrefWidth(95);
+        styleCompactTextField(visualGuidesField);
+        visualGuidesField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setString(visualGuidesKey, newV.trim());
+                notifyModified();
+            }
+        });
+
+        Label visualGuidesSuffix = new Label("columns");
+        visualGuidesSuffix.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        visualGuidesRow.getChildren().addAll(visualGuidesLabel, visualGuidesField, visualGuidesSuffix);
+
+        // Hint text: Specify one guide (80) or several (80, 120)
+        Label hintLabel = new Label("Specify one guide (80) or several (80, 120)");
+        hintLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 122;");
+
+        box.getChildren().addAll(hardWrapRow, wrapOnTypingRow, visualGuidesRow, hintLabel);
+        leftContentBox.getChildren().add(box);
+    }
+
+    private void renderJspImportsTab() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(12, 16, 12, 16));
+
+        // Section header: JSP Imports Layout (with horizontal line)
+        HBox headerRow = new HBox(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        Label sectionLabel = new Label("JSP Imports Layout");
+        sectionLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px; -fx-font-weight: bold;");
+        Separator sep = new Separator();
+        sep.setStyle("-fx-background-color: #393B40; -fx-border-color: transparent;");
+        HBox.setHgrow(sep, Priority.ALWAYS);
+        headerRow.getChildren().addAll(sectionLabel, sep);
+
+        String importKey = "JSPX".equals(languageId) ? "jspx_prefer_comma_separated_import_list" : JspCodeStyleSettings.JSP_PREFER_COMMA_SEPARATED_IMPORT_LIST;
+
+        // Radio buttons
+        ToggleGroup importLayoutGroup = new ToggleGroup();
+
+        RadioButton rbComma = new RadioButton("Prefer comma-separated import list");
+        rbComma.setToggleGroup(importLayoutGroup);
+        styleRadioButton(rbComma);
+
+        RadioButton rbPerDirective = new RadioButton("Prefer one import statement per page directive");
+        rbPerDirective.setToggleGroup(importLayoutGroup);
+        styleRadioButton(rbPerDirective);
+
+        boolean preferComma = workingSettings.getBoolean(importKey, false);
+        if (preferComma) {
+            rbComma.setSelected(true);
+        } else {
+            rbPerDirective.setSelected(true);
+        }
+
+        // Preview section divider
+        HBox previewHeaderRow = new HBox(8);
+        previewHeaderRow.setAlignment(Pos.CENTER_LEFT);
+        previewHeaderRow.setPadding(new Insets(12, 0, 4, 0));
+        Label previewLabel = new Label("Preview");
+        previewLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px; -fx-font-weight: bold;");
+        Separator previewSep = new Separator();
+        previewSep.setStyle("-fx-background-color: #393B40; -fx-border-color: transparent;");
+        HBox.setHgrow(previewSep, Priority.ALWAYS);
+        previewHeaderRow.getChildren().addAll(previewLabel, previewSep);
+
+        // Preview code flow
+        VBox previewCodeBox = new VBox(2);
+        previewCodeBox.setPadding(new Insets(6, 0, 0, 4));
+
+        Runnable updateImportsPreview = () -> {
+            previewCodeBox.getChildren().clear();
+            boolean isComma = rbComma.isSelected();
+            String code = isComma
+                    ? JspCodeStyleSettings.SAMPLE_IMPORTS_COMMA_SEPARATED
+                    : JspCodeStyleSettings.SAMPLE_IMPORTS_ONE_PER_DIRECTIVE;
+            String[] lines = code.split("\n");
+            for (String line : lines) {
+                previewCodeBox.getChildren().add(buildLineTextFlow(line));
+            }
+        };
+
+        importLayoutGroup.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (!suppressEvents && newT != null) {
+                boolean isComma = newT == rbComma;
+                workingSettings.setBoolean(importKey, isComma);
+                updateImportsPreview.run();
+                notifyModified();
+            }
+        });
+
+        updateImportsPreview.run();
+
+        VBox radioBox = new VBox(8);
+        radioBox.setPadding(new Insets(4, 0, 4, 16));
+        radioBox.getChildren().addAll(rbComma, rbPerDirective);
+
+        box.getChildren().addAll(headerRow, radioBox, previewHeaderRow, previewCodeBox);
+        leftContentBox.getChildren().add(box);
     }
 
     private void renderImportsTab() {
@@ -3998,6 +4192,14 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         TextFlow flow = new TextFlow();
         flow.setPrefWidth(Region.USE_COMPUTED_SIZE);
 
+        if (("JSP".equals(languageId) || "JSPX".equals(languageId)) &&
+                (line.contains("<%@") || line.contains("<jsp:useBean") || line.contains("<%!")
+                || line.contains("${") || line.contains("<%") || line.contains("%>")
+                || line.contains("<jsp:declaration") || line.contains("</jsp:declaration")
+                || line.contains("<jsp:scriptlet") || line.contains("</jsp:scriptlet>"))) {
+            flow.setStyle("-fx-background-color: #27292D; -fx-background-radius: 2;");
+        }
+
         int leadingWhitespace = 0;
         while (leadingWhitespace < line.length() && (line.charAt(leadingWhitespace) == ' ' || line.charAt(leadingWhitespace) == '\t')) {
             leadingWhitespace++;
@@ -4031,17 +4233,17 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         if (code.isEmpty()) return;
 
         Pattern tokenPattern = Pattern.compile(
-                "(</?[A-Za-z0-9_-]+|/?>|>)|" +
-                "(<%={1,2}|<%-?|-?%>|%>)|" +
+                "(</?[A-Za-z0-9_:-]+|/?>|>)|" +
+                "(<%={1,2}|<%-?|-?%>|%>|<%@|<%!|<%)|" +
                 "(@(if|else\\s+if|else))|" +
                 "(\\{\\{|\\}\\})|" +
                 "(\\*ng[A-Za-z0-9_]+|#[A-Za-z0-9_-]+|\\[[^\\]\\r\\n]+\\])|" +
-                "(//.*|/\\*.*?\\*/|;.*|<!--.*?-->|###.*)|" +
+                "(//.*|/\\*.*?\\*/|;.*|<!--.*?-->|<%--.*?--%>|###.*)|" +
                 "\\b(public|private|protected|class|interface|enum|record|void|int|long|boolean|char|float|double|" +
                 "try|catch|finally|throw|throws|if|else|do|while|for|switch|case|default|break|continue|return|" +
                 "new|package|import|extends|implements|static|final|fun|val|var|open|where|in|init|context|def|type|func|struct|fn|let|mut|" +
                 "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false|null|" +
-                "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end|function|yield|GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\\b|" +
+                "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end|function|yield|GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|le|ge|eq|ne|lt|gt)\\b|" +
                 "(:[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+(\\([^)]*\\))?)|" +
                 "(\"[^\"]*\"|'[^']*'|`[^`]*`)|" +
                 "(-?\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b)|" +

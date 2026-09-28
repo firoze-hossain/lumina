@@ -15,6 +15,8 @@ import dev.lumina.settings.HtmlCodeStyleSettings;
 import dev.lumina.settings.HttpRequestCodeStyleSettings;
 import dev.lumina.settings.JavaScriptCodeStyleSettings;
 import dev.lumina.settings.JsonCodeStyleSettings;
+import dev.lumina.settings.JspCodeStyleSettings;
+import dev.lumina.settings.JspxCodeStyleSettings;
 import javafx.application.Platform;
 import javafx.scene.control.TreeItem;
 import org.junit.jupiter.api.BeforeAll;
@@ -2523,6 +2525,168 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testJspCodeStyleSettingsDefaultsAndProperties() {
+        JspCodeStyleSettings settings = new JspCodeStyleSettings("JSP");
+        assertEquals("JSP", settings.getLanguageId());
+
+        // Tab 1: Tabs and Indents defaults (media_1790606858671.png)
+        assertEquals(4, settings.getTabSize());
+        assertEquals(4, settings.getIndent());
+        assertEquals(8, settings.getContinuationIndent());
+        assertFalse(settings.isUseTabCharacter());
+        assertFalse(settings.isSmartTabs());
+        assertFalse(settings.isKeepIndentsOnEmptyLines());
+
+        // Tab 2: Wrapping defaults (media_1790606869354.png)
+        assertEquals(120, settings.getHardWrapAt());
+        assertEquals("Default: No", settings.getWrapOnTyping());
+        assertEquals("", settings.getVisualGuides());
+
+        // Tab 3: Imports defaults (media_1790606880229.png)
+        assertFalse(settings.isPreferCommaSeparatedImportList());
+
+        // Test mutating and copy
+        settings.setIndent(2);
+        settings.setHardWrapAt(100);
+        settings.setWrapOnTyping("Yes");
+        settings.setVisualGuides("80, 120");
+        settings.setPreferCommaSeparatedImportList(true);
+
+        JspCodeStyleSettings copy = settings.copy();
+        assertEquals(2, copy.getIndent());
+        assertEquals(100, copy.getHardWrapAt());
+        assertEquals("Yes", copy.getWrapOnTyping());
+        assertEquals("80, 120", copy.getVisualGuides());
+        assertTrue(copy.isPreferCommaSeparatedImportList());
+    }
+
+    @Test
+    void testJspLanguageCodeStyleProvider() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("JSP");
+        assertNotNull(provider, "JSP provider must be registered");
+        assertEquals("JSP", provider.getLanguageId());
+        assertEquals("JSP", provider.getDisplayName());
+
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of("Tabs and Indents", "Wrapping", "Imports"), tabs);
+
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertFalse(provider.hasPreview("Wrapping"));
+        assertFalse(provider.hasPreview("Imports"));
+
+        // Check Tabs and Indents options
+        List<CodeStyleSettings.CodeStyleGroup> indentsGroups = provider.getOptionGroups("Tabs and Indents");
+        assertFalse(indentsGroups.isEmpty());
+        assertEquals(6, indentsGroups.get(0).getOptions().size());
+
+        // Check Wrapping options
+        List<CodeStyleSettings.CodeStyleGroup> wrapGroups = provider.getOptionGroups("Wrapping");
+        assertEquals(1, wrapGroups.size());
+        assertEquals(3, wrapGroups.get(0).getOptions().size());
+
+        // Check Imports options
+        List<CodeStyleSettings.CodeStyleGroup> importsGroups = provider.getOptionGroups("Imports");
+        assertEquals(1, importsGroups.size());
+        assertEquals("JSP Imports Layout", importsGroups.get(0).getName());
+
+        // Sample code validation
+        String sample = provider.getSampleCode();
+        assertNotNull(sample);
+        assertTrue(sample.contains("<%-- Sample comment --%>"));
+        assertTrue(sample.contains("<%@ page import="));
+        assertTrue(sample.contains("<jsp:useBean"));
+        assertTrue(sample.contains("Release timestamp:"));
+        assertTrue(sample.contains("<!-- HTML comments"));
+    }
+
+    @Test
+    void testJspxCodeStyleSettingsAndProvider() {
+        JspxCodeStyleSettings settings = new JspxCodeStyleSettings("JSPX");
+        assertEquals("JSPX", settings.getLanguageId());
+        assertEquals(4, settings.getTabSize());
+        assertEquals(4, settings.getIndent());
+        assertEquals(8, settings.getContinuationIndent());
+
+        JspxCodeStyleSettings copy = settings.copy();
+        assertEquals(4, copy.getIndent());
+
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("JSPX");
+        assertNotNull(provider, "JSPX provider must be registered");
+        assertEquals("JSPX", provider.getLanguageId());
+        assertEquals("JSPX", provider.getDisplayName());
+
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of("Tabs and Indents", "Wrapping", "Imports"), tabs);
+
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertFalse(provider.hasPreview("Wrapping"));
+        assertFalse(provider.hasPreview("Imports"));
+
+        String sample = provider.getSampleCode();
+        assertNotNull(sample);
+        assertTrue(sample.contains("<jsp:root"));
+        assertTrue(sample.contains("<jsp:declaration>"));
+        assertTrue(sample.contains("Collection myData;"));
+        assertTrue(sample.contains("<HTML>"));
+        assertTrue(sample.contains("<BODY>"));
+        assertTrue(sample.contains("<jsp:scriptlet>"));
+    }
+
+    @Test
+    void testJspAndJspxSettingsCodeStyleLanguagePage() {
+        if (!javaFxAvailable) {
+            System.out.println("JavaFX not available, skipping testJspAndJspxSettingsCodeStyleLanguagePage");
+            return;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+
+        Platform.runLater(() -> {
+            try {
+                // Test JSP
+                SettingsCodeStyleLanguagePage jspPage = new SettingsCodeStyleLanguagePage("JSP");
+                assertEquals("JSP", jspPage.getLanguageId());
+                assertEquals("Tabs and Indents", jspPage.getActiveTab());
+
+                jspPage.setActiveTab("Wrapping");
+                assertEquals("Wrapping", jspPage.getActiveTab());
+
+                jspPage.setActiveTab("Imports");
+                assertEquals("Imports", jspPage.getActiveTab());
+
+                // Test JSPX
+                SettingsCodeStyleLanguagePage jspxPage = new SettingsCodeStyleLanguagePage("JSPX");
+                assertEquals("JSPX", jspxPage.getLanguageId());
+                assertEquals("Tabs and Indents", jspxPage.getActiveTab());
+
+                jspxPage.setActiveTab("Wrapping");
+                assertEquals("Wrapping", jspxPage.getActiveTab());
+
+                jspxPage.setActiveTab("Imports");
+                assertEquals("Imports", jspxPage.getActiveTab());
+
+                assertFalse(jspPage.isModified());
+                assertFalse(jspxPage.isModified());
+            } catch (Throwable t) {
+                error.set(t);
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        try {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "JSP/JSPX language page test timed out");
+        } catch (InterruptedException e) {
+            fail("JSP/JSPX language page test interrupted");
+        }
+
+        if (error.get() != null) {
+            fail("Exception in JavaFX thread: " + error.get().getMessage(), error.get());
+        }
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
@@ -2540,6 +2704,8 @@ class SettingsCodeStyleTest {
                 "src/main/java/dev/lumina/settings/HttpRequestCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/JavaScriptCodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/JsonCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/JspCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/JspxCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",

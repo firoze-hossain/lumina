@@ -1097,34 +1097,10 @@ public class Foo {
         LanguageCodeStyleProvider.register(JsonCodeStyleSettings.createProvider());
 
         // 13. JSP
-        registerSimpleProvider("JSP", "JSP", 2, 2, 4, """
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<html>
-  <body>
-    <h2>User Dashboard</h2>
-    <%
-      String username = (String) session.getAttribute("user");
-      if (username != null) {
-    %>
-      <p>Welcome back, <%= username %>!</p>
-    <% } %>
-  </body>
-</html>
-""");
+        LanguageCodeStyleProvider.register(JspCodeStyleSettings.createProvider());
 
         // 14. JSPX
-        registerSimpleProvider("JSPX", "JSPX", 2, 2, 4, """
-<jsp:root xmlns:jsp="http://java.sun.com/JSP/Page" version="2.0">
-  <jsp:directive.page contentType="text/html;charset=UTF-8"/>
-  <html>
-    <body>
-      <jsp:element name="title">
-        <jsp:body>Lumina Portal</jsp:body>
-      </jsp:element>
-    </body>
-  </html>
-</jsp:root>
-""");
+        LanguageCodeStyleProvider.register(JspxCodeStyleSettings.createProvider());
 
         // 15. Markdown
         registerSimpleProvider("Markdown", "Markdown", 2, 2, 4, """
