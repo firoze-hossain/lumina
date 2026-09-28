@@ -13,6 +13,9 @@ import dev.lumina.settings.ErbCodeStyleSettings;
 import dev.lumina.settings.GoCodeStyleSettings;
 import dev.lumina.settings.GradleDeclarativeCodeStyleSettings;
 import dev.lumina.settings.GroovyCodeStyleSettings;
+import dev.lumina.settings.HtmlCodeStyleSettings;
+import dev.lumina.settings.HttpRequestCodeStyleSettings;
+import dev.lumina.settings.JavaScriptCodeStyleSettings;
 import dev.lumina.settings.KotlinCodeStyleSettings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -69,6 +72,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
     private final Map<String, CheckBox> checkboxControls = new HashMap<>();
     private final Map<String, TextField> numberControls = new HashMap<>();
     private final Map<String, ComboBox<String>> comboControls = new HashMap<>();
+    private final Map<String, TextField> textControls = new HashMap<>();
 
     // Controls for Imports Tab
     private ToggleGroup topLevelGroup;
@@ -130,6 +134,34 @@ public class SettingsCodeStyleLanguagePage extends VBox {
     private CheckBox groovyEnforceOnReformatCb;
     private CheckBox groovyBlockCommentFirstColCb;
     private CheckBox groovyAddSpacesAroundBlockCommentsCb;
+
+    // Controls for HTML Other Tab
+    private TextField htmlHardWrapField;
+    private ComboBox<String> htmlWrapOnTypingCombo;
+    private TextField htmlVisualGuidesField;
+    private CheckBox htmlKeepLineBreaksCb;
+    private CheckBox htmlKeepLineBreaksInTextCb;
+    private TextField htmlKeepBlankLinesField;
+    private ComboBox<String> htmlWrapAttributesCombo;
+    private CheckBox htmlWrapTextCb;
+    private CheckBox htmlAlignAttributesCb;
+    private CheckBox htmlAlignTextCb;
+    private CheckBox htmlKeepWhiteSpacesCb;
+    private CheckBox htmlSpacesAroundEqCb;
+    private CheckBox htmlSpacesAfterTagCb;
+    private CheckBox htmlSpacesInEmptyTagCb;
+    private TextField htmlInsertNewLineBeforeField;
+    private TextField htmlRemoveNewLineBeforeField;
+    private TextField htmlDoNotIndentChildrenOfField;
+    private TextField htmlDoNotIndentTagSizeMoreThanField;
+    private TextField htmlInlineElementsField;
+    private TextField htmlKeepWhiteSpacesInsideField;
+    private TextField htmlDontBreakIfInlineContentField;
+    private ComboBox<String> htmlNewLineBeforeFirstAttrCombo;
+    private ComboBox<String> htmlNewLineAfterLastAttrCombo;
+    private ComboBox<String> htmlAddForJsxAttributesCombo;
+    private ComboBox<String> htmlGeneratedQuoteMarksCombo;
+    private CheckBox htmlEnforceOnFormatCb;
 
     private Runnable onModifiedListener;
     private boolean suppressEvents = false;
@@ -305,6 +337,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         checkboxControls.clear();
         numberControls.clear();
         comboControls.clear();
+        textControls.clear();
 
         LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider(languageId);
         boolean hasPreview = provider != null && provider.hasPreview(activeTab);
@@ -322,11 +355,18 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         if ("Imports".equals(activeTab)) {
             if ("Go".equals(languageId)) {
                 renderGoImportsTab();
+                return;
             } else if ("Groovy".equals(languageId)) {
                 renderGroovyImportsTab();
-            } else {
+                return;
+            } else if (!"JavaScript".equals(languageId)) {
                 renderImportsTab();
+                return;
             }
+        }
+
+        if ("Punctuation".equals(activeTab) && "JavaScript".equals(languageId)) {
+            renderJavaScriptPunctuationTab();
             return;
         }
 
@@ -335,9 +375,14 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             return;
         }
 
-        if ("Other".equals(activeTab) && "Go".equals(languageId)) {
-            renderGoOtherTab();
-            return;
+        if ("Other".equals(activeTab)) {
+            if ("Go".equals(languageId)) {
+                renderGoOtherTab();
+                return;
+            } else if ("HTML".equals(languageId)) {
+                renderHtmlOtherTab();
+                return;
+            }
         }
 
         if ("Arrangement".equals(activeTab)) {
@@ -616,6 +661,37 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
             comboControls.put(opt.getKey(), combo);
             row.getChildren().addAll(lbl, spacer, combo);
+            return row;
+
+        } else if (opt.getType() == CodeStyleOptionType.TEXT) {
+            HBox row = new HBox(12);
+            row.setAlignment(Pos.CENTER_LEFT);
+
+            Label lbl = new Label(opt.getLabel());
+            int minWidth = opt.getLabel().length() > 22 ? 220 : 140;
+            lbl.setMinWidth(minWidth);
+            lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+            TextField field = new TextField();
+            String val = workingSettings.getString(opt.getKey(), (String) opt.getDefaultValue());
+            field.setText(val != null ? val : "");
+            if (val != null && val.length() > 12) {
+                field.setPrefWidth(260);
+            } else {
+                field.setPrefWidth(120);
+            }
+            field.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 6 3 6; -fx-font-size: 12px;");
+
+            field.textProperty().addListener((obs, oldV, newV) -> {
+                if (!suppressEvents) {
+                    workingSettings.setString(opt.getKey(), newV);
+                    updatePreview();
+                    notifyModified();
+                }
+            });
+
+            textControls.put(opt.getKey(), field);
+            row.getChildren().addAll(lbl, field);
             return row;
         }
 
@@ -1040,6 +1116,70 @@ public class SettingsCodeStyleLanguagePage extends VBox {
     }
 
     private void renderArrangementTab() {
+        if (workingSettings instanceof JavaScriptCodeStyleSettings jsSettings) {
+            VBox groupingSection = new VBox(6);
+            groupingSection.setPadding(new Insets(4, 0, 8, 4));
+
+            HBox groupHeader = createDividerHeader("Grouping rules:");
+            groupingSection.getChildren().add(groupHeader);
+
+            VBox groupingOptions = new VBox(8);
+            groupingOptions.setPadding(new Insets(4, 0, 4, 4));
+
+            CheckBox groupPropCb = new CheckBox("Group property field with corresponding getter/setter");
+            groupPropCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+            groupPropCb.setSelected(jsSettings.isGroupPropertyFieldWithGetterSetter());
+            groupPropCb.selectedProperty().addListener((obs, o, n) -> {
+                if (!suppressEvents) {
+                    jsSettings.setGroupPropertyFieldWithGetterSetter(n);
+                    notifyModified();
+                }
+            });
+
+            CheckBox groupArrowCb = new CheckBox("Group fields initialized with arrow functions with methods");
+            groupArrowCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+            groupArrowCb.setSelected(jsSettings.isGroupFieldsWithArrowFunctions());
+            groupArrowCb.selectedProperty().addListener((obs, o, n) -> {
+                if (!suppressEvents) {
+                    jsSettings.setGroupFieldsWithArrowFunctions(n);
+                    notifyModified();
+                }
+            });
+
+            HBox overriddenRow = new HBox(8);
+            overriddenRow.setAlignment(Pos.CENTER_LEFT);
+            CheckBox overriddenCb = new CheckBox("Keep overridden methods together");
+            overriddenCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+            overriddenCb.setSelected(jsSettings.isKeepOverriddenMethodsTogether());
+
+            ComboBox<String> overriddenOrderCombo = new ComboBox<>();
+            overriddenOrderCombo.getItems().addAll(JavaScriptCodeStyleSettings.OVERRIDDEN_METHODS_ORDER_OPTIONS);
+            overriddenOrderCombo.setValue(jsSettings.getOverriddenMethodsOrder());
+            styleComboBox(overriddenOrderCombo);
+            overriddenOrderCombo.setPrefWidth(120);
+            overriddenOrderCombo.setDisable(!jsSettings.isKeepOverriddenMethodsTogether());
+
+            overriddenCb.selectedProperty().addListener((obs, o, n) -> {
+                if (!suppressEvents) {
+                    jsSettings.setKeepOverriddenMethodsTogether(n);
+                    overriddenOrderCombo.setDisable(!n);
+                    notifyModified();
+                }
+            });
+            overriddenOrderCombo.setOnAction(e -> {
+                if (!suppressEvents) {
+                    jsSettings.setOverriddenMethodsOrder(overriddenOrderCombo.getValue());
+                    notifyModified();
+                }
+            });
+
+            overriddenRow.getChildren().addAll(overriddenCb, overriddenOrderCombo);
+            groupingOptions.getChildren().addAll(groupPropCb, groupArrowCb, overriddenRow);
+            groupingSection.getChildren().add(groupingOptions);
+
+            leftContentBox.getChildren().add(groupingSection);
+        }
+
         VBox sectionBox = new VBox(8);
         sectionBox.setPadding(new Insets(4, 0, 8, 4));
 
@@ -1050,10 +1190,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         Button addBtn = createToolbarButton("+");
+        Button addStaticBtn = createToolbarButton("+s");
         Button removeBtn = createToolbarButton("−");
         Button upBtn = createToolbarButton("↑");
         Button downBtn = createToolbarButton("↓");
-        toolbar.getChildren().addAll(addBtn, removeBtn, upBtn, downBtn);
+        toolbar.getChildren().addAll(addBtn, addStaticBtn, removeBtn, upBtn, downBtn);
 
         VBox rulesContainer = new VBox(4);
         rulesContainer.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;");
@@ -1062,6 +1203,10 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         List<String> rulesList;
         if (workingSettings instanceof AngularHtmlCodeStyleSettings aSettings) {
             rulesList = aSettings.getMatchingRules();
+        } else if (workingSettings instanceof HtmlCodeStyleSettings hSettings) {
+            rulesList = hSettings.getMatchingRules();
+        } else if (workingSettings instanceof JavaScriptCodeStyleSettings jsSettings) {
+            rulesList = jsSettings.getMatchingRules();
         } else {
             rulesList = new ArrayList<>();
         }
@@ -1090,11 +1235,16 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                     Label sortIcon = new Label("⇅");
                     sortIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 13px;");
 
-                    // Pill badge with rule name
-                    Label pillBadge = new Label(ruleText);
-                    pillBadge.setStyle("-fx-background-color: #35538F; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 2 10 2 10; -fx-background-radius: 12px;");
+                    ruleRow.getChildren().addAll(circleBadge, sortIcon);
 
-                    ruleRow.getChildren().addAll(circleBadge, sortIcon, pillBadge);
+                    // Pill badges (split by comma for multiple tokens, e.g. "field, static" -> [field] [static])
+                    String[] tokens = ruleText.split(",\\s*");
+                    for (String token : tokens) {
+                        Label pillBadge = new Label(token.trim());
+                        pillBadge.setStyle("-fx-background-color: #35538F; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 2 10 2 10; -fx-background-radius: 12px;");
+                        ruleRow.getChildren().add(pillBadge);
+                    }
+
                     ruleRow.setOnMouseClicked(e -> {
                         selectedIndex[0] = idx;
                         run();
@@ -1108,7 +1258,16 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         rebuildRulesView.run();
 
         addBtn.setOnAction(e -> {
-            rulesList.add("attribute");
+            String newRule = "JavaScript".equals(languageId) ? "method" : "attribute";
+            rulesList.add(newRule);
+            selectedIndex[0] = rulesList.size() - 1;
+            rebuildRulesView.run();
+            notifyModified();
+        });
+
+        addStaticBtn.setOnAction(e -> {
+            String newRule = "JavaScript".equals(languageId) ? "method, static" : "static, attribute";
+            rulesList.add(newRule);
             selectedIndex[0] = rulesList.size() - 1;
             rebuildRulesView.run();
             notifyModified();
@@ -1147,6 +1306,115 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
         sectionBox.getChildren().addAll(sectionLabel, toolbar, rulesContainer);
         leftContentBox.getChildren().add(sectionBox);
+    }
+
+    private void renderJavaScriptPunctuationTab() {
+        VBox box = new VBox(14);
+        box.setPadding(new Insets(8, 0, 8, 4));
+
+        // Row 1: [Use v] semicolon [in code generated by IDE v]
+        HBox row1 = new HBox(8);
+        row1.setAlignment(Pos.CENTER_LEFT);
+
+        ComboBox<String> semiCombo = new ComboBox<>();
+        semiCombo.getItems().addAll(JavaScriptCodeStyleSettings.USE_SEMICOLON_OPTIONS);
+        semiCombo.setValue(workingSettings.getString(JavaScriptCodeStyleSettings.USE_SEMICOLON, "Use"));
+        styleComboBox(semiCombo);
+        semiCombo.setPrefWidth(110);
+        semiCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(JavaScriptCodeStyleSettings.USE_SEMICOLON, semiCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        Label semiLabel = new Label("semicolon");
+        semiLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ComboBox<String> semiScopeCombo = new ComboBox<>();
+        semiScopeCombo.getItems().addAll(JavaScriptCodeStyleSettings.SEMICOLON_SCOPE_OPTIONS);
+        semiScopeCombo.setValue(workingSettings.getString(JavaScriptCodeStyleSettings.SEMICOLON_SCOPE, "in code generated by IDE"));
+        styleComboBox(semiScopeCombo);
+        semiScopeCombo.setPrefWidth(190);
+        semiScopeCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(JavaScriptCodeStyleSettings.SEMICOLON_SCOPE, semiScopeCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        row1.getChildren().addAll(semiCombo, semiLabel, semiScopeCombo);
+
+        // Row 2: Use [double v] quotes [in code generated by IDE v]
+        HBox row2 = new HBox(8);
+        row2.setAlignment(Pos.CENTER_LEFT);
+
+        Label useQuoteLabel = new Label("Use");
+        useQuoteLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ComboBox<String> quoteCombo = new ComboBox<>();
+        quoteCombo.getItems().addAll(JavaScriptCodeStyleSettings.QUOTE_STYLE_OPTIONS);
+        quoteCombo.setValue(workingSettings.getString(JavaScriptCodeStyleSettings.QUOTE_STYLE, "double"));
+        styleComboBox(quoteCombo);
+        quoteCombo.setPrefWidth(110);
+        quoteCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(JavaScriptCodeStyleSettings.QUOTE_STYLE, quoteCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        Label quotesLabel = new Label("quotes");
+        quotesLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ComboBox<String> quoteScopeCombo = new ComboBox<>();
+        quoteScopeCombo.getItems().addAll(JavaScriptCodeStyleSettings.QUOTE_SCOPE_OPTIONS);
+        quoteScopeCombo.setValue(workingSettings.getString(JavaScriptCodeStyleSettings.QUOTE_SCOPE, "in code generated by IDE"));
+        styleComboBox(quoteScopeCombo);
+        quoteScopeCombo.setPrefWidth(190);
+        quoteScopeCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(JavaScriptCodeStyleSettings.QUOTE_SCOPE, quoteScopeCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        row2.getChildren().addAll(useQuoteLabel, quoteCombo, quotesLabel, quoteScopeCombo);
+
+        // Row 3: Trailing comma: [Keep v]
+        HBox row3 = new HBox(8);
+        row3.setAlignment(Pos.CENTER_LEFT);
+
+        Label commaLabel = new Label("Trailing comma:");
+        commaLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        ComboBox<String> commaCombo = new ComboBox<>();
+        commaCombo.getItems().addAll(JavaScriptCodeStyleSettings.TRAILING_COMMA_OPTIONS);
+        commaCombo.setValue(workingSettings.getString(JavaScriptCodeStyleSettings.TRAILING_COMMA, "Keep"));
+        styleComboBox(commaCombo);
+        commaCombo.setPrefWidth(170);
+        commaCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(JavaScriptCodeStyleSettings.TRAILING_COMMA, commaCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        row3.getChildren().addAll(commaLabel, commaCombo);
+
+        comboControls.put(JavaScriptCodeStyleSettings.USE_SEMICOLON, semiCombo);
+        comboControls.put(JavaScriptCodeStyleSettings.SEMICOLON_SCOPE, semiScopeCombo);
+        comboControls.put(JavaScriptCodeStyleSettings.QUOTE_STYLE, quoteCombo);
+        comboControls.put(JavaScriptCodeStyleSettings.QUOTE_SCOPE, quoteScopeCombo);
+        comboControls.put(JavaScriptCodeStyleSettings.TRAILING_COMMA, commaCombo);
+
+        box.getChildren().addAll(row1, row2, row3);
+        leftContentBox.getChildren().add(box);
     }
 
     private void renderGoImportsTab() {
@@ -1969,6 +2237,461 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         leftContentBox.getChildren().add(box);
     }
 
+    private void renderHtmlOtherTab() {
+        HtmlCodeStyleSettings hSettings = workingSettings instanceof HtmlCodeStyleSettings hs ? hs : null;
+
+        VBox box = new VBox(8);
+        box.setPadding(new Insets(2, 0, 10, 0));
+
+        // 1. Hard wrap at: [120] columns
+        HBox hardWrapRow = new HBox(8);
+        hardWrapRow.setAlignment(Pos.CENTER_LEFT);
+        Label hardWrapLbl = new Label("Hard wrap at:");
+        hardWrapLbl.setMinWidth(140);
+        hardWrapLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlHardWrapField = new TextField(hSettings != null ? String.valueOf(hSettings.getHardWrapAt()) : "120");
+        htmlHardWrapField.setPrefWidth(70);
+        styleNumberField(htmlHardWrapField);
+        Label hardWrapSuffix = new Label("columns");
+        hardWrapSuffix.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px;");
+        hardWrapRow.getChildren().addAll(hardWrapLbl, htmlHardWrapField, hardWrapSuffix);
+
+        htmlHardWrapField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                try {
+                    int val = Integer.parseInt(newV.trim());
+                    workingSettings.setInt(HtmlCodeStyleSettings.HARD_WRAP_AT, val);
+                    updatePreview();
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+
+        // 2. Wrap on typing: [Default: No ▾]
+        HBox wrapOnTypingRow = new HBox(8);
+        wrapOnTypingRow.setAlignment(Pos.CENTER_LEFT);
+        Label wrapOnTypingLbl = new Label("Wrap on typing");
+        wrapOnTypingLbl.setMinWidth(140);
+        wrapOnTypingLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlWrapOnTypingCombo = new ComboBox<>();
+        htmlWrapOnTypingCombo.getItems().addAll(HtmlCodeStyleSettings.WRAP_ON_TYPING_OPTIONS);
+        htmlWrapOnTypingCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.WRAP_ON_TYPING, "Default: No"));
+        styleComboBox(htmlWrapOnTypingCombo);
+        htmlWrapOnTypingCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.WRAP_ON_TYPING, htmlWrapOnTypingCombo.getValue());
+                notifyModified();
+            }
+        });
+        wrapOnTypingRow.getChildren().addAll(wrapOnTypingLbl, htmlWrapOnTypingCombo);
+
+        // 3. Visual guides: [Default: ] columns
+        VBox visualGuidesBox = new VBox(2);
+        HBox visualGuidesRow = new HBox(8);
+        visualGuidesRow.setAlignment(Pos.CENTER_LEFT);
+        Label visualGuidesLbl = new Label("Visual guides:");
+        visualGuidesLbl.setMinWidth(140);
+        visualGuidesLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlVisualGuidesField = new TextField(workingSettings.getString(HtmlCodeStyleSettings.VISUAL_GUIDES, ""));
+        htmlVisualGuidesField.setPromptText("Default: ");
+        htmlVisualGuidesField.setPrefWidth(120);
+        htmlVisualGuidesField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 6 3 6; -fx-font-size: 12px;");
+        Label visualGuidesSuffix = new Label("columns");
+        visualGuidesSuffix.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px;");
+        visualGuidesRow.getChildren().addAll(visualGuidesLbl, htmlVisualGuidesField, visualGuidesSuffix);
+
+        Label visualGuidesHint = new Label("Specify one guide (80) or several (80, 120)");
+        visualGuidesHint.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 148;");
+        visualGuidesBox.getChildren().addAll(visualGuidesRow, visualGuidesHint);
+
+        htmlVisualGuidesField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.VISUAL_GUIDES, newV.trim());
+                notifyModified();
+            }
+        });
+
+        // 4. Keep line breaks & Keep line breaks in text
+        htmlKeepLineBreaksCb = new CheckBox("Keep line breaks");
+        htmlKeepLineBreaksCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlKeepLineBreaksCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS, true));
+        htmlKeepLineBreaksCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlKeepLineBreaksInTextCb = new CheckBox("Keep line breaks in text");
+        htmlKeepLineBreaksInTextCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlKeepLineBreaksInTextCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS_IN_TEXT, true));
+        htmlKeepLineBreaksInTextCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS_IN_TEXT, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        // 5. Keep blank lines: [ 2 ]
+        HBox keepBlankLinesRow = new HBox(8);
+        keepBlankLinesRow.setAlignment(Pos.CENTER_LEFT);
+        Label keepBlankLinesLbl = new Label("Keep blank lines:");
+        keepBlankLinesLbl.setMinWidth(140);
+        keepBlankLinesLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlKeepBlankLinesField = new TextField(hSettings != null ? String.valueOf(hSettings.getKeepBlankLines()) : "2");
+        htmlKeepBlankLinesField.setPrefWidth(55);
+        styleNumberField(htmlKeepBlankLinesField);
+        keepBlankLinesRow.getChildren().addAll(keepBlankLinesLbl, htmlKeepBlankLinesField);
+
+        htmlKeepBlankLinesField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                try {
+                    int val = Integer.parseInt(newV.trim());
+                    workingSettings.setInt(HtmlCodeStyleSettings.KEEP_BLANK_LINES, val);
+                    updatePreview();
+                    notifyModified();
+                } catch (Exception ignored) {}
+            }
+        });
+
+        // 6. Wrap attributes: [Wrap if long ▾]
+        HBox wrapAttributesRow = new HBox(8);
+        wrapAttributesRow.setAlignment(Pos.CENTER_LEFT);
+        Label wrapAttributesLbl = new Label("Wrap attributes:");
+        wrapAttributesLbl.setMinWidth(140);
+        wrapAttributesLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlWrapAttributesCombo = new ComboBox<>();
+        htmlWrapAttributesCombo.getItems().addAll(HtmlCodeStyleSettings.WRAP_ATTRIBUTES_OPTIONS);
+        htmlWrapAttributesCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.WRAP_ATTRIBUTES, "Wrap if long"));
+        styleComboBox(htmlWrapAttributesCombo);
+        htmlWrapAttributesCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.WRAP_ATTRIBUTES, htmlWrapAttributesCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+        wrapAttributesRow.getChildren().addAll(wrapAttributesLbl, htmlWrapAttributesCombo);
+
+        // 7. Two-column section: Left checkboxes, Right Spaces section
+        HBox twoColBox = new HBox(24);
+        twoColBox.setPadding(new Insets(4, 0, 4, 0));
+
+        VBox leftCol = new VBox(6);
+        leftCol.setPrefWidth(220);
+
+        htmlWrapTextCb = new CheckBox("Wrap text");
+        htmlWrapTextCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlWrapTextCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.WRAP_TEXT, true));
+        htmlWrapTextCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.WRAP_TEXT, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlAlignAttributesCb = new CheckBox("Align attributes");
+        htmlAlignAttributesCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlAlignAttributesCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.ALIGN_ATTRIBUTES, true));
+        htmlAlignAttributesCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.ALIGN_ATTRIBUTES, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlAlignTextCb = new CheckBox("Align text");
+        htmlAlignTextCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlAlignTextCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.ALIGN_TEXT, false));
+        htmlAlignTextCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.ALIGN_TEXT, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlKeepWhiteSpacesCb = new CheckBox("Keep white spaces");
+        htmlKeepWhiteSpacesCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlKeepWhiteSpacesCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.KEEP_WHITE_SPACES, false));
+        htmlKeepWhiteSpacesCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_WHITE_SPACES, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        leftCol.getChildren().addAll(htmlWrapTextCb, htmlAlignAttributesCb, htmlAlignTextCb, htmlKeepWhiteSpacesCb);
+
+        VBox rightCol = new VBox(6);
+        HBox spacesHeader = createDividerHeader("Spaces");
+        spacesHeader.setPrefWidth(220);
+
+        htmlSpacesAroundEqCb = new CheckBox("Around \"=\" in attribute");
+        htmlSpacesAroundEqCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlSpacesAroundEqCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_AROUND_EQUALITY_IN_ATTRIBUTE, false));
+        htmlSpacesAroundEqCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_AROUND_EQUALITY_IN_ATTRIBUTE, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlSpacesAfterTagCb = new CheckBox("After tag name");
+        htmlSpacesAfterTagCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlSpacesAfterTagCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_AFTER_TAG_NAME, false));
+        htmlSpacesAfterTagCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_AFTER_TAG_NAME, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        htmlSpacesInEmptyTagCb = new CheckBox("In empty tag");
+        htmlSpacesInEmptyTagCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlSpacesInEmptyTagCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_IN_EMPTY_TAG, false));
+        htmlSpacesInEmptyTagCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_IN_EMPTY_TAG, newV);
+                updatePreview();
+                notifyModified();
+            }
+        });
+
+        rightCol.getChildren().addAll(spacesHeader, htmlSpacesAroundEqCb, htmlSpacesAfterTagCb, htmlSpacesInEmptyTagCb);
+        twoColBox.getChildren().addAll(leftCol, rightCol);
+
+        // 8. Tag Lists with expand button ⤢
+        VBox tagListsBox = new VBox(6);
+        tagListsBox.setPadding(new Insets(4, 0, 4, 0));
+
+        Node insertNewLineBeforeRow = createTagFieldRow("Insert new line before:", HtmlCodeStyleSettings.INSERT_NEW_LINE_BEFORE, "body,div,p,form,h1,h2,h3", 220, f -> htmlInsertNewLineBeforeField = f);
+        Node removeNewLineBeforeRow = createTagFieldRow("Remove new line before:", HtmlCodeStyleSettings.REMOVE_NEW_LINE_BEFORE, "br", 220, f -> htmlRemoveNewLineBeforeField = f);
+        Node doNotIndentChildrenRow = createTagFieldRow("Do not indent children of:", HtmlCodeStyleSettings.DO_NOT_INDENT_CHILDREN_OF, "html,body,thead,tbody,tfoot", 220, f -> htmlDoNotIndentChildrenOfField = f);
+
+        // Special: or if tag size more than [ ] lines
+        HBox tagSizeRow = new HBox(8);
+        tagSizeRow.setAlignment(Pos.CENTER_LEFT);
+        Label tagSizeLbl = new Label("or if tag size more than");
+        tagSizeLbl.setMinWidth(220);
+        tagSizeLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlDoNotIndentTagSizeMoreThanField = new TextField(workingSettings.getString(HtmlCodeStyleSettings.DO_NOT_INDENT_TAG_SIZE_MORE_THAN, ""));
+        htmlDoNotIndentTagSizeMoreThanField.setPrefWidth(55);
+        styleNumberField(htmlDoNotIndentTagSizeMoreThanField);
+        Label tagSizeSuffix = new Label("lines");
+        tagSizeSuffix.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 12px;");
+        tagSizeRow.getChildren().addAll(tagSizeLbl, htmlDoNotIndentTagSizeMoreThanField, tagSizeSuffix);
+
+        htmlDoNotIndentTagSizeMoreThanField.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.DO_NOT_INDENT_TAG_SIZE_MORE_THAN, newV.trim());
+                notifyModified();
+            }
+        });
+
+        Node inlineElementsRow = createTagFieldRow("Inline elements:", HtmlCodeStyleSettings.INLINE_ELEMENTS, "strong,sub,sup,textarea,tt,u,var", 220, f -> htmlInlineElementsField = f);
+        Node keepWhiteSpacesInsideRow = createTagFieldRow("Keep white spaces inside:", HtmlCodeStyleSettings.KEEP_WHITE_SPACES_INSIDE, "span,pre,textarea", 220, f -> htmlKeepWhiteSpacesInsideField = f);
+        Node dontBreakIfInlineRow = createTagFieldRow("Don't break if inline content:", HtmlCodeStyleSettings.DONT_BREAK_IF_INLINE_CONTENT, "title,h1,h2,h3,h4,h5,h6,p", 220, f -> htmlDontBreakIfInlineContentField = f);
+
+        tagListsBox.getChildren().addAll(
+                insertNewLineBeforeRow,
+                removeNewLineBeforeRow,
+                doNotIndentChildrenRow,
+                tagSizeRow,
+                inlineElementsRow,
+                keepWhiteSpacesInsideRow,
+                dontBreakIfInlineRow
+        );
+
+        // 9. Attribute placement & Quote options
+        VBox bottomCombosBox = new VBox(6);
+        bottomCombosBox.setPadding(new Insets(4, 0, 4, 0));
+
+        HBox firstAttrRow = new HBox(8);
+        firstAttrRow.setAlignment(Pos.CENTER_LEFT);
+        Label firstAttrLbl = new Label("New line before first attribute:");
+        firstAttrLbl.setMinWidth(220);
+        firstAttrLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlNewLineBeforeFirstAttrCombo = new ComboBox<>();
+        htmlNewLineBeforeFirstAttrCombo.getItems().addAll(HtmlCodeStyleSettings.ATTRIBUTE_NEW_LINE_OPTIONS);
+        htmlNewLineBeforeFirstAttrCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.NEW_LINE_BEFORE_FIRST_ATTRIBUTE, "Never"));
+        styleComboBox(htmlNewLineBeforeFirstAttrCombo);
+        htmlNewLineBeforeFirstAttrCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.NEW_LINE_BEFORE_FIRST_ATTRIBUTE, htmlNewLineBeforeFirstAttrCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+        firstAttrRow.getChildren().addAll(firstAttrLbl, htmlNewLineBeforeFirstAttrCombo);
+
+        HBox lastAttrRow = new HBox(8);
+        lastAttrRow.setAlignment(Pos.CENTER_LEFT);
+        Label lastAttrLbl = new Label("New line after last attribute:");
+        lastAttrLbl.setMinWidth(220);
+        lastAttrLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlNewLineAfterLastAttrCombo = new ComboBox<>();
+        htmlNewLineAfterLastAttrCombo.getItems().addAll(HtmlCodeStyleSettings.ATTRIBUTE_NEW_LINE_OPTIONS);
+        htmlNewLineAfterLastAttrCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.NEW_LINE_AFTER_LAST_ATTRIBUTE, "Never"));
+        styleComboBox(htmlNewLineAfterLastAttrCombo);
+        htmlNewLineAfterLastAttrCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.NEW_LINE_AFTER_LAST_ATTRIBUTE, htmlNewLineAfterLastAttrCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+        lastAttrRow.getChildren().addAll(lastAttrLbl, htmlNewLineAfterLastAttrCombo);
+
+        HBox jsxAttrRow = new HBox(8);
+        jsxAttrRow.setAlignment(Pos.CENTER_LEFT);
+        Label jsxAttrLbl = new Label("Add for JSX attributes:");
+        jsxAttrLbl.setMinWidth(220);
+        jsxAttrLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlAddForJsxAttributesCombo = new ComboBox<>();
+        htmlAddForJsxAttributesCombo.getItems().addAll(HtmlCodeStyleSettings.JSX_ATTRIBUTES_OPTIONS);
+        htmlAddForJsxAttributesCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.ADD_FOR_JSX_ATTRIBUTES, "Braces"));
+        styleComboBox(htmlAddForJsxAttributesCombo);
+        htmlAddForJsxAttributesCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.ADD_FOR_JSX_ATTRIBUTES, htmlAddForJsxAttributesCombo.getValue());
+                notifyModified();
+            }
+        });
+        jsxAttrRow.getChildren().addAll(jsxAttrLbl, htmlAddForJsxAttributesCombo);
+
+        HBox quoteMarksRow = new HBox(8);
+        quoteMarksRow.setAlignment(Pos.CENTER_LEFT);
+        Label quoteMarksLbl = new Label("Generated quote marks:");
+        quoteMarksLbl.setMinWidth(220);
+        quoteMarksLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlGeneratedQuoteMarksCombo = new ComboBox<>();
+        htmlGeneratedQuoteMarksCombo.getItems().addAll(HtmlCodeStyleSettings.GENERATED_QUOTE_MARKS_OPTIONS);
+        htmlGeneratedQuoteMarksCombo.setValue(workingSettings.getString(HtmlCodeStyleSettings.GENERATED_QUOTE_MARKS, "Double"));
+        styleComboBox(htmlGeneratedQuoteMarksCombo);
+        htmlGeneratedQuoteMarksCombo.setOnAction(e -> {
+            if (!suppressEvents) {
+                workingSettings.setString(HtmlCodeStyleSettings.GENERATED_QUOTE_MARKS, htmlGeneratedQuoteMarksCombo.getValue());
+                updatePreview();
+                notifyModified();
+            }
+        });
+        quoteMarksRow.getChildren().addAll(quoteMarksLbl, htmlGeneratedQuoteMarksCombo);
+
+        htmlEnforceOnFormatCb = new CheckBox("Enforce on format");
+        htmlEnforceOnFormatCb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        htmlEnforceOnFormatCb.setPadding(new Insets(0, 0, 0, 220));
+        htmlEnforceOnFormatCb.setSelected(workingSettings.getBoolean(HtmlCodeStyleSettings.ENFORCE_ON_FORMAT, false));
+        htmlEnforceOnFormatCb.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setBoolean(HtmlCodeStyleSettings.ENFORCE_ON_FORMAT, newV);
+                notifyModified();
+            }
+        });
+
+        bottomCombosBox.getChildren().addAll(firstAttrRow, lastAttrRow, jsxAttrRow, quoteMarksRow, htmlEnforceOnFormatCb);
+
+        box.getChildren().addAll(
+                hardWrapRow,
+                wrapOnTypingRow,
+                visualGuidesBox,
+                htmlKeepLineBreaksCb,
+                htmlKeepLineBreaksInTextCb,
+                keepBlankLinesRow,
+                wrapAttributesRow,
+                twoColBox,
+                tagListsBox,
+                bottomCombosBox
+        );
+
+        leftContentBox.getChildren().add(box);
+    }
+
+    private Node createTagFieldRow(String labelText, String propertyKey, String defaultVal, int minLabelWidth, java.util.function.Consumer<TextField> fieldConsumer) {
+        HBox row = new HBox(8);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Label lbl = new Label(labelText);
+        lbl.setMinWidth(minLabelWidth);
+        lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        TextField tf = new TextField(workingSettings.getString(propertyKey, defaultVal));
+        tf.setPrefWidth(220);
+        tf.setMaxWidth(300);
+        HBox.setHgrow(tf, Priority.ALWAYS);
+        tf.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 6 3 6; -fx-font-size: 12px;");
+
+        tf.textProperty().addListener((obs, oldV, newV) -> {
+            if (!suppressEvents) {
+                workingSettings.setString(propertyKey, newV.trim());
+                notifyModified();
+            }
+        });
+
+        if (fieldConsumer != null) {
+            fieldConsumer.accept(tf);
+        }
+
+        Button expandBtn = new Button("⤢");
+        expandBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-padding: 2 6 2 6; -fx-font-size: 11px; -fx-cursor: hand;");
+        expandBtn.setOnAction(e -> showTagEditorDialog(labelText, tf, propertyKey));
+
+        row.getChildren().addAll(lbl, tf, expandBtn);
+        return row;
+    }
+
+    private void showTagEditorDialog(String title, TextField targetField, String propertyKey) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle(title.replace(":", ""));
+        dialog.setHeaderText("Edit tag list (separated by comma or new lines):");
+
+        DialogPane pane = dialog.getDialogPane();
+        pane.setStyle("-fx-background-color: #1E1F22;");
+        pane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        TextArea ta = new TextArea();
+        String current = targetField.getText();
+        if (current != null && !current.isEmpty()) {
+            ta.setText(String.join("\n", current.split(",")));
+        }
+        ta.setPrefRowCount(10);
+        ta.setPrefColumnCount(30);
+        ta.setStyle("-fx-control-inner-background: #1E1F22; -fx-background-color: #1E1F22; -fx-text-fill: #DFE1E5; -fx-font-family: monospace; -fx-font-size: 12px;");
+
+        VBox content = new VBox(8, ta);
+        content.setPadding(new Insets(10));
+        pane.setContent(content);
+
+        dialog.setResultConverter(btn -> {
+            if (btn == ButtonType.OK) {
+                String[] lines = ta.getText().split("[\\r\\n,]+");
+                List<String> cleaned = new ArrayList<>();
+                for (String l : lines) {
+                    String trim = l.trim();
+                    if (!trim.isEmpty()) {
+                        cleaned.add(trim);
+                    }
+                }
+                return String.join(",", cleaned);
+            }
+            return null;
+        });
+
+        Optional<String> res = dialog.showAndWait();
+        res.ifPresent(val -> {
+            targetField.setText(val);
+            workingSettings.setString(propertyKey, val);
+            notifyModified();
+        });
+    }
+
     private void saveCurrentTabUiToWorkingSettings() {
         if ("Groovy".equals(languageId)) {
             if ("Imports".equals(activeTab)) {
@@ -2046,7 +2769,43 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             }
         }
 
-        if ("Imports".equals(activeTab)) {
+        if ("HTML".equals(languageId)) {
+            if ("Other".equals(activeTab)) {
+                if (htmlHardWrapField != null) {
+                    try { workingSettings.setInt(HtmlCodeStyleSettings.HARD_WRAP_AT, Integer.parseInt(htmlHardWrapField.getText().trim())); } catch (Exception ignored) {}
+                }
+                if (htmlWrapOnTypingCombo != null && htmlWrapOnTypingCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.WRAP_ON_TYPING, htmlWrapOnTypingCombo.getValue());
+                if (htmlVisualGuidesField != null) workingSettings.setString(HtmlCodeStyleSettings.VISUAL_GUIDES, htmlVisualGuidesField.getText().trim());
+                if (htmlKeepLineBreaksCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS, htmlKeepLineBreaksCb.isSelected());
+                if (htmlKeepLineBreaksInTextCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_LINE_BREAKS_IN_TEXT, htmlKeepLineBreaksInTextCb.isSelected());
+                if (htmlKeepBlankLinesField != null) {
+                    try { workingSettings.setInt(HtmlCodeStyleSettings.KEEP_BLANK_LINES, Integer.parseInt(htmlKeepBlankLinesField.getText().trim())); } catch (Exception ignored) {}
+                }
+                if (htmlWrapAttributesCombo != null && htmlWrapAttributesCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.WRAP_ATTRIBUTES, htmlWrapAttributesCombo.getValue());
+                if (htmlWrapTextCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.WRAP_TEXT, htmlWrapTextCb.isSelected());
+                if (htmlAlignAttributesCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.ALIGN_ATTRIBUTES, htmlAlignAttributesCb.isSelected());
+                if (htmlAlignTextCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.ALIGN_TEXT, htmlAlignTextCb.isSelected());
+                if (htmlKeepWhiteSpacesCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.KEEP_WHITE_SPACES, htmlKeepWhiteSpacesCb.isSelected());
+                if (htmlSpacesAroundEqCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_AROUND_EQUALITY_IN_ATTRIBUTE, htmlSpacesAroundEqCb.isSelected());
+                if (htmlSpacesAfterTagCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_AFTER_TAG_NAME, htmlSpacesAfterTagCb.isSelected());
+                if (htmlSpacesInEmptyTagCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.SPACES_IN_EMPTY_TAG, htmlSpacesInEmptyTagCb.isSelected());
+                if (htmlInsertNewLineBeforeField != null) workingSettings.setString(HtmlCodeStyleSettings.INSERT_NEW_LINE_BEFORE, htmlInsertNewLineBeforeField.getText().trim());
+                if (htmlRemoveNewLineBeforeField != null) workingSettings.setString(HtmlCodeStyleSettings.REMOVE_NEW_LINE_BEFORE, htmlRemoveNewLineBeforeField.getText().trim());
+                if (htmlDoNotIndentChildrenOfField != null) workingSettings.setString(HtmlCodeStyleSettings.DO_NOT_INDENT_CHILDREN_OF, htmlDoNotIndentChildrenOfField.getText().trim());
+                if (htmlDoNotIndentTagSizeMoreThanField != null) workingSettings.setString(HtmlCodeStyleSettings.DO_NOT_INDENT_TAG_SIZE_MORE_THAN, htmlDoNotIndentTagSizeMoreThanField.getText().trim());
+                if (htmlInlineElementsField != null) workingSettings.setString(HtmlCodeStyleSettings.INLINE_ELEMENTS, htmlInlineElementsField.getText().trim());
+                if (htmlKeepWhiteSpacesInsideField != null) workingSettings.setString(HtmlCodeStyleSettings.KEEP_WHITE_SPACES_INSIDE, htmlKeepWhiteSpacesInsideField.getText().trim());
+                if (htmlDontBreakIfInlineContentField != null) workingSettings.setString(HtmlCodeStyleSettings.DONT_BREAK_IF_INLINE_CONTENT, htmlDontBreakIfInlineContentField.getText().trim());
+                if (htmlNewLineBeforeFirstAttrCombo != null && htmlNewLineBeforeFirstAttrCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.NEW_LINE_BEFORE_FIRST_ATTRIBUTE, htmlNewLineBeforeFirstAttrCombo.getValue());
+                if (htmlNewLineAfterLastAttrCombo != null && htmlNewLineAfterLastAttrCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.NEW_LINE_AFTER_LAST_ATTRIBUTE, htmlNewLineAfterLastAttrCombo.getValue());
+                if (htmlAddForJsxAttributesCombo != null && htmlAddForJsxAttributesCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.ADD_FOR_JSX_ATTRIBUTES, htmlAddForJsxAttributesCombo.getValue());
+                if (htmlGeneratedQuoteMarksCombo != null && htmlGeneratedQuoteMarksCombo.getValue() != null) workingSettings.setString(HtmlCodeStyleSettings.GENERATED_QUOTE_MARKS, htmlGeneratedQuoteMarksCombo.getValue());
+                if (htmlEnforceOnFormatCb != null) workingSettings.setBoolean(HtmlCodeStyleSettings.ENFORCE_ON_FORMAT, htmlEnforceOnFormatCb.isSelected());
+                return;
+            }
+        }
+
+        if ("Imports".equals(activeTab) && !"JavaScript".equals(languageId)) {
             if (topLevelGroup != null && topLevelGroup.getSelectedToggle() != null) {
                 Object ud = topLevelGroup.getSelectedToggle().getUserData();
                 if (ud != null) {
@@ -2116,6 +2875,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 workingSettings.setString(e.getKey(), e.getValue().getValue());
             }
         }
+        for (Map.Entry<String, TextField> e : textControls.entrySet()) {
+            if (e.getValue().getText() != null) {
+                workingSettings.setString(e.getKey(), e.getValue().getText());
+            }
+        }
     }
 
     public void loadFromCurrentScheme() {
@@ -2171,6 +2935,16 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 aTarget.getMatchingRules().addAll(aCur.getMatchingRules());
             }
 
+            if (workingSettings instanceof HtmlCodeStyleSettings hCur && target instanceof HtmlCodeStyleSettings hTarget) {
+                hTarget.getMatchingRules().clear();
+                hTarget.getMatchingRules().addAll(hCur.getMatchingRules());
+            }
+
+            if (workingSettings instanceof JavaScriptCodeStyleSettings jsCur && target instanceof JavaScriptCodeStyleSettings jsTarget) {
+                jsTarget.getMatchingRules().clear();
+                jsTarget.getMatchingRules().addAll(jsCur.getMatchingRules());
+            }
+
             if (workingSettings instanceof GoCodeStyleSettings gCur && target instanceof GoCodeStyleSettings gTarget) {
                 gTarget.getCommentExceptions().clear();
                 gTarget.getCommentExceptions().addAll(gCur.getCommentExceptions());
@@ -2223,6 +2997,14 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
         if (workingSettings instanceof AngularHtmlCodeStyleSettings aCur && baselineSettings instanceof AngularHtmlCodeStyleSettings aBase) {
             if (!Objects.equals(aCur.getMatchingRules(), aBase.getMatchingRules())) return true;
+        }
+
+        if (workingSettings instanceof HtmlCodeStyleSettings hCur && baselineSettings instanceof HtmlCodeStyleSettings hBase) {
+            if (!Objects.equals(hCur.getMatchingRules(), hBase.getMatchingRules())) return true;
+        }
+
+        if (workingSettings instanceof JavaScriptCodeStyleSettings jsCur && baselineSettings instanceof JavaScriptCodeStyleSettings jsBase) {
+            if (!Objects.equals(jsCur.getMatchingRules(), jsBase.getMatchingRules())) return true;
         }
 
         if (workingSettings instanceof GoCodeStyleSettings gCur && baselineSettings instanceof GoCodeStyleSettings gBase) {
@@ -2531,6 +3313,354 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             }
         }
 
+        // HTML transforms
+        if (workingSettings instanceof HtmlCodeStyleSettings || "HTML".equals(languageId)) {
+            // Tab 1: Tabs and Indents
+            if (workingSettings.getBoolean(HtmlCodeStyleSettings.USE_HTML_INDENTS_WITHIN_STYLE_AND_SCRIPT, false)) {
+                code = code.replace("        var current_lang", "            var current_lang")
+                           .replace("        var i18n_info", "            var i18n_info")
+                           .replace("        var english_only", "            var english_only")
+                           .replace("        .page__beam", "            .page__beam");
+            }
+
+            // Tab 2: Other
+            // Spaces around '=' in attributes
+            if (workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_AROUND_EQUALITY_IN_ATTRIBUTE, false)) {
+                code = code.replace("=\"", " = \"").replace("='", " = '");
+            }
+
+            // Spaces after tag name
+            if (workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_AFTER_TAG_NAME, false)) {
+                code = code.replace("<html ", "<html  ")
+                           .replace("<head>", "<head >")
+                           .replace("<body>", "<body >")
+                           .replace("<div ", "<div  ")
+                           .replace("<div>", "<div >");
+            }
+
+            // Spaces in empty tag
+            if (!workingSettings.getBoolean(HtmlCodeStyleSettings.SPACES_IN_EMPTY_TAG, false)) {
+                code = code.replace(" />", "/>");
+            } else {
+                code = code.replace("/>", " />").replace("  />", " />");
+            }
+
+            // Generated quote marks
+            String quotes = workingSettings.getString(HtmlCodeStyleSettings.GENERATED_QUOTE_MARKS, "Double");
+            if ("Single".equals(quotes)) {
+                code = code.replace("=\"", "='").replace("\" ", "' ").replace("\">", "'>");
+            }
+
+            // Wrap attributes
+            String wrapAttr = workingSettings.getString(HtmlCodeStyleSettings.WRAP_ATTRIBUTES, "Wrap if long");
+            if ("Do not wrap".equals(wrapAttr)) {
+                code = code.replace("<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\"\n      xml:lang=\"en\">",
+                                    "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">")
+                           .replace("<meta http-equiv=\"Content-Type\"\n          content=\"text/html; charset=iso-8859-1\"/>",
+                                    "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\"/>")
+                           .replace("<img\n                src=\"../img/logo.gif\" width=\"124\"\n                height=\"44\" alt=\"Lumina home\"/>",
+                                    "<img src=\"../img/logo.gif\" width=\"124\" height=\"44\" alt=\"Lumina home\"/>");
+            } else if ("Wrap always".equals(wrapAttr) || "Chop down if long".equals(wrapAttr)) {
+                code = code.replace("<link rel=\"stylesheet\" type=\"text/css\" media=\"screen\"",
+                                    "<link\n        rel=\"stylesheet\"\n        type=\"text/css\"\n        media=\"screen\"")
+                           .replace("<link rel=\"stylesheet\" type=\"text/css\" media=\"print\"",
+                                    "<link\n        rel=\"stylesheet\"\n        type=\"text/css\"\n        media=\"print\"");
+            }
+
+            // Align attributes
+            if (!workingSettings.getBoolean(HtmlCodeStyleSettings.ALIGN_ATTRIBUTES, true)) {
+                code = code.replace("      xml:lang=\"en\">", "    xml:lang=\"en\">")
+                           .replace("          content=\"text/html;", "    content=\"text/html;")
+                           .replace("                height=\"44\"", "        height=\"44\"");
+            }
+
+            // Keep blank lines
+            int keepBlank = workingSettings.getInt(HtmlCodeStyleSettings.KEEP_BLANK_LINES, 2);
+            if (keepBlank == 0) {
+                code = code.replaceAll("(?m)^\\s*$\\n+", "");
+            } else if (keepBlank == 1) {
+                code = code.replaceAll("(?m)^\\s*$\\n(\\s*$\\n)+", "\n");
+            }
+        }
+
+        // HTTP Request transforms
+        if (workingSettings instanceof HttpRequestCodeStyleSettings || "HTTP Request".equals(languageId)) {
+            // URL parts indent
+            int urlPartsIndent = workingSettings.getInt(HttpRequestCodeStyleSettings.URL_PARTS_INDENT, 4);
+            if (urlPartsIndent != 4) {
+                String indentSpaces = " ".repeat(Math.max(0, urlPartsIndent));
+                code = code.replace("    my-url-path?", indentSpaces + "my-url-path?");
+            }
+
+            // Tabs and indents general indent
+            int ind = workingSettings.getIndent();
+            if (ind != 4) {
+                String outer = " ".repeat(ind);
+                String inner = " ".repeat(ind * 2);
+                code = code.replace("    if (response.status", outer + "if (response.status")
+                           .replace("    } else {", outer + "} else {")
+                           .replace("    }", outer + "}")
+                           .replace("        client.log(\"Success\")", inner + "client.log(\"Success\")")
+                           .replace("        client.log(\"Other\")", inner + "client.log(\"Other\")");
+            }
+
+            // Wrapping and Braces
+            String queryWrap = workingSettings.getString(HttpRequestCodeStyleSettings.QUERY_PARAMS_WRAP, "Wrap if long");
+            if ("Do not wrap".equals(queryWrap)) {
+                code = code.replace("GET https://localhost:8080/my-url-path?\n    param1=value1&\n    param2=value2&p3=v3",
+                                    "GET https://localhost:8080/my-url-path?param1=value1&param2=value2&p3=v3");
+            }
+
+            String formWrap = workingSettings.getString(HttpRequestCodeStyleSettings.FORM_URLENCODED_PARAMS_WRAP, "Wrap always");
+            if ("Do not wrap".equals(formWrap)) {
+                code = code.replace("param1 = value1 &\nparam2 = value2 &\nparam3 = value3",
+                                    "param1 = value1 & param2 = value2 & param3 = value3");
+            }
+
+            // Spaces
+            boolean spacesAroundEq = workingSettings.getBoolean(HttpRequestCodeStyleSettings.SPACES_AROUND_EQUALITY_IN_FORM, true);
+            boolean spaceBeforeAmp = workingSettings.getBoolean(HttpRequestCodeStyleSettings.SPACE_BEFORE_AMPERSAND_IN_FORM, true);
+            if (!spacesAroundEq) {
+                code = code.replace(" = ", "=");
+            }
+            if (!spaceBeforeAmp) {
+                code = code.replace(" &", "&");
+            }
+        }
+
+        // JavaScript transforms
+        if (workingSettings instanceof JavaScriptCodeStyleSettings || "JavaScript".equals(languageId)) {
+            // Tab / Indent
+            if (workingSettings.isUseTabCharacter()) {
+                code = code.replace("    ", "\t");
+            }
+
+            // Indent chained methods
+            boolean indentChained = workingSettings.getBoolean(JavaScriptCodeStyleSettings.INDENT_CHAINED_METHODS, true);
+            if (!indentChained) {
+                code = code.replace("            .secondCall();", "        .secondCall();");
+            }
+
+            // Quote style
+            String quoteStyle = workingSettings.getString(JavaScriptCodeStyleSettings.QUOTE_STYLE, "double");
+            if ("Double".equalsIgnoreCase(quoteStyle)) {
+                code = code.replace("'react'", "\"react\"")
+                           .replace("'World'", "\"World\"")
+                           .replace("'Lumina'", "\"Lumina\"")
+                           .replace("','", "\",\"")
+                           .replace("'a'", "\"a\"")
+                           .replace("'b'", "\"b\"")
+                           .replace("'transparent'", "\"transparent\"")
+                           .replace("'lime'", "\"lime\"")
+                           .replace("'Arial'", "\"Arial\"")
+                           .replace("'one'", "\"one\"")
+                           .replace("'two'", "\"two\"")
+                           .replace("'three'", "\"three\"")
+                           .replace("'btn.gif'", "\"btn.gif\"")
+                           .replace("'bold'", "\"bold\"")
+                           .replace("'red'", "\"red\"");
+            } else if ("Single".equalsIgnoreCase(quoteStyle)) {
+                code = code.replace("\"demo\"", "'demo'")
+                           .replace("\"Demo\"", "'Demo'")
+                           .replace("\"greeting\"", "'greeting'")
+                           .replace("\"zero\"", "'zero'")
+                           .replace("\"one\"", "'one'")
+                           .replace("\"String\"", "'String'")
+                           .replace("\"Int\"", "'Int'")
+                           .replace("\"btn.gif\"", "'btn.gif'")
+                           .replace("\"bold\"", "'bold'")
+                           .replace("\"red\"", "'red'");
+            }
+
+            // Semicolons
+            String semicolons = workingSettings.getString(JavaScriptCodeStyleSettings.USE_SEMICOLON, "Use");
+            String semicolonScope = workingSettings.getString(JavaScriptCodeStyleSettings.SEMICOLON_SCOPE, "in code generated by IDE");
+            if ("Don't use".equals(semicolons)) {
+                code = code.replace("yield current;", "yield current")
+                           .replace("current + next);", "current + next)")
+                           .replace("var i = 0;", "var i = 0")
+                           .replace("\"one\"};", "\"one\"}")
+                           .replace("[0, 1, 2];", "[0, 1, 2]")
+                           .replace(".secondCall();", ".secondCall()")
+                           .replace("field1 = 1;", "field1 = 1")
+                           .replace("return 0;", "return 0")
+                           .replace("font = 'Arial';", "font = 'Arial'")
+                           .replace("initial = -1;", "initial = -1")
+                           .replace("break;", "break")
+                           .replace("};", "}")
+                           .replace("];", "]");
+            } else if ("Use".equals(semicolons) && "always".equals(semicolonScope)) {
+                if (code.contains("width: 128\n}")) {
+                    code = code.replace("width: 128\n}", "width: 128\n};");
+                }
+                if (code.contains("const cssClasses = [\"bold\", \"red\",]") && !code.contains("const cssClasses = [\"bold\", \"red\",];")) {
+                    code = code.replace("const cssClasses = [\"bold\", \"red\",]", "const cssClasses = [\"bold\", \"red\",];");
+                }
+                if (code.contains("const cssClasses = ['bold', 'red',]") && !code.contains("const cssClasses = ['bold', 'red',];")) {
+                    code = code.replace("const cssClasses = ['bold', 'red',]", "const cssClasses = ['bold', 'red',];");
+                }
+            }
+
+            // Trailing comma
+            String trailingComma = workingSettings.getString(JavaScriptCodeStyleSettings.TRAILING_COMMA, "Keep");
+            if ("Remove".equals(trailingComma)) {
+                code = code.replace("\"red\",", "\"red\"").replace("'red',", "'red'");
+            }
+
+            // Blank Lines
+            int keepBlankInCode = workingSettings.getInt(JavaScriptCodeStyleSettings.BLANK_LINES_KEEP_IN_CODE, 2);
+            if (keepBlankInCode == 0) {
+                code = code.replaceAll("(?m)^\\s*$\\n+", "");
+            } else if (keepBlankInCode == 1) {
+                code = code.replaceAll("(?m)^\\s*$\\n(\\s*$\\n)+", "\n");
+            }
+
+            int afterImports = workingSettings.getInt(JavaScriptCodeStyleSettings.BLANK_LINES_AFTER_IMPORTS, 1);
+            if (afterImports == 0) {
+                code = code.replace("from 'utils';\n\nclass Foo", "from 'utils';\nclass Foo");
+            } else if (afterImports == 2) {
+                code = code.replace("from 'utils';\n\nclass Foo", "from 'utils';\n\n\nclass Foo");
+            }
+
+            int aroundMethod = workingSettings.getInt(JavaScriptCodeStyleSettings.BLANK_LINES_AROUND_METHOD, 1);
+            if (aroundMethod == 0) {
+                code = code.replace("    field2 = 2;\n\n    foo()", "    field2 = 2;\n    foo()")
+                           .replace("    }\n\n    static bar()", "    }\n    static bar()");
+            } else if (aroundMethod == 2) {
+                code = code.replace("    field2 = 2;\n\n    foo()", "    field2 = 2;\n\n\n    foo()")
+                           .replace("    }\n\n    static bar()", "    }\n\n\n    static bar()");
+            }
+
+            // Spaces around operators
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_ASSIGNMENT_OPERATORS, true)) {
+                code = code.replace(" = ", "=");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_ARROW_FUNCTION, true)) {
+                code = code.replace(" => ", "=>");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_ADDITIVE_OPERATORS, true)) {
+                code = code.replace(" + ", "+");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_MULTIPLICATIVE_OPERATORS, true)) {
+                code = code.replace(" * ", "*");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_RELATIONAL_OPERATORS, true)) {
+                code = code.replace(" > ", ">").replace(" < ", "<");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_EQUALITY_OPERATORS, true)) {
+                code = code.replace(" == ", "==");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AROUND_LOGICAL_OPERATORS, true)) {
+                code = code.replace(" || ", "||").replace(" && ", "&&");
+            }
+
+            // Generator star spacing
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_GENERATOR_STAR, false)) {
+                code = code.replace("function*", "function *");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_GENERATOR_STAR, true)) {
+                code = code.replace("function* ", "function*").replace("yield* ", "yield*");
+            }
+
+            // Rest / spread spacing
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_REST_SPREAD, false)) {
+                code = code.replace("...rest", "... rest");
+            }
+
+            // Property name-value separator ':'
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_PROPERTY_NAME_VALUE_SEPARATOR, false)) {
+                code = code.replace(": \"", " : \"").replace(": '", " : '").replace(": {", " : {");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_PROPERTY_NAME_VALUE_SEPARATOR, true)) {
+                code = code.replace(": \"", ":\"").replace(": '", ":'").replace(": {", ":{");
+            }
+
+            // Spaces before left brace
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FUNCTION_LEFT_BRACE, true)) {
+                code = code.replace(") {", "){");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_ELSE_LEFT_BRACE, true)) {
+                code = code.replace("else {", "else{");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_TRY_LEFT_BRACE, true)) {
+                code = code.replace("try {", "try{");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_DO_LEFT_BRACE, true)) {
+                code = code.replace("do {", "do{");
+            }
+
+            // Spaces before keywords
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_ELSE_KEYWORD, true)) {
+                code = code.replace("} else", "}else");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_WHILE_KEYWORD, true)) {
+                code = code.replace("} while", "}while");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_CATCH_KEYWORD, true)) {
+                code = code.replace("} catch", "}catch");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FINALLY_KEYWORD, true)) {
+                code = code.replace("} finally", "}finally");
+            }
+
+            // Spaces before parentheses
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FUNCTION_DECLARATION_PARENTHESES, false)) {
+                code = code.replace("foo(x", "foo (x").replace("fibonacci(current", "fibonacci (current");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FUNCTION_CALL_PARENTHESES, false)) {
+                code = code.replace("take(fibonacci()", "take (fibonacci ()");
+            }
+
+            // Space after comma
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_AFTER_COMMA, true)) {
+                code = code.replace(", ", ",");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_COMMA, false)) {
+                code = code.replace(", ", " , ");
+            }
+
+            // For loop semicolon
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACE_BEFORE_FOR_SEMICOLON, false)) {
+                code = code.replace("j = 0; j < 10; j++", "j = 0 ; j < 10 ; j++");
+            }
+
+            // Spaces within array / object braces
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_ARRAY_BRACKETS, false)) {
+                code = code.replace("[0, 1, 2]", "[ 0, 1, 2 ]").replace("[first, second, ...rest]", "[ first, second, ...rest ]");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.SPACES_WITHIN_OBJECT_LITERAL_BRACES, false)) {
+                code = code.replace("{0: \"zero\", 1: \"one\"}", "{ 0: \"zero\", 1: \"one\" }");
+            }
+
+            // Wrapping and Braces transforms
+            if ("Next line".equals(workingSettings.getString(JavaScriptCodeStyleSettings.BRACE_PLACEMENT_CLASS, "End of line"))) {
+                code = code.replace("class Foo extends BarComponent implements BazService, QuuxProvider {",
+                                    "class Foo extends BarComponent implements BazService, QuuxProvider\n{");
+            }
+            if ("Next line".equals(workingSettings.getString(JavaScriptCodeStyleSettings.BRACE_PLACEMENT_FUNCTION, "End of line"))) {
+                code = code.replace("function buzz() {", "function buzz()\n{");
+            }
+            if (!workingSettings.getBoolean(JavaScriptCodeStyleSettings.WRAP_SWITCH_INDENT_CASE_BRANCHES, true)) {
+                code = code.replace("        case 0:", "    case 0:").replace("        case 1:", "    case 1:");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.WRAP_IF_ELSE_ON_NEW_LINE, false)) {
+                code = code.replace("} else", "}\nelse");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.WRAP_TRY_CATCH_ON_NEW_LINE, false)) {
+                code = code.replace("} catch", "}\ncatch");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.WRAP_TRY_FINALLY_ON_NEW_LINE, false)) {
+                code = code.replace("} finally", "}\nfinally");
+            }
+            if (workingSettings.getBoolean(JavaScriptCodeStyleSettings.WRAP_DO_WHILE_ON_NEW_LINE, false)) {
+                code = code.replace("} while", "}\nwhile");
+            }
+            if ("Do not wrap".equals(workingSettings.getString(JavaScriptCodeStyleSettings.WRAP_CLASS_DECORATORS, "Wrap always"))) {
+                code = code.replace("@ClassDecorator(param1, param2)\n@ClassDecoratorExt\nclass Foo",
+                                    "@ClassDecorator(param1, param2) @ClassDecoratorExt class Foo");
+            }
+        }
+
         return code;
     }
 
@@ -2576,12 +3706,12 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 "(@(if|else\\s+if|else))|" +
                 "(\\{\\{|\\}\\})|" +
                 "(\\*ng[A-Za-z0-9_]+|#[A-Za-z0-9_-]+|\\[[^\\]\\r\\n]+\\])|" +
-                "(//.*|/\\*.*?\\*/|;.*|<!--.*?-->)|" +
+                "(//.*|/\\*.*?\\*/|;.*|<!--.*?-->|###.*)|" +
                 "\\b(public|private|protected|class|interface|enum|record|void|int|long|boolean|char|float|double|" +
                 "try|catch|finally|throw|throws|if|else|do|while|for|switch|case|default|break|continue|return|" +
                 "new|package|import|extends|implements|static|final|fun|val|var|open|where|in|init|context|def|type|func|struct|fn|let|mut|" +
                 "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false|" +
-                "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end)\\b|" +
+                "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end|function|yield|GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\\b|" +
                 "(:[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+(\\([^)]*\\))?)|" +
                 "(\"[^\"]*\"|'[^']*'|`[^`]*`)|" +
                 "(\\b\\d+\\b)|" +
