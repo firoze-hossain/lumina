@@ -16,6 +16,7 @@ import dev.lumina.settings.GroovyCodeStyleSettings;
 import dev.lumina.settings.HtmlCodeStyleSettings;
 import dev.lumina.settings.HttpRequestCodeStyleSettings;
 import dev.lumina.settings.JavaScriptCodeStyleSettings;
+import dev.lumina.settings.JsonCodeStyleSettings;
 import dev.lumina.settings.KotlinCodeStyleSettings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -329,10 +330,13 @@ public class SettingsCodeStyleLanguagePage extends VBox {
         return pane;
     }
 
+    private Node selectedWrappingRow = null;
+
     /**
      * Dynamically builds and binds the left pane controls for the currently active tab.
      */
     private void renderActiveTabControls() {
+        selectedWrappingRow = null;
         leftContentBox.getChildren().clear();
         checkboxControls.clear();
         numberControls.clear();
@@ -392,6 +396,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
 
         List<CodeStyleGroup> groups = provider != null ? provider.getOptionGroups(activeTab) : Collections.emptyList();
 
+        if ("Wrapping and Braces".equals(activeTab) && "JSON".equals(languageId)) {
+            renderWrappingAndBracesTreeTable(groups);
+            return;
+        }
+
         if (groups.isEmpty() && "Tabs and Indents".equals(activeTab)) {
             // Render standard fallback indents
             renderStandardTabsAndIndents();
@@ -416,7 +425,7 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 sectionBox.getChildren().add(headerRow);
 
                 VBox optionsBox = new VBox(6);
-                optionsBox.setPadding(new Insets(4, 0, 8, 4));
+                optionsBox.setPadding(new Insets(4, 0, 8, 12));
                 for (CodeStyleOption opt : group.getOptions()) {
                     optionsBox.getChildren().add(buildOptionNode(opt));
                 }
@@ -490,6 +499,269 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 leftContentBox.getChildren().add(flatBox);
             }
         }
+    }
+
+    private void renderWrappingAndBracesTreeTable(List<CodeStyleGroup> groups) {
+        VBox tableBox = new VBox(1);
+        tableBox.setStyle("-fx-background-color: transparent;");
+
+        for (CodeStyleGroup group : groups) {
+            if (group.isCollapsible()) {
+                VBox groupBox = new VBox(1);
+                BooleanProperty expandedProp = new SimpleBooleanProperty(group.isExpanded());
+
+                HBox headerRow = new HBox(6);
+                headerRow.setAlignment(Pos.CENTER_LEFT);
+                headerRow.setPadding(new Insets(4, 10, 4, 8));
+                headerRow.setStyle("-fx-cursor: hand; -fx-background-color: transparent; -fx-background-radius: 3;");
+
+                Label arrowLabel = new Label(expandedProp.get() ? "▼" : "▶");
+                arrowLabel.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 9px; -fx-min-width: 14px;");
+
+                Label titleLabel = new Label(group.getName());
+                titleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+                headerRow.getChildren().addAll(arrowLabel, titleLabel);
+
+                if (group.getHeaderComboKey() != null) {
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    ComboBox<String> combo = new ComboBox<>();
+                    combo.getItems().addAll(group.getHeaderComboChoices());
+                    String val = workingSettings.getString(group.getHeaderComboKey(), group.getHeaderComboDefault());
+                    combo.setValue(val);
+                    combo.setPrefWidth(110);
+                    styleCompactComboBox(combo);
+                    combo.valueProperty().addListener((obs, oldV, newV) -> {
+                        if (!suppressEvents && newV != null) {
+                            workingSettings.setString(group.getHeaderComboKey(), newV);
+                            updatePreview();
+                            notifyModified();
+                        }
+                    });
+                    comboControls.put(group.getHeaderComboKey(), combo);
+                    headerRow.getChildren().addAll(spacer, combo);
+                }
+
+                VBox contentBox = new VBox(1);
+                contentBox.visibleProperty().bind(expandedProp);
+                contentBox.managedProperty().bind(expandedProp);
+
+                headerRow.setOnMouseClicked(e -> {
+                    if (e.getTarget() instanceof ComboBox || e.getTarget() instanceof ListCell) return;
+                    boolean next = !expandedProp.get();
+                    expandedProp.set(next);
+                    arrowLabel.setText(next ? "▼" : "▶");
+                    selectWrappingRow(headerRow);
+                });
+
+                headerRow.setOnMouseEntered(e -> {
+                    if (headerRow != selectedWrappingRow) {
+                        headerRow.setStyle("-fx-cursor: hand; -fx-background-color: #2B2D30; -fx-background-radius: 3;");
+                    }
+                });
+                headerRow.setOnMouseExited(e -> {
+                    if (headerRow != selectedWrappingRow) {
+                        headerRow.setStyle("-fx-cursor: hand; -fx-background-color: transparent; -fx-background-radius: 3;");
+                    }
+                });
+
+                for (CodeStyleOption opt : group.getOptions()) {
+                    contentBox.getChildren().add(buildWrappingTreeTableRow(opt, 1));
+                }
+
+                groupBox.getChildren().addAll(headerRow, contentBox);
+                tableBox.getChildren().add(groupBox);
+
+            } else {
+                for (CodeStyleOption opt : group.getOptions()) {
+                    tableBox.getChildren().add(buildWrappingTreeTableRow(opt, 0));
+                }
+            }
+        }
+
+        leftContentBox.getChildren().add(tableBox);
+    }
+
+    private HBox buildWrappingTreeTableRow(CodeStyleOption opt, int indentLevel) {
+        HBox row = new HBox(8);
+        row.setAlignment(Pos.CENTER_LEFT);
+        int leftPad;
+        if (indentLevel > 0) {
+            leftPad = 28;
+        } else if (JsonCodeStyleSettings.ARRAY_WRAPPING.equals(opt.getKey())) {
+            leftPad = 22;
+        } else {
+            leftPad = 8;
+        }
+        row.setPadding(new Insets(3, 10, 3, leftPad));
+        row.setStyle("-fx-cursor: hand; -fx-background-color: transparent; -fx-background-radius: 3;");
+
+        Label label = new Label(opt.getLabel());
+        label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Node controlNode = null;
+        if (opt.getType() == CodeStyleOptionType.CHECKBOX) {
+            CheckBox cb = new CheckBox();
+            cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            boolean val = workingSettings.getBoolean(opt.getKey(), (Boolean) opt.getDefaultValue());
+            cb.setSelected(val);
+            cb.selectedProperty().addListener((obs, oldV, newV) -> {
+                if (!suppressEvents) {
+                    workingSettings.setBoolean(opt.getKey(), newV);
+                    updatePreview();
+                    notifyModified();
+                }
+            });
+            checkboxControls.put(opt.getKey(), cb);
+            controlNode = cb;
+
+        } else if (opt.getType() == CodeStyleOptionType.COMBO) {
+            ComboBox<String> combo = new ComboBox<>();
+            combo.getItems().addAll(opt.getChoices());
+            String val = workingSettings.getString(opt.getKey(), (String) opt.getDefaultValue());
+            combo.setValue(val);
+            styleCompactComboBox(combo);
+            combo.valueProperty().addListener((obs, oldV, newV) -> {
+                if (!suppressEvents && newV != null) {
+                    workingSettings.setString(opt.getKey(), newV);
+                    updatePreview();
+                    notifyModified();
+                }
+            });
+            comboControls.put(opt.getKey(), combo);
+            controlNode = combo;
+
+        } else if (opt.getType() == CodeStyleOptionType.NUMBER) {
+            TextField field = new TextField();
+            int val = workingSettings.getInt(opt.getKey(), (Integer) opt.getDefaultValue());
+            field.setText(val == 120 && JsonCodeStyleSettings.HARD_WRAP_AT.equals(opt.getKey()) ? "Default: 120" : String.valueOf(val));
+            field.setPrefWidth(95);
+            styleCompactTextField(field);
+            field.focusedProperty().addListener((obs, oldF, newF) -> {
+                if (newF) {
+                    if (field.getText().startsWith("Default: ")) {
+                        field.setText(field.getText().replace("Default: ", "").trim());
+                    }
+                } else {
+                    try {
+                        int intVal = Integer.parseInt(field.getText().trim());
+                        workingSettings.setInt(opt.getKey(), intVal);
+                        if (intVal == 120 && JsonCodeStyleSettings.HARD_WRAP_AT.equals(opt.getKey())) {
+                            field.setText("Default: 120");
+                        }
+                    } catch (Exception ignored) {}
+                }
+            });
+            field.textProperty().addListener((obs, oldV, newV) -> {
+                if (!suppressEvents) {
+                    try {
+                        String clean = newV.replace("Default: ", "").trim();
+                        int intVal = Integer.parseInt(clean);
+                        workingSettings.setInt(opt.getKey(), intVal);
+                        updatePreview();
+                        notifyModified();
+                    } catch (Exception ignored) {}
+                }
+            });
+            numberControls.put(opt.getKey(), field);
+            controlNode = field;
+
+        } else if (opt.getType() == CodeStyleOptionType.TEXT) {
+            TextField field = new TextField();
+            String val = workingSettings.getString(opt.getKey(), (String) opt.getDefaultValue());
+            field.setText(val != null && !val.isEmpty() ? val : "Default: None");
+            field.setPrefWidth(95);
+            styleCompactTextField(field);
+            field.focusedProperty().addListener((obs, oldF, newF) -> {
+                if (newF) {
+                    if ("Default: None".equals(field.getText())) field.setText("");
+                } else {
+                    if (field.getText().trim().isEmpty()) field.setText("Default: None");
+                }
+            });
+            field.textProperty().addListener((obs, oldV, newV) -> {
+                if (!suppressEvents) {
+                    workingSettings.setString(opt.getKey(), "Default: None".equals(newV) ? "" : newV.trim());
+                    updatePreview();
+                    notifyModified();
+                }
+            });
+            textControls.put(opt.getKey(), field);
+            controlNode = field;
+        }
+
+        row.getChildren().addAll(label, spacer, controlNode);
+
+        row.setOnMouseClicked(e -> {
+            selectWrappingRow(row);
+        });
+
+        row.setOnMouseEntered(e -> {
+            if (row != selectedWrappingRow) {
+                row.setStyle("-fx-cursor: hand; -fx-background-color: #2B2D30; -fx-background-radius: 3;");
+            }
+        });
+
+        row.setOnMouseExited(e -> {
+            if (row != selectedWrappingRow) {
+                row.setStyle("-fx-cursor: hand; -fx-background-color: transparent; -fx-background-radius: 3;");
+            }
+        });
+
+        // Select the first row by default (matching media_1790604979247.png)
+        if (selectedWrappingRow == null && JsonCodeStyleSettings.HARD_WRAP_AT.equals(opt.getKey())) {
+            selectWrappingRow(row);
+        }
+
+        return row;
+    }
+
+    private void selectWrappingRow(Node row) {
+        if (selectedWrappingRow != null) {
+            selectedWrappingRow.setStyle("-fx-cursor: hand; -fx-background-color: transparent; -fx-background-radius: 3;");
+        }
+        selectedWrappingRow = row;
+        if (row != null) {
+            row.setStyle("-fx-cursor: hand; -fx-background-color: #2E436E; -fx-background-radius: 3;");
+        }
+    }
+
+    private void styleCompactComboBox(ComboBox<String> combo) {
+        combo.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 0 4 0 6; -fx-pref-height: 24px;");
+        combo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: #2B2D30;");
+                } else {
+                    setText(item);
+                    setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 4 8 4 8;");
+                }
+            }
+        });
+        combo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                }
+            }
+        });
+    }
+
+    private void styleCompactTextField(TextField field) {
+        field.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 1 6 1 6; -fx-pref-height: 24px;");
     }
 
     private Node buildOptionNode(CodeStyleOption opt) {
@@ -583,9 +855,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             row.setAlignment(Pos.CENTER_LEFT);
 
             Label lbl = new Label(opt.getLabel());
-            // Wider label width for long labels
-            int minWidth = opt.getLabel().length() > 22 ? 220 : 140;
-            lbl.setMinWidth(minWidth);
+            // Wider label width for long labels, but compact for short labels like "In code:"
+            if (!"In code:".equals(opt.getLabel())) {
+                int minWidth = opt.getLabel().length() > 22 ? 220 : 140;
+                lbl.setMinWidth(minWidth);
+            }
             lbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
             TextField field = new TextField();
@@ -3661,6 +3935,62 @@ public class SettingsCodeStyleLanguagePage extends VBox {
             }
         }
 
+        if ("JSON".equals(languageId)) {
+            // Spaces within braces
+            if (workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_WITHIN_BRACES, false)) {
+                code = code.replace("{\n", "{ \n").replace("\n}", "\n }");
+            }
+            // Spaces within brackets
+            if (workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_WITHIN_BRACKETS, false)) {
+                code = code.replace("[\n", "[ \n").replace("\n]", "\n ]");
+            }
+            // Space before comma
+            if (workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_BEFORE_COMMA, false)) {
+                code = code.replace(",\n", " ,\n").replace(", ", " , ");
+            }
+            // Space after comma
+            if (!workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_AFTER_COMMA, true)) {
+                code = code.replace(", ", ",");
+            }
+            // Space before colon
+            if (workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_BEFORE_COLON, false)) {
+                code = code.replace("\": ", "\" : ");
+            }
+            // Space after colon
+            if (!workingSettings.getBoolean(JsonCodeStyleSettings.SPACE_AFTER_COLON, true)) {
+                code = code.replace("\": ", "\":");
+            }
+            // Trailing comma
+            if (workingSettings.getBoolean(JsonCodeStyleSettings.KEEP_TRAILING_COMMA, false)) {
+                code = code.replace("false\n", "false,\n").replace("\"another\": null\n", "\"another\": null,\n");
+            }
+            // Array wrapping
+            String arrayWrap = workingSettings.getString(JsonCodeStyleSettings.ARRAY_WRAPPING, "Wrap always");
+            if ("Do not wrap".equals(arrayWrap)) {
+                code = code.replace("[\n      \"foo\",\n      \"bar\",\n      \"\\u0062\\u0061\\u0072\"\n    ]",
+                                    "[\"foo\", \"bar\", \"\\u0062\\u0061\\u0072\"]")
+                           .replace("[\n      42,\n      6.62606975e-34\n    ]",
+                                    "[42, 6.62606975e-34]")
+                           .replace("[\n      true,\n      false\n    ]",
+                                    "[true, false]")
+                           .replace("[\n      true,\n      false,\n    ]",
+                                    "[true, false,]");
+            }
+            // Object wrapping
+            String objWrap = workingSettings.getString(JsonCodeStyleSettings.OBJECT_WRAPPING, "Wrap always");
+            if ("Do not wrap".equals(objWrap)) {
+                code = code.replace("{\n      \"null\": null,\n      \"another\": null\n    }",
+                                    "{\"null\": null, \"another\": null}");
+            }
+            // Object alignment
+            String align = workingSettings.getString(JsonCodeStyleSettings.OBJECT_ALIGN, "Do not align");
+            if ("On colon".equals(align)) {
+                code = code.replace("\"null\": null", "\"null\"   : null");
+            } else if ("On value".equals(align)) {
+                code = code.replace("\"null\": null", "\"null\":    null");
+            }
+        }
+
         return code;
     }
 
@@ -3710,11 +4040,11 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 "\\b(public|private|protected|class|interface|enum|record|void|int|long|boolean|char|float|double|" +
                 "try|catch|finally|throw|throws|if|else|do|while|for|switch|case|default|break|continue|return|" +
                 "new|package|import|extends|implements|static|final|fun|val|var|open|where|in|init|context|def|type|func|struct|fn|let|mut|" +
-                "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false|" +
+                "async|await|const|export|from|when|root|charset|end_of_line|insert_final_newline|trim_trailing_whitespace|indent_style|indent_size|true|false|null|" +
                 "println|print|assert|synchronized|go|chan|defer|select|map|nil|iota|each|end|function|yield|GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\\b|" +
                 "(:[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+(\\([^)]*\\))?)|" +
                 "(\"[^\"]*\"|'[^']*'|`[^`]*`)|" +
-                "(\\b\\d+\\b)|" +
+                "(-?\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b)|" +
                 "(\\b[A-Z][a-zA-Z0-9_]*\\b)"
         );
 
@@ -3757,8 +4087,36 @@ public class SettingsCodeStyleLanguagePage extends VBox {
                 // Ruby symbol or annotation (gold/amber)
                 token.setFill(Color.web("#BBB529"));
             } else if (matcher.group(9) != null) {
-                // String (green)
-                token.setFill(Color.web("#6AAB73"));
+                // String (green) with escape sequences (orange/peach)
+                String str = matcher.group();
+                if (str.contains("\\")) {
+                    Pattern escPattern = Pattern.compile("(\\\\u[0-9a-fA-F]{4}|\\\\[\"\\\\/bfnrt])");
+                    Matcher escMatcher = escPattern.matcher(str);
+                    int sEnd = 0;
+                    while (escMatcher.find()) {
+                        if (escMatcher.start() > sEnd) {
+                            Text sText = new Text(str.substring(sEnd, escMatcher.start()));
+                            sText.setFont(Font.font("monospace", 12));
+                            sText.setFill(Color.web("#6AAB73"));
+                            flow.getChildren().add(sText);
+                        }
+                        Text escText = new Text(escMatcher.group());
+                        escText.setFont(Font.font("monospace", 12));
+                        escText.setFill(Color.web("#CF8E6D"));
+                        flow.getChildren().add(escText);
+                        sEnd = escMatcher.end();
+                    }
+                    if (sEnd < str.length()) {
+                        Text sText = new Text(str.substring(sEnd));
+                        sText.setFont(Font.font("monospace", 12));
+                        sText.setFill(Color.web("#6AAB73"));
+                        flow.getChildren().add(sText);
+                    }
+                    lastEnd = matcher.end();
+                    continue;
+                } else {
+                    token.setFill(Color.web("#6AAB73"));
+                }
             } else if (matcher.group(10) != null) {
                 // Number (cyan)
                 token.setFill(Color.web("#2AACB8"));
