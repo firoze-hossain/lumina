@@ -802,12 +802,356 @@ class SettingsCodeStyleTest {
     }
 
     @Test
+    void testKotlinCodeStyleSettingsDefaults() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Kotlin");
+        assertNotNull(provider, "Kotlin provider must be registered");
+        assertEquals("Kotlin", provider.getDisplayName());
+
+        List<String> tabs = provider.getSupportedTabs();
+        assertEquals(List.of(
+                "Tabs and Indents", "Spaces", "Wrapping and Braces", "Blank Lines",
+                "Imports", "Other", "Code Generation", "Load/Save"
+        ), tabs);
+
+        LanguageCodeStyleSettings settings = provider.createDefaultSettings();
+        assertTrue(settings instanceof dev.lumina.settings.KotlinCodeStyleSettings);
+        dev.lumina.settings.KotlinCodeStyleSettings ks = (dev.lumina.settings.KotlinCodeStyleSettings) settings;
+
+        // Tabs and Indents
+        assertEquals(4, ks.getTabSize());
+        assertEquals(4, ks.getIndent());
+        assertEquals(8, ks.getContinuationIndent());
+        assertFalse(ks.isUseTabCharacter());
+        assertFalse(ks.isSmartTabs());
+        assertFalse(ks.isKeepIndentsOnEmptyLines());
+
+        // Spaces - Before parentheses
+        assertTrue(ks.isSpaceBeforeIfParentheses());
+        assertTrue(ks.isSpaceBeforeForParentheses());
+        assertTrue(ks.isSpaceBeforeWhileParentheses());
+        assertTrue(ks.isSpaceBeforeCatchParentheses());
+        assertTrue(ks.isSpaceBeforeWhenParentheses());
+
+        // Spaces - Around operators
+        assertTrue(ks.isSpaceAroundAssignmentOperators());
+        assertTrue(ks.isSpaceAroundLogicalOperators());
+        assertTrue(ks.isSpaceAroundEqualityOperators());
+        assertTrue(ks.isSpaceAroundRelationalOperators());
+        assertTrue(ks.isSpaceAroundAdditiveOperators());
+        assertTrue(ks.isSpaceAroundMultiplicativeOperators());
+        assertFalse(ks.isSpaceAroundUnaryOperators());
+        assertFalse(ks.isSpaceAroundRangeOperators());
+        assertTrue(ks.isSpaceAroundElvisOperator());
+
+        // Spaces - Other
+        assertFalse(ks.isSpaceBeforeComma());
+        assertTrue(ks.isSpaceAfterComma());
+        assertFalse(ks.isSpaceBeforeColonAfterDeclarationName());
+        assertTrue(ks.isSpaceAfterColonBeforeDeclarationType());
+        assertTrue(ks.isSpaceBeforeColonInNewTypeDefinition());
+        assertTrue(ks.isSpaceAfterColonInNewTypeDefinition());
+        assertTrue(ks.isSpaceInSimpleOneLineMethods());
+        assertTrue(ks.isSpaceAroundArrowInFunctionTypes());
+        assertTrue(ks.isSpaceAroundArrowInWhenClause());
+        assertTrue(ks.isSpaceBeforeLambdaArrow());
+
+        // Wrapping and Braces
+        assertTrue(ks.isLineBreaksKeepWhenReformatting());
+        assertFalse(ks.isCommentAtFirstColumnKeepWhenReformatting());
+        assertEquals("Wrap if long", ks.getExtendsListWrap());
+        assertFalse(ks.isAlignMultilineExtendsList());
+        assertEquals("Chop down if long", ks.getFunctionParametersWrap());
+        assertTrue(ks.isAlignMultilineFunctionParameters());
+        assertTrue(ks.isNewLineAfterOpenParenFunctionParameters());
+        assertTrue(ks.isPlaceCloseParenOnNewLineFunctionParameters());
+        assertEquals("Chop down if long", ks.getFunctionArgumentsWrap());
+        assertFalse(ks.isAlignMultilineFunctionArguments());
+        assertTrue(ks.isNewLineAfterOpenParenFunctionArguments());
+        assertTrue(ks.isPlaceCloseParenOnNewLineFunctionArguments());
+        assertFalse(ks.isAlignMultilineFunctionParentheses());
+        assertEquals("Wrap if long", ks.getChainedCallsWrap());
+        assertFalse(ks.isWrapFirstCallChainedCalls());
+        assertFalse(ks.isElseOnNewLine());
+        assertTrue(ks.isIfCloseParenOnNewLine());
+        assertFalse(ks.isWhileOnNewLine());
+        assertFalse(ks.isCatchOnNewLine());
+        assertFalse(ks.isFinallyOnNewLine());
+        assertFalse(ks.isAlignMultilineBinaryExpressions());
+
+        assertEquals("Wrap if long", ks.getAssignmentWrap());
+        assertEquals("Do not wrap", ks.getEnumConstantsWrap());
+        assertEquals("Wrap always", ks.getClassAnnotationsWrap());
+        assertEquals("Wrap always", ks.getFunctionAnnotationsWrap());
+        assertEquals("Wrap always", ks.getPropertyAnnotationsWrap());
+        assertEquals("Do not wrap", ks.getParameterAnnotationsWrap());
+        assertEquals("Do not wrap", ks.getLocalVariableAnnotationsWrap());
+        assertEquals("Wrap always", ks.getPropertyContextParametersWrap());
+        assertEquals("Wrap always", ks.getFunctionContextParametersWrap());
+
+        assertFalse(ks.isAlignWhenBranchesInColumns());
+        assertTrue(ks.isNewLineAfterMultilineWhenEntry());
+        assertTrue(ks.isIndentBeforeArrowOnNewLine());
+        assertFalse(ks.isPutLeftBraceOnNewLine());
+        assertEquals("Wrap if long", ks.getExpressionBodyFunctionsWrap());
+        assertEquals("Wrap if long", ks.getElvisExpressionsWrap());
+
+        // Blank lines
+        assertEquals(2, ks.getKeepBlankLinesInDeclarations());
+        assertEquals(2, ks.getKeepBlankLinesInCode());
+        assertEquals(2, ks.getKeepBlankLinesBeforeClosingBrace());
+        assertEquals(0, ks.getMinBlankLinesAfterClassHeader());
+        assertEquals(0, ks.getMinBlankLinesAroundWhenBranchesWithBraces());
+        assertEquals(1, ks.getMinBlankLinesBeforeDeclarationWithCommentOrAnnotation());
+
+        // Copy test
+        dev.lumina.settings.KotlinCodeStyleSettings copy = ks.copy();
+        assertEquals(ks.getAllProperties(), copy.getAllProperties());
+        copy.setSpaceAroundRangeOperators(true);
+        assertNotEquals(ks.getAllProperties(), copy.getAllProperties());
+    }
+
+    @Test
+    void testKotlinCodeStyleSamples() {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Kotlin");
+        assertNotNull(provider);
+
+        String tabsSample = provider.getSampleCode("Tabs and Indents");
+        assertTrue(tabsSample.contains("open class Some"));
+        assertTrue(tabsSample.contains("10..<42"));
+        assertTrue(tabsSample.contains("bar ?: 12"));
+
+        String spacesSample = provider.getSampleCode("Spaces");
+        assertTrue(spacesSample.contains("open class Some"));
+        assertTrue(spacesSample.contains("when (test)"));
+
+        String wrapSample = provider.getSampleCode("Wrapping and Braces");
+        assertTrue(wrapSample.contains("@Deprecated(\"Foo\")"));
+        assertTrue(wrapSample.contains("public class ThisIsASampleClass :"));
+        assertTrue(wrapSample.contains("Comparable<*>"));
+        assertTrue(wrapSample.contains("fun multilineMethod("));
+
+        String blankLinesSample = provider.getSampleCode("Blank Lines");
+        assertTrue(blankLinesSample.contains("class Foo"));
+        assertTrue(blankLinesSample.contains("private var field1: Int = 1"));
+        assertTrue(blankLinesSample.contains("when (field1)"));
+
+        String importsSample = provider.getSampleCode("Imports");
+        assertTrue(importsSample.contains("package dev.lumina.demo"));
+        assertTrue(importsSample.contains("import java.util.List"));
+    }
+
+    @Test
+    void testDynamicSettingsCodeStyleLanguagePageKotlinUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("Kotlin");
+                assertNotNull(page);
+                assertEquals("Kotlin", page.getLanguageId());
+                assertEquals("Tabs and Indents", page.getActiveTab());
+                assertFalse(page.isModified());
+
+                // Test switching tabs across all 8 Kotlin tabs
+                List<String> tabs = List.of(
+                        "Tabs and Indents", "Spaces", "Wrapping and Braces", "Blank Lines",
+                        "Imports", "Other", "Code Generation", "Load/Save"
+                );
+                for (String tab : tabs) {
+                    page.setActiveTab(tab);
+                    assertEquals(tab, page.getActiveTab());
+                }
+
+                // Verify samples per tab
+                page.setActiveTab("Wrapping and Braces");
+                assertTrue(page.getSampleForActiveTab().contains("ThisIsASampleClass"));
+
+                page.setActiveTab("Blank Lines");
+                assertTrue(page.getSampleForActiveTab().contains("class Foo"));
+
+                // Test modification of standard indent
+                page.setActiveTab("Tabs and Indents");
+                page.getCurrentSettings().setIndent(2);
+                assertTrue(page.isModified());
+                page.reset();
+                assertFalse(page.isModified());
+
+                // Test modification of dynamic spaces property
+                page.setActiveTab("Spaces");
+                page.getCurrentSettings().setBoolean(dev.lumina.settings.KotlinCodeStyleSettings.SPACE_AROUND_RANGE_OPERATORS, true);
+                assertTrue(page.isModified());
+                page.reset();
+                assertFalse(page.isModified());
+
+                // Test modification of wrapping combo
+                page.setActiveTab("Wrapping and Braces");
+                page.getCurrentSettings().setString(dev.lumina.settings.KotlinCodeStyleSettings.WRAP_FUNCTION_PARAMETERS, "Wrap always");
+                assertTrue(page.isModified());
+                page.reset();
+                assertFalse(page.isModified());
+
+                // Test modification of blank lines number
+                page.setActiveTab("Blank Lines");
+                page.getCurrentSettings().setInt(dev.lumina.settings.KotlinCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, 4);
+                assertTrue(page.isModified());
+                page.reset();
+                assertFalse(page.isModified());
+
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testKotlinDynamicPersistence() {
+        CodeStyleSettings settings = CodeStyleSettings.getInstance();
+        CodeStyleScheme scheme = settings.getActiveScheme();
+        assertNotNull(scheme);
+
+        LanguageCodeStyleSettings langSettings = scheme.getLanguageSettings("Kotlin");
+        assertNotNull(langSettings);
+
+        boolean oldRange = langSettings.getBoolean(dev.lumina.settings.KotlinCodeStyleSettings.SPACE_AROUND_RANGE_OPERATORS, false);
+        int oldBlankLines = langSettings.getInt(dev.lumina.settings.KotlinCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, 2);
+
+        try {
+            langSettings.setBoolean(dev.lumina.settings.KotlinCodeStyleSettings.SPACE_AROUND_RANGE_OPERATORS, true);
+            langSettings.setInt(dev.lumina.settings.KotlinCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, 3);
+            settings.saveSettings();
+
+            // Reload and verify
+            settings.loadSettings();
+            LanguageCodeStyleSettings reloaded = settings.getActiveScheme().getLanguageSettings("Kotlin");
+            assertTrue(reloaded.getBoolean(dev.lumina.settings.KotlinCodeStyleSettings.SPACE_AROUND_RANGE_OPERATORS, false));
+            assertEquals(3, reloaded.getInt(dev.lumina.settings.KotlinCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, 2));
+        } finally {
+            langSettings.setBoolean(dev.lumina.settings.KotlinCodeStyleSettings.SPACE_AROUND_RANGE_OPERATORS, oldRange);
+            langSettings.setInt(dev.lumina.settings.KotlinCodeStyleSettings.BLANK_LINES_KEEP_IN_DECLARATIONS, oldBlankLines);
+            settings.saveSettings();
+        }
+    }
+
+    @Test
+    void testKotlinTabsDynamicPreviewVisibility() throws Exception {
+        LanguageCodeStyleProvider provider = LanguageCodeStyleProvider.getProvider("Kotlin");
+        assertNotNull(provider);
+
+        // Preview presence: Tabs 1-4 true, Tabs 5-8 false
+        assertTrue(provider.hasPreview("Tabs and Indents"));
+        assertTrue(provider.hasPreview("Spaces"));
+        assertTrue(provider.hasPreview("Wrapping and Braces"));
+        assertTrue(provider.hasPreview("Blank Lines"));
+        assertFalse(provider.hasPreview("Imports"));
+        assertFalse(provider.hasPreview("Other"));
+        assertFalse(provider.hasPreview("Code Generation"));
+        assertFalse(provider.hasPreview("Load/Save"));
+
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsCodeStyleLanguagePage page = new SettingsCodeStyleLanguagePage("Kotlin");
+
+                // Tab 1: preview visible
+                page.setActiveTab("Tabs and Indents");
+                assertEquals("Tabs and Indents", page.getActiveTab());
+
+                // Tab 5: Imports - full width options, preview pane removed
+                page.setActiveTab("Imports");
+                assertEquals("Imports", page.getActiveTab());
+
+                // Tab 6: Other
+                page.setActiveTab("Other");
+                assertEquals("Other", page.getActiveTab());
+
+                // Tab 7: Code Generation
+                page.setActiveTab("Code Generation");
+                assertEquals("Code Generation", page.getActiveTab());
+
+                // Tab 8: Load/Save
+                page.setActiveTab("Load/Save");
+                assertEquals("Load/Save", page.getActiveTab());
+
+                // Back to Spaces: preview pane restored
+                page.setActiveTab("Spaces");
+                assertEquals("Spaces", page.getActiveTab());
+
+            } finally {
+                latch.countDown();
+            }
+        });
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testKotlinImportsAndTrailingCommaAndCodeGenOptions() {
+        dev.lumina.settings.KotlinCodeStyleSettings ks = new dev.lumina.settings.KotlinCodeStyleSettings();
+
+        // Imports
+        assertEquals("WHEN_AT_LEAST", ks.getTopLevelImportMode());
+        assertEquals(5, ks.getTopLevelImportThreshold());
+        assertEquals("WHEN_AT_LEAST", ks.getJavaStaticsImportMode());
+        assertEquals(3, ks.getJavaStaticsImportThreshold());
+        assertFalse(ks.isInsertImportsForNestedClasses());
+        assertTrue(ks.isImportAliasesSeparately());
+
+        assertFalse(ks.getPackagesToUseImportOnDemand().isEmpty());
+        assertEquals(3, ks.getPackagesToUseImportOnDemand().size());
+        assertEquals("import java.util.*", ks.getPackagesToUseImportOnDemand().get(0).getPackageName());
+        assertFalse(ks.getPackagesToUseImportOnDemand().get(0).isWithSubpackages());
+        assertTrue(ks.getPackagesToUseImportOnDemand().get(1).isWithSubpackages());
+
+        assertFalse(ks.getImportLayout().isEmpty());
+        assertEquals(3, ks.getImportLayout().size());
+        assertEquals("import javax.*", ks.getImportLayout().get(0).getPackageName());
+        assertTrue(ks.getImportLayout().get(0).isWithSubpackages());
+        assertEquals("import all alias imports", ks.getImportLayout().get(2).getPackageName());
+
+        // Other (Trailing comma)
+        assertFalse(ks.isTrailingCommaEnabled());
+        assertTrue(ks.isTrailingCommaTypeParameterList());
+        assertFalse(ks.isTrailingCommaDestructuringDeclaration());
+        assertTrue(ks.isTrailingCommaWhenEntry());
+        assertTrue(ks.isTrailingCommaFunctionLiteral());
+        assertTrue(ks.isTrailingCommaValueParameterList());
+        assertTrue(ks.isTrailingCommaContextReceiverList());
+        assertFalse(ks.isTrailingCommaCollectionLiteralExpression());
+        assertFalse(ks.isTrailingCommaTypeArgumentList());
+        assertFalse(ks.isTrailingCommaIndices());
+        assertFalse(ks.isTrailingCommaValueArgumentList());
+
+        // Code Generation
+        assertTrue(ks.isLineCommentAtFirstColumn());
+        assertFalse(ks.isAddSpaceAtLineCommentStart());
+        assertFalse(ks.isEnforceOnReformat());
+        assertTrue(ks.isBlockCommentAtFirstColumn());
+        assertFalse(ks.isAddSpacesAroundBlockComments());
+
+        // Load/Save
+        assertEquals("<ide defaults>", ks.getString(dev.lumina.settings.KotlinCodeStyleSettings.LOAD_SAVE_USE_DEFAULTS_FROM, "<ide defaults>"));
+        ks.applyKotlinCodingConventions();
+        assertEquals(4, ks.getContinuationIndent());
+        assertEquals("Kotlin Coding Conventions", ks.getString(dev.lumina.settings.KotlinCodeStyleSettings.LOAD_SAVE_USE_DEFAULTS_FROM, ""));
+
+        ks.applyIdeDefaults();
+        assertEquals(8, ks.getContinuationIndent());
+        assertEquals("<ide defaults>", ks.getString(dev.lumina.settings.KotlinCodeStyleSettings.LOAD_SAVE_USE_DEFAULTS_FROM, ""));
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         Pattern competitorPattern = Pattern.compile("(?i)\\b(intellij|jetbrains|idea)\\b");
 
         List<String> filesToCheck = List.of(
                 "src/main/java/dev/lumina/settings/CodeStyleSettings.java",
                 "src/main/java/dev/lumina/settings/JavaCodeStyleSettings.java",
+                "src/main/java/dev/lumina/settings/KotlinCodeStyleSettings.java",
                 "src/main/java/dev/lumina/ui/CodeStyleHeaderBar.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStylePage.java",
                 "src/main/java/dev/lumina/ui/SettingsCodeStyleLanguagePage.java",

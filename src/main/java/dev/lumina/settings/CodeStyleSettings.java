@@ -254,6 +254,9 @@ public final class CodeStyleSettings {
         private boolean doNotIndentTopLevelMembers = false;
         private boolean useIndentsRelativeToExpressionStart = false;
 
+        // Dynamic custom properties map (for any language, any tab)
+        private final Map<String, Object> properties = new ConcurrentHashMap<>();
+
         public LanguageCodeStyleSettings(String languageId) {
             this.languageId = languageId;
         }
@@ -270,6 +273,7 @@ public final class CodeStyleSettings {
             c.absoluteLabelIndent = this.absoluteLabelIndent;
             c.doNotIndentTopLevelMembers = this.doNotIndentTopLevelMembers;
             c.useIndentsRelativeToExpressionStart = this.useIndentsRelativeToExpressionStart;
+            c.properties.putAll(this.properties);
             return c;
         }
 
@@ -356,6 +360,264 @@ public final class CodeStyleSettings {
         public void setUseIndentsRelativeToExpressionStart(boolean useIndentsRelativeToExpressionStart) {
             this.useIndentsRelativeToExpressionStart = useIndentsRelativeToExpressionStart;
         }
+
+        public Object getProperty(String key) {
+            return properties.get(key);
+        }
+
+        public void setProperty(String key, Object value) {
+            if (value != null) {
+                properties.put(key, value);
+            } else {
+                properties.remove(key);
+            }
+        }
+
+        public boolean getBoolean(String key, boolean defaultValue) {
+            Object v = properties.get(key);
+            if (v instanceof Boolean b) return b;
+            if (v != null) return Boolean.parseBoolean(v.toString());
+            return defaultValue;
+        }
+
+        public void setBoolean(String key, boolean value) {
+            properties.put(key, value);
+        }
+
+        public int getInt(String key, int defaultValue) {
+            Object v = properties.get(key);
+            if (v instanceof Number n) return n.intValue();
+            if (v != null) {
+                try { return Integer.parseInt(v.toString().trim()); } catch (Exception ignored) {}
+            }
+            return defaultValue;
+        }
+
+        public void setInt(String key, int value) {
+            properties.put(key, value);
+        }
+
+        public String getString(String key, String defaultValue) {
+            Object v = properties.get(key);
+            return v != null ? v.toString() : defaultValue;
+        }
+
+        public void setString(String key, String value) {
+            if (value != null) {
+                properties.put(key, value);
+            } else {
+                properties.remove(key);
+            }
+        }
+
+        public Map<String, Object> getAllProperties() {
+            return Collections.unmodifiableMap(properties);
+        }
+
+        public void setProperties(Map<String, Object> props) {
+            if (props != null) {
+                properties.putAll(props);
+            }
+        }
+    }
+
+    public enum CodeStyleOptionType {
+        CHECKBOX,
+        NUMBER,
+        COMBO,
+        SEPARATOR
+    }
+
+    public static class CodeStyleOption {
+        private final String key;
+        private final String label;
+        private final CodeStyleOptionType type;
+        private final Object defaultValue;
+        private final List<String> choices;
+        private final int indentLevel;
+
+        public CodeStyleOption(String key, String label, CodeStyleOptionType type, Object defaultValue, List<String> choices, boolean indented) {
+            this(key, label, type, defaultValue, choices, indented ? 1 : 0);
+        }
+
+        public CodeStyleOption(String key, String label, CodeStyleOptionType type, Object defaultValue, List<String> choices, int indentLevel) {
+            this.key = key;
+            this.label = label;
+            this.type = type;
+            this.defaultValue = defaultValue;
+            this.choices = choices != null ? List.copyOf(choices) : Collections.emptyList();
+            this.indentLevel = indentLevel;
+        }
+
+        public static CodeStyleOption checkbox(String key, String label, boolean defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 0);
+        }
+
+        public static CodeStyleOption indentedCheckbox(String key, String label, boolean defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 1);
+        }
+
+        public static CodeStyleOption doubleIndentedCheckbox(String key, String label, boolean defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.CHECKBOX, defaultValue, null, 2);
+        }
+
+        public static CodeStyleOption number(String key, String label, int defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.NUMBER, defaultValue, null, 0);
+        }
+
+        public static CodeStyleOption combo(String key, String label, List<String> choices, String defaultValue) {
+            return new CodeStyleOption(key, label, CodeStyleOptionType.COMBO, defaultValue, choices, 0);
+        }
+
+        public static CodeStyleOption separator(String label) {
+            return new CodeStyleOption(null, label, CodeStyleOptionType.SEPARATOR, null, null, 0);
+        }
+
+        public String getKey() { return key; }
+        public String getLabel() { return label; }
+        public CodeStyleOptionType getType() { return type; }
+        public Object getDefaultValue() { return defaultValue; }
+        public List<String> getChoices() { return choices; }
+        public boolean isIndented() { return indentLevel > 0; }
+        public int getIndentLevel() { return indentLevel; }
+    }
+
+    public static class CodeStyleGroup {
+        private final String name;
+        private final boolean collapsible;
+        private boolean expanded = true;
+        private final boolean divider;
+        private final String headerComboKey;
+        private final List<String> headerComboChoices;
+        private final String headerComboDefault;
+        private final List<CodeStyleOption> options = new ArrayList<>();
+
+        public CodeStyleGroup(String name, boolean collapsible, boolean divider, String headerComboKey, List<String> headerComboChoices, String headerComboDefault) {
+            this.name = name;
+            this.collapsible = collapsible;
+            this.divider = divider;
+            this.headerComboKey = headerComboKey;
+            this.headerComboChoices = headerComboChoices != null ? List.copyOf(headerComboChoices) : Collections.emptyList();
+            this.headerComboDefault = headerComboDefault;
+        }
+
+        public static CodeStyleGroup collapsible(String name, CodeStyleOption... options) {
+            CodeStyleGroup g = new CodeStyleGroup(name, true, false, null, null, null);
+            if (options != null) Collections.addAll(g.options, options);
+            return g;
+        }
+
+        public static CodeStyleGroup collapsibleWithCombo(String name, String comboKey, List<String> choices, String defaultChoice, CodeStyleOption... options) {
+            CodeStyleGroup g = new CodeStyleGroup(name, true, false, comboKey, choices, defaultChoice);
+            if (options != null) Collections.addAll(g.options, options);
+            return g;
+        }
+
+        public static CodeStyleGroup divider(String name, CodeStyleOption... options) {
+            CodeStyleGroup g = new CodeStyleGroup(name, false, true, null, null, null);
+            if (options != null) Collections.addAll(g.options, options);
+            return g;
+        }
+
+        public static CodeStyleGroup flat(String name, CodeStyleOption... options) {
+            CodeStyleGroup g = new CodeStyleGroup(name, false, false, null, null, null);
+            if (options != null) Collections.addAll(g.options, options);
+            return g;
+        }
+
+        public String getName() { return name; }
+        public boolean isCollapsible() { return collapsible; }
+        public boolean isExpanded() { return expanded; }
+        public void setExpanded(boolean expanded) { this.expanded = expanded; }
+        public boolean isDivider() { return divider; }
+        public String getHeaderComboKey() { return headerComboKey; }
+        public List<String> getHeaderComboChoices() { return headerComboChoices; }
+        public String getHeaderComboDefault() { return headerComboDefault; }
+        public List<CodeStyleOption> getOptions() { return options; }
+        public CodeStyleGroup addOption(CodeStyleOption option) {
+            if (option != null) options.add(option);
+            return this;
+        }
+    }
+
+    public interface CodeStyleSettingsCustomizer {
+        void addGroup(CodeStyleGroup group);
+        CodeStyleGroup addCollapsibleGroup(String name);
+        CodeStyleGroup addCollapsibleGroupWithCombo(String name, String comboKey, List<String> choices, String defaultChoice);
+        CodeStyleGroup addDividerSection(String name);
+        void addCheckbox(String groupName, String key, String label, boolean defaultValue);
+        void addIndentedCheckbox(String groupName, String key, String label, boolean defaultValue);
+        void addDoubleIndentedCheckbox(String groupName, String key, String label, boolean defaultValue);
+        void addCombo(String groupName, String key, String label, List<String> choices, String defaultValue);
+        void addNumber(String groupName, String key, String label, int defaultValue);
+        List<CodeStyleGroup> getGroups();
+    }
+
+    public static class DefaultCodeStyleCustomizer implements CodeStyleSettingsCustomizer {
+        private final List<CodeStyleGroup> groups = new ArrayList<>();
+
+        @Override
+        public void addGroup(CodeStyleGroup group) {
+            if (group != null) groups.add(group);
+        }
+
+        @Override
+        public CodeStyleGroup addCollapsibleGroup(String name) {
+            CodeStyleGroup g = CodeStyleGroup.collapsible(name);
+            groups.add(g);
+            return g;
+        }
+
+        @Override
+        public CodeStyleGroup addCollapsibleGroupWithCombo(String name, String comboKey, List<String> choices, String defaultChoice) {
+            CodeStyleGroup g = CodeStyleGroup.collapsibleWithCombo(name, comboKey, choices, defaultChoice);
+            groups.add(g);
+            return g;
+        }
+
+        @Override
+        public CodeStyleGroup addDividerSection(String name) {
+            CodeStyleGroup g = CodeStyleGroup.divider(name);
+            groups.add(g);
+            return g;
+        }
+
+        private CodeStyleGroup findOrCreateGroup(String groupName) {
+            for (CodeStyleGroup g : groups) {
+                if (g.getName().equals(groupName)) return g;
+            }
+            return addCollapsibleGroup(groupName);
+        }
+
+        @Override
+        public void addCheckbox(String groupName, String key, String label, boolean defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.checkbox(key, label, defaultValue));
+        }
+
+        @Override
+        public void addIndentedCheckbox(String groupName, String key, String label, boolean defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.indentedCheckbox(key, label, defaultValue));
+        }
+
+        @Override
+        public void addDoubleIndentedCheckbox(String groupName, String key, String label, boolean defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.doubleIndentedCheckbox(key, label, defaultValue));
+        }
+
+        @Override
+        public void addCombo(String groupName, String key, String label, List<String> choices, String defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.combo(key, label, choices, defaultValue));
+        }
+
+        @Override
+        public void addNumber(String groupName, String key, String label, int defaultValue) {
+            findOrCreateGroup(groupName).addOption(CodeStyleOption.number(key, label, defaultValue));
+        }
+
+        @Override
+        public List<CodeStyleGroup> getGroups() {
+            return groups;
+        }
     }
 
     /**
@@ -368,6 +630,19 @@ public final class CodeStyleSettings {
         List<String> getSupportedTabs();
         LanguageCodeStyleSettings createDefaultSettings();
         String getSampleCode();
+        default String getSampleCode(String tabName) { return getSampleCode(); }
+        default boolean hasPreview(String tabName) {
+            return "Tabs and Indents".equals(tabName)
+                    || "Spaces".equals(tabName)
+                    || "Wrapping and Braces".equals(tabName)
+                    || "Blank Lines".equals(tabName);
+        }
+        default List<CodeStyleGroup> getOptionGroups(String tabName) {
+            DefaultCodeStyleCustomizer customizer = new DefaultCodeStyleCustomizer();
+            customizeSettings(customizer, tabName);
+            return customizer.getGroups();
+        }
+        default void customizeSettings(CodeStyleSettingsCustomizer customizer, String tabName) {}
 
         Map<String, LanguageCodeStyleProvider> REGISTRY = new LinkedHashMap<>();
 
@@ -524,6 +799,12 @@ public final class CodeStyleSettings {
                 Settings.put(prefix + "absoluteLabelIndent", String.valueOf(l.isAbsoluteLabelIndent()));
                 Settings.put(prefix + "doNotIndentTopLevelMembers", String.valueOf(l.isDoNotIndentTopLevelMembers()));
                 Settings.put(prefix + "useIndentsRelativeToExpressionStart", String.valueOf(l.isUseIndentsRelativeToExpressionStart()));
+
+                for (Map.Entry<String, Object> pe : l.getAllProperties().entrySet()) {
+                    if (pe.getValue() != null) {
+                        Settings.put(prefix + "prop." + pe.getKey(), String.valueOf(pe.getValue()));
+                    }
+                }
             }
         }
         notifyChanged();
@@ -586,6 +867,31 @@ public final class CodeStyleSettings {
                     if (noIndentTop != null) l.setDoNotIndentTopLevelMembers(Boolean.parseBoolean(noIndentTop));
                     String relExpr = Settings.get(prefix + "useIndentsRelativeToExpressionStart");
                     if (relExpr != null) l.setUseIndentsRelativeToExpressionStart(Boolean.parseBoolean(relExpr));
+
+                    // Load dynamic properties declared by provider
+                    for (String tabName : p.getSupportedTabs()) {
+                        List<CodeStyleGroup> groups = p.getOptionGroups(tabName);
+                        for (CodeStyleGroup g : groups) {
+                            if (g.getHeaderComboKey() != null) {
+                                String val = Settings.get(prefix + "prop." + g.getHeaderComboKey());
+                                if (val != null) l.setProperty(g.getHeaderComboKey(), val);
+                            }
+                            for (CodeStyleOption opt : g.getOptions()) {
+                                if (opt.getKey() != null) {
+                                    String val = Settings.get(prefix + "prop." + opt.getKey());
+                                    if (val != null) {
+                                        if (opt.getType() == CodeStyleOptionType.CHECKBOX) {
+                                            l.setBoolean(opt.getKey(), Boolean.parseBoolean(val));
+                                        } else if (opt.getType() == CodeStyleOptionType.NUMBER) {
+                                            try { l.setInt(opt.getKey(), Integer.parseInt(val)); } catch (Exception ignored) {}
+                                        } else {
+                                            l.setString(opt.getKey(), val);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -736,26 +1042,7 @@ public class Foo {
         });
 
         // 2. Kotlin
-        registerSimpleProvider("Kotlin", "Kotlin", 4, 4, 8, """
-class Customer(val id: Int, var name: String) {
-    val uppercaseName: String
-        get() = name.uppercase()
-
-    fun processOrder(orderId: Long, items: List<String>): Boolean {
-        if (items.isEmpty()) {
-            return false
-        }
-        return try {
-            items.forEach { item ->
-                println("Item: $item")
-            }
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-}
-""");
+        LanguageCodeStyleProvider.register(KotlinCodeStyleSettings.createProvider());
 
         // 3. Angular HTML template
         registerSimpleProvider("Angular HTML template", "Angular HTML template", 2, 2, 4, """
