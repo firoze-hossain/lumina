@@ -69,6 +69,7 @@ public class SettingsDialog {
     private SettingsSmartKeysPHPPage currentSmartKeysPhpPage;
     private SettingsStickyLinesPage currentStickyLinesPage;
     private SettingsCodeEditingPage currentCodeEditingPage;
+    private SettingsInspectionsPage currentInspectionsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -2914,6 +2915,17 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Inspections".equals(pageName)) {
+                if (currentInspectionsPage == null) {
+                    currentInspectionsPage = new SettingsInspectionsPage();
+                }
+                currentInspectionsPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentInspectionsPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentInspectionsPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -4654,6 +4666,9 @@ public class SettingsDialog {
         if (currentCodeEditingPage != null && currentCodeEditingPage.isModified()) {
             currentCodeEditingPage.apply();
         }
+        if (currentInspectionsPage != null && currentInspectionsPage.isModified()) {
+            currentInspectionsPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -4906,6 +4921,7 @@ public class SettingsDialog {
                 || (currentSmartKeysPhpPage != null && currentSmartKeysPhpPage.isModified())
                 || (currentStickyLinesPage != null && currentStickyLinesPage.isModified())
                 || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
+                || (currentInspectionsPage != null && currentInspectionsPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5079,6 +5095,9 @@ public class SettingsDialog {
             }
             if (currentCodeEditingPage != null) {
                 currentCodeEditingPage.reset();
+            }
+            if (currentInspectionsPage != null) {
+                currentInspectionsPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();

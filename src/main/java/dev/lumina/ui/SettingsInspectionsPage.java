@@ -1,799 +1,1267 @@
-// SettingsInspectionsPage.java
 package dev.lumina.ui;
 
+import dev.lumina.inspections.*;
+import dev.lumina.scope.NamedScope;
+import dev.lumina.scope.ScopeManager;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
-import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
- * IntelliJ-style Editor > Inspections settings page.
- * Complete implementation matching all screenshots.
+ * Lumina IDE Editor > Inspections settings page.
+ * Provides dynamic, non-hardcoded inspection profile management, category tree with
+ * tri-state checkboxes, severity icons in tree cells, search filtering, bulk editing,
+ * and scope/severity customization matching the reference IDE design.
  */
 public class SettingsInspectionsPage extends VBox {
 
-    private final ListView<String> categoryList = new ListView<>();
-    private final ListView<InspectionItem> inspectionList = new ListView<>();
-    private final Map<String, ObservableList<InspectionItem>> categoryInspections = new HashMap<>();
-    private final ComboBox<String> scopeCombo = new ComboBox<>();
-    private final ComboBox<String> severityCombo = new ComboBox<>();
-    private final ComboBox<String> highlightingCombo = new ComboBox<>();
-    private final CheckBox disableNewInspections = new CheckBox("Disable new inspections by default");
-
-    public SettingsInspectionsPage() {
-        getStyleClass().add("settings-page");
-        setPadding(new Insets(8, 0, 8, 0));
-        setSpacing(14);
-
-        // ============================================================
-        // Profile section
-        // ============================================================
-        HBox profileRow = new HBox(8);
-        profileRow.setPadding(new Insets(4, 0, 8, 20));
-        profileRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label profileLabel = new Label("Profile:");
-        profileLabel.getStyleClass().add("settings-label");
-        ComboBox<String> profileCombo = new ComboBox<>();
-        profileCombo.getItems().addAll("Project Default Project", "Default", "Project");
-        profileCombo.getSelectionModel().selectFirst();
-        profileCombo.getStyleClass().add("settings-combo");
-        profileCombo.setPrefWidth(200);
-        profileRow.getChildren().addAll(profileLabel, profileCombo);
-
-        // ============================================================
-        // Main layout: Category list + Inspection list
-        // ============================================================
-        Label categoriesLabel = new Label("Categories");
-        categoriesLabel.getStyleClass().add("settings-section");
-
-        // Category list on the left
-        categoryList.getStyleClass().add("settings-list");
-        categoryList.setPrefHeight(300);
-        categoryList.setPrefWidth(200);
-        categoryList.getItems().addAll(
-            "User defined",
-            "Angular",
-            "AOP",
-            "Application servers",
-            "Bean Validation",
-            "CDI (Contexts and Dependency Injection)",
-            "Code Coverage",
-            "Code metrics",
-            "Compose Multiplatform Preview",
-            "Cron",
-            "CSS",
-            "Dev Container",
-            "Docker-compose",
-            "Dockerfile",
-            "EditorConfig",
-            "EL",
-            "FreeMarker",
-            "General",
-            "GitHub actions",
-            "GitLab CI/CD",
-            "Gradle",
-            "Gradle Declarative",
-            "Groovy",
-            "Hibernate",
-            "HTML",
-            "HTTP Client",
-            "Inappropriate gRPC request scheme",
-            "Internationalization",
-            "Jakarta Data",
-            "Java",
-            "Java EE",
-            "JavaFX",
-            "JavaScript and TypeScript",
-            "JPA",
-            "JSON and JSON5",
-            "JSONPath",
-            "JSP",
-            "JUnit",
-            "JVM languages",
-            "Kotlin",
-            "Ktor",
-            "Kubernetes",
-            "Language injection",
-            "Less",
-            "Liquibase",
-            "Manifest",
-            "Markdown",
-            "Maven",
-            "Micronaut",
-            "MongoDB",
-            "MySQL",
-            "OpenAPI specifications",
-            "Oracle",
-            "Pattern validation",
-            "PostCSS",
-            "PostgreSQL",
-            "Proofreading",
-            "Properties files",
-            "Protocol Buffers",
-            "Qodana",
-            "Quarkus",
-            "RegExp",
-            "RELAX NG",
-            "RESTful Web Service (JAX-RS)",
-            "Rust",
-            "Sass/SCSS",
-            "Security",
-            "Shell script",
-            "Spring",
-            "Spring Data",
-            "Spring Modulith",
-            "SQL",
-            "SQL server",
-            "Thymeleaf",
-            "TOML",
-            "Velocity",
-            "Version control",
-            "Vue",
-            "XML",
-            "XPath",
-            "XSLT",
-            "YAML"
-        );
-        categoryList.getSelectionModel().select("Java");
-
-        // Inspection list on the right
-        inspectionList.getStyleClass().add("settings-list");
-        inspectionList.setPrefHeight(300);
-        inspectionList.setPrefWidth(350);
-        inspectionList.setCellFactory(CheckBoxListCell.forListView(
-            item -> item.selectedProperty()
-        ));
-
-        // Populate inspections for each category
-        populateInspections();
-
-        // Update inspection list when category changes
-        categoryList.getSelectionModel().selectedItemProperty().addListener((obs, old, category) -> {
-            if (category != null) {
-                inspectionList.setItems(categoryInspections.getOrDefault(category, FXCollections.observableArrayList()));
-            }
-        });
-
-        // Category and inspection split
-        HBox listSplit = new HBox(16);
-        listSplit.setPadding(new Insets(4, 0, 8, 0));
-        VBox catBox = new VBox(6, new Label("Categories:"), categoryList);
-        VBox inspBox = new VBox(6, new Label("Inspections:"), inspectionList);
-        HBox.setHgrow(inspBox, Priority.ALWAYS);
-        listSplit.getChildren().addAll(catBox, inspBox);
-
-        // ============================================================
-        // Bottom section: Disable new inspections + Scope/Severity/Highlighting
-        // ============================================================
-        disableNewInspections.getStyleClass().add("settings-check");
-        disableNewInspections.setPadding(new Insets(4, 0, 8, 0));
-
-        HBox bottomRow = new HBox(20);
-        bottomRow.setPadding(new Insets(8, 0, 8, 0));
-        bottomRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Scope
-        Label scopeLabel = new Label("Scope:");
-        scopeLabel.getStyleClass().add("settings-label");
-        scopeCombo.getItems().addAll("In All Scopes", "Current Scope", "Project Scope");
-        scopeCombo.getSelectionModel().selectFirst();
-        scopeCombo.getStyleClass().add("settings-combo");
-        scopeCombo.setPrefWidth(140);
-
-        // Severity
-        Label severityLabel = new Label("Severity:");
-        severityLabel.getStyleClass().add("settings-label");
-        severityCombo.getItems().addAll("Mixed", "Warning", "Error", "Info", "Weak Warning");
-        severityCombo.getSelectionModel().selectFirst();
-        severityCombo.getStyleClass().add("settings-combo");
-        severityCombo.setPrefWidth(140);
-
-        // Highlighting
-        Label highlightingLabel = new Label("Highlighting in editor:");
-        highlightingLabel.getStyleClass().add("settings-label");
-        highlightingCombo.getItems().addAll("Mixed", "Warning", "Error", "Info", "Weak Warning");
-        highlightingCombo.getSelectionModel().selectFirst();
-        highlightingCombo.getStyleClass().add("settings-combo");
-        highlightingCombo.setPrefWidth(140);
-
-        bottomRow.getChildren().addAll(
-            scopeLabel, scopeCombo,
-            severityLabel, severityCombo,
-            highlightingLabel, highlightingCombo
-        );
-
-        // ============================================================
-        // Assemble all sections
-        // ============================================================
-        getChildren().addAll(
-            profileRow,
-            categoriesLabel,
-            listSplit,
-            disableNewInspections,
-            bottomRow
-        );
-
-        // Set initial selection
-        categoryList.getSelectionModel().select("Java");
-    }
-
-    private void populateInspections() {
-        // Java inspections
-        ObservableList<InspectionItem> javaInspections = FXCollections.observableArrayList(
-            new InspectionItem("Abstraction issues", true),
-            new InspectionItem("Assignment issues", true),
-            new InspectionItem("Bitwise operation issues", true),
-            new InspectionItem("Class metrics", true),
-            new InspectionItem("Class structure", true),
-            new InspectionItem("Cloning issues", true),
-            new InspectionItem("Code maturity", true),
-            new InspectionItem("Code style issues", true),
-            new InspectionItem("Compiler issues", true),
-            new InspectionItem("Concurrency annotation issues", true),
-            new InspectionItem("Control flow issues", true),
-            new InspectionItem("Data flow", true),
-            new InspectionItem("Declaration redundancy", true),
-            new InspectionItem("Dependency issues", true),
-            new InspectionItem("Encapsulation", true),
-            new InspectionItem("Error handling", true),
-            new InspectionItem("Finalization", true),
-            new InspectionItem("Imports", true),
-            new InspectionItem("Inheritance issues", true),
-            new InspectionItem("Initialization", true),
-            new InspectionItem("Internationalization", true),
-            new InspectionItem("Java language level issues", true),
-            new InspectionItem("Java language level migration aids", true),
-            new InspectionItem("JavaBeans issues", true),
-            new InspectionItem("Javadoc", true),
-            new InspectionItem("JUnit", true),
-            new InspectionItem("Logging", true),
-            new InspectionItem("Lombok", true),
-            new InspectionItem("Memory", true),
-            new InspectionItem("Method metrics", true),
-            new InspectionItem("Modularization issues", true),
-            new InspectionItem("Naming conventions", true),
-            new InspectionItem("Numeric issues", true),
-            new InspectionItem("Packaging issues", true),
-            new InspectionItem("Performance", true),
-            new InspectionItem("Portability", true),
-            new InspectionItem("Probable bugs", true),
-            new InspectionItem("Properties files", true),
-            new InspectionItem("Reflective access", true),
-            new InspectionItem("Resource management", true),
-            new InspectionItem("Security", true),
-            new InspectionItem("Serialization issues", true),
-            new InspectionItem("Test frameworks", true),
-            new InspectionItem("TestNG", true),
-            new InspectionItem("Threading issues", true),
-            new InspectionItem("toString() issues", true),
-            new InspectionItem("Verbose or redundant code constructs", true),
-            new InspectionItem("Visibility", true)
-        );
-        categoryInspections.put("Java", javaInspections);
-
-        // Java EE inspections
-        ObservableList<InspectionItem> javaEEInspections = FXCollections.observableArrayList(
-            new InspectionItem("Application configuration file", true),
-            new InspectionItem("Contexts and Dependency Injection (CDI)", true),
-            new InspectionItem("Persistence (JPA)", true),
-            new InspectionItem("RESTful Web Services (JAX-RS)", true)
-        );
-        categoryInspections.put("Java EE", javaEEInspections);
-
-        // JavaScript and TypeScript inspections
-        ObservableList<InspectionItem> jsInspections = FXCollections.observableArrayList(
-            new InspectionItem("Implemented", true),
-            new InspectionItem("Implementing", true),
-            new InspectionItem("JavaScript source", true),
-            new InspectionItem("Overridden", true),
-            new InspectionItem("Overriding", true),
-            new InspectionItem("Recursive call", true),
-            new InspectionItem("TypeScript", true)
-        );
-        categoryInspections.put("JavaScript and TypeScript", jsInspections);
-
-        // JPA inspections
-        ObservableList<InspectionItem> jpaInspections = FXCollections.observableArrayList(
-            new InspectionItem("JPA Queries", true),
-            new InspectionItem("Persistence", true),
-            new InspectionItem("Entity", true),
-            new InspectionItem("Mapping", true)
-        );
-        categoryInspections.put("JPA", jpaInspections);
-
-        // HTML inspections
-        ObservableList<InspectionItem> htmlInspections = FXCollections.observableArrayList(
-            new InspectionItem("HTML", true),
-            new InspectionItem("HTML 5", true),
-            new InspectionItem("HTML 5 Accessibility", true),
-            new InspectionItem("HTML 5 Mobile", true),
-            new InspectionItem("HTML 5 Performance", true),
-            new InspectionItem("HTML 5 SEO", true)
-        );
-        categoryInspections.put("HTML", htmlInspections);
-
-        // Spring inspections
-        ObservableList<InspectionItem> springInspections = FXCollections.observableArrayList(
-            new InspectionItem("Spring", true),
-            new InspectionItem("Spring Boot", true),
-            new InspectionItem("Spring Data", true),
-            new InspectionItem("Spring Modulith", true),
-            new InspectionItem("Spring Cloud Stream bindings", true),
-            new InspectionItem("Repositories", true),
-            new InspectionItem("Request mappings", true)
-        );
-        categoryInspections.put("Spring", springInspections);
-
-        // SQL inspections
-        ObservableList<InspectionItem> sqlInspections = FXCollections.observableArrayList(
-            new InspectionItem("SQL", true),
-            new InspectionItem("SQL server", true),
-            new InspectionItem("PostgreSQL", true),
-            new InspectionItem("MySQL", true),
-            new InspectionItem("Oracle", true),
-            new InspectionItem("MongoDB", true)
-        );
-        categoryInspections.put("SQL", sqlInspections);
-
-        // Kotlin inspections
-        ObservableList<InspectionItem> kotlinInspections = FXCollections.observableArrayList(
-            new InspectionItem("DSL markers", true),
-            new InspectionItem("Implemented declaration", true),
-            new InspectionItem("Multiplatform actual declaration", true),
-            new InspectionItem("Multiplatform expect declaration", true),
-            new InspectionItem("Overridden declaration", true),
-            new InspectionItem("Overriding declaration", true),
-            new InspectionItem("Recursive call", true)
-        );
-        categoryInspections.put("Kotlin", kotlinInspections);
-
-        // Rust inspections
-        ObservableList<InspectionItem> rustInspections = FXCollections.observableArrayList(
-            new InspectionItem("Rust", true),
-            new InspectionItem("One-line methods", true),
-            new InspectionItem("Move errors", true)
-        );
-        categoryInspections.put("Rust", rustInspections);
-
-        // Markdown inspections
-        ObservableList<InspectionItem> markdownInspections = FXCollections.observableArrayList(
-            new InspectionItem("Markdown", true),
-            new InspectionItem("Collapse front matter", true),
-            new InspectionItem("Collapse links", true),
-            new InspectionItem("Collapse tables", true),
-            new InspectionItem("Collapse code fences", true),
-            new InspectionItem("Collapse table of contents", true)
-        );
-        categoryInspections.put("Markdown", markdownInspections);
-
-        // JSON inspections
-        ObservableList<InspectionItem> jsonInspections = FXCollections.observableArrayList(
-            new InspectionItem("JSON", true),
-            new InspectionItem("JSON and JSON5", true),
-            new InspectionItem("JSONPath", true)
-        );
-        categoryInspections.put("JSON and JSON5", jsonInspections);
-
-        // XML inspections
-        ObservableList<InspectionItem> xmlInspections = FXCollections.observableArrayList(
-            new InspectionItem("XML", true),
-            new InspectionItem("XML tags", true),
-            new InspectionItem("XML entities", true),
-            new InspectionItem("XPath", true),
-            new InspectionItem("XSLT", true)
-        );
-        categoryInspections.put("XML", xmlInspections);
-
-        // YAML inspections
-        ObservableList<InspectionItem> yamlInspections = FXCollections.observableArrayList(
-            new InspectionItem("YAML", true),
-            new InspectionItem("YAML", true)
-        );
-        categoryInspections.put("YAML", yamlInspections);
-
-        // General inspections
-        ObservableList<InspectionItem> generalInspections = FXCollections.observableArrayList(
-            new InspectionItem("General", true),
-            new InspectionItem("Proofreading", true),
-            new InspectionItem("Properties files", true),
-            new InspectionItem("Version control", true)
-        );
-        categoryInspections.put("General", generalInspections);
-
-        // Maven inspections
-        ObservableList<InspectionItem> mavenInspections = FXCollections.observableArrayList(
-            new InspectionItem("Maven", true),
-            new InspectionItem("Maven pom.xml", true)
-        );
-        categoryInspections.put("Maven", mavenInspections);
-
-        // Gradle inspections
-        ObservableList<InspectionItem> gradleInspections = FXCollections.observableArrayList(
-            new InspectionItem("Gradle", true),
-            new InspectionItem("Gradle Declarative", true),
-            new InspectionItem("Gradle build", true)
-        );
-        categoryInspections.put("Gradle", gradleInspections);
-
-        // Kubernetes inspections
-        ObservableList<InspectionItem> k8sInspections = FXCollections.observableArrayList(
-            new InspectionItem("Kubernetes", true),
-            new InspectionItem("Helm repository actions", true),
-            new InspectionItem("Kubernetes label navigation", true)
-        );
-        categoryInspections.put("Kubernetes", k8sInspections);
-
-        // Micronaut inspections
-        ObservableList<InspectionItem> micronautInspections = FXCollections.observableArrayList(
-            new InspectionItem("Micronaut", true),
-            new InspectionItem("Application events", true),
-            new InspectionItem("Cacheable operations", true),
-            new InspectionItem("Contexts and dependency injection", true),
-            new InspectionItem("Datasource from YAML file", true),
-            new InspectionItem("HTTP mappings", true),
-            new InspectionItem("Management endpoints mappings", true),
-            new InspectionItem("Micronaut Data MongoDB mapping", true),
-            new InspectionItem("Micronaut MQ methods", true),
-            new InspectionItem("WebSocket mappings", true)
-        );
-        categoryInspections.put("Micronaut", micronautInspections);
-
-        // Quarkus inspections
-        ObservableList<InspectionItem> quarkusInspections = FXCollections.observableArrayList(
-            new InspectionItem("Quarkus", true),
-            new InspectionItem("Cacheable operations", true),
-            new InspectionItem("Datasource from YAML file", true),
-            new InspectionItem("Scheduled tasks", true)
-        );
-        categoryInspections.put("Quarkus", quarkusInspections);
-
-        // JUnit inspections
-        ObservableList<InspectionItem> junitInspections = FXCollections.observableArrayList(
-            new InspectionItem("JUnit", true),
-            new InspectionItem("JUnit 4", true),
-            new InspectionItem("JUnit 5", true)
-        );
-        categoryInspections.put("JUnit", junitInspections);
-
-        // JVM languages inspections
-        ObservableList<InspectionItem> jvmInspections = FXCollections.observableArrayList(
-            new InspectionItem("JVM languages", true),
-            new InspectionItem("Groovy", true)
-        );
-        categoryInspections.put("JVM languages", jvmInspections);
-
-        // FreeMarker inspections
-        ObservableList<InspectionItem> freemarkerInspections = FXCollections.observableArrayList(
-            new InspectionItem("FreeMarker", true),
-            new InspectionItem("EL", true)
-        );
-        categoryInspections.put("FreeMarker", freemarkerInspections);
-
-        // CSS inspections
-        ObservableList<InspectionItem> cssInspections = FXCollections.observableArrayList(
-            new InspectionItem("CSS", true),
-            new InspectionItem("Less", true),
-            new InspectionItem("Sass/SCSS", true),
-            new InspectionItem("PostCSS", true)
-        );
-        categoryInspections.put("CSS", cssInspections);
-
-        // HTTP Client inspections
-        ObservableList<InspectionItem> httpInspections = FXCollections.observableArrayList(
-            new InspectionItem("HTTP Client", true),
-            new InspectionItem("Inappropriate gRPC request scheme", true)
-        );
-        categoryInspections.put("HTTP Client", httpInspections);
-
-        // Hibernate inspections
-        ObservableList<InspectionItem> hibernateInspections = FXCollections.observableArrayList(
-            new InspectionItem("Hibernate", true),
-            new InspectionItem("JPA", true)
-        );
-        categoryInspections.put("Hibernate", hibernateInspections);
-
-        // Docker inspections
-        ObservableList<InspectionItem> dockerInspections = FXCollections.observableArrayList(
-            new InspectionItem("Docker-compose", true),
-            new InspectionItem("Dockerfile", true),
-            new InspectionItem("Dev Container", true)
-        );
-        categoryInspections.put("Docker-compose", dockerInspections);
-
-        // EditorConfig inspections
-        ObservableList<InspectionItem> editorConfigInspections = FXCollections.observableArrayList(
-            new InspectionItem("EditorConfig", true)
-        );
-        categoryInspections.put("EditorConfig", editorConfigInspections);
-
-        // GitHub actions inspections
-        ObservableList<InspectionItem> githubActionsInspections = FXCollections.observableArrayList(
-            new InspectionItem("GitHub actions", true),
-            new InspectionItem("GitLab CI/CD", true)
-        );
-        categoryInspections.put("GitHub actions", githubActionsInspections);
-
-        // Angular inspections
-        ObservableList<InspectionItem> angularInspections = FXCollections.observableArrayList(
-            new InspectionItem("Angular", true)
-        );
-        categoryInspections.put("Angular", angularInspections);
-
-        // Bean Validation inspections
-        ObservableList<InspectionItem> beanValidationInspections = FXCollections.observableArrayList(
-            new InspectionItem("Bean Validation", true),
-            new InspectionItem("Hibernate", true)
-        );
-        categoryInspections.put("Bean Validation", beanValidationInspections);
-
-        // CDI inspections
-        ObservableList<InspectionItem> cdiInspections = FXCollections.observableArrayList(
-            new InspectionItem("CDI (Contexts and Dependency Injection)", true),
-            new InspectionItem("Injection points", true),
-            new InspectionItem("Producers for Disposer methods", true)
-        );
-        categoryInspections.put("CDI (Contexts and Dependency Injection)", cdiInspections);
-
-        // Code Coverage inspections
-        ObservableList<InspectionItem> codeCoverageInspections = FXCollections.observableArrayList(
-            new InspectionItem("Code Coverage", true),
-            new InspectionItem("Code metrics", true)
-        );
-        categoryInspections.put("Code Coverage", codeCoverageInspections);
-
-        // Code metrics inspections
-        ObservableList<InspectionItem> codeMetricsInspections = FXCollections.observableArrayList(
-            new InspectionItem("Code metrics", true),
-            new InspectionItem("Class metrics", true),
-            new InspectionItem("Method metrics", true)
-        );
-        categoryInspections.put("Code metrics", codeMetricsInspections);
-
-        // Compose Multiplatform Preview inspections
-        ObservableList<InspectionItem> composeInspections = FXCollections.observableArrayList(
-            new InspectionItem("Compose Multiplatform Preview", true)
-        );
-        categoryInspections.put("Compose Multiplatform Preview", composeInspections);
-
-        // Cron inspections
-        ObservableList<InspectionItem> cronInspections = FXCollections.observableArrayList(
-            new InspectionItem("Cron", true)
-        );
-        categoryInspections.put("Cron", cronInspections);
-
-        // Internationalization inspections
-        ObservableList<InspectionItem> i18nInspections = FXCollections.observableArrayList(
-            new InspectionItem("Internationalization", true),
-            new InspectionItem("I18n strings", true)
-        );
-        categoryInspections.put("Internationalization", i18nInspections);
-
-        // Jakarta Data inspections
-        ObservableList<InspectionItem> jakartaDataInspections = FXCollections.observableArrayList(
-            new InspectionItem("Jakarta Data", true),
-            new InspectionItem("Jakarta EE", true)
-        );
-        categoryInspections.put("Jakarta Data", jakartaDataInspections);
-
-        // JavaFX inspections
-        ObservableList<InspectionItem> javafxInspections = FXCollections.observableArrayList(
-            new InspectionItem("JavaFX", true),
-            new InspectionItem("JavaFX redundant property values", true),
-            new InspectionItem("JavaFX unused imports", true),
-            new InspectionItem("Event handler method signature problems", true),
-            new InspectionItem("Unnecessary default tag", true),
-            new InspectionItem("Unresolved f:uid attribute reference", true),
-            new InspectionItem("Unresolved style class reference", true),
-            new InspectionItem("The value from properties file is incompatible with the attribute type", true)
-        );
-        categoryInspections.put("JavaFX", javafxInspections);
-
-        // Ktor inspections
-        ObservableList<InspectionItem> ktorInspections = FXCollections.observableArrayList(
-            new InspectionItem("Ktor", true)
-        );
-        categoryInspections.put("Ktor", ktorInspections);
-
-        // Language injection inspections
-        ObservableList<InspectionItem> langInjectionInspections = FXCollections.observableArrayList(
-            new InspectionItem("Language injection", true),
-            new InspectionItem("Language Injections", true)
-        );
-        categoryInspections.put("Language injection", langInjectionInspections);
-
-        // Liquibase inspections
-        ObservableList<InspectionItem> liquibaseInspections = FXCollections.observableArrayList(
-            new InspectionItem("Liquibase", true)
-        );
-        categoryInspections.put("Liquibase", liquibaseInspections);
-
-        // Manifest inspections
-        ObservableList<InspectionItem> manifestInspections = FXCollections.observableArrayList(
-            new InspectionItem("Manifest", true)
-        );
-        categoryInspections.put("Manifest", manifestInspections);
-
-        // OpenAPI inspections
-        ObservableList<InspectionItem> openapiInspections = FXCollections.observableArrayList(
-            new InspectionItem("OpenAPI specifications", true)
-        );
-        categoryInspections.put("OpenAPI specifications", openapiInspections);
-
-        // Pattern validation inspections
-        ObservableList<InspectionItem> patternInspections = FXCollections.observableArrayList(
-            new InspectionItem("Pattern validation", true)
-        );
-        categoryInspections.put("Pattern validation", patternInspections);
-
-        // Protocol Buffers inspections
-        ObservableList<InspectionItem> protobufInspections = FXCollections.observableArrayList(
-            new InspectionItem("Protocol Buffers", true)
-        );
-        categoryInspections.put("Protocol Buffers", protobufInspections);
-
-        // Qodana inspections
-        ObservableList<InspectionItem> qodanaInspections = FXCollections.observableArrayList(
-            new InspectionItem("Qodana", true)
-        );
-        categoryInspections.put("Qodana", qodanaInspections);
-
-        // RegExp inspections
-        ObservableList<InspectionItem> regexpInspections = FXCollections.observableArrayList(
-            new InspectionItem("RegExp", true),
-            new InspectionItem("RELAX NG", true)
-        );
-        categoryInspections.put("RegExp", regexpInspections);
-
-        // RESTful Web Service inspections
-        ObservableList<InspectionItem> restInspections = FXCollections.observableArrayList(
-            new InspectionItem("RESTful Web Service (JAX-RS)", true),
-            new InspectionItem("Open in HTTP Client JAX-RS RequestMapping", true)
-        );
-        categoryInspections.put("RESTful Web Service (JAX-RS)", restInspections);
-
-        // Security inspections
-        ObservableList<InspectionItem> securityInspections = FXCollections.observableArrayList(
-            new InspectionItem("Security", true)
-        );
-        categoryInspections.put("Security", securityInspections);
-
-        // Shell script inspections
-        ObservableList<InspectionItem> shellInspections = FXCollections.observableArrayList(
-            new InspectionItem("Shell script", true)
-        );
-        categoryInspections.put("Shell script", shellInspections);
-
-        // Spring Data inspections
-        ObservableList<InspectionItem> springDataInspections = FXCollections.observableArrayList(
-            new InspectionItem("Spring Data", true),
-            new InspectionItem("Spring Data JDBC mapping", true),
-            new InspectionItem("Spring Data MongoDB mapping", true),
-            new InspectionItem("Spring Data projections", true)
-        );
-        categoryInspections.put("Spring Data", springDataInspections);
-
-        // Spring Modulith inspections
-        ObservableList<InspectionItem> springModulithInspections = FXCollections.observableArrayList(
-            new InspectionItem("Spring Modulith", true)
-        );
-        categoryInspections.put("Spring Modulith", springModulithInspections);
-
-        // SQL server inspections
-        ObservableList<InspectionItem> sqlServerInspections = FXCollections.observableArrayList(
-            new InspectionItem("SQL server", true)
-        );
-        categoryInspections.put("SQL server", sqlServerInspections);
-
-        // Thymeleaf inspections
-        ObservableList<InspectionItem> thymeleafInspections = FXCollections.observableArrayList(
-            new InspectionItem("Thymeleaf", true)
-        );
-        categoryInspections.put("Thymeleaf", thymeleafInspections);
-
-        // TOML inspections
-        ObservableList<InspectionItem> tomlInspections = FXCollections.observableArrayList(
-            new InspectionItem("TOML", true)
-        );
-        categoryInspections.put("TOML", tomlInspections);
-
-        // Velocity inspections
-        ObservableList<InspectionItem> velocityInspections = FXCollections.observableArrayList(
-            new InspectionItem("Velocity", true)
-        );
-        categoryInspections.put("Velocity", velocityInspections);
-
-        // Vue inspections
-        ObservableList<InspectionItem> vueInspections = FXCollections.observableArrayList(
-            new InspectionItem("Vue", true)
-        );
-        categoryInspections.put("Vue", vueInspections);
-
-        // XPath inspections
-        ObservableList<InspectionItem> xpathInspections = FXCollections.observableArrayList(
-            new InspectionItem("XPath", true)
-        );
-        categoryInspections.put("XPath", xpathInspections);
-
-        // XSLT inspections
-        ObservableList<InspectionItem> xsltInspections = FXCollections.observableArrayList(
-            new InspectionItem("XSLT", true)
-        );
-        categoryInspections.put("XSLT", xsltInspections);
-
-        // Application servers inspections
-        ObservableList<InspectionItem> appServerInspections = FXCollections.observableArrayList(
-            new InspectionItem("Application servers", true)
-        );
-        categoryInspections.put("Application servers", appServerInspections);
-
-        // AOP inspections
-        ObservableList<InspectionItem> aopInspections = FXCollections.observableArrayList(
-            new InspectionItem("AOP", true),
-            new InspectionItem("AOP Pointcut Language", true)
-        );
-        categoryInspections.put("AOP", aopInspections);
-
-        // User defined inspections (for the root category)
-        ObservableList<InspectionItem> userDefinedInspections = FXCollections.observableArrayList(
-            new InspectionItem("User defined", true)
-        );
-        categoryInspections.put("User defined", userDefinedInspections);
-
-        // JSP inspections
-        ObservableList<InspectionItem> jspInspections = FXCollections.observableArrayList(
-            new InspectionItem("JSP", true),
-            new InspectionItem("JSP", true)
-        );
-        categoryInspections.put("JSP", jspInspections);
-
-        // JSONPath inspections
-        ObservableList<InspectionItem> jsonPathInspections = FXCollections.observableArrayList(
-            new InspectionItem("JSONPath", true)
-        );
-        categoryInspections.put("JSONPath", jsonPathInspections);
-
-        // JVM languages inspections
-        categoryInspections.put("JVM languages", jvmInspections);
-    }
-
-    // ============================================================
-    // InspectionItem class
-    // ============================================================
-    public static class InspectionItem {
-        private final String name;
-        private final javafx.beans.property.BooleanProperty selected;
-
-        public InspectionItem(String name, boolean selected) {
-            this.name = name;
-            this.selected = new javafx.beans.property.SimpleBooleanProperty(selected);
+    // Tree node types
+    public static class InspectionTreeNode {
+        private final String category;
+        private final String displayName;
+        private final InspectionTool tool;
+
+        public InspectionTreeNode(String category) {
+            this.category = category;
+            int slash = category != null ? category.lastIndexOf('/') : -1;
+            this.displayName = (slash >= 0 && slash < category.length() - 1) ? category.substring(slash + 1) : (category != null ? category : "");
+            this.tool = null;
         }
 
-        public String getName() {
-            return name;
+        public InspectionTreeNode(InspectionTool tool) {
+            this.category = tool != null ? tool.getGroupPath() : null;
+            this.tool = tool;
+            this.displayName = tool != null ? tool.getDisplayName() : "";
         }
 
-        public javafx.beans.property.BooleanProperty selectedProperty() {
-            return selected;
+        public boolean isCategory() {
+            return tool == null;
         }
 
-        public boolean isSelected() {
-            return selected.get();
+        public String getCategory() {
+            return category;
         }
 
-        public void setSelected(boolean selected) {
-            this.selected.set(selected);
+        public InspectionTool getTool() {
+            return tool;
+        }
+
+        public String getDisplayName() {
+            return displayName;
         }
 
         @Override
         public String toString() {
-            return name;
+            return getDisplayName();
         }
+    }
+
+    // Profile entry for grouped combo box rendering
+    public static class ProfileItem {
+        private final boolean isHeader;
+        private final String headerTitle;
+        private final InspectionProfile profile;
+
+        public ProfileItem(String headerTitle) {
+            this.isHeader = true;
+            this.headerTitle = headerTitle;
+            this.profile = null;
+        }
+
+        public ProfileItem(InspectionProfile profile) {
+            this.isHeader = false;
+            this.headerTitle = null;
+            this.profile = profile;
+        }
+
+        public boolean isHeader() {
+            return isHeader;
+        }
+
+        public String getHeaderTitle() {
+            return headerTitle;
+        }
+
+        public InspectionProfile getProfile() {
+            return profile;
+        }
+
+        @Override
+        public String toString() {
+            return isHeader ? headerTitle : (profile != null ? profile.getName() : "");
+        }
+    }
+
+    private final InspectionRegistry registry = InspectionRegistry.getInstance();
+    private final InspectionProfileManager profileManager = InspectionProfileManager.getInstance();
+
+    // Working profile (isolated for dialog edit/apply/cancel lifecycle)
+    private InspectionProfile workingProfile;
+
+    // UI Controls
+    private final ComboBox<ProfileItem> profileCombo = new ComboBox<>();
+    private final MenuButton profileGearButton = new MenuButton();
+    private final TextField searchField = new TextField();
+    private final MenuButton filterMenuButton = new MenuButton();
+    private final Button expandAllBtn = new Button();
+    private final Button collapseAllBtn = new Button();
+    private final Button resetDiffBtn = new Button();
+    private final MenuButton addMenuButton = new MenuButton("+");
+    private final Button removeBtn = new Button("-");
+
+    private final TreeView<InspectionTreeNode> treeView = new TreeView<>();
+    private final TreeItem<InspectionTreeNode> rootItem = new TreeItem<>(new InspectionTreeNode("Root"));
+    private final CheckBox disableNewInspectionsCheck = new CheckBox("Disable new inspections by default");
+
+    // Right details panel
+    private final VBox detailsContainer = new VBox();
+    private final Label multiSelectionLabel = new Label("Multiple inspections are selected. You can edit them as a single inspection.");
+    private final VBox singleInspectionBox = new VBox();
+    private final Label toolTitleLabel = new Label();
+    private final Label toolCategoryLabel = new Label();
+    private final TextArea toolDescArea = new TextArea();
+
+    // Bottom controls
+    private final MenuButton scopeButton = new MenuButton("In All Scopes");
+    private final MenuButton severityButton = new MenuButton();
+    private final ComboBox<String> highlightingCombo = new ComboBox<>();
+
+    // Filter states
+    private boolean filterModifiedOnly = false;
+    private boolean filterEnabledOnly = false;
+    private boolean filterDisabledOnly = false;
+    private boolean filterBatchModeOnly = false;
+    private boolean filterCleanupOnly = false;
+    private boolean filterNewInspectionsOnly = false;
+    private HighlightSeverity filterSeverity = null;
+    private String filterLanguage = null;
+
+    private Runnable onModifiedListener;
+
+    public SettingsInspectionsPage() {
+        getStyleClass().add("settings-page");
+        setStyle("-fx-background-color: #1E1F22;");
+        setPadding(new Insets(10, 16, 12, 16));
+        setSpacing(10);
+        VBox.setVgrow(this, Priority.ALWAYS);
+
+        // Initialize working copy from active profile
+        initWorkingProfile();
+
+        // 1. Breadcrumb row
+        HBox breadcrumbRow = buildBreadcrumbRow();
+
+        // 2. Profile selection row
+        HBox profileRow = buildProfileRow();
+
+        // 3. Main SplitPane (Left: Tree, Right: Details)
+        SplitPane splitPane = buildMainSplitPane();
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
+
+        getChildren().addAll(breadcrumbRow, profileRow, splitPane);
+
+        // Populate tree
+        refreshTree();
+
+        // Select initial item
+        selectInitialCategory("Application servers");
+    }
+
+    private void initWorkingProfile() {
+        InspectionProfile active = profileManager.getActiveProfile();
+        this.workingProfile = active.cloneProfile(active.getName(), active.isProjectLevel());
+    }
+
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
+
+    private void fireModified() {
+        if (onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
+
+    public boolean isModified() {
+        if (workingProfile == null) return false;
+        InspectionProfile active = profileManager.getActiveProfile();
+        if (workingProfile.isDisableNewInspections() != active.isDisableNewInspections()) return true;
+        for (InspectionTool tool : registry.getAllTools()) {
+            boolean wEnabled = workingProfile.isEnabled(tool);
+            boolean aEnabled = active.isEnabled(tool);
+            if (wEnabled != aEnabled) return true;
+
+            HighlightSeverity wSev = workingProfile.getSeverity(tool);
+            HighlightSeverity aSev = active.getSeverity(tool);
+            if (wSev != aSev) return true;
+
+            String wScope = workingProfile.getScope(tool);
+            String aScope = active.getScope(tool);
+            if (!Objects.equals(wScope, aScope)) return true;
+
+            String wHigh = workingProfile.getHighlighting(tool);
+            String aHigh = active.getHighlighting(tool);
+            if (!Objects.equals(wHigh, aHigh)) return true;
+        }
+        return false;
+    }
+
+    public void apply() {
+        if (workingProfile == null) return;
+        InspectionProfile active = profileManager.getActiveProfile();
+        active.copyFrom(workingProfile);
+        profileManager.save();
+    }
+
+    public void reset() {
+        initWorkingProfile();
+        refreshTree();
+        selectInitialCategory("Application servers");
+    }
+
+    private HBox buildBreadcrumbRow() {
+        HBox box = new HBox(8);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(2, 0, 4, 0));
+
+        Label breadcrumb = new Label("Editor › Inspections");
+        breadcrumb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        Button copyBtn = new Button();
+        copyBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 2 4 2 4;");
+        SVGPath copyIcon = new SVGPath();
+        copyIcon.setContent("M 2 2 H 8 V 8 H 2 Z M 5 5 H 11 V 11 H 5 Z");
+        copyIcon.setStroke(Color.web("#868A91"));
+        copyIcon.setFill(null);
+        copyIcon.setStrokeWidth(1.2);
+        copyBtn.setGraphic(copyIcon);
+        copyBtn.setTooltip(new Tooltip("Copy Path"));
+        copyBtn.setOnAction(e -> {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString("Editor | Inspections");
+            clipboard.setContent(content);
+        });
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button backBtn = new Button("←");
+        backBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 13px; -fx-cursor: hand; -fx-padding: 2 6 2 6;");
+        Button forwardBtn = new Button("→");
+        forwardBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #5A5D63; -fx-font-size: 13px; -fx-padding: 2 6 2 6;");
+        forwardBtn.setDisable(true);
+
+        box.getChildren().addAll(breadcrumb, copyBtn, spacer, backBtn, forwardBtn);
+        return box;
+    }
+
+    private HBox buildProfileRow() {
+        HBox box = new HBox(10);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(4, 0, 8, 0));
+
+        Label profileLabel = new Label("Profile:");
+        profileLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        populateProfileComboItems();
+        profileCombo.setPrefWidth(220);
+        profileCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-text-fill: #DFE1E5;");
+
+        profileCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(ProfileItem item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setDisable(false);
+                    setStyle("-fx-background-color: transparent;");
+                } else if (item.isHeader()) {
+                    setText(item.getHeaderTitle());
+                    setGraphic(null);
+                    setDisable(true);
+                    setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 8 2 8; -fx-opacity: 0.9;");
+                } else {
+                    setText(item.getProfile().getName());
+                    setGraphic(null);
+                    setDisable(false);
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 12 3 12;");
+                }
+            }
+        });
+
+        profileCombo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(ProfileItem item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.getProfile() == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    InspectionProfile p = item.getProfile();
+                    setText(p.getName() + "  " + (p.isProjectLevel() ? "Project" : "IDE"));
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                }
+            }
+        });
+
+        profileCombo.setOnAction(e -> {
+            ProfileItem selected = profileCombo.getSelectionModel().getSelectedItem();
+            if (selected != null && !selected.isHeader() && selected.getProfile() != null) {
+                InspectionProfile p = selected.getProfile();
+                this.workingProfile = p.cloneProfile(p.getName(), p.isProjectLevel());
+                refreshTree();
+                fireModified();
+            }
+        });
+
+        // Gear button with profile actions
+        profileGearButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 4 6 4 6;");
+        SVGPath gearIcon = new SVGPath();
+        gearIcon.setContent("M 6 0 L 7 2 L 9 2 L 9.5 4 L 11 5 L 10 7 L 11 9 L 9.5 10 L 9 12 L 7 12 L 6 10 L 4 10 L 3.5 12 L 2 11 L 3 9 L 2 7 L 3.5 6 L 4 4 L 6 4 Z");
+        gearIcon.setStroke(Color.web("#DFE1E5"));
+        gearIcon.setFill(Color.web("#868A91"));
+        gearIcon.setScaleX(0.9);
+        gearIcon.setScaleY(0.9);
+        profileGearButton.setGraphic(gearIcon);
+
+        MenuItem copyItem = new MenuItem("Copy...");
+        copyItem.setOnAction(e -> handleCopyProfile());
+
+        MenuItem renameItem = new MenuItem("Rename...");
+        renameItem.setOnAction(e -> handleRenameProfile());
+
+        MenuItem deleteItem = new MenuItem("Delete");
+        deleteItem.setOnAction(e -> handleDeleteProfile());
+
+        MenuItem exportItem = new MenuItem("Export...");
+        MenuItem importItem = new MenuItem("Import...");
+
+        MenuItem resetDefaultItem = new MenuItem("Reset to Default");
+        resetDefaultItem.setOnAction(e -> {
+            workingProfile.resetToDefaults(registry);
+            refreshTree();
+            fireModified();
+        });
+
+        profileGearButton.getItems().addAll(
+                copyItem, renameItem, deleteItem,
+                new SeparatorMenuItem(),
+                exportItem, importItem,
+                new SeparatorMenuItem(),
+                resetDefaultItem
+        );
+
+        box.getChildren().addAll(profileLabel, profileCombo, profileGearButton);
+        return box;
+    }
+
+    private void populateProfileComboItems() {
+        List<ProfileItem> items = new ArrayList<>();
+        List<InspectionProfile> allProfiles = profileManager.getProfiles();
+
+        // 1. Stored in Project
+        items.add(new ProfileItem("Stored in Project"));
+        ProfileItem selectedItem = null;
+        for (InspectionProfile p : allProfiles) {
+            if (p.isProjectLevel()) {
+                ProfileItem pi = new ProfileItem(p);
+                items.add(pi);
+                if (workingProfile != null && p.getName().equals(workingProfile.getName())) {
+                    selectedItem = pi;
+                }
+            }
+        }
+
+        // 2. Stored in IDE
+        items.add(new ProfileItem("Stored in IDE"));
+        for (InspectionProfile p : allProfiles) {
+            if (!p.isProjectLevel()) {
+                ProfileItem pi = new ProfileItem(p);
+                items.add(pi);
+                if (workingProfile != null && p.getName().equals(workingProfile.getName()) && selectedItem == null) {
+                    selectedItem = pi;
+                }
+            }
+        }
+
+        profileCombo.getItems().setAll(items);
+        if (selectedItem != null) {
+            profileCombo.getSelectionModel().select(selectedItem);
+        } else if (!items.isEmpty()) {
+            for (ProfileItem pi : items) {
+                if (!pi.isHeader()) {
+                    profileCombo.getSelectionModel().select(pi);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void handleCopyProfile() {
+        TextInputDialog dialog = new TextInputDialog(workingProfile.getName() + " Copy");
+        dialog.setTitle("Copy Profile");
+        dialog.setHeaderText("Specify new inspection profile name:");
+        dialog.setContentText("Name:");
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.isBlank()) {
+                InspectionProfile created = profileManager.createProfile(newName.trim(), workingProfile.isProjectLevel(), workingProfile);
+                this.workingProfile = created.cloneProfile(created.getName(), created.isProjectLevel());
+                populateProfileComboItems();
+                refreshTree();
+                fireModified();
+            }
+        });
+    }
+
+    private void handleRenameProfile() {
+        TextInputDialog dialog = new TextInputDialog(workingProfile.getName());
+        dialog.setTitle("Rename Profile");
+        dialog.setHeaderText("Specify new profile name:");
+        dialog.setContentText("Name:");
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.isBlank() && !newName.equals(workingProfile.getName())) {
+                profileManager.renameProfile(workingProfile.getName(), newName.trim());
+                workingProfile.setName(newName.trim());
+                populateProfileComboItems();
+                fireModified();
+            }
+        });
+    }
+
+    private void handleDeleteProfile() {
+        if (profileManager.deleteProfile(workingProfile.getName())) {
+            InspectionProfile fallback = profileManager.getActiveProfile();
+            this.workingProfile = fallback.cloneProfile(fallback.getName(), fallback.isProjectLevel());
+            populateProfileComboItems();
+            refreshTree();
+            fireModified();
+        }
+    }
+
+    private SplitPane buildMainSplitPane() {
+        SplitPane split = new SplitPane();
+        split.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
+
+        // 1. Left container: Toolbar, TreeView, Disable New CheckBox
+        VBox leftPane = new VBox(6);
+        leftPane.setStyle("-fx-background-color: #1E1F22;");
+        leftPane.setPrefWidth(390);
+        leftPane.setMinWidth(260);
+
+        HBox toolbar = buildToolbar();
+        setupTreeView();
+        VBox.setVgrow(treeView, Priority.ALWAYS);
+
+        disableNewInspectionsCheck.setSelected(workingProfile.isDisableNewInspections());
+        disableNewInspectionsCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        disableNewInspectionsCheck.setPadding(new Insets(6, 4, 4, 4));
+        disableNewInspectionsCheck.setOnAction(e -> {
+            workingProfile.setDisableNewInspections(disableNewInspectionsCheck.isSelected());
+            fireModified();
+        });
+
+        leftPane.getChildren().addAll(toolbar, treeView, disableNewInspectionsCheck);
+
+        // 2. Right container: Detail area & Bottom controls
+        VBox rightPane = new VBox(12);
+        rightPane.setStyle("-fx-background-color: #1E1F22; -fx-padding: 8 12 8 16;");
+        rightPane.setPrefWidth(520);
+        rightPane.setMinWidth(300);
+
+        setupDetailsPanel();
+        VBox.setVgrow(detailsContainer, Priority.ALWAYS);
+
+        HBox bottomControls = buildBottomControls();
+
+        rightPane.getChildren().addAll(detailsContainer, bottomControls);
+
+        split.getItems().addAll(leftPane, rightPane);
+        split.setDividerPositions(0.42);
+
+        return split;
+    }
+
+    private HBox buildToolbar() {
+        HBox box = new HBox(4);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(2, 0, 4, 0));
+
+        // Search field
+        searchField.setPromptText("Filter inspections");
+        searchField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-prompt-text-fill: #868A91; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 4 8 4 8; -fx-font-size: 12px;");
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        searchField.textProperty().addListener((obs, oldV, newV) -> filterTree());
+
+        // Filter button matching media_1790778509636.png
+        filterMenuButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 6 3 6;");
+        SVGPath filterIcon = new SVGPath();
+        filterIcon.setContent("M 1 2 L 11 2 L 7 7 L 7 11 L 5 12 L 5 7 Z");
+        filterIcon.setStroke(Color.web("#868A91"));
+        filterIcon.setFill(Color.web("#868A91"));
+        filterMenuButton.setGraphic(filterIcon);
+
+        buildFilterMenu();
+
+        // Expand All button
+        expandAllBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 5 3 5;");
+        SVGPath expandIcon = new SVGPath();
+        expandIcon.setContent("M 1 4 L 4 1 L 7 4 M 4 1 L 4 9 M 1 8 L 4 11 L 7 8");
+        expandIcon.setStroke(Color.web("#868A91"));
+        expandIcon.setStrokeWidth(1.2);
+        expandIcon.setFill(null);
+        expandAllBtn.setGraphic(expandIcon);
+        expandAllBtn.setTooltip(new Tooltip("Expand All"));
+        expandAllBtn.setOnAction(e -> expandAll(rootItem, true));
+
+        // Collapse All button
+        collapseAllBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 5 3 5;");
+        SVGPath collapseIcon = new SVGPath();
+        collapseIcon.setContent("M 1 1 L 4 4 L 7 1 M 4 4 L 4 10 M 1 11 L 4 8 L 7 11");
+        collapseIcon.setStroke(Color.web("#868A91"));
+        collapseIcon.setStrokeWidth(1.2);
+        collapseIcon.setFill(null);
+        collapseAllBtn.setGraphic(collapseIcon);
+        collapseAllBtn.setTooltip(new Tooltip("Collapse All"));
+        collapseAllBtn.setOnAction(e -> expandAll(rootItem, false));
+
+        // Reset Diff button
+        resetDiffBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 3 5 3 5;");
+        SVGPath diffIcon = new SVGPath();
+        diffIcon.setContent("M 2 2 H 8 V 8 H 2 Z");
+        diffIcon.setStroke(Color.web("#868A91"));
+        diffIcon.setFill(null);
+        resetDiffBtn.setGraphic(diffIcon);
+        resetDiffBtn.setTooltip(new Tooltip("Reset to Default"));
+        resetDiffBtn.setOnAction(e -> {
+            workingProfile.resetToDefaults(registry);
+            refreshTree();
+            fireModified();
+        });
+
+        // Add MenuButton matching media_1790778520841.png
+        addMenuButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 2 6 2 6;");
+        buildAddMenu();
+
+        // Remove button
+        removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 2 6 2 6;");
+        removeBtn.setTooltip(new Tooltip("Remove Custom Inspection"));
+        removeBtn.setOnAction(e -> handleRemoveInspection());
+
+        box.getChildren().addAll(searchField, filterMenuButton, expandAllBtn, collapseAllBtn, resetDiffBtn, addMenuButton, removeBtn);
+        return box;
+    }
+
+    private void buildFilterMenu() {
+        filterMenuButton.getItems().clear();
+
+        MenuItem resetFilter = new MenuItem("Reset Filter");
+        resetFilter.setOnAction(e -> {
+            filterModifiedOnly = false;
+            filterEnabledOnly = false;
+            filterDisabledOnly = false;
+            filterBatchModeOnly = false;
+            filterCleanupOnly = false;
+            filterNewInspectionsOnly = false;
+            filterSeverity = null;
+            filterLanguage = null;
+            searchField.clear();
+            buildFilterMenu();
+            filterTree();
+        });
+
+        // Show New Inspections item with lightning bolt
+        MenuItem showNewInspections = new MenuItem("Show New Inspections in Lumina IDE 2025.3");
+        SVGPath bolt = new SVGPath();
+        bolt.setContent("M 4 0 L 1 6 L 4 6 L 3 11 L 7 4 L 4 4 Z");
+        bolt.setFill(Color.web("#E0AE43"));
+        showNewInspections.setGraphic(bolt);
+        showNewInspections.setOnAction(e -> {
+            filterNewInspectionsOnly = !filterNewInspectionsOnly;
+            filterTree();
+        });
+
+        CheckMenuItem enabledOnly = new CheckMenuItem("Show only enabled");
+        enabledOnly.setSelected(filterEnabledOnly);
+        enabledOnly.setOnAction(e -> {
+            filterEnabledOnly = enabledOnly.isSelected();
+            if (filterEnabledOnly) filterDisabledOnly = false;
+            filterTree();
+        });
+
+        CheckMenuItem disabledOnly = new CheckMenuItem("Show only disabled");
+        disabledOnly.setSelected(filterDisabledOnly);
+        disabledOnly.setOnAction(e -> {
+            filterDisabledOnly = disabledOnly.isSelected();
+            if (filterDisabledOnly) filterEnabledOnly = false;
+            filterTree();
+        });
+
+        CheckMenuItem modOnly = new CheckMenuItem("Show only modified inspections");
+        modOnly.setSelected(filterModifiedOnly);
+        modOnly.setOnAction(e -> {
+            filterModifiedOnly = modOnly.isSelected();
+            filterTree();
+        });
+
+        // Severity items
+        List<MenuItem> severityItems = new ArrayList<>();
+        for (HighlightSeverity s : HighlightSeverity.values()) {
+            MenuItem sItem = new MenuItem(s.getDisplayName());
+            sItem.setGraphic(s.createIcon(12));
+            sItem.setOnAction(e -> {
+                filterSeverity = (filterSeverity == s) ? null : s;
+                filterTree();
+            });
+            severityItems.add(sItem);
+        }
+
+        // Submenu: Filter by Language
+        Menu languageMenu = new Menu("Filter by Language");
+        List<String> languages = List.of(
+                "Angular", "CSS", "Go", "Gradle", "Groovy", "HTML",
+                "Java", "JavaScript and TypeScript", "JSON", "Kotlin",
+                "Markdown", "PHP", "Python", "Rust", "Scala", "SQL",
+                "XML", "YAML", "General"
+        );
+        for (String lang : languages) {
+            CheckMenuItem langItem = new CheckMenuItem(lang);
+            langItem.setOnAction(e -> {
+                filterLanguage = langItem.isSelected() ? lang : null;
+                filterTree();
+            });
+            languageMenu.getItems().add(langItem);
+        }
+
+        CheckMenuItem batchOnly = new CheckMenuItem("Show only batch-mode inspections");
+        batchOnly.setSelected(filterBatchModeOnly);
+        batchOnly.setOnAction(e -> {
+            filterBatchModeOnly = batchOnly.isSelected();
+            filterTree();
+        });
+
+        CheckMenuItem cleanupOnly = new CheckMenuItem("Show only cleanup inspections");
+        cleanupOnly.setSelected(filterCleanupOnly);
+        cleanupOnly.setOnAction(e -> {
+            filterCleanupOnly = cleanupOnly.isSelected();
+            filterTree();
+        });
+
+        filterMenuButton.getItems().addAll(
+                resetFilter,
+                new SeparatorMenuItem(),
+                showNewInspections,
+                new SeparatorMenuItem(),
+                enabledOnly, disabledOnly, modOnly,
+                new SeparatorMenuItem()
+        );
+        filterMenuButton.getItems().addAll(severityItems);
+        filterMenuButton.getItems().addAll(
+                new SeparatorMenuItem(),
+                languageMenu,
+                new SeparatorMenuItem(),
+                batchOnly, cleanupOnly
+        );
+    }
+
+    private void buildAddMenu() {
+        addMenuButton.getItems().clear();
+
+        MenuItem addStructuralSearch = new MenuItem("Add Structural Search Inspection...");
+        addStructuralSearch.setOnAction(e -> handleAddUserDefinedInspection("Structural search", "Search"));
+
+        MenuItem addStructuralReplace = new MenuItem("Add Structural Replace Inspection...");
+        addStructuralReplace.setOnAction(e -> handleAddUserDefinedInspection("Structural search", "Replace"));
+
+        MenuItem addRegExpSearch = new MenuItem("Add RegExp Search Inspection...");
+        addRegExpSearch.setOnAction(e -> handleAddUserDefinedInspection("RegExp", "Search"));
+
+        MenuItem addRegExpReplace = new MenuItem("Add RegExp Replace Inspection...");
+        addRegExpReplace.setOnAction(e -> handleAddUserDefinedInspection("RegExp", "Replace"));
+
+        addMenuButton.getItems().addAll(
+                addStructuralSearch,
+                addStructuralReplace,
+                addRegExpSearch,
+                addRegExpReplace
+        );
+    }
+
+    private void handleAddUserDefinedInspection(String group, String type) {
+        TextInputDialog dialog = new TextInputDialog("Custom " + group + " " + type);
+        dialog.setTitle("Add " + group + " " + type + " Inspection");
+        dialog.setHeaderText("Create a user-defined " + group + " inspection rule:");
+        dialog.setContentText("Inspection Name:");
+        dialog.showAndWait().ifPresent(name -> {
+            if (!name.isBlank()) {
+                String id = "UserDefined." + group.replaceAll("\\s+", "") + "." + name.replaceAll("\\s+", "");
+                InspectionTool tool = InspectionTool.builder(id)
+                        .displayName(name.trim())
+                        .groupPath("User defined")
+                        .description("Custom user-defined " + group.toLowerCase(Locale.ROOT) + " " + type.toLowerCase(Locale.ROOT) + " inspection rule.")
+                        .defaultSeverity(HighlightSeverity.WARNING)
+                        .defaultEnabled(true)
+                        .build();
+                registry.register(tool);
+                workingProfile.setEnabled(tool.getId(), true);
+                refreshTree();
+                fireModified();
+            }
+        });
+    }
+
+    private void handleRemoveInspection() {
+        TreeItem<InspectionTreeNode> selected = treeView.getSelectionModel().getSelectedItem();
+        if (selected != null && selected.getValue() != null && selected.getValue().getTool() != null) {
+            InspectionTool tool = selected.getValue().getTool();
+            if ("User defined".equalsIgnoreCase(tool.getGroupPath())) {
+                registry.unregister(tool.getId());
+                refreshTree();
+                fireModified();
+            }
+        }
+    }
+
+    private void setupTreeView() {
+        treeView.setRoot(rootItem);
+        treeView.setShowRoot(false);
+        treeView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        treeView.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #2B2D30; -fx-border-radius: 4px;");
+
+        treeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(InspectionTreeNode node, boolean empty) {
+                super.updateItem(node, empty);
+                if (empty || node == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    HBox row = new HBox(6);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    row.setStyle("-fx-padding: 2 4 2 4;");
+
+                    Label label = new Label(node.getDisplayName());
+                    label.setStyle("-fx-text-fill: " + (isSelected() ? "#FFFFFF" : "#DFE1E5") + "; -fx-font-size: 12px;");
+                    HBox.setHgrow(label, Priority.ALWAYS);
+
+                    Region spacer = new Region();
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                    Node checkGraphic = createCheckGraphic(node);
+
+                    if (!node.isCategory() && node.getTool() != null) {
+                        // Leaf inspection item: show severity icon before checkbox matching screenshots
+                        HighlightSeverity sev = workingProfile.getSeverity(node.getTool());
+                        if (sev == HighlightSeverity.ERROR || sev == HighlightSeverity.WARNING || sev == HighlightSeverity.SERVER_PROBLEM) {
+                            Node sevIcon = sev.createIcon(12);
+                            row.getChildren().addAll(label, spacer, sevIcon, checkGraphic);
+                        } else {
+                            row.getChildren().addAll(label, spacer, checkGraphic);
+                        }
+                    } else {
+                        // Category row: tri-state checkbox only
+                        row.getChildren().addAll(label, spacer, checkGraphic);
+                    }
+
+                    setGraphic(row);
+                    setText(null);
+
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-background-radius: 3px;");
+                    } else {
+                        setStyle("-fx-background-color: transparent;");
+                    }
+                }
+            }
+        });
+
+        treeView.getSelectionModel().selectedItemProperty().addListener((obs, old, val) -> {
+            updateDetailsPanel();
+        });
+    }
+
+    /**
+     * Creates custom checkbox rendering:
+     * - Checked: Blue rounded box with white checkmark
+     * - Indeterminate: Blue rounded box with white horizontal minus line
+     * - Unchecked: Dark box with border
+     */
+    private Node createCheckGraphic(InspectionTreeNode node) {
+        StackPane box = new StackPane();
+        box.setMinSize(14, 14);
+        box.setPrefSize(14, 14);
+        box.setMaxSize(14, 14);
+        box.setCursor(javafx.scene.Cursor.HAND);
+
+        boolean isCat = node.isCategory();
+        InspectionProfile.TriState state;
+        if (isCat) {
+            state = workingProfile.getCategoryState(node.getCategory(), registry);
+        } else {
+            boolean en = workingProfile.isEnabled(node.getTool());
+            state = en ? InspectionProfile.TriState.CHECKED : InspectionProfile.TriState.UNCHECKED;
+        }
+
+        Rectangle bg = new Rectangle(14, 14);
+        bg.setArcWidth(4);
+        bg.setArcHeight(4);
+
+        if (state == InspectionProfile.TriState.CHECKED) {
+            bg.setFill(Color.web("#3574F0"));
+            bg.setStroke(Color.web("#3574F0"));
+            SVGPath check = new SVGPath();
+            check.setContent("M 2.5 7 L 5.5 10 L 11.5 3.5");
+            check.setStroke(Color.WHITE);
+            check.setStrokeWidth(1.8);
+            check.setFill(null);
+            box.getChildren().addAll(bg, check);
+        } else if (state == InspectionProfile.TriState.INDETERMINATE) {
+            bg.setFill(Color.web("#3574F0"));
+            bg.setStroke(Color.web("#3574F0"));
+            Line line = new Line(3, 7, 11, 7);
+            line.setStroke(Color.WHITE);
+            line.setStrokeWidth(2.0);
+            box.getChildren().addAll(bg, line);
+        } else {
+            bg.setFill(Color.web("#2B2D30"));
+            bg.setStroke(Color.web("#5A5D63"));
+            bg.setStrokeWidth(1.0);
+            box.getChildren().add(bg);
+        }
+
+        box.setOnMouseClicked(e -> {
+            e.consume();
+            if (isCat) {
+                boolean nextState = (state == InspectionProfile.TriState.UNCHECKED);
+                workingProfile.setCategoryEnabled(node.getCategory(), nextState, registry);
+            } else {
+                boolean current = workingProfile.isEnabled(node.getTool());
+                workingProfile.setEnabled(node.getTool().getId(), !current);
+            }
+            treeView.refresh();
+            updateDetailsPanel();
+            fireModified();
+        });
+
+        return box;
+    }
+
+    private void setupDetailsPanel() {
+        detailsContainer.setAlignment(Pos.TOP_LEFT);
+        detailsContainer.setSpacing(14);
+        detailsContainer.setPadding(new Insets(10, 8, 8, 8));
+
+        multiSelectionLabel.setStyle("-fx-text-fill: #9DA0A8; -fx-font-size: 13px;");
+        multiSelectionLabel.setWrapText(true);
+
+        singleInspectionBox.setSpacing(10);
+        singleInspectionBox.setAlignment(Pos.TOP_LEFT);
+
+        toolTitleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 15px; -fx-font-weight: bold;");
+        toolCategoryLabel.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+
+        toolDescArea.setEditable(false);
+        toolDescArea.setWrapText(true);
+        toolDescArea.setStyle("-fx-control-inner-background: #1E1F22; -fx-background-color: transparent; -fx-text-fill: #BCBEC4; -fx-border-color: transparent; -fx-font-size: 12px;");
+        VBox.setVgrow(toolDescArea, Priority.ALWAYS);
+
+        singleInspectionBox.getChildren().addAll(toolTitleLabel, toolCategoryLabel, toolDescArea);
+    }
+
+    private void updateDetailsPanel() {
+        ObservableList<TreeItem<InspectionTreeNode>> selectedItems = treeView.getSelectionModel().getSelectedItems();
+        if (selectedItems.isEmpty()) {
+            detailsContainer.getChildren().clear();
+            return;
+        }
+
+        List<InspectionTool> selectedTools = new ArrayList<>();
+        for (TreeItem<InspectionTreeNode> item : selectedItems) {
+            if (item == null || item.getValue() == null) continue;
+            if (item.getValue().isCategory()) {
+                selectedTools.addAll(registry.getToolsForCategory(item.getValue().getCategory()));
+            } else if (item.getValue().getTool() != null) {
+                selectedTools.add(item.getValue().getTool());
+            }
+        }
+
+        if (selectedTools.size() > 1 || (selectedItems.size() == 1 && selectedItems.get(0).getValue().isCategory())) {
+            detailsContainer.getChildren().setAll(multiSelectionLabel);
+        } else if (selectedTools.size() == 1) {
+            InspectionTool tool = selectedTools.get(0);
+            toolTitleLabel.setText(tool.getDisplayName());
+            toolCategoryLabel.setText("Category: " + tool.getGroupPath() + (tool.getLanguage() != null ? "  |  Language: " + tool.getLanguage() : ""));
+            toolDescArea.setText(tool.getDescription() + "\n\nID: " + tool.getId());
+            detailsContainer.getChildren().setAll(singleInspectionBox);
+        } else {
+            detailsContainer.getChildren().clear();
+        }
+
+        // Bottom controls update
+        if (!selectedTools.isEmpty()) {
+            // Check if severities are mixed matching screenshots 4 and 5
+            boolean mixedSeverity = false;
+            HighlightSeverity firstSev = workingProfile.getSeverity(selectedTools.get(0));
+            for (int i = 1; i < selectedTools.size(); i++) {
+                if (workingProfile.getSeverity(selectedTools.get(i)) != firstSev) {
+                    mixedSeverity = true;
+                    break;
+                }
+            }
+
+            if (mixedSeverity) {
+                severityButton.setText(" Mixed");
+                severityButton.setGraphic(HighlightSeverity.createMixedIcon(12));
+                highlightingCombo.setValue("Mixed");
+            } else {
+                updateSeverityButton(firstSev);
+                String high = workingProfile.getHighlighting(selectedTools.get(0));
+                highlightingCombo.setValue(high != null ? high : firstSev.getDisplayName());
+            }
+
+            String scope = workingProfile.getScope(selectedTools.get(0));
+            scopeButton.setText(scope != null ? scope : "In All Scopes");
+        }
+    }
+
+    private HBox buildBottomControls() {
+        HBox box = new HBox(20);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(10, 0, 4, 0));
+        box.setStyle("-fx-border-color: #2B2D30 transparent transparent transparent; -fx-padding: 10 0 0 0;");
+
+        // 1. Scope
+        Label scopeLbl = new Label("Scope:");
+        scopeLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        scopeButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-pref-width: 140px;");
+        buildScopeMenu();
+
+        VBox scopeGroup = new VBox(4, scopeLbl, scopeButton);
+
+        // 2. Severity
+        Label sevLbl = new Label("Severity:");
+        sevLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        severityButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-font-size: 12px; -fx-pref-width: 150px;");
+        buildSeverityMenu();
+
+        VBox sevGroup = new VBox(4, sevLbl, severityButton);
+
+        // 3. Highlighting in editor
+        Label highLbl = new Label("Highlighting in editor:");
+        highLbl.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        highlightingCombo.getItems().addAll(
+                "Mixed", "Error", "Warning", "Weak Warning", "Server Problem",
+                "Grammar Error", "Typo", "Style Suggestion",
+                "Consideration", "No highlighting (fix available)"
+        );
+        highlightingCombo.setValue("Error");
+        highlightingCombo.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-font-size: 12px;");
+        highlightingCombo.setPrefWidth(160);
+        highlightingCombo.setOnAction(e -> {
+            String val = highlightingCombo.getValue();
+            if (val != null && !"Mixed".equals(val)) {
+                applyBulkHighlighting(val);
+            }
+        });
+
+        VBox highGroup = new VBox(4, highLbl, highlightingCombo);
+
+        box.getChildren().addAll(scopeGroup, sevGroup, highGroup);
+        return box;
+    }
+
+    private void buildScopeMenu() {
+        scopeButton.getItems().clear();
+
+        MenuItem header = new MenuItem("Select a Scope to Change Its Settings");
+        header.setDisable(true);
+        header.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+        scopeButton.getItems().add(header);
+
+        List<String> scopes = List.of(
+                "Project Files",
+                "Scratches and Consoles",
+                "Production",
+                "Tests",
+                "Generated Files",
+                "Open Files",
+                "All Changed Files"
+        );
+
+        for (String scopeName : scopes) {
+            MenuItem item = new MenuItem(scopeName);
+            item.setOnAction(e -> {
+                scopeButton.setText(scopeName);
+                applyBulkScope(scopeName);
+            });
+            scopeButton.getItems().add(item);
+        }
+
+        scopeButton.getItems().add(new SeparatorMenuItem());
+
+        MenuItem editScopes = new MenuItem("Edit Scopes Order...");
+        scopeButton.getItems().add(editScopes);
+    }
+
+    private void buildSeverityMenu() {
+        severityButton.getItems().clear();
+
+        for (HighlightSeverity s : HighlightSeverity.values()) {
+            MenuItem item = new MenuItem(s.getDisplayName());
+            item.setGraphic(s.createIcon(12));
+            item.setOnAction(e -> {
+                updateSeverityButton(s);
+                applyBulkSeverity(s);
+                highlightingCombo.setValue(s.getDisplayName());
+                treeView.refresh();
+            });
+            severityButton.getItems().add(item);
+        }
+
+        severityButton.getItems().add(new SeparatorMenuItem());
+        MenuItem editSeverities = new MenuItem("Edit Severities...");
+        severityButton.getItems().add(editSeverities);
+
+        updateSeverityButton(HighlightSeverity.ERROR);
+    }
+
+    private void updateSeverityButton(HighlightSeverity severity) {
+        if (severity == null) severity = HighlightSeverity.WARNING;
+        severityButton.setText(" " + severity.getDisplayName());
+        severityButton.setGraphic(severity.createIcon(12));
+    }
+
+    private void applyBulkSeverity(HighlightSeverity severity) {
+        List<String> ids = getSelectedToolIds();
+        if (!ids.isEmpty()) {
+            workingProfile.setToolsSeverity(ids, severity);
+            workingProfile.setToolsHighlighting(ids, severity.getDisplayName());
+            fireModified();
+            treeView.refresh();
+        }
+    }
+
+    private void applyBulkScope(String scope) {
+        List<String> ids = getSelectedToolIds();
+        if (!ids.isEmpty()) {
+            workingProfile.setToolsScope(ids, scope);
+            fireModified();
+        }
+    }
+
+    private void applyBulkHighlighting(String highlighting) {
+        List<String> ids = getSelectedToolIds();
+        if (!ids.isEmpty()) {
+            workingProfile.setToolsHighlighting(ids, highlighting);
+            fireModified();
+        }
+    }
+
+    private List<String> getSelectedToolIds() {
+        List<String> ids = new ArrayList<>();
+        for (TreeItem<InspectionTreeNode> item : treeView.getSelectionModel().getSelectedItems()) {
+            if (item == null || item.getValue() == null) continue;
+            if (item.getValue().isCategory()) {
+                for (InspectionTool tool : registry.getToolsForCategory(item.getValue().getCategory())) {
+                    ids.add(tool.getId());
+                }
+            } else if (item.getValue().getTool() != null) {
+                ids.add(item.getValue().getTool().getId());
+            }
+        }
+        return ids;
+    }
+
+    private void refreshTree() {
+        rootItem.getChildren().clear();
+        List<String> categories = registry.getAllCategories();
+        for (String cat : categories) {
+            TreeItem<InspectionTreeNode> catItem = new TreeItem<>(new InspectionTreeNode(cat));
+            List<String> subCats = registry.getAllSubCategories(cat);
+            if (subCats.isEmpty()) {
+                List<InspectionTool> tools = registry.getToolsDirectlyInCategory(cat);
+                for (InspectionTool tool : tools) {
+                    catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
+                }
+            } else {
+                for (String subCat : subCats) {
+                    TreeItem<InspectionTreeNode> subItem = new TreeItem<>(new InspectionTreeNode(subCat));
+                    List<InspectionTool> subTools = registry.getToolsDirectlyInCategory(subCat);
+                    for (InspectionTool tool : subTools) {
+                        subItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
+                    }
+                    catItem.getChildren().add(subItem);
+                }
+                List<InspectionTool> directTools = registry.getToolsDirectlyInCategory(cat);
+                for (InspectionTool tool : directTools) {
+                    catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
+                }
+            }
+            rootItem.getChildren().add(catItem);
+        }
+        treeView.refresh();
+    }
+
+    private void filterTree() {
+        String query = searchField.getText();
+        boolean hasQuery = query != null && !query.isBlank();
+        String q = hasQuery ? query.trim().toLowerCase(Locale.ROOT) : "";
+
+        rootItem.getChildren().clear();
+        for (String cat : registry.getAllCategories()) {
+            List<String> subCats = registry.getAllSubCategories(cat);
+            if (subCats.isEmpty()) {
+                List<InspectionTool> tools = registry.getToolsDirectlyInCategory(cat);
+                List<InspectionTool> matchingTools = filterMatchingTools(tools, cat, q, hasQuery);
+                if (!matchingTools.isEmpty()) {
+                    TreeItem<InspectionTreeNode> catItem = new TreeItem<>(new InspectionTreeNode(cat));
+                    for (InspectionTool t : matchingTools) {
+                        catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
+                    }
+                    catItem.setExpanded(hasQuery);
+                    rootItem.getChildren().add(catItem);
+                }
+            } else {
+                TreeItem<InspectionTreeNode> catItem = null;
+                for (String subCat : subCats) {
+                    List<InspectionTool> subMatching = filterMatchingTools(registry.getToolsDirectlyInCategory(subCat), subCat, q, hasQuery);
+                    if (!subMatching.isEmpty()) {
+                        if (catItem == null) {
+                            catItem = new TreeItem<>(new InspectionTreeNode(cat));
+                        }
+                        TreeItem<InspectionTreeNode> subItem = new TreeItem<>(new InspectionTreeNode(subCat));
+                        for (InspectionTool t : subMatching) {
+                            subItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
+                        }
+                        subItem.setExpanded(hasQuery);
+                        catItem.getChildren().add(subItem);
+                    }
+                }
+                List<InspectionTool> direct = filterMatchingTools(registry.getToolsDirectlyInCategory(cat), cat, q, hasQuery);
+                if (!direct.isEmpty()) {
+                    if (catItem == null) {
+                        catItem = new TreeItem<>(new InspectionTreeNode(cat));
+                    }
+                    for (InspectionTool t : direct) {
+                        catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
+                    }
+                }
+                if (catItem != null) {
+                    catItem.setExpanded(hasQuery);
+                    rootItem.getChildren().add(catItem);
+                }
+            }
+        }
+        treeView.refresh();
+    }
+
+    private List<InspectionTool> filterMatchingTools(List<InspectionTool> tools, String categoryPath, String q, boolean hasQuery) {
+        List<InspectionTool> matching = new ArrayList<>();
+        for (InspectionTool tool : tools) {
+            boolean matchesSearch = !hasQuery ||
+                    tool.getDisplayName().toLowerCase(Locale.ROOT).contains(q) ||
+                    categoryPath.toLowerCase(Locale.ROOT).contains(q) ||
+                    tool.getDescription().toLowerCase(Locale.ROOT).contains(q);
+
+            boolean matchesModified = !filterModifiedOnly ||
+                    (workingProfile.isEnabled(tool) != tool.isDefaultEnabled() ||
+                            workingProfile.getSeverity(tool) != tool.getDefaultSeverity());
+
+            boolean matchesEnabled = !filterEnabledOnly || workingProfile.isEnabled(tool);
+            boolean matchesDisabled = !filterDisabledOnly || !workingProfile.isEnabled(tool);
+            boolean matchesBatch = !filterBatchModeOnly || tool.isBatchModeOnly();
+            boolean matchesCleanup = !filterCleanupOnly || tool.isCleanupTool();
+            boolean matchesSeverity = filterSeverity == null || workingProfile.getSeverity(tool) == filterSeverity;
+            boolean matchesLang = filterLanguage == null || (tool.getLanguage() != null && tool.getLanguage().equalsIgnoreCase(filterLanguage));
+
+            if (matchesSearch && matchesModified && matchesEnabled && matchesDisabled &&
+                    matchesBatch && matchesCleanup && matchesSeverity && matchesLang) {
+                matching.add(tool);
+            }
+        }
+        return matching;
+    }
+
+    private void expandAll(TreeItem<?> item, boolean expand) {
+        if (item == null) return;
+        item.setExpanded(expand);
+        for (TreeItem<?> child : item.getChildren()) {
+            expandAll(child, expand);
+        }
+    }
+
+    private void selectInitialCategory(String categoryName) {
+        for (TreeItem<InspectionTreeNode> item : rootItem.getChildren()) {
+            if (item.getValue() != null && categoryName.equalsIgnoreCase(item.getValue().getCategory())) {
+                treeView.getSelectionModel().select(item);
+                treeView.scrollTo(treeView.getRow(item));
+                updateDetailsPanel();
+                break;
+            }
+        }
+    }
+
+    // Getters for UI and testing access
+    public TreeView<InspectionTreeNode> getTreeView() {
+        return treeView;
+    }
+
+    public ComboBox<ProfileItem> getProfileCombo() {
+        return profileCombo;
+    }
+
+    public TextField getSearchField() {
+        return searchField;
+    }
+
+    public InspectionProfile getWorkingProfile() {
+        return workingProfile;
+    }
+
+    public MenuButton getScopeButton() {
+        return scopeButton;
+    }
+
+    public MenuButton getSeverityButton() {
+        return severityButton;
+    }
+
+    public ComboBox<String> getHighlightingCombo() {
+        return highlightingCombo;
+    }
+
+    public CheckBox getDisableNewInspectionsCheck() {
+        return disableNewInspectionsCheck;
+    }
+
+    public MenuButton getAddMenuButton() {
+        return addMenuButton;
+    }
+
+    public MenuButton getFilterMenuButton() {
+        return filterMenuButton;
     }
 }

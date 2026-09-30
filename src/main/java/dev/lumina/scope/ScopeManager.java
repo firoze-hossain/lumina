@@ -28,12 +28,14 @@ public class ScopeManager {
     private void initBuiltInScopes() {
         builtInScopes.clear();
         builtInScopes.add(NamedScope.builtIn("Project Files", ""));
+        builtInScopes.add(NamedScope.builtIn("Scratches and Consoles", ""));
+        builtInScopes.add(NamedScope.builtIn("Production", "file:*src/main//*"));
         builtInScopes.add(NamedScope.builtIn("Tests", "file:*src/test//*"));
-        builtInScopes.add(NamedScope.builtIn("Non-Project Files", ""));
         builtInScopes.add(NamedScope.builtIn("Generated Files", "file:*target/generated-sources//*"));
         builtInScopes.add(NamedScope.builtIn("Open Files", ""));
+        builtInScopes.add(NamedScope.builtIn("All Changed Files", ""));
         builtInScopes.add(NamedScope.builtIn("Current File", ""));
-        builtInScopes.add(NamedScope.builtIn("Scratches and Consoles", ""));
+        builtInScopes.add(NamedScope.builtIn("Non-Project Files", ""));
     }
 
     public synchronized List<NamedScope> getAllScopes() {
