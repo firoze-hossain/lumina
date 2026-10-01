@@ -19,6 +19,7 @@ public class InspectionProfile {
         private HighlightSeverity severity;
         private String scope;
         private String highlighting;
+        private final Map<String, Boolean> options = new LinkedHashMap<>();
 
         public ToolState(boolean enabled, HighlightSeverity severity, String scope, String highlighting) {
             this.enabled = enabled;
@@ -28,7 +29,21 @@ public class InspectionProfile {
         }
 
         public ToolState copy() {
-            return new ToolState(enabled, severity, scope, highlighting);
+            ToolState cp = new ToolState(enabled, severity, scope, highlighting);
+            cp.options.putAll(this.options);
+            return cp;
+        }
+
+        public Map<String, Boolean> getOptions() {
+            return options;
+        }
+
+        public boolean getOption(String optionId, boolean defaultValue) {
+            return options.getOrDefault(optionId, defaultValue);
+        }
+
+        public void setOption(String optionId, boolean value) {
+            options.put(optionId, value);
         }
 
         public boolean isEnabled() {
@@ -70,12 +85,13 @@ public class InspectionProfile {
             return enabled == toolState.enabled &&
                     severity == toolState.severity &&
                     Objects.equals(scope, toolState.scope) &&
-                    Objects.equals(highlighting, toolState.highlighting);
+                    Objects.equals(highlighting, toolState.highlighting) &&
+                    Objects.equals(options, toolState.options);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(enabled, severity, scope, highlighting);
+            return Objects.hash(enabled, severity, scope, highlighting, options);
         }
     }
 
@@ -223,6 +239,41 @@ public class InspectionProfile {
         }
     }
 
+    public synchronized boolean getOptionBoolean(String toolId, String optionId) {
+        ToolState state = toolStates.get(toolId);
+        if (state != null && state.getOptions().containsKey(optionId)) {
+            return state.getOption(optionId, false);
+        }
+        InspectionTool tool = InspectionRegistry.getInstance().getTool(toolId);
+        if (tool != null && tool.getOptions() != null) {
+            for (InspectionTool.Option opt : tool.getOptions()) {
+                if (opt.getId().equals(optionId)) {
+                    return opt.isDefaultBooleanValue();
+                }
+            }
+        }
+        return false;
+    }
+
+    public synchronized void setOptionBoolean(String toolId, String optionId, boolean value) {
+        ToolState state = toolStates.get(toolId);
+        if (state != null) {
+            state.setOption(optionId, value);
+        } else {
+            InspectionTool tool = InspectionRegistry.getInstance().getTool(toolId);
+            if (tool != null) {
+                ToolState newState = new ToolState(
+                        tool.isDefaultEnabled(),
+                        tool.getDefaultSeverity(),
+                        tool.getDefaultScope(),
+                        tool.getDefaultHighlighting()
+                );
+                newState.setOption(optionId, value);
+                toolStates.put(toolId, newState);
+            }
+        }
+    }
+
     /**
      * Calculates the tri-state (CHECKED, UNCHECKED, INDETERMINATE) for a category.
      */
@@ -316,6 +367,14 @@ public class InspectionProfile {
                 if (state.getSeverity() != tool.getDefaultSeverity()) return true;
                 if (!Objects.equals(state.getScope(), tool.getDefaultScope())) return true;
                 if (!Objects.equals(state.getHighlighting(), tool.getDefaultHighlighting())) return true;
+                if (tool.hasOptions()) {
+                    for (InspectionTool.Option opt : tool.getOptions()) {
+                        boolean val = state.getOptions().containsKey(opt.getId())
+                                ? state.getOption(opt.getId(), opt.isDefaultBooleanValue())
+                                : opt.isDefaultBooleanValue();
+                        if (val != opt.isDefaultBooleanValue()) return true;
+                    }
+                }
             }
         }
         return false;

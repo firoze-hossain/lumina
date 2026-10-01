@@ -138,6 +138,7 @@ public class SettingsInspectionsPage extends VBox {
     private final Label toolTitleLabel = new Label();
     private final Label toolCategoryLabel = new Label();
     private final TextArea toolDescArea = new TextArea();
+    private final VBox optionsContainer = new VBox(6);
 
     // Bottom controls
     private final MenuButton scopeButton = new MenuButton("In All Scopes");
@@ -220,6 +221,14 @@ public class SettingsInspectionsPage extends VBox {
             String wHigh = workingProfile.getHighlighting(tool);
             String aHigh = active.getHighlighting(tool);
             if (!Objects.equals(wHigh, aHigh)) return true;
+
+            if (tool.hasOptions()) {
+                for (InspectionTool.Option opt : tool.getOptions()) {
+                    boolean wVal = workingProfile.getOptionBoolean(tool.getId(), opt.getId());
+                    boolean aVal = active.getOptionBoolean(tool.getId(), opt.getId());
+                    if (wVal != aVal) return true;
+                }
+            }
         }
         return false;
     }
@@ -493,7 +502,7 @@ public class SettingsInspectionsPage extends VBox {
 
         HBox bottomControls = buildBottomControls();
 
-        rightPane.getChildren().addAll(detailsContainer, bottomControls);
+        rightPane.getChildren().addAll(detailsContainer, bottomControls, optionsContainer);
 
         split.getItems().addAll(leftPane, rightPane);
         split.setDividerPositions(0.42);
@@ -771,12 +780,23 @@ public class SettingsInspectionsPage extends VBox {
 
                     if (!node.isCategory() && node.getTool() != null) {
                         // Leaf inspection item: show severity icon before checkbox matching screenshots
-                        HighlightSeverity sev = workingProfile.getSeverity(node.getTool());
-                        if (sev == HighlightSeverity.ERROR || sev == HighlightSeverity.WARNING || sev == HighlightSeverity.SERVER_PROBLEM) {
+                        InspectionTool tool = node.getTool();
+                        boolean enabled = workingProfile.isEnabled(tool);
+                        HighlightSeverity sev = workingProfile.getSeverity(tool);
+                        Node labelNode = label;
+                        if (tool.isBatchModeOnly()) {
+                            Label batchSuffix = new Label(" (available for Code | Inspect Code)");
+                            batchSuffix.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
+                            HBox labelBox = new HBox(label, batchSuffix);
+                            labelBox.setAlignment(Pos.CENTER_LEFT);
+                            HBox.setHgrow(labelBox, Priority.ALWAYS);
+                            labelNode = labelBox;
+                        }
+                        if (enabled && (sev == HighlightSeverity.ERROR || sev == HighlightSeverity.WARNING || sev == HighlightSeverity.SERVER_PROBLEM)) {
                             Node sevIcon = sev.createIcon(12);
-                            row.getChildren().addAll(label, spacer, sevIcon, checkGraphic);
+                            row.getChildren().addAll(labelNode, spacer, sevIcon, checkGraphic);
                         } else {
-                            row.getChildren().addAll(label, spacer, checkGraphic);
+                            row.getChildren().addAll(labelNode, spacer, checkGraphic);
                         }
                     } else {
                         // Category row: tri-state checkbox only
@@ -871,27 +891,28 @@ public class SettingsInspectionsPage extends VBox {
         detailsContainer.setSpacing(14);
         detailsContainer.setPadding(new Insets(10, 8, 8, 8));
 
-        multiSelectionLabel.setStyle("-fx-text-fill: #9DA0A8; -fx-font-size: 13px;");
+        multiSelectionLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 4 0 0 0;");
         multiSelectionLabel.setWrapText(true);
-
-        singleInspectionBox.setSpacing(10);
-        singleInspectionBox.setAlignment(Pos.TOP_LEFT);
-
-        toolTitleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 15px; -fx-font-weight: bold;");
-        toolCategoryLabel.setStyle("-fx-text-fill: #868A91; -fx-font-size: 11px;");
 
         toolDescArea.setEditable(false);
         toolDescArea.setWrapText(true);
-        toolDescArea.setStyle("-fx-control-inner-background: #1E1F22; -fx-background-color: transparent; -fx-text-fill: #BCBEC4; -fx-border-color: transparent; -fx-font-size: 12px;");
+        toolDescArea.setStyle("-fx-control-inner-background: #1E1F22; -fx-background-color: transparent; -fx-text-fill: #BCBEC4; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;");
         VBox.setVgrow(toolDescArea, Priority.ALWAYS);
 
-        singleInspectionBox.getChildren().addAll(toolTitleLabel, toolCategoryLabel, toolDescArea);
+        optionsContainer.setAlignment(Pos.TOP_LEFT);
+        optionsContainer.setSpacing(6);
+        optionsContainer.setPadding(new Insets(6, 0, 4, 0));
+        optionsContainer.setVisible(false);
+        optionsContainer.setManaged(false);
     }
 
     private void updateDetailsPanel() {
         ObservableList<TreeItem<InspectionTreeNode>> selectedItems = treeView.getSelectionModel().getSelectedItems();
         if (selectedItems.isEmpty()) {
             detailsContainer.getChildren().clear();
+            optionsContainer.getChildren().clear();
+            optionsContainer.setVisible(false);
+            optionsContainer.setManaged(false);
             return;
         }
 
@@ -905,16 +926,48 @@ public class SettingsInspectionsPage extends VBox {
             }
         }
 
-        if (selectedTools.size() > 1 || (selectedItems.size() == 1 && selectedItems.get(0).getValue().isCategory())) {
+        TreeItem<InspectionTreeNode> firstItem = (!selectedItems.isEmpty()) ? selectedItems.get(0) : null;
+        boolean firstIsCategory = (firstItem != null && firstItem.getValue() != null && firstItem.getValue().isCategory());
+
+        if (selectedTools.size() > 1 || (selectedItems.size() == 1 && firstIsCategory)) {
+            multiSelectionLabel.setVisible(true);
             detailsContainer.getChildren().setAll(multiSelectionLabel);
+            optionsContainer.getChildren().clear();
+            optionsContainer.setVisible(false);
+            optionsContainer.setManaged(false);
         } else if (selectedTools.size() == 1) {
+            multiSelectionLabel.setVisible(false);
             InspectionTool tool = selectedTools.get(0);
-            toolTitleLabel.setText(tool.getDisplayName());
-            toolCategoryLabel.setText("Category: " + tool.getGroupPath() + (tool.getLanguage() != null ? "  |  Language: " + tool.getLanguage() : ""));
-            toolDescArea.setText(tool.getDescription() + "\n\nID: " + tool.getId());
-            detailsContainer.getChildren().setAll(singleInspectionBox);
+            toolDescArea.setText(tool.getDescription() + "\n\nInspection ID: " + tool.getId());
+            detailsContainer.getChildren().setAll(toolDescArea);
+
+            optionsContainer.getChildren().clear();
+            if (tool.hasOptions()) {
+                Label optionsLabel = new Label("Options");
+                optionsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 4 0 2 0;");
+                optionsContainer.getChildren().add(optionsLabel);
+
+                for (InspectionTool.Option opt : tool.getOptions()) {
+                    CheckBox optCheck = new CheckBox(opt.getLabel());
+                    optCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    optCheck.setSelected(workingProfile.getOptionBoolean(tool.getId(), opt.getId()));
+                    optCheck.setOnAction(e -> {
+                        workingProfile.setOptionBoolean(tool.getId(), opt.getId(), optCheck.isSelected());
+                        fireModified();
+                    });
+                    optionsContainer.getChildren().add(optCheck);
+                }
+                optionsContainer.setVisible(true);
+                optionsContainer.setManaged(true);
+            } else {
+                optionsContainer.setVisible(false);
+                optionsContainer.setManaged(false);
+            }
         } else {
             detailsContainer.getChildren().clear();
+            optionsContainer.getChildren().clear();
+            optionsContainer.setVisible(false);
+            optionsContainer.setManaged(false);
         }
 
         // Bottom controls update
@@ -1097,30 +1150,11 @@ public class SettingsInspectionsPage extends VBox {
 
     private void refreshTree() {
         rootItem.getChildren().clear();
-        List<String> categories = registry.getAllCategories();
-        for (String cat : categories) {
-            TreeItem<InspectionTreeNode> catItem = new TreeItem<>(new InspectionTreeNode(cat));
-            List<String> subCats = registry.getAllSubCategories(cat);
-            if (subCats.isEmpty()) {
-                List<InspectionTool> tools = registry.getToolsDirectlyInCategory(cat);
-                for (InspectionTool tool : tools) {
-                    catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
-                }
-            } else {
-                for (String subCat : subCats) {
-                    TreeItem<InspectionTreeNode> subItem = new TreeItem<>(new InspectionTreeNode(subCat));
-                    List<InspectionTool> subTools = registry.getToolsDirectlyInCategory(subCat);
-                    for (InspectionTool tool : subTools) {
-                        subItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
-                    }
-                    catItem.getChildren().add(subItem);
-                }
-                List<InspectionTool> directTools = registry.getToolsDirectlyInCategory(cat);
-                for (InspectionTool tool : directTools) {
-                    catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(tool)));
-                }
+        for (String cat : registry.getAllCategories()) {
+            TreeItem<InspectionTreeNode> catItem = buildCategoryNode(cat, "", false);
+            if (catItem != null) {
+                rootItem.getChildren().add(catItem);
             }
-            rootItem.getChildren().add(catItem);
         }
         treeView.refresh();
     }
@@ -1132,50 +1166,37 @@ public class SettingsInspectionsPage extends VBox {
 
         rootItem.getChildren().clear();
         for (String cat : registry.getAllCategories()) {
-            List<String> subCats = registry.getAllSubCategories(cat);
-            if (subCats.isEmpty()) {
-                List<InspectionTool> tools = registry.getToolsDirectlyInCategory(cat);
-                List<InspectionTool> matchingTools = filterMatchingTools(tools, cat, q, hasQuery);
-                if (!matchingTools.isEmpty()) {
-                    TreeItem<InspectionTreeNode> catItem = new TreeItem<>(new InspectionTreeNode(cat));
-                    for (InspectionTool t : matchingTools) {
-                        catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
-                    }
-                    catItem.setExpanded(hasQuery);
-                    rootItem.getChildren().add(catItem);
-                }
-            } else {
-                TreeItem<InspectionTreeNode> catItem = null;
-                for (String subCat : subCats) {
-                    List<InspectionTool> subMatching = filterMatchingTools(registry.getToolsDirectlyInCategory(subCat), subCat, q, hasQuery);
-                    if (!subMatching.isEmpty()) {
-                        if (catItem == null) {
-                            catItem = new TreeItem<>(new InspectionTreeNode(cat));
-                        }
-                        TreeItem<InspectionTreeNode> subItem = new TreeItem<>(new InspectionTreeNode(subCat));
-                        for (InspectionTool t : subMatching) {
-                            subItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
-                        }
-                        subItem.setExpanded(hasQuery);
-                        catItem.getChildren().add(subItem);
-                    }
-                }
-                List<InspectionTool> direct = filterMatchingTools(registry.getToolsDirectlyInCategory(cat), cat, q, hasQuery);
-                if (!direct.isEmpty()) {
-                    if (catItem == null) {
-                        catItem = new TreeItem<>(new InspectionTreeNode(cat));
-                    }
-                    for (InspectionTool t : direct) {
-                        catItem.getChildren().add(new TreeItem<>(new InspectionTreeNode(t)));
-                    }
-                }
-                if (catItem != null) {
-                    catItem.setExpanded(hasQuery);
-                    rootItem.getChildren().add(catItem);
-                }
+            TreeItem<InspectionTreeNode> catItem = buildCategoryNode(cat, q, hasQuery);
+            if (catItem != null) {
+                rootItem.getChildren().add(catItem);
             }
         }
         treeView.refresh();
+    }
+
+    private TreeItem<InspectionTreeNode> buildCategoryNode(String catPath, String q, boolean hasQuery) {
+        List<String> subCats = registry.getAllSubCategories(catPath);
+        List<InspectionTool> direct = filterMatchingTools(registry.getToolsDirectlyInCategory(catPath), catPath, q, hasQuery);
+
+        List<TreeItem<InspectionTreeNode>> childNodes = new ArrayList<>();
+        for (String subCat : subCats) {
+            TreeItem<InspectionTreeNode> subItem = buildCategoryNode(subCat, q, hasQuery);
+            if (subItem != null) {
+                childNodes.add(subItem);
+            }
+        }
+        for (InspectionTool t : direct) {
+            childNodes.add(new TreeItem<>(new InspectionTreeNode(t)));
+        }
+
+        if (childNodes.isEmpty()) {
+            return null;
+        }
+
+        TreeItem<InspectionTreeNode> catItem = new TreeItem<>(new InspectionTreeNode(catPath));
+        catItem.getChildren().addAll(childNodes);
+        catItem.setExpanded(hasQuery);
+        return catItem;
     }
 
     private List<InspectionTool> filterMatchingTools(List<InspectionTool> tools, String categoryPath, String q, boolean hasQuery) {
@@ -1263,5 +1284,17 @@ public class SettingsInspectionsPage extends VBox {
 
     public MenuButton getFilterMenuButton() {
         return filterMenuButton;
+    }
+
+    public VBox getOptionsContainer() {
+        return optionsContainer;
+    }
+
+    public Label getMultiSelectionLabel() {
+        return multiSelectionLabel;
+    }
+
+    public TextArea getToolDescArea() {
+        return toolDescArea;
     }
 }

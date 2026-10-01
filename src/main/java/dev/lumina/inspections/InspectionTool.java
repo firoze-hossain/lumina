@@ -10,6 +10,30 @@ import java.util.Objects;
  */
 public class InspectionTool {
 
+    public static class Option {
+        private final String id;
+        private final String label;
+        private final boolean defaultBooleanValue;
+
+        public Option(String id, String label, boolean defaultBooleanValue) {
+            this.id = Objects.requireNonNull(id, "id must not be null");
+            this.label = label != null ? label : id;
+            this.defaultBooleanValue = defaultBooleanValue;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public boolean isDefaultBooleanValue() {
+            return defaultBooleanValue;
+        }
+    }
+
     private final String id;
     private final String displayName;
     private final String groupPath;
@@ -22,6 +46,37 @@ public class InspectionTool {
     private final List<String> tags;
     private final boolean batchModeOnly;
     private final boolean cleanupTool;
+    private final List<Option> options;
+
+    public InspectionTool(
+            String id,
+            String displayName,
+            String groupPath,
+            String description,
+            HighlightSeverity defaultSeverity,
+            boolean defaultEnabled,
+            String defaultScope,
+            String defaultHighlighting,
+            String language,
+            List<String> tags,
+            boolean batchModeOnly,
+            boolean cleanupTool,
+            List<Option> options
+    ) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.displayName = displayName != null ? displayName : id;
+        this.groupPath = groupPath != null ? groupPath : "General";
+        this.description = description != null ? description : "";
+        this.defaultSeverity = defaultSeverity != null ? defaultSeverity : HighlightSeverity.WARNING;
+        this.defaultEnabled = defaultEnabled;
+        this.defaultScope = defaultScope != null ? defaultScope : "In All Scopes";
+        this.defaultHighlighting = defaultHighlighting != null ? defaultHighlighting : this.defaultSeverity.getDisplayName();
+        this.language = language;
+        this.tags = tags != null ? List.copyOf(tags) : Collections.emptyList();
+        this.batchModeOnly = batchModeOnly;
+        this.cleanupTool = cleanupTool;
+        this.options = options != null ? List.copyOf(options) : Collections.emptyList();
+    }
 
     public InspectionTool(
             String id,
@@ -37,18 +92,7 @@ public class InspectionTool {
             boolean batchModeOnly,
             boolean cleanupTool
     ) {
-        this.id = Objects.requireNonNull(id, "id must not be null");
-        this.displayName = displayName != null ? displayName : id;
-        this.groupPath = groupPath != null ? groupPath : "General";
-        this.description = description != null ? description : "";
-        this.defaultSeverity = defaultSeverity != null ? defaultSeverity : HighlightSeverity.WARNING;
-        this.defaultEnabled = defaultEnabled;
-        this.defaultScope = defaultScope != null ? defaultScope : "In All Scopes";
-        this.defaultHighlighting = defaultHighlighting != null ? defaultHighlighting : this.defaultSeverity.getDisplayName();
-        this.language = language;
-        this.tags = tags != null ? List.copyOf(tags) : Collections.emptyList();
-        this.batchModeOnly = batchModeOnly;
-        this.cleanupTool = cleanupTool;
+        this(id, displayName, groupPath, description, defaultSeverity, defaultEnabled, defaultScope, defaultHighlighting, language, tags, batchModeOnly, cleanupTool, Collections.emptyList());
     }
 
     public InspectionTool(
@@ -118,6 +162,14 @@ public class InspectionTool {
         return cleanupTool;
     }
 
+    public List<Option> getOptions() {
+        return options;
+    }
+
+    public boolean hasOptions() {
+        return !options.isEmpty();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -148,6 +200,7 @@ public class InspectionTool {
         private final List<String> tags = new ArrayList<>();
         private boolean batchModeOnly = false;
         private boolean cleanupTool = false;
+        private final List<Option> options = new ArrayList<>();
 
         public Builder(String id) {
             this.id = id;
@@ -214,12 +267,17 @@ public class InspectionTool {
             return this;
         }
 
+        public Builder addOption(String id, String label, boolean defaultValue) {
+            this.options.add(new Option(id, label, defaultValue));
+            return this;
+        }
+
         public InspectionTool build() {
             return new InspectionTool(
                     id, displayName, groupPath, description,
                     defaultSeverity, defaultEnabled, defaultScope,
                     defaultHighlighting, language, tags,
-                    batchModeOnly, cleanupTool
+                    batchModeOnly, cleanupTool, options
             );
         }
     }

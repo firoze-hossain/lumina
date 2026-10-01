@@ -3107,217 +3107,113 @@ public final class InspectionRegistry {
                 "Reports private class properties that are never read.",
                 HighlightSeverity.WARNING, true, "PHP");
 
-        // 60. PostCSS ([✓])
-        addTool("PostCSS.PluginSyntax", "PostCSS plugin syntax", "PostCSS",
-                "Validates PostCSS custom directives and nesting rules.",
-                HighlightSeverity.WARNING, true, "CSS");
+        // 60. PostCSS ([-]) - 5 inspections matching reference
+        initPostCssInspections();
 
         // 61. PostgreSQL ([✓])
-        addTool("PostgreSQL.SyntaxValidation", "PostgreSQL syntax validation", "PostgreSQL",
-                "Validates queries and stored functions against PostgreSQL syntax.",
-                HighlightSeverity.ERROR, true, "SQL");
+        initPostgreSqlInspections();
 
-        // 62. Proofreading ([-])
-        addTool("Proofreading.Typo", "Typo in identifier or comment", "Proofreading",
-                "Reports misspelled words in code identifiers, strings, and comments.",
-                HighlightSeverity.TYPO, true, "General");
-        addTool("Proofreading.Grammar", "Grammar error", "Proofreading",
-                "Checks sentence structure and grammatical correctness in comments.",
-                HighlightSeverity.GRAMMAR_ERROR, false, "General");
+        // 62. Proofreading ([✓])
+        initProofreadingInspections();
 
-        // 63. Properties files ([✓])
-        addTool("Properties.UnusedProperty", "Unused property key", "Properties files",
-                "Reports property keys defined in .properties files that are never referenced.",
-                HighlightSeverity.WARNING, true, "Properties");
+        // 63. Properties files ([-]) - 9 inspections matching reference
+        initPropertiesFilesInspections();
 
         // 64. Protocol Buffers ([✓])
-        addTool("Protobuf.FieldNumber", "Duplicate field number", "Protocol Buffers",
-                "Reports duplicate field tag numbers within the same protobuf message.",
-                HighlightSeverity.ERROR, true, "Protobuf");
+        initProtocolBuffersInspections();
 
-        // 65. Python ([-])
-        addTool("Python.UnresolvedReference", "Unresolved Python reference", "Python",
-                "Reports variable, function, or module names that cannot be resolved.",
-                HighlightSeverity.WARNING, true, "Python");
-        addTool("Python.TypeCheck", "Type annotation mismatch", "Python",
-                "Reports arguments that do not match expected PEP 484 type annotations.",
-                HighlightSeverity.WARNING, false, "Python");
+        // 64b. Pyramid ([✓])
+        initPyramidInspections();
+
+        // 65. Python ([-]) - All inspections matching reference
+        initPythonInspections();
 
         // 66. Qodana ([ ]) - Unchecked
-        addTool("Qodana.SanityCheck", "Qodana configuration sanity check", "Qodana",
-                "Validates qodana.yaml inspection profiles and baseline paths.",
-                HighlightSeverity.WARNING, false, "YAML");
+        initQodanaInspections();
 
-        // 67. Quarkus ([-])
-        addTool("Quarkus.ConfigProperty", "Unresolved Quarkus config property", "Quarkus",
-                "Reports @ConfigProperty keys missing in application.properties.",
-                HighlightSeverity.WARNING, true, "Java");
-        addTool("Quarkus.PanacheQuery", "Panache entity query check", "Quarkus",
-                "Validates HQL queries in PanacheEntity repository methods.",
-                HighlightSeverity.WARNING, false, "Java");
+        // 67. Quarkus ([-]) - 5 inspections matching reference
+        initQuarkusInspections();
 
-        // 68. RBS ([-])
-        addTool("RBS.TypeDefinition", "RBS type definition problem", "RBS",
-                "Validates Ruby signature definitions in RBS files.",
-                HighlightSeverity.ERROR, true, "Ruby");
-        addTool("RBS.UnusedType", "Unused RBS type alias", "RBS",
-                "Reports type aliases in RBS files that are never referenced.",
-                HighlightSeverity.WEAK_WARNING, false, "Ruby");
+        // 68. RBS ([✓]) - 27 inspections across 5 subcategories matching reference
+        initRbsInspections();
 
-        // 69. RegExp ([-])
-        addTool("RegExp.SyntaxError", "Regular expression syntax error", "RegExp",
-                "Reports syntax errors, unescaped characters, and invalid ranges in regex patterns.",
-                HighlightSeverity.ERROR, true, "RegExp");
-        addTool("RegExp.RedundantEscape", "Redundant character escape", "RegExp",
-                "Reports unnecessary backslash escape sequences in regular expressions.",
-                HighlightSeverity.WEAK_WARNING, false, "RegExp");
+        // 68b. Reactive Streams ([✓]) - 12 inspections across 3 subcategories matching reference
+        initReactiveStreamsInspections();
 
-        // 70. RELAX NG ([✓])
-        addTool("RelaxNG.PatternSyntax", "RELAX NG grammar validation", "RELAX NG",
-                "Validates XML documents against RELAX NG compact or XML schemas.",
-                HighlightSeverity.ERROR, true, "XML");
+        // 69. RegExp ([-]) - 15 inspections matching reference
+        initRegExpInspections();
 
-        // 71. Requirements ([✓])
-        addTool("Requirements.PackageVersion", "Unresolved package requirement", "Requirements",
-                "Reports packages in requirements.txt that cannot be satisfied in current environment.",
-                HighlightSeverity.WARNING, true, "Python");
+        // 70. RELAX NG ([-]) - 2 inspections matching reference
+        initRelaxNgInspections();
 
-        // 72. RESTful Web Service (JAX-RS) ([✓])
-        addTool("JaxRs.HttpMethod", "Missing HTTP method annotation", "RESTful Web Service (JAX-RS)",
-                "Reports resource methods with path mapping missing @GET, @POST, etc.",
-                HighlightSeverity.WARNING, true, "Java");
+        // 71. Requirements ([✓]) - 2 inspections matching reference
+        initRequirementsInspections();
 
-        // 73. Ruby ([-])
-        addTool("Ruby.UnusedLocalVariable", "Unused Ruby local variable", "Ruby",
-                "Reports local variables in Ruby blocks that are never used.",
-                HighlightSeverity.WARNING, true, "Ruby");
-        addTool("Ruby.StyleGuide", "Ruby style guideline violation", "Ruby",
-                "Checks adherence to standard community Ruby formatting conventions.",
-                HighlightSeverity.WEAK_WARNING, false, "Ruby");
+        // 72. RESTful Web Service (JAX-RS) ([✓]) - 7 inspections matching reference
+        initRestfulWebServiceInspections();
 
-        // 74. Rust ([✓])
-        addTool("Rust.MoveError", "Use of moved value", "Rust",
-                "Reports borrowing and ownership errors where a value is used after being moved.",
-                HighlightSeverity.ERROR, true, "Rust");
+        // 73. Ruby ([-]) - 75+ inspections across 14 subcategories matching reference
+        initRubyInspections();
+
+        // 74. Rust ([-]) - 161 inspections across Cargo.toml, Lints, and core Rust matching screenshots
+        initRustInspections();
 
         // 75. Sass/SCSS ([✓])
-        addTool("Sass.VariableScope", "Unresolved Sass variable", "Sass/SCSS",
-                "Reports variables in SCSS files that are not in scope.",
-                HighlightSeverity.ERROR, true, "SCSS");
+        initSassInspections();
 
         // 76. sbt ([✓])
-        addTool("Sbt.SettingKey", "Unresolved sbt setting key", "sbt",
-                "Validates build.sbt setting expressions and dependency keys.",
-                HighlightSeverity.WARNING, true, "Scala");
+        initSbtInspections();
 
-        // 77. Scala ([-]) - Selected in screenshot
-        addTool("Scala.TypeMismatch", "Scala expression type mismatch", "Scala",
-                "Reports compile-time type incompatibilities in Scala expressions.",
-                HighlightSeverity.ERROR, true, "Scala");
-        addTool("Scala.UnusedImport", "Unused Scala import", "Scala",
-                "Reports unused package and class imports in Scala sources.",
-                HighlightSeverity.WARNING, false, "Scala");
+        // 77. Scala ([-])
+        initScalaInspections();
 
-        // 78. Security ([-])
-        addTool("Security.SqlInjection", "Potential SQL injection vulnerability", "Security",
-                "Reports string concatenation used to construct dynamic SQL queries from untrusted input.",
-                HighlightSeverity.ERROR, true, "Security");
-        addTool("Security.InsecureAlgorithm", "Use of weak cryptographic algorithm", "Security",
-                "Reports usage of MD5, DES, or SHA-1 for cryptographic security purposes.",
-                HighlightSeverity.WARNING, false, "Security");
+        // 78. Security ([✓])
+        initSecurityInspections();
 
         // 79. Shell script ([✓])
-        addTool("Shell.UnquotedVariable", "Unquoted variable expansion", "Shell script",
-                "Reports variable expansions in Bash scripts that should be quoted to prevent word splitting.",
-                HighlightSeverity.WARNING, true, "Shell");
+        initShellScriptInspections();
 
-        // 80. Spring ([-])
-        addTool("Spring.AutowiredDependency", "Unsatisfied @Autowired bean dependency", "Spring",
-                "Reports Spring bean dependencies that cannot be resolved in application context.",
-                HighlightSeverity.ERROR, true, "Java");
-        addTool("Spring.RequestMapping", "Duplicate URL mapping in Spring controllers", "Spring",
-                "Reports conflicting route mappings in @RequestMapping and @GetMapping annotations.",
-                HighlightSeverity.WARNING, false, "Java");
+        // 80. Spring ([✓])
+        initSpringInspections();
 
-        // 81. Spring Data ([-])
-        addTool("SpringData.MethodName", "Invalid Spring Data query method name", "Spring Data",
-                "Validates derived query method names against entity property names.",
-                HighlightSeverity.ERROR, true, "Java");
-        addTool("SpringData.CustomImplementation", "Missing custom repository implementation", "Spring Data",
-                "Reports custom repository interfaces missing required implementation classes.",
-                HighlightSeverity.WARNING, false, "Java");
+        // 81. Spring Data ([✓])
+        initSpringDataInspections();
 
-        // 82. Spring Modulith ([-])
-        addTool("SpringModulith.ModuleViolation", "Application module boundary violation", "Spring Modulith",
-                "Reports internal package references between segregated Spring Modulith components.",
-                HighlightSeverity.ERROR, true, "Java");
-        addTool("SpringModulith.EventExternalization", "Unpublished internal domain event", "Spring Modulith",
-                "Reports domain events intended for external publication lacking appropriate annotations.",
-                HighlightSeverity.WARNING, false, "Java");
+        // 82. Spring Modulith ([✓])
+        initSpringModulithInspections();
 
         // 83. SQL ([-])
-        addTool("SQL.SyntaxError", "SQL dialect syntax error", "SQL",
-                "Reports syntax errors, unresolved tables, and column mismatches in SQL queries.",
-                HighlightSeverity.ERROR, true, "SQL");
-        addTool("SQL.MissingJoinCondition", "Missing JOIN condition", "SQL",
-                "Reports Cartesian product joins resulting from missing ON conditions.",
-                HighlightSeverity.WARNING, false, "SQL");
+        initSqlInspections();
 
         // 84. SQL server ([✓])
-        addTool("SqlServer.TsqlSyntax", "T-SQL syntax validation", "SQL server",
-                "Validates Microsoft SQL Server specific T-SQL statements and table hints.",
-                HighlightSeverity.ERROR, true, "SQL");
+        initSqlServerInspections();
 
         // 85. Thymeleaf ([✓])
-        addTool("Thymeleaf.ExpressionSyntax", "Thymeleaf standard expression syntax", "Thymeleaf",
-                "Validates Thymeleaf ${...}, *{...}, and #{...} expressions in HTML templates.",
-                HighlightSeverity.ERROR, true, "HTML");
+        initThymeleafInspections();
 
         // 86. TOML ([✓])
-        addTool("TOML.SyntaxValidation", "TOML syntax error", "TOML",
-                "Reports syntax errors, duplicate table keys, and malformed values in TOML files.",
-                HighlightSeverity.ERROR, true, "TOML");
+        initTomlInspections();
 
         // 87. Velocity ([✓])
-        addTool("Velocity.DirectiveValidation", "Velocity VTL directive syntax", "Velocity",
-                "Validates Apache Velocity template language directives and variable interpolations.",
-                HighlightSeverity.ERROR, true, "Velocity");
+        initVelocityInspections();
 
         // 88. Version control ([✓])
-        addTool("Vcs.CommitMessage", "Empty or malformed commit message", "Version control",
-                "Checks commit messages against configured length and format conventions.",
-                HighlightSeverity.WARNING, true, "General");
+        initVersionControlInspections();
 
-        // 89. Vue ([-])
-        addTool("Vue.ComponentBinding", "Invalid Vue component template binding", "Vue",
-                "Reports unresolved property references in Vue single file components.",
-                HighlightSeverity.WARNING, true, "Vue");
-        addTool("Vue.UnusedComponent", "Unused local Vue component", "Vue",
-                "Reports components registered in Vue file that are not used in template.",
-                HighlightSeverity.WEAK_WARNING, false, "Vue");
+        // 89. Vue ([✓])
+        initVueInspections();
 
-        // 90. XML ([-])
-        addTool("XML.WellFormedness", "XML well-formedness error", "XML",
-                "Reports XML syntax errors, mismatched start/end tags, and unclosed elements.",
-                HighlightSeverity.ERROR, true, "XML");
-        addTool("XML.UnusedNamespace", "Unused XML namespace declaration", "XML",
-                "Reports xmlns namespace prefixes that are declared but never used in document.",
-                HighlightSeverity.WARNING, false, "XML");
+        // 90. XML ([✓])
+        initXmlInspections();
 
         // 91. XPath ([✓])
-        addTool("XPath.ExpressionSyntax", "XPath expression syntax", "XPath",
-                "Reports syntax errors and invalid axis specifiers in XPath expressions.",
-                HighlightSeverity.ERROR, true, "XPath");
+        initXPathInspections();
 
         // 92. XSLT ([✓])
-        addTool("XSLT.TemplateMatch", "XSLT template match validation", "XSLT",
-                "Validates XSLT transformation template matches and output definitions.",
-                HighlightSeverity.ERROR, true, "XML");
+        initXsltInspections();
 
         // 93. YAML ([✓])
-        addTool("YAML.IndentationError", "YAML syntax and indentation error", "YAML",
-                "Reports indentation errors, bad tab characters, and malformed keys in YAML files.",
-                HighlightSeverity.ERROR, true, "YAML");
+        initYamlInspections();
     }
 
     private void addTool(String id, String displayName, String groupPath, String desc,
@@ -3340,4 +3236,3054 @@ public final class InspectionRegistry {
                 .build();
         toolsById.put(tool.getId(), tool);
     }
+
+    private void initPostCssInspections() {
+        addTool("PostCSS.InvalidCustomMedia", "Invalid custom media", "PostCSS",
+                "Reports invalid CSS custom media queries according to PostCSS specifications.",
+                HighlightSeverity.ERROR, true, "CSS");
+        addTool("PostCSS.InvalidCustomSelector", "Invalid custom selector", "PostCSS",
+                "Reports invalid CSS custom selectors in PostCSS stylesheets.",
+                HighlightSeverity.ERROR, true, "CSS");
+        addTool("PostCSS.InvalidMediaQueryRange", "Invalid media query range", "PostCSS",
+                "Reports invalid media query ranges in PostCSS media expressions.",
+                HighlightSeverity.ERROR, true, "CSS");
+        addTool("PostCSS.InvalidNestedRule", "Invalid nested rule", "PostCSS",
+                "Reports invalid CSS nesting syntax in PostCSS rule blocks.",
+                HighlightSeverity.WARNING, false, "CSS");
+        addTool("PostCSS.UnresolvedCssModuleValue", "Unresolved CSS module value", "PostCSS",
+                "Reports unresolved @value definitions in CSS modules.",
+                HighlightSeverity.ERROR, true, "CSS");
+    }
+
+    private void initPostgreSqlInspections() {
+        addTool("PostgreSQL.SelectFromProcedureCall", "Postgres: Select from procedure call", "PostgreSQL",
+                "Reports SELECT queries that invoke stored procedures instead of CALL statements in PostgreSQL.",
+                HighlightSeverity.WARNING, true, "SQL");
+    }
+
+    private void initProofreadingInspections() {
+        addTool("Proofreading.Grammar", "Grammar", "Proofreading",
+                "Checks sentence structure and grammatical correctness in natural language text and comments.",
+                HighlightSeverity.GRAMMAR_ERROR, true, "General");
+        addTool("Proofreading.NaturalLanguageDetection", "Natural language detection", "Proofreading",
+                "Detects natural languages in comments and text to apply appropriate dictionaries and spell checking rules.",
+                HighlightSeverity.WARNING, true, "General");
+        addTool("Proofreading.Typo", "Typo", "Proofreading",
+                "Reports misspelled words in code identifiers, strings, and comments.",
+                HighlightSeverity.TYPO, true, "General");
+    }
+
+    private void initPropertiesFilesInspections() {
+        addTool("Properties.DuplicateProperty", "Duplicate property (available for Code | Inspect Code)", "Properties files",
+                "Reports duplicate property keys in properties files and resource bundles.",
+                HighlightSeverity.WARNING, false, "Properties", true, false);
+        addTool("Properties.InconsistentResourceBundle", "Inconsistent resource bundle (available for Code | Inspect Code)", "Properties files",
+                "Reports resource bundles with inconsistent keys across locale-specific properties files.",
+                HighlightSeverity.ERROR, true, "Properties", true, false);
+        addTool("Properties.MissingMessageFormatParameter", "Missing message format parameter", "Properties files",
+                "Reports missing or mismatched MessageFormat parameters in localized property values.",
+                HighlightSeverity.WARNING, true, "Properties");
+        addTool("Properties.AlphabeticallyUnsorted", "Properties file or resource bundle is alphabetically unsorted", "Properties files",
+                "Reports properties files that are not sorted alphabetically by key.",
+                HighlightSeverity.WARNING, false, "Properties");
+        addTool("Properties.DelimiterMismatch", "Property key/value delimiter doesn't match code style settings", "Properties files",
+                "Reports property key/value delimiters that do not adhere to code style settings.",
+                HighlightSeverity.WARNING, true, "Properties");
+        addTool("Properties.SuspiciousLocaleLanguages", "Suspicious resource bundle locale languages", "Properties files",
+                "Reports unusual or suspicious locale country/language code combinations in resource bundles.",
+                HighlightSeverity.WARNING, false, "Properties");
+        addTool("Properties.ThreeDotCharacters", "Three dot characters instead of the ellipsis", "Properties files",
+                "Suggests replacing three consecutive dots (...) with the unicode ellipsis character (…).",
+                HighlightSeverity.WARNING, false, "Properties");
+        addTool("Properties.TrailingSpaces", "Trailing spaces in property", "Properties files",
+                "Reports trailing whitespace characters at the end of property keys or values.",
+                HighlightSeverity.WARNING, true, "Properties");
+        addTool("Properties.UnusedProperty", "Unused property", "Properties files",
+                "Reports property keys that are not referenced in the project code.",
+                HighlightSeverity.WARNING, true, "Properties");
+    }
+
+    private void initProtocolBuffersInspections() {
+        addTool("Protobuf.DuplicatedImport", "Duplicated import statements", "Protocol Buffers",
+                "Reports duplicate import statements in .proto files.",
+                HighlightSeverity.WARNING, true, "Protobuf");
+    }
+
+    private void initPyramidInspections() {
+        addTool("Pyramid.ProjectNotInstalled", "Project is not installed for development", "Pyramid",
+                "Reports Pyramid web applications that have not been installed in development mode via 'pip install -e .'.",
+                HighlightSeverity.WARNING, true, "Python");
+    }
+
+    private void initPythonInspections() {
+        // Subcategory Security
+        addTool("PySecurityVulnerableApiInspection", "Vulnerable API usage", "Python/Security",
+                "Reports Python API calls known to be vulnerable to common security exploits.",
+                HighlightSeverity.WARNING, true, "Python");
+
+        // Direct Python inspections matching reference screenshots 2, 3, 4
+        addTool("PyByteLiteralNonAsciiInspection", "A byte literal contains a non-ASCII character", "Python",
+                "Reports byte literals containing non-ASCII characters without proper escape sequences.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyProtectedMemberInspection", "Accessing a protected member of a class or a module", "Python",
+                "Reports access to protected members outside class hierarchy or enclosing module.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInstanceAttributeDefinedOutsideInitInspection", "An instance attribute is defined outside `__init__`", "Python",
+                "Reports instance attributes defined in methods other than __init__.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidInterpreterInspection", "An invalid interpreter", "Python",
+                "Reports SDK interpreters configured with invalid Python paths.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyAssigningFunctionCallNoReturnInspection", "Assigning function calls that don't return anything", "Python",
+                "Reports assigning results of functions that return None or lack return statements.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyAugmentAssignmentInspection", "Assignment can be replaced with augmented assignment", "Python",
+                "Suggests replacing 'x = x + 1' with augmented assignment 'x += 1'.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyAssignmentToLoopOrWithParameterInspection", "Assignments to 'for' loop or 'with' statement parameter", "Python",
+                "Reports reassignments to loop variables or with statement context targets.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyCallingNonCallableInspection", "Attempt to call a non-callable object", "Python",
+                "Reports invocation of objects that do not implement __call__.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyClassSpecificDecoratorOutsideClassInspection", "Class-specific decorator is used outside the class", "Python",
+                "Reports @classmethod or @staticmethod decorators used on module-level functions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyClassHasNoInitInspection", "Class has no `__init__` method", "Python",
+                "Reports classes that do not declare an __init__ constructor method.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyClassicStyleClassUsageInspection", "Classic style class usage", "Python",
+                "Reports old-style class definitions not inheriting from object in Python 2 compatible code.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyIncompatibleVersionInspection", "Code is incompatible with specific Python versions", "Python",
+                "Reports language constructs that are incompatible with target Python runtime versions.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyCythonVariableUsedBeforeDeclarationInspection", "Cython variable is used before its declaration", "Python",
+                "Reports Cython cdef variables referenced before their declaration statement.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyDeprecationInspection", "Deprecated function, class, or module", "Python",
+                "Reports calls to deprecated functions, classes, and imported modules.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyDictDuplicateKeysInspection", "Dictionary contains duplicate keys", "Python",
+                "Reports dictionary literals that contain duplicate keys.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyDictCreationInspection", "Dictionary creation can be rewritten by dictionary literal", "Python",
+                "Suggests replacing consecutive subscript assignments with an inline dictionary literal.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyStringFormatInspection", "Errors in string formatting operations", "Python",
+                "Reports mismatched placeholder counts and invalid specifiers in printf-style and str.format expressions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyExceptionInheritanceInspection", "Exceptions do not inherit from standard 'Exception' class", "Python",
+                "Reports custom exception classes that do not derive from BaseException or Exception.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyFileNonAsciiInspection", "File contains non-ASCII character", "Python",
+                "Reports non-ASCII characters in source files lacking encoding declarations.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyFirstArgumentReassignedInspection", "First argument of the method is reassigned", "Python",
+                "Reports reassignments to 'self' or 'cls' parameters inside method bodies.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyFixtureNotRequestedInspection", "Fixture is not requested by test functions", "Python",
+                "Reports pytest fixture definitions that are never requested by test functions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PySetFunctionToLiteralInspection", "Function call can be replaced with set literal", "Python",
+                "Suggests replacing set([...]) constructor calls with { ... } set literal syntax.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyGlobalVariableAtModuleLevelInspection", "Global variable is not defined at the module level", "Python",
+                "Reports 'global' declarations referencing identifiers that do not exist at module scope.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyImproperFirstParameterInspection", "Improper first parameter", "Python",
+                "Reports instance methods missing 'self' parameter or class methods missing 'cls' parameter.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyImproperFutureImportInspection", "Improper position of from __future__ import", "Python",
+                "Reports __future__ import statements that are not at the very top of the source file.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInappropriateAccessToPropertiesInspection", "Inappropriate access to properties", "Python",
+                "Reports calling property descriptors directly as methods.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyIncompatibleNewAndInitSignaturesInspection", "Incompatible signatures of __new__ and __init__", "Python",
+                "Reports mismatched parameter signatures between __new__ and __init__ methods.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyIncompatibleStubPackagesInspection", "Incompatible stub packages", "Python",
+                "Reports installed PEP 561 typing stub packages that conflict with library runtime versions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInconsistentIndentationInspection", "Inconsistent indentation", "Python",
+                "Reports mixed tabs and spaces or non-standard indentation levels.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInconsistentReturnStatementsInspection", "Inconsistent return statements", "Python",
+                "Reports functions where some branches return values while others return implicitly or without an expression.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyPytestMarkParametrizeInspection", "Incorrect arguments in @pytest.mark.parametrize", "Python",
+                "Validates argument names and values in pytest parametrization decorators.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyIncorrectCallArgumentsInspection", "Incorrect call arguments", "Python",
+                "Reports missing required arguments, unexpected keyword arguments, and redundant parameters.",
+                HighlightSeverity.WARNING, true, "Python");
+
+        // CommandLineInspection (matches Image 3)
+        addTool("CommandLineInspection", "Incorrect CLI syntax", "Python",
+                "Reports the problems if the arguments of the command you type in the console are not in the proper order. The inspection also verifies that option names and arguments are correct.\n" +
+                "Do not disable the inspection if you are going to use command-line interfaces like manage.py in Django.",
+                HighlightSeverity.WARNING, true, "Python");
+
+        addTool("PyIncorrectDocstringInspection", "Incorrect docstring", "Python",
+                "Reports parameter names and return tags in docstrings that do not match function signature.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyIncorrectPropertyDefinitionInspection", "Incorrect property definition", "Python",
+                "Reports getter, setter, or deleter declarations that violate @property conventions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyIncorrectTypeInspection", "Incorrect type", "Python",
+                "Reports type annotation incompatibilities between actual argument types and expected parameters.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInitReturnsValueInspection", "__init__ method that returns a value", "Python",
+                "Reports return statements in __init__ methods that return values other than None.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidAbstractClassDefinitionInspection", "Invalid abstract class definition and usages", "Python",
+                "Reports instantiation of abstract classes with unimplemented abstract methods.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidDataClassesUsageInspection", "Invalid definition and usage of Data Classes", "Python",
+                "Validates field definitions, default values, and inheritance hierarchy in @dataclass classes.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidNamedTupleDefinitionInspection", "Invalid definition of 'typing.NamedTuple'", "Python",
+                "Reports invalid field definitions and default values in typing.NamedTuple subclasses.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidEnumDefinitionInspection", "Invalid Enum definition and usages", "Python",
+                "Validates Enum class declarations, duplicate member names, and invalid enum values.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidProtocolDefinitionInspection", "Invalid protocol definitions and usages", "Python",
+                "Validates typing.Protocol definitions and structural subtyping conformances.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidTypeHintsInspection", "Invalid type hints definitions and usages", "Python",
+                "Reports malformed PEP 484 and PEP 585 type annotations.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidTypedDictInspection", "Invalid TypedDict definition and usages", "Python",
+                "Validates typing.TypedDict definitions and required/not-required key access.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidClassVarInspection", "Invalid usage of ClassVar variables", "Python",
+                "Reports ClassVar annotations used on instance variables or in unsupported scopes.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidNewStyleTypeParametersInspection", "Invalid usage of new-style type parameters and type aliases", "Python",
+                "Validates PEP 695 type parameter syntax ('type X[T] = ...') in Python 3.12+ code.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidNewTypeInspection", "Invalid usage of NewType", "Python",
+                "Validates typing.NewType definitions and constructor usage.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidOverrideDecoratorInspection", "Invalid usages of @override decorator", "Python",
+                "Reports @override annotations on methods that do not override any base class method.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidSlotsDefinitionInspection", "Invalid usages of classes with '__slots__' definitions", "Python",
+                "Reports attribute assignments and inheritance issues involving __slots__ definitions.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyInvalidFinalClassInspection", "Invalid usages of final classes, methods, and variables", "Python",
+                "Reports subclassing of @final classes or overriding of @final methods.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyMethodNotDeclaredStaticInspection", "Method is not declared static", "Python",
+                "Suggests adding @staticmethod decorator to methods that do not reference instance or class members.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyMethodSignatureOverrideMismatchInspection", "Method signature does not match signature of overridden method", "Python",
+                "Reports subclass methods whose parameter signatures are incompatible with overridden base methods.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyMissedCallToSuperInitInspection", "Missed call to '__init__' of the super class", "Python",
+                "Reports subclass __init__ methods that fail to invoke super().__init__().",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyMissingAwaitSyntaxInspection", "Missing 'await' syntax in coroutine calls", "Python",
+                "Reports async coroutine function calls missing an 'await' expression.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyMissingOrEmptyDocstringInspection", "Missing or empty docstring", "Python",
+                "Reports public modules, classes, and functions missing docstrings.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyMissingTypeHintingInspection", "Missing type hinting for function definition", "Python",
+                "Reports functions and methods lacking parameter and return type annotations.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyNoEncodingSpecifiedInspection", "No encoding specified for file", "Python",
+                "Reports source files that do not declare a '# -*- coding: utf-8 -*-' header.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyNonOptimalListDeclarationInspection", "Non-optimal list declaration", "Python",
+                "Suggests replacing list multiplications and inefficient comprehensions with optimal constructors.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyOldStyleClassNewStyleFeaturesInspection", "Old-style class contains new-style class features", "Python",
+                "Reports __slots__ or property descriptors used in old-style classes.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyOutdatedPoetryPackageVersionsInspection", "Outdated Poetry package versions", "Python",
+                "Reports outdated package version constraints in pyproject.toml Poetry configurations.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyOverloadsInRegularFilesInspection", "Overloads in regular Python files", "Python",
+                "Reports @overload declarations in implementation files that lack an implementation function.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyPep8Inspection", "PEP 8 coding style violation", "Python",
+                "Reports adherence violations to the PEP 8 Python style guide.",
+                HighlightSeverity.WEAK_WARNING, true, "Python");
+        addTool("PyPep8NamingInspection", "PEP 8 naming convention violation", "Python",
+                "Reports class, function, variable, and constant names violating PEP 8 naming standards.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyProblematicNestingOfDecoratorsInspection", "Problematic nesting of decorators", "Python",
+                "Reports incorrect ordering of decorators like @property, @classmethod, and @staticmethod.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTrailingSemicolonInspection", "Prohibited trailing semicolon in a statement", "Python",
+                "Reports redundant semicolons at the end of Python statements.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyRedeclaredNamesWithoutUsageInspection", "Redeclared names without usages", "Python",
+                "Reports variables or imports that are reassigned or redefined without being read.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyRedundantBooleanVariableCheckInspection", "Redundant boolean variable check", "Python",
+                "Reports boolean checks comparing boolean expressions against 'True' or 'False'.",
+                HighlightSeverity.WARNING, true, "Python");
+
+        // PyRedundantParenthesesInspection with options (matches Image 4)
+        InspectionTool redundantParens = InspectionTool.builder("PyRedundantParenthesesInspection")
+                .displayName("Redundant parentheses")
+                .groupPath("Python")
+                .description("Reports about redundant parentheses in expressions.\nThe IDE provides the quick-fix action to remove the redundant parentheses.")
+                .defaultSeverity(HighlightSeverity.WEAK_WARNING)
+                .defaultEnabled(true)
+                .language("Python")
+                .addOption("ignoreArgumentOfPercentOperator", "Ignore argument of % operator", false)
+                .addOption("ignoreTuples", "Ignore tuples", false)
+                .addOption("ignoreEmptyListsOfBaseClasses", "Ignore empty lists of base classes", false)
+                .build();
+        toolsById.put(redundantParens.getId(), redundantParens);
+
+        addTool("PyShadowingBuiltinsInspection", "Shadowing built-in names", "Python",
+                "Reports local variables or parameters shadowing standard built-in functions or types.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyShadowingNamesFromOuterScopesInspection", "Shadowing names from outer scopes", "Python",
+                "Reports local variables shadowing variables defined in enclosing outer scopes.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PySingleQuotedDocstringInspection", "Single quoted docstring", "Python",
+                "Suggests replacing single-quoted docstrings with standard triple-quoted docstrings.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyStatementHasNoEffectInspection", "Statement has no effect", "Python",
+                "Reports expressions evaluated as statements whose results are unused.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyStubPackagesAdvertiserInspection", "Stub packages advertiser", "Python",
+                "Suggests installing community typing stub packages for third-party libraries.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PySuspiciousRelativeImportsInspection", "Suspicious relative imports", "Python",
+                "Reports relative import paths that ascend beyond package roots.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyDefaultArgumentMutableInspection", "The default argument is mutable", "Python",
+                "Reports mutable default argument values such as lists or dictionaries in function signatures.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyFunctionArgumentEqualToDefaultParameterInspection", "The function argument is equal to the default parameter", "Python",
+                "Reports argument values passed to function calls that match parameter default values.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyTooComplexChainedComparisonsInspection", "Too complex chained comparisons", "Python",
+                "Reports chained comparison expressions whose evaluation order is ambiguous or unintuitive.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTupleAssignmentBalanceInspection", "Tuple assignment balance is incorrect", "Python",
+                "Reports unpacked assignments where the number of targets does not match iterable length.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTupleItemAssignmentInspection", "Tuple item assignment is prohibited", "Python",
+                "Reports attempt to mutate immutable tuple items via item assignment.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTypeCastWithImpossibleTypesInspection", "Type cast with impossible types", "Python",
+                "Reports typing.cast calls where source and target types share no common subtypes.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTypeInDocstringDoesNotMatchInferredTypeInspection", "Type in docstring does not match inferred type", "Python",
+                "Reports discrepancies between static inferred types and docstring type documentation.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyTypingAssertTypeInspection", "typing.assert_type", "Python",
+                "Reports typing.assert_type checks where the inferred type does not match expected type.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnboundLocalVariableInspection", "Unbound local variables", "Python",
+                "Reports local variables accessed before assignment in enclosing function scope.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnclearExceptionClausesInspection", "Unclear exception clauses", "Python",
+                "Reports bare 'except:' clauses catching SystemExit or KeyboardInterrupt unintentionally.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnnecessaryBackslashInspection", "Unnecessary backslash", "Python",
+                "Reports redundant line-continuation backslashes inside parentheses, brackets, or braces.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnnecessaryTypeCastInspection", "Unnecessary type cast", "Python",
+                "Reports typing.cast calls where the expression already matches the specified target type.",
+                HighlightSeverity.WARNING, false, "Python");
+        addTool("PyUnreachableCodeInspection", "Unreachable code", "Python",
+                "Reports statements positioned after unconditional returns, raises, or breaks.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnresolvedReferencesInspection", "Unresolved references", "Python",
+                "Reports references to undefined variables, functions, classes, or modules.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnsatisfiedPackageRequirementsInspection", "Unsatisfied package requirements", "Python",
+                "Reports imported packages that are missing from requirements.txt or setup.py.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnusedImportsInspection", "Unused imports", "Python",
+                "Reports imported symbols that are not referenced in the file.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyUnusedLocalSymbolsInspection", "Unused local symbols", "Python",
+                "Reports local variables or parameters that are never read.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyEqualityToNoneInspection", "Using equality operators to compare with None", "Python",
+                "Suggests replacing '== None' and '!= None' with 'is None' and 'is not None'.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyWrongArgumentsToCallSuperInspection", "Wrong arguments to call super", "Python",
+                "Reports super(Class, self) calls where Class is not an enclosing class.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("PyWrongOrderOfExceptClausesInspection", "Wrong order of 'except' clauses", "Python",
+                "Reports derived exception handlers placed after general base exception handlers.",
+                HighlightSeverity.WARNING, true, "Python");
+    }
+
+    private void initQodanaInspections() {
+        addTool("Qodana.CodeMetrics", "Code metrics", "Qodana",
+                "Calculates code complexity, maintainability index, and quality metrics using Qodana linters.",
+                HighlightSeverity.WARNING, false, "General");
+    }
+
+    private void initQuarkusInspections() {
+        addTool("Quarkus.ApplicationProperties", "Invalid Quarkus application.properties configuration", "Quarkus",
+                "Validates configuration keys, formats, and environment profiles in Quarkus application.properties.",
+                HighlightSeverity.WARNING, true, "Properties");
+        addTool("Quarkus.YamlConfiguration", "Invalid Quarkus YAML configuration", "Quarkus",
+                "Validates configuration structure, keys, and values in Quarkus application.yaml.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Quarkus.ConfigMappingPrefix", "Missing or empty 'prefix' attribute value in the '@ConfigMapping' annotation", "Quarkus",
+                "Reports missing or blank prefix attributes on Quarkus @ConfigMapping interface annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Quarkus.ProducesConsumesMime", "Undeclared '@Produces' / '@Consumes' MIME types for '...", "Quarkus",
+                "Reports JAX-RS resource endpoints missing explicit @Produces or @Consumes media types.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("Quarkus.WrongAccessModifier", "Wrong access modifier of bean members with CDI annotations", "Quarkus",
+                "Reports private, static, or final modifiers on Quarkus CDI bean injection points and observer methods.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initRbsInspections() {
+        // RBS/Code style issues
+        addTool("RBS.CodeStyle.LiteralClassReferenced", "Literal class referenced", "RBS/Code style issues",
+                "Reports explicit references to literal classes in RBS signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.CodeStyle.SimplifiableBooleanUnion", "Simplifiable boolean union", "RBS/Code style issues",
+                "Suggests simplifying 'true | false' type unions to 'bool' in RBS.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.CodeStyle.UnnecessaryParentheses", "Unnecessary parentheses", "RBS/Code style issues",
+                "Reports redundant parentheses around type signatures in RBS files.",
+                HighlightSeverity.WEAK_WARNING, true, "Ruby");
+        addTool("RBS.CodeStyle.UnnecessaryQualifier", "Unnecessary qualifier", "RBS/Code style issues",
+                "Reports unnecessary module namespace qualifiers in RBS files.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // RBS/Data flow
+        addTool("RBS.DataFlow.UnusedInterface", "Unused interface", "RBS/Data flow",
+                "Reports RBS interface declarations that are never used or implemented.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.DataFlow.UnusedTypeAlias", "Unused type alias", "RBS/Data flow",
+                "Reports RBS type aliases that are never referenced.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.DataFlow.UnusedTypeVariable", "Unused type variable", "RBS/Data flow",
+                "Reports generic type variables in RBS declarations that are never used.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.DataFlow.UnusedUseClause", "Unused use clause", "RBS/Data flow",
+                "Reports 'use' clauses in RBS files that do not import any referenced types.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // RBS/Inheritance issues
+        addTool("RBS.Inheritance.ModuleUsedAsSuperclass", "Module used as superclass", "RBS/Inheritance issues",
+                "Reports modules specified as superclasses instead of classes in RBS.",
+                HighlightSeverity.ERROR, true, "Ruby");
+
+        // RBS/Naming conventions
+        addTool("RBS.Naming.UnconventionalInterfaceName", "Unconventional interface name", "RBS/Naming conventions",
+                "Reports RBS interface names that do not follow standard Ruby naming conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.Naming.UnconventionalTypeAliasName", "Unconventional type alias name", "RBS/Naming conventions",
+                "Reports RBS type alias names that do not follow PascalCase conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.Naming.UnconventionalTypeVariableName", "Unconventional type variable name", "RBS/Naming conventions",
+                "Reports type variable names that do not conform to standard single uppercase letter style.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.Naming.UnconventionalUseAliasName", "Unconventional use alias name", "RBS/Naming conventions",
+                "Reports alias names in 'use' clauses that do not conform to naming conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // RBS/Probable bugs
+        addTool("RBS.Bugs.BadTypeArgumentType", "Bad type argument type", "RBS/Probable bugs",
+                "Reports invalid type arguments passed to generic types in RBS.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.BadTypeVariableDefaultType", "Bad type variable default type", "RBS/Probable bugs",
+                "Reports default type values that do not satisfy type variable upper bounds.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.ConflictingTypeVariableCount", "Conflicting type variable count", "RBS/Probable bugs",
+                "Reports mismatched type parameter counts in reopened classes or modules in RBS.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.ConflictingTypeVariableVariance", "Conflicting type variable variance", "RBS/Probable bugs",
+                "Reports conflicting covariance/contravariance annotations on type variables.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.CyclicClassModuleAliasDeclaration", "Cyclic class/module alias declaration", "RBS/Probable bugs",
+                "Reports cyclic alias declarations resulting in infinite recursive definitions.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.DuplicateDeclaration", "Duplicate declaration", "RBS/Probable bugs",
+                "Reports duplicate method, member, or type declarations in the same RBS scope.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.DuplicateKeywordParameter", "Duplicate keyword parameter", "RBS/Probable bugs",
+                "Reports duplicate keyword parameter names in RBS method signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("RBS.Bugs.InconsistentClassModuleAlias", "Inconsistent class/module alias", "RBS/Probable bugs",
+                "Reports class aliases referencing modules or module aliases referencing classes.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.IncorrectInclusionCall", "Incorrect inclusion call", "RBS/Probable bugs",
+                "Reports invalid 'include', 'extend', or 'prepend' declarations in RBS.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.IncorrectTypeArgumentCount", "Incorrect type argument count", "RBS/Probable bugs",
+                "Reports parameterized type references with wrong number of type arguments.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.IncorrectTypeArgumentVariance", "Incorrect type argument variance", "RBS/Probable bugs",
+                "Reports type arguments violating variance annotations of generic parameters.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.InvalidMethodOverload", "Invalid method overload", "RBS/Probable bugs",
+                "Reports method overloads that violate RBS signature rules or types.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.InvalidTypeArgumentUsage", "Invalid type argument usage", "RBS/Probable bugs",
+                "Reports invalid type arguments used in type application positions.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("RBS.Bugs.UnresolvedReference", "Unresolved reference", "RBS/Probable bugs",
+                "Reports references to classes, modules, or types that cannot be resolved in RBS.",
+                HighlightSeverity.ERROR, true, "Ruby");
+    }
+
+    private void addTool(InspectionTool tool) {
+        if (tool != null) {
+            toolsById.put(tool.getId(), tool);
+        }
+    }
+
+    private void initReactiveStreamsInspections() {
+        // Reactive Streams/Common
+        addTool("ReactiveStreams.Common.ClassImplementsPublisher", "Class implements Publisher", "Reactive Streams/Common",
+                "Reports classes directly implementing the Reactive Streams Publisher interface.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Common.ClassImplementsSubscriber", "Class implements Subscriber", "Reactive Streams/Common",
+                "Reports classes directly implementing the Reactive Streams Subscriber interface.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Common.ReturnNullOrNullableFromLambda", "Return null or something nullable from a lambda in transformation method", "Reactive Streams/Common",
+                "Reports lambdas returning null or nullable values inside Reactive transformation operators.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Common.ThrowStatementInReactiveOperator", "Throw statement in Reactive operator", "Reactive Streams/Common",
+                "Reports explicit throw statements inside Reactive operators instead of emitting error signals.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Common.TooLongSameMethodsChain", "Too long same methods chain", "Reactive Streams/Common",
+                "Reports excessively long chains of identical reactive method calls.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Common.UnusedPublisher", "Unused publisher", "Reactive Streams/Common",
+                "Reports reactive publishers created but never subscribed to or returned.",
+                HighlightSeverity.WARNING, true, "Java");
+
+        // Reactive Streams/Mutiny
+        addTool("ReactiveStreams.Mutiny.CallingSubscribeInReactiveMethods", "Calling 'subscribe' in \"reactive\" methods", "Reactive Streams/Mutiny",
+                "Reports calls to 'subscribe' inside methods that return reactive types in Mutiny.",
+                HighlightSeverity.WARNING, true, "Java");
+
+        // Reactive Streams/Reactor
+        addTool("ReactiveStreams.Reactor.CallingSubscribeInReactiveMethods", "Calling 'subscribe' in \"reactive\" methods", "Reactive Streams/Reactor",
+                "Reports calls to 'subscribe' inside methods that return Mono or Flux publishers.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Reactor.CallingTransformationOnReceiverWithPublisher", "Calling transformation function on receiver with Mono/Flux publisher", "Reactive Streams/Reactor",
+                "Reports transformation calls on receivers with Mono or Flux publishers.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Reactor.UnfinishedStepVerifier", "Unfinished StepVerifier", "Reactive Streams/Reactor",
+                "Reports Reactor StepVerifier test instances that are not terminated with verify().",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Reactor.UnnecessaryDebugInitialization", "Unnecessary debug initialization", "Reactive Streams/Reactor",
+                "Reports redundant Hooks.onOperatorDebug() calls when Reactor debug agent is already attached.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("ReactiveStreams.Reactor.ZipContainsParameterWithMonoVoidType", "Zip contains parameter with Mono<Void> type", "Reactive Streams/Reactor",
+                "Reports Mono.zip calls containing Mono<Void> parameters that never emit values.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initRegExpInspections() {
+        addTool("RegExp.AnonymousCapturingGroup", "Anonymous capturing group or numeric back reference", "RegExp",
+                "Reports capturing groups that are anonymous when named groups are preferred.",
+                HighlightSeverity.WARNING, false, "RegExp");
+        addTool("RegExp.BeginOrEndAnchorInUnexpectedPosition", "Begin or end anchor in unexpected position", "RegExp",
+                "Reports '^' or '$' anchors placed at positions where they cannot match.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.ConsecutiveSpaces", "Consecutive spaces", "RegExp",
+                "Reports multiple consecutive space characters in regular expressions.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.DuplicateBranchInAlternation", "Duplicate branch in alternation", "RegExp",
+                "Reports identical branches within regular expression alternations.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.DuplicateCharacterInCharacterClass", "Duplicate character in character class", "RegExp",
+                "Reports duplicate character literals inside character classes.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.EmptyBranchInAlternation", "Empty branch in alternation", "RegExp",
+                "Reports empty branches in alternations that match empty strings unconditionally.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.EscapedMetaCharacter", "Escaped meta character", "RegExp",
+                "Reports unnecessary escaping of characters that are not metacharacters in context.",
+                HighlightSeverity.WEAK_WARNING, true, "RegExp");
+        addTool("RegExp.OctalEscape", "Octal escape", "RegExp",
+                "Reports legacy octal escape sequences in regular expressions.",
+                HighlightSeverity.WEAK_WARNING, true, "RegExp");
+        addTool("RegExp.RedundantClassElements", "Redundant '\\d', '[:digit:]', or '\\D' class elements", "RegExp",
+                "Reports redundant character class shorthand elements in regular expressions.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.RedundantCharacterEscape", "Redundant character escape", "RegExp",
+                "Reports redundant backslash escapes for characters that do not require escaping.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.RedundantNestedCharacterClass", "Redundant nested character class", "RegExp",
+                "Reports character classes nested inside other character classes without set operations.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.RegularExpressionCanBeSimplified", "Regular expression can be simplified", "RegExp",
+                "Suggests simplifications for verbose or redundant regular expression patterns.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.SingleCharacterAlternation", "Single character alternation", "RegExp",
+                "Suggests replacing single-character alternation '(a|b)' with character class '[ab]'.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.SuspiciousBackReference", "Suspicious back reference", "RegExp",
+                "Reports back references referencing groups that cannot have matched yet.",
+                HighlightSeverity.WARNING, true, "RegExp");
+        addTool("RegExp.UnnecessaryNonCapturingGroup", "Unnecessary non-capturing group", "RegExp",
+                "Reports non-capturing groups '(?:...)' that have no effect on operator precedence.",
+                HighlightSeverity.WARNING, true, "RegExp");
+    }
+
+    private void initRelaxNgInspections() {
+        addTool("RelaxNg.UnresolvedReference", "Unresolved reference", "RELAX NG",
+                "Reports references to undefined patterns, elements, or defines in RELAX NG schemas.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("RelaxNg.UnusedDefine", "Unused define", "RELAX NG",
+                "Reports define declarations in RELAX NG schemas that are never referenced.",
+                HighlightSeverity.WEAK_WARNING, false, "XML");
+    }
+
+    private void initRequirementsInspections() {
+        addTool("Requirements.RequirementNotSatisfied", "Requirement is not satisfied", "Requirements",
+                "Reports packages in requirements.txt that are not installed in the active environment.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("Requirements.RequirementIsOutdated", "Requirement is outdated", "Requirements",
+                "Reports installed package versions that do not satisfy version bounds specified in requirements.txt.",
+                HighlightSeverity.WARNING, true, "Python");
+    }
+
+    private void initRestfulWebServiceInspections() {
+        addTool("JaxRs.GetMethodReturnsVoid", "@GET annotated method returns a void value", "RESTful Web Service (JAX-RS)",
+                "Reports JAX-RS resource methods annotated with @GET that have a void return type.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JaxRs.IncorrectPathUriTemplate", "Incorrect @Path URI template", "RESTful Web Service (JAX-RS)",
+                "Reports invalid URI template syntax in JAX-RS @Path annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JaxRs.IncorrectDefaultValueParameter", "Incorrect value of @DefaultValue parameter", "RESTful Web Service (JAX-RS)",
+                "Reports @DefaultValue annotations with values that cannot be parsed to the target parameter type.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JaxRs.IncorrectWadlConfiguration", "Incorrect WADL configuration", "RESTful Web Service (JAX-RS)",
+                "Reports configuration errors in WADL generator or descriptor settings.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JaxRs.PathClassWithoutResourceMethods", "@Path class without resource methods", "RESTful Web Service (JAX-RS)",
+                "Reports classes annotated with @Path that do not declare any resource or sub-resource methods.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JaxRs.MultipleHttpMethodAnnotations", "Resource method with multiple HTTP method annotations", "RESTful Web Service (JAX-RS)",
+                "Reports resource methods annotated with more than one HTTP method designator (@GET, @POST, etc.).",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JaxRs.UnresolvedPathParamReference", "Unresolved @PathParam reference", "RESTful Web Service (JAX-RS)",
+                "Reports @PathParam parameter values that do not match any path template variables in @Path.",
+                HighlightSeverity.ERROR, true, "Java");
+    }
+
+    private void initRubyInspections() {
+        initRubyCodeMetricsAndStyleInspections();
+        initRubyControlFlowAndDataFlowInspections();
+        initRubyGemsAndGeneralInspections();
+        initRubyNamingConventionsInspections();
+        initRubyProbableBugsInspections();
+        initRubyRailsAndRbsAndYardInspections();
+    }
+
+    private void initRubyCodeMetricsAndStyleInspections() {
+        // Ruby/Code metrics
+        addTool("Ruby.Metrics.TooManyInstanceVariables", "Class/module with too many instance variables", "Ruby/Code metrics",
+                "Reports classes or modules declaring an excessive number of instance variables.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Metrics.TooManyMethods", "Class/module with too many methods", "Ruby/Code metrics",
+                "Reports classes or modules with too many methods defined.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/Code style issues
+        addTool("Ruby.Style.StringArrayLiteral", "Array of string literals instead of '%w'", "Ruby/Code style issues",
+                "Suggests using %w[...] literal syntax instead of an array of string literals.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.BlockInsteadOfMethodReference", "Block used instead of method reference", "Ruby/Code style issues",
+                "Suggests using '&:method' syntax instead of a block with a single method call.",
+                HighlightSeverity.WEAK_WARNING, true, "Ruby");
+        addTool("Ruby.Style.ClassVariableUsage", "Class variable usage", "Ruby/Code style issues",
+                "Reports usage of class variables (@@var) which can lead to unexpected behavior across inheritance.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.ComplexCallChain", "Complex call chain", "Ruby/Code style issues",
+                "Reports excessively complex method call chains violating the Law of Demeter.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.ConditionalWithParentheses", "Conditional expression with parentheses", "Ruby/Code style issues",
+                "Reports redundant parentheses around if/unless/while conditional expressions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.HashWithStringsAsKeys", "Hash with strings as keys", "Ruby/Code style issues",
+                "Suggests using symbols instead of strings as hash keys for memory efficiency.",
+                HighlightSeverity.WEAK_WARNING, false, "Ruby");
+        addTool("Ruby.Style.IncorrectParenthesesInMethodDefinition", "Incorrect parentheses in method definition", "Ruby/Code style issues",
+                "Reports missing or inappropriate parentheses around method definition parameter lists.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.InterpolatedVariableWithoutBraces", "Interpolated variable without braces", "Ruby/Code style issues",
+                "Suggests using braces #{...} for variable interpolation in double-quoted strings.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.LegacyHashSyntax", "Legacy hash syntax", "Ruby/Code style issues",
+                "Suggests using symbol: value syntax instead of legacy '=>' hash rocket syntax.",
+                HighlightSeverity.WEAK_WARNING, false, "Ruby");
+        addTool("Ruby.Style.RedundantParenthesesInNoArgCall", "Redundant parentheses in no-arg method call", "Ruby/Code style issues",
+                "Reports redundant empty parentheses in method calls with no arguments.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Style.UnnecessaryDoubleQuotes", "Unnecessary use of double quotes in string", "Ruby/Code style issues",
+                "Suggests using single quotes for strings that do not contain interpolation or escape sequences.",
+                HighlightSeverity.WEAK_WARNING, true, "Ruby");
+        addTool("Ruby.Style.WhitespaceBeforeParenthesesInMethodCall", "Whitespace before parentheses in method call", "Ruby/Code style issues",
+                "Reports whitespace between method name and open parenthesis in method calls.",
+                HighlightSeverity.WARNING, true, "Ruby");
+    }
+
+    private void initRubyControlFlowAndDataFlowInspections() {
+        // Ruby/Control flow issues
+        addTool("Ruby.ControlFlow.CaseWithoutElse", "'case' statement without 'else' block", "Ruby/Control flow issues",
+                "Reports 'case' statements that do not have an 'else' branch.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.IncorrectJumpContext", "Incorrect context for jump statement", "Ruby/Control flow issues",
+                "Reports 'break', 'next', or 'redo' used outside a loop or iterator block.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.NegativeCondition", "Negative condition in control flow statement", "Ruby/Control flow issues",
+                "Suggests using 'unless' or positive conditions instead of negated expressions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.NestedTernary", "Nested ternary operator", "Ruby/Control flow issues",
+                "Reports nested ternary operator expressions which reduce code readability.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.SimplifiableIf", "Simplifiable 'if' statement", "Ruby/Control flow issues",
+                "Reports 'if' statements that can be simplified using modifier syntax or ternary operators.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.UnconventionalForLoop", "Unconventional 'for' loop", "Ruby/Control flow issues",
+                "Suggests using 'each' iterator blocks instead of 'for' loops in Ruby.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.ControlFlow.UnlessWithElse", "'unless' statement with 'else'", "Ruby/Control flow issues",
+                "Reports 'unless' statements with an 'else' branch which can be confusing to read.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/Data flow
+        addTool("Ruby.DataFlow.FrozenObjectModification", "Frozen object modification", "Ruby/Data flow",
+                "Reports attempts to modify frozen objects or strings.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("Ruby.DataFlow.NilDereference", "'nil' dereference", "Ruby/Data flow",
+                "Reports method invocations on expressions that may evaluate to nil.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.DataFlow.RedundantSafeNavigation", "Redundant safe navigation", "Ruby/Data flow",
+                "Reports redundant '&.' safe navigation operator when the target receiver cannot be nil.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.DataFlow.UnreachableCode", "Unreachable code", "Ruby/Data flow",
+                "Reports code that can never be executed due to previous jump or return statements.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.DataFlow.UnusedLocalVariableOrParameter", "Unused local variable/parameter", "Ruby/Data flow",
+                "Reports local variables or method parameters that are never read or referenced.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.DataFlow.VariableParameterScope", "Variable/parameter scope", "Ruby/Data flow",
+                "Reports variables used outside their intended scope or shadowed by block parameters.",
+                HighlightSeverity.WARNING, true, "Ruby");
+    }
+
+    private void initRubyGemsAndGeneralInspections() {
+        // Ruby/Gems and gem management
+        addTool("Ruby.Gems.Brakeman", "Brakeman (available for Code | Inspect Code)", "Ruby/Gems and gem management",
+                "Runs Brakeman security scanner to identify security vulnerabilities in Ruby on Rails code.",
+                HighlightSeverity.WARNING, true, "Ruby", true, false);
+        addTool("Ruby.Gems.MissingGem", "Missing gem", "Ruby/Gems and gem management",
+                "Reports required gems in Gemfile that are not installed in current environment.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Gems.MissingRbenvGemset", "Missing Rbenv gemset", "Ruby/Gems and gem management",
+                "Reports configured rbenv gemsets that do not exist locally.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Gems.RuboCop", "RuboCop", "Ruby/Gems and gem management",
+                "Runs RuboCop linter and style checker on Ruby source files.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Gems.ShouldaTestWithIncorrectFileName", "Shoulda test with incorrect file name", "Ruby/Gems and gem management",
+                "Reports Shoulda test files that do not follow the standard naming pattern.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/General
+        addTool("Ruby.General.NoRubyInterpreterConfigured", "No Ruby interpreter configured for the project", "Ruby/General",
+                "Reports when no Ruby SDK or interpreter is configured for the project.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/Inheritance issues
+        addTool("Ruby.Inheritance.ModuleUsedAsSuperclass", "Module used as superclass", "Ruby/Inheritance issues",
+                "Reports modules specified as superclasses in class declarations.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/Language level migration aids
+        addTool("Ruby.Migration.DeprecatedSyntax", "Deprecated syntax", "Ruby/Language level migration aids",
+                "Reports deprecated Ruby syntax constructs that are obsolete in modern Ruby versions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+    }
+
+    private void initRubyNamingConventionsInspections() {
+        addTool("Ruby.Naming.UnconventionalClassModuleName", "Unconventional class/module name", "Ruby/Naming conventions",
+                "Reports class or module names that do not follow PascalCase conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalClassMethodName", "Unconventional class method name", "Ruby/Naming conventions",
+                "Reports class method names that do not follow snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalClassVariableName", "Unconventional class variable name", "Ruby/Naming conventions",
+                "Reports class variable names that do not follow @@snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalConstantName", "Unconventional constant name", "Ruby/Naming conventions",
+                "Reports constant names that do not follow SCREAMING_SNAKE_CASE or PascalCase.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalGlobalVariableName", "Unconventional global variable name", "Ruby/Naming conventions",
+                "Reports global variable names that do not follow $snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalInstanceMethodName", "Unconventional instance method name", "Ruby/Naming conventions",
+                "Reports instance method names that do not follow snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalInstanceVariableName", "Unconventional instance variable name", "Ruby/Naming conventions",
+                "Reports instance variable names that do not follow @snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalLocalVariableName", "Unconventional local variable name", "Ruby/Naming conventions",
+                "Reports local variable names that do not follow snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Naming.UnconventionalParameterName", "Unconventional parameter name", "Ruby/Naming conventions",
+                "Reports method parameter names that do not follow snake_case conventions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+    }
+
+    private void initRubyProbableBugsInspections() {
+        addTool("Ruby.Bugs.AssignmentInConditional", "Assignment expression in conditional", "Ruby/Probable bugs",
+                "Reports assignments inside conditional expressions which may be intended as equality checks.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.DuplicateKeyInHash", "Duplicate key in hash", "Ruby/Probable bugs",
+                "Reports duplicate key literals defined in hash literals.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.DynamicConstantAssignment", "Dynamic constant assignment", "Ruby/Probable bugs",
+                "Reports constant assignments inside method bodies or dynamic blocks.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("Ruby.Bugs.EmptyElseBlock", "Empty 'else' block", "Ruby/Probable bugs",
+                "Reports empty 'else' branches in 'if', 'unless', or 'case' statements.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.EmptyRescueBlock", "Empty 'rescue' block", "Ruby/Probable bugs",
+                "Reports empty 'rescue' clauses that swallow exceptions silently.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.ExpressionSubstitutionInSingleQuotedString", "Expression substitution in single-quoted string", "Ruby/Probable bugs",
+                "Reports #{...} interpolation syntax in single-quoted strings where interpolation does not occur.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.IncorrectHashCall", "Incorrect 'Hash[...]' call", "Ruby/Probable bugs",
+                "Reports invalid argument formats passed to Hash[] constructor.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.IncorrectCallArgumentCount", "Incorrect call argument count", "Ruby/Probable bugs",
+                "Reports method calls with too few or too many arguments.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.InvalidCallToProtectedPrivateMethod", "Invalid call to protected/private method", "Ruby/Probable bugs",
+                "Reports calls to private or protected methods from outside the valid context.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.MismatchedArgumentType", "Mismatched argument type", "Ruby/Probable bugs",
+                "Reports method arguments whose inferred types do not match RBS or YARD type signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.MismatchedConstantType", "Mismatched constant type", "Ruby/Probable bugs",
+                "Reports constant initializers whose types do not match RBS type signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // RubyMismatchedGlobalVariableType with 2 options matching screenshot 5
+        addTool(InspectionTool.builder("RubyMismatchedGlobalVariableType")
+                .displayName("Mismatched global variable type")
+                .groupPath("Ruby/Probable bugs")
+                .description("Reports global variable assignments whose inferred types don't match the global variable's expected type. The expected constant type is taken from the RBS type signature.")
+                .defaultSeverity(HighlightSeverity.WARNING)
+                .defaultEnabled(true)
+                .language("Ruby")
+                .addOption("checkTypesFromRbs", "Check types from RBS", true)
+                .addOption("checkNilability", "Check nilability", true)
+                .build());
+
+        addTool("Ruby.Bugs.MismatchedParameterType", "Mismatched parameter type", "Ruby/Probable bugs",
+                "Reports method parameter default values or usages conflicting with type signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.MismatchedReturnType", "Mismatched return type", "Ruby/Probable bugs",
+                "Reports method return expressions whose types do not match RBS or YARD signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.MismatchedVariableType", "Mismatched variable type", "Ruby/Probable bugs",
+                "Reports variable assignments whose types do not match declared RBS types.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.SuperCallWithNoSuperclass", "'super' call with no superclass defined", "Ruby/Probable bugs",
+                "Reports 'super' calls in classes that do not inherit from any superclass.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.UnbalancedBrackets", "Unbalanced brackets", "Ruby/Probable bugs",
+                "Reports mismatched or unclosed parentheses, brackets, or braces.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.UnexpectedArgumentInMethodCall", "Unexpected argument in method call", "Ruby/Probable bugs",
+                "Reports unexpected arguments passed to methods that take no parameters.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Bugs.UnresolvedReference", "Unresolved reference", "Ruby/Probable bugs",
+                "Reports references to classes, modules, methods, or variables that cannot be resolved.",
+                HighlightSeverity.WARNING, true, "Ruby");
+    }
+
+    private void initRubyRailsAndRbsAndYardInspections() {
+        // Ruby/Rails
+        addTool("Ruby.Rails.DeprecatedFeature", "Deprecated feature", "Ruby/Rails",
+                "Reports usage of deprecated Ruby on Rails APIs and features.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Rails.FindByInView", "'find' or 'find_by' method call in view", "Ruby/Rails",
+                "Reports database query methods called directly from view templates.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Rails.MailboxMissingProcessMethod", "Mailbox missing 'process' method", "Ruby/Rails",
+                "Reports Action Mailbox classes that do not define a 'process' method.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Rails.MailboxWithNoRoutes", "Mailbox with no routes", "Ruby/Rails",
+                "Reports Action Mailbox classes with no inbound email routing configured.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Rails.UndefinedChannel", "Undefined channel", "Ruby/Rails",
+                "Reports Action Cable channel subscriptions referencing non-existent channel classes.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Rails.UntranslatedI18nProperty", "Untranslated i18n property", "Ruby/Rails",
+                "Reports missing translation keys in Rails I18n translation bundles.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/RBS
+        addTool("Ruby.Rbs.MissingTypeSignature", "Missing type signature", "Ruby/RBS",
+                "Reports Ruby classes, modules, or methods lacking corresponding RBS type signatures.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/Redundant code
+        addTool("Ruby.Redundant.ExpressionCanBeSimplified", "Expression can be simplified", "Ruby/Redundant code",
+                "Suggests simplifications for boolean or mathematical expressions.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Redundant.RedundantReturnStatement", "Redundant 'return' statement", "Ruby/Redundant code",
+                "Reports redundant 'return' statements at the end of method bodies.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Redundant.RedundantSemicolon", "Redundant semicolon", "Ruby/Redundant code",
+                "Reports unnecessary semicolons used at the ends of lines in Ruby code.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Redundant.RedundantVariableUsedAsReturnValue", "Redundant variable used as 'return' value", "Ruby/Redundant code",
+                "Reports local variables assigned immediately before being returned.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Redundant.ThenInMultilineBlock", "'then' in multiline 'if'/'unless' block", "Ruby/Redundant code",
+                "Reports redundant 'then' keywords in multiline 'if' or 'unless' statements.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // Ruby/YARD
+        addTool("Ruby.Yard.IncorrectTagUsage", "Incorrect tag usage", "Ruby/YARD",
+                "Reports invalid or misplaced YARD doc tags and annotations.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("Ruby.Yard.MissingParamTag", "Missing '@param' tag in method parameter", "Ruby/YARD",
+                "Reports method parameters that do not have documented @param tags in YARD documentation.",
+                HighlightSeverity.WEAK_WARNING, true, "Ruby");
+        addTool("Ruby.Yard.MissingReturnTag", "Missing '@return' tag in method", "Ruby/YARD",
+                "Reports methods with return values lacking @return tags in YARD documentation.",
+                HighlightSeverity.WEAK_WARNING, true, "Ruby");
+    }
+
+    private void initRustInspections() {
+        initRustCargoTomlInspections();
+        initRustLintsNamingConventionsInspections();
+        initRustLintsOtherInspections();
+        initRustCoreInspectionsPart1();
+        initRustCoreInspectionsPart2();
+        initRustCoreInspectionsPart3();
+        initRustCoreInspectionsPart4();
+    }
+
+    private void initRustCargoTomlInspections() {
+        // Rust/Cargo.toml (all enabled [✓])
+        addTool("RsCargoCrateNotFound", "Crate not found", "Rust/Cargo.toml",
+                "Reports crate names in Cargo.toml dependencies that cannot be found on crates.io.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsCargoCyclicFeatureDependency", "Cyclic feature dependency", "Rust/Cargo.toml",
+                "Reports cyclic dependencies between features declared in Cargo.toml.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCargoDuplicateKey", "Duplicate key", "Rust/Cargo.toml",
+                "Reports duplicate keys declared in the same Cargo.toml table.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCargoInvalidCrateVersion", "Invalid crate version", "Rust/Cargo.toml",
+                "Reports invalid semver requirement strings in Cargo.toml dependency declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCargoNewerCrateVersion", "Newer crate version available", "Rust/Cargo.toml",
+                "Reports dependency requirements that have newer compatible versions available on crates.io.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsCargoSchemaViolation", "Schema violation", "Rust/Cargo.toml",
+                "Reports invalid table keys or value types violating Cargo.toml schema specification.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCargoUnclosedStringLiteral", "Unclosed string literal", "Rust/Cargo.toml",
+                "Reports string literals in Cargo.toml that are missing closing quotes.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCargoUnnecessaryPackageField", "Unnecessary `package` field", "Rust/Cargo.toml",
+                "Reports redundant 'package' field in Cargo.toml dependency tables when crate name matches.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsCargoUnusedDependency", "Unused dependency", "Rust/Cargo.toml",
+                "Reports declared dependencies in Cargo.toml that are never imported or used in the crate.",
+                HighlightSeverity.WARNING, true, "Rust");
+    }
+
+    private void initRustLintsNamingConventionsInspections() {
+        // Rust/Lints/Naming conventions (all enabled [✓])
+        addTool("RsArgumentNamingConvention", "Argument naming convention", "Rust/Lints/Naming conventions",
+                "Reports function and method argument names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsAssocTypeNamingConvention", "Associated type naming convention", "Rust/Lints/Naming conventions",
+                "Reports associated type names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsConstantNamingConvention", "Constant naming convention", "Rust/Lints/Naming conventions",
+                "Reports constant names that do not follow SCREAMING_SNAKE_CASE convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsEnumNamingConvention", "Enum naming convention", "Rust/Lints/Naming conventions",
+                "Reports enum names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsEnumVariantNamingConvention", "Enum variant naming convention", "Rust/Lints/Naming conventions",
+                "Reports enum variant names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsFieldNamingConvention", "Field naming convention", "Rust/Lints/Naming conventions",
+                "Reports struct and union field names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsFunctionNamingConvention", "Function naming convention", "Rust/Lints/Naming conventions",
+                "Reports function names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsLifetimeNamingConvention", "Lifetime naming convention", "Rust/Lints/Naming conventions",
+                "Reports lifetime parameter names that do not follow standard lowercase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsMacroNamingConvention", "Macro naming convention", "Rust/Lints/Naming conventions",
+                "Reports macro names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsMethodNamingConvention", "Method naming convention", "Rust/Lints/Naming conventions",
+                "Reports method names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsModuleNamingConvention", "Module naming convention", "Rust/Lints/Naming conventions",
+                "Reports module names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsSelfConvention", "Self convention", "Rust/Lints/Naming conventions",
+                "Reports methods taking 'self' whose names do not follow standard Rust self conventions (as_*, to_*, into_*).",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsStaticConstantNamingConvention", "Static constant naming convention", "Rust/Lints/Naming conventions",
+                "Reports static variable names that do not follow SCREAMING_SNAKE_CASE convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsStructNamingConvention", "Struct naming convention", "Rust/Lints/Naming conventions",
+                "Reports struct names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsTraitNamingConvention", "Trait naming convention", "Rust/Lints/Naming conventions",
+                "Reports trait names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsTypeAliasNamingConvention", "Type alias naming convention", "Rust/Lints/Naming conventions",
+                "Reports type alias names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsTypeParameterNamingConvention", "Type parameter naming convention", "Rust/Lints/Naming conventions",
+                "Reports generic type parameter names that do not follow UpperCamelCase convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsVariableNamingConvention", "Variable naming convention", "Rust/Lints/Naming conventions",
+                "Reports local variable and binding names that do not follow snake_case convention.",
+                HighlightSeverity.WARNING, true, "Rust");
+    }
+
+    private void initRustLintsOtherInspections() {
+        // Rust/Lints (all enabled [✓])
+        addTool("RsCastCanBeReplacedWithLiteralSuffix", "Cast can be replaced with literal suffix", "Rust/Lints",
+                "Reports numeric cast expressions (e.g. '0 as u64') that can be replaced with a literal suffix (e.g. '0u64').",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDeprecatedElement", "Deprecated element", "Rust/Lints",
+                "Reports usage of functions, structs, or traits annotated with #[deprecated].",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsIneffectivePathStatements", "Ineffective path statements", "Rust/Lints",
+                "Reports path statements in function bodies that have no side effects.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsLiveness", "Liveness analysis", "Rust/Lints",
+                "Reports unused local variables and parameters.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsNonShorthandFieldPattern", "Non-shorthand field pattern", "Rust/Lints",
+                "Reports struct field pattern matches where field name and binding name match but are written out fully.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsRedundantMustUse", "Redundant `#[must_use]`", "Rust/Lints",
+                "Reports #[must_use] attributes applied to types or functions where it has no effect.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsRedundantSemicolons", "Redundant semicolons", "Rust/Lints",
+                "Reports extra consecutive semicolons in statements or items.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnknownCrateTypes", "Unknown crate types", "Rust/Lints",
+                "Reports unknown crate types specified in #![crate_type] attribute.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnnecessaryCast", "Unnecessary cast", "Rust/Lints",
+                "Reports numeric or pointer casts where expression already has the target type.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnnecessaryLifetimeAnnotations", "Unnecessary lifetime annotations", "Rust/Lints",
+                "Reports explicit lifetime parameters that can be elided according to lifetime elision rules.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnnecessaryParentheses", "Unnecessary parentheses", "Rust/Lints",
+                "Reports redundant parentheses around expressions in if, while, or match statements.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnnecessaryPathPrefix", "Unnecessary path prefix", "Rust/Lints",
+                "Reports redundant 'self::' or 'crate::' path prefixes when the item is already in scope.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnnecessaryReturn", "Unnecessary return", "Rust/Lints",
+                "Reports explicit 'return' statements at the end of function bodies that can be trailing expressions.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnreachableCode", "Unreachable code", "Rust/Lints",
+                "Reports code statements following diverging expressions (panic!, return, break, continue).",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnreachablePatterns", "Unreachable patterns", "Rust/Lints",
+                "Reports match arms or patterns that can never be reached because preceding patterns match all cases.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnusedMustUse", "Unused `#[must_use]`", "Rust/Lints",
+                "Reports expressions returning values marked #[must_use] that are ignored without inspection.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnusedMut", "Unused `mut` modifier", "Rust/Lints",
+                "Reports variable bindings declared with 'mut' that are never mutated.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnusedImport", "Unused import", "Rust/Lints",
+                "Reports 'use' declarations that are not referenced in the module.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnusedLabels", "Unused labels", "Rust/Lints",
+                "Reports loop labels that are never referenced by break or continue statements.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnwrapCanBeReplacedWithQuestion", "Unwrap can be replaced with `?`", "Rust/Lints",
+                "Suggests replacing unwrap() calls with the '?' try operator in functions returning Result or Option.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsWhileTrueCanBeReplacedWithLoop", "`while true` can be replaced with `loop`", "Rust/Lints",
+                "Suggests replacing 'while true { ... }' with idiomatically preferred 'loop { ... }'.",
+                HighlightSeverity.WARNING, true, "Rust");
+    }
+
+    private void initRustCoreInspectionsPart1() {
+        // Direct Rust inspections (Part 1: A - D)
+        addTool("RsNonConstantValueInConstantExpression", "A non-constant value was used in a constant expression", "Rust",
+                "Reports expressions in constant evaluation positions that depend on runtime values.",
+                HighlightSeverity.WARNING, false, "Rust");
+        addTool("RsAdditionalNonAutoTraitInTraitObject", "Additional non-auto trait in trait object", "Rust",
+                "Reports trait objects declaring more than one non-auto trait.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsAmbiguousMethodCall", "Ambiguous method call (experimental)", "Rust",
+                "Reports method calls that could resolve to multiple in-scope traits.",
+                HighlightSeverity.WARNING, false, "Rust");
+        addTool("RsAnonymousFunctionParameters", "Anonymous function parameters not allowed", "Rust",
+                "Reports function parameter declarations lacking parameter names in fn definitions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsApproximatedConstants", "Approximated constants", "Rust",
+                "Reports literals that approximate mathematical constants (e.g. 3.14159) instead of std::f64::consts.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsAsyncNonMoveClosureWithParameters", "`async` non-`move` closure with parameters (unsupported)", "Rust",
+                "Reports async non-move closures with parameters which are not yet supported by rustc.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCallNotFunction", "Attempt to call not a function", "Rust",
+                "Reports call expressions on items or expressions that are not functions or do not implement Fn traits.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsAttributeError", "Attribute error", "Rust",
+                "Reports misplaced, unknown, or malformed attributes on Rust items.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsAttributeWithoutParentheses", "Attribute without parentheses", "Rust",
+                "Reports attributes that require parentheses for arguments but are missing them.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsBaseExpressionRequiredAfterDotDot", "Base expression required after `..`", "Rust",
+                "Reports struct update syntax where '..' is not followed by a base expression.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsAsyncBlockingSleep", "Blocking `sleep` function cannot be used in `async` context", "Rust",
+                "Reports std::thread::sleep calls inside async functions or blocks instead of tokio/async sleep.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsSimplifyBooleanExpression", "Boolean expression can be simplified", "Rust",
+                "Suggests simplifying boolean expressions using De Morgan's laws or boolean identities.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsBorrowChecker", "Borrow checker errors", "Rust",
+                "Reports borrow checker ownership and borrowing violations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCopyAndDropImplemented", "Both `Copy` and `Drop` implemented", "Rust",
+                "Reports types that implement both Copy and Drop traits which is forbidden in Rust.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidCharLiteralLength", "Char literal empty or too long", "Rust",
+                "Reports char literals which are empty or too long.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCircularModules", "Circular modules", "Rust",
+                "Reports cyclic module dependencies resulting in compiler recursion errors.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCommaSeparatedTraitBounds", "Comma-separated trait bounds", "Rust",
+                "Reports trait bounds separated by commas instead of '+' in type parameter declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCompileErrorMacro", "`compile_error!` macro", "Rust",
+                "Reports invocations of compile_error! macro emitting compiler errors.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCompilerFeatureUnavailable", "Compiler feature is unavailable", "Rust",
+                "Reports usage of unstable compiler features on stable toolchains without feature gate.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsComplexPatternInFunction", "Complex pattern in function", "Rust",
+                "Reports complex pattern matches in function parameter lists that reduce signature readability.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsConstGenericArgumentWithoutBraces", "Const generic argument expression without braces", "Rust",
+                "Reports const generic expressions passed as type arguments that are missing enclosing braces.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsContinueBreakOutsideLoop", "`continue` / `break` used outside `loop` / `while`", "Rust",
+                "Reports 'continue' or 'break' statements placed outside loops.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCopyTypeDropped", "`Copy` type dropped", "Rust",
+                "Reports explicit calls to std::mem::drop on types implementing Copy.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsCrateMisplacedInPath", "`crate` misplaced in path", "Rust",
+                "Reports 'crate' keyword placed at positions other than the leading segment of a path.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsCrateInPaths", "`crate` in paths", "Rust",
+                "Reports invalid usage of the 'crate' identifier in paths.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDanglingElse", "Dangling `else`", "Rust",
+                "Reports ambiguous 'else' branches in nested if expressions.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDbgUsage", "`#[dbg]` usage", "Rust",
+                "Reports leftover dbg! macro invocations in production code.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDefaultParameterValues", "Default parameter values (unsupported)", "Rust",
+                "Reports attempts to specify default parameter values which are not supported in Rust.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDefaultTypeParametersSyntax", "Default type parameters syntax", "Rust",
+                "Reports invalid syntax in default type parameter declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDefaultQualifierNotAllowed", "`default` qualifier not allowed", "Rust",
+                "Reports 'default' keyword on items outside specialization contexts.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDefaultsForConstParameters", "Defaults for const parameters not allowed", "Rust",
+                "Reports default values assigned to const generic parameters where unsupported.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDeprecatedInclusiveRangeSyntax", "Deprecated `...` syntax", "Rust",
+                "Reports deprecated '...' inclusive range pattern syntax and suggests using '..='.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDeriveNotAllowed", "`#[derive]` not allowed", "Rust",
+                "Reports #[derive] attributes on items other than structs, enums, or unions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDerivedTraitNotImplemented", "Derived trait not implemented", "Rust",
+                "Reports types missing required trait implementations demanded by #[derive].",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDetachedFile", "Detached file", "Rust",
+                "Reports Rust source files that are not included in the crate module tree.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDoubleNegation", "Double negation", "Rust",
+                "Reports double negative boolean or numeric expressions (e.g. '!!x' or '- -x').",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDuplicateDefinition", "Duplicate definition", "Rust",
+                "Reports duplicate item declarations in the same module scope.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDuplicateHashKey", "Duplicate hash key", "Rust",
+                "Reports duplicate key literals in hash map constructor expressions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDuplicateMacroPattern", "Duplicate macro pattern", "Rust",
+                "Reports identical pattern arms in macro_rules! definitions.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsDuplicateTraitMethodParameterName", "Duplicate trait method parameter name", "Rust",
+                "Reports duplicate parameter names in trait method signatures.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsDynamicEnvironmentCapture", "Dynamic environment capture in `fn`", "Rust",
+                "Reports named 'fn' items attempting to capture variables from enclosing environment.",
+                HighlightSeverity.ERROR, true, "Rust");
+    }
+
+    private void initRustCoreInspectionsPart2() {
+        // Direct Rust inspections (Part 2: E - Inherent)
+        addTool("RsEntryPointIsAsync", "Entry point is async", "Rust",
+                "Reports 'main' functions declared as 'async' without an async runtime entry attribute like #[tokio::main].",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsEqualityAssertionCanBeSimplified", "Equality assertion can be simplified", "Rust",
+                "Suggests replacing assert!(a == b) with assert_eq!(a, b) for better test failure output.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsExperimentalInspections", "Experimental inspections", "Rust",
+                "Enables experimental Rust inspections for early testing.",
+                HighlightSeverity.WARNING, false, "Rust");
+        addTool("RsExplicitCallToDrop", "Explicit call to `drop`", "Rust",
+                "Reports explicit calls to Drop::drop and suggests calling std::mem::drop instead.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsExternCrateSelfMissingAs", "`extern crate self` missing `as <name>`", "Rust",
+                "Reports 'extern crate self;' missing 'as' renaming clause.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsExternalLinter", "External linter (available for Code | Inspect Code)", "Rust",
+                "Runs Cargo Check or Clippy external linters for comprehensive analysis.",
+                HighlightSeverity.WARNING, true, "Rust", true, false);
+        addTool("RsFailedLineInTest", "Failed line in test", "Rust",
+                "Highlights source lines where assertions failed during test execution.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsForeignTraitImplementation", "Foreign trait implementation", "Rust",
+                "Reports orphan rule violations where both trait and type are external to current crate.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsFormatMacroErrors", "Format macro error", "Rust",
+                "Reports errors in the use of macros that support formatting.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsForwardDeclaredIdentifierForParameter", "Forward-declared identifier for parameter with default value", "Rust",
+                "Reports forward-declared identifiers referencing subsequent parameters with defaults.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsFunctionCannotBeVariadic", "Function cannot be variadic", "Rust",
+                "Reports variadic function declarations outside 'extern \"C\"' blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsGenericArgumentsMustBeSpecifiedBeforeConstraints", "Generic arguments must be specified before the first constraint", "Rust",
+                "Reports generic type or lifetime arguments placed after equality or associated type bounds.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIfConditionIsConstant", "`if` condition is constant", "Rust",
+                "Reports 'if' conditions that evaluate to a constant true or false boolean value.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsImmutableReassigned", "Immutable reassigned", "Rust",
+                "Reports reassignments to variables that were declared immutable.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsImmutableReferenceReassigned", "Immutable reassigned", "Rust",
+                "Reports assignments through immutable references.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsImmutableVariableReassigned", "Immutable variable reassigned", "Rust",
+                "Reports reassignments to immutable variables or binding patterns.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsImplTraitNotAllowed", "`impl Trait` not allowed", "Rust",
+                "Reports 'impl Trait' return types in positions where they are forbidden by language syntax.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsImplMemberOrderDiffersFromTrait", "`impl` member order differs from trait", "Rust",
+                "Reports trait implementation items whose order differs from the trait declaration.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsInclusiveRangeWithoutEndBound", "Inclusive range without an end bound", "Rust",
+                "Reports inclusive ranges '..=' that omit an ending bound.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIncorrectConstSyntax", "Incorrect const syntax", "Rust",
+                "Reports syntax errors in const or static declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIncorrectFunctionSyntax", "Incorrect function syntax", "Rust",
+                "Reports syntax errors in function declarations or qualifiers.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIncorrectOrderOfParameters", "Incorrect order of lifetime/type/const parameters", "Rust",
+                "Reports generic parameter lists where lifetimes do not precede types and consts.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIncorrectTypeAliasSyntax", "Incorrect type alias syntax", "Rust",
+                "Reports syntax errors in type alias declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIncorrectVisibilityRestriction", "Incorrect visibility restriction", "Rust",
+                "Reports invalid path expressions inside 'pub(...)' visibility qualifiers.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsIndexExpressionHasWrongType", "Index expression has a wrong type", "Rust",
+                "Reports indexing expressions with indices not implementing the required Index trait.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInherentImplBlockNotAllowed", "Inherent `impl` block not allowed for item", "Rust",
+                "Reports inherent impl blocks declared for trait types or foreign types.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInherentImplOutsideCrate", "Inherent `impl` defined outside type's containing crate", "Rust",
+                "Reports inherent impl blocks for types defined in another crate.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInherentImplForDynAutoTrait", "Inherent `impl` for dyn auto trait", "Rust",
+                "Reports inherent impl blocks on dynamic auto traits (e.g. dyn Send + Sync).",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInlineNotAllowed", "`#[inline]` not allowed", "Rust",
+                "Reports #[inline] attributes on items other than functions or methods.",
+                HighlightSeverity.ERROR, true, "Rust");
+    }
+
+    private void initRustCoreInspectionsPart3() {
+        // Direct Rust inspections (Part 3: Invalid - Re-export)
+        addTool("RsInvalidBreakOrContinue", "Invalid 'break' or 'continue'", "Rust",
+                "Reports 'break' or 'continue' statements with invalid loop labels or values.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidTryUsage", "Invalid '?' usage", "Rust",
+                "Reports '?' operator used in functions that do not return Result, Option, or Try types.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidCopyImplementation", "Invalid 'Copy' implementation", "Rust",
+                "Reports Copy trait implementations for types that contain non-Copy fields.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidDropImplementation", "Invalid 'Drop' implementation", "Rust",
+                "Reports Drop trait implementations on types where Drop is not allowed or specialization is attempted.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidSelfImport", "Invalid `self` import", "Rust",
+                "Reports invalid 'self' use statements in module imports.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidAccessOfPrivateItem", "Invalid access of private item", "Rust",
+                "Reports access to private fields, methods, or modules outside their visible scope.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidCrateName", "Invalid crate name", "Rust",
+                "Reports crate names containing forbidden characters or matching reserved keywords.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidFieldsInStruct", "Invalid fields in struct", "Rust",
+                "Reports invalid or duplicate field declarations in struct definitions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidFieldsInStructPattern", "Invalid fields in struct or tuple struct pattern", "Rust",
+                "Reports non-existent field names used in struct or tuple struct pattern matches.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidLabelName", "Invalid label name", "Rust",
+                "Reports loop label identifiers that do not begin with a single quote or are malformed.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidLifetimeName", "Invalid lifetime name", "Rust",
+                "Reports lifetime identifiers that match reserved names or lack required apostrophe.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidLiteralSuffix", "Invalid literal suffix", "Rust",
+                "Reports numeric or string literals with unrecognized suffix types.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidMacroCall", "Invalid macro call", "Rust",
+                "Reports macro invocations with invalid syntax or delimiters.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidMacroDefinition", "Invalid macro definition", "Rust",
+                "Reports syntax errors in macro_rules! patterns or templates.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsInvalidMacroVariableType", "Invalid macro variable type", "Rust",
+                "Reports invalid designator types (e.g. $x:invalid) in macro parameter patterns.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsPlaceExpression", "Invalid place expression", "Rust",
+                "Reports invalid place expressions. For example: `1 + 1 = 2`.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsItemCannotBeInsideItem", "Item cannot be inside another item", "Rust",
+                "Reports item declarations placed inside invalid parent item blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsLifetimeBoundsInParentheses", "Lifetime bounds in parentheses", "Rust",
+                "Reports lifetime bounds enclosed in unnecessary parentheses.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsLiteralOutOfRange", "Literal out of range", "Rust",
+                "Reports numeric literals that exceed the maximum or minimum bounds of their inferred type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNumericLiteralOutOfRange", "Literal out of range", "Rust",
+                "Reports float or integer literals whose magnitude cannot be represented in the specified type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMainFunctionNotFound", "Main function not found", "Rust",
+                "Reports binary crates lacking a 'main' entry point function.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMainFunctionWithGenericParameters", "`main` function with generic parameters", "Rust",
+                "Reports 'main' entry point functions declared with generic type or lifetime parameters.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsManualImplementationOfFnTraits", "Manual implementation of `Fn`, `FnMut`, or `FnOnce`", "Rust",
+                "Reports manual implementations of Fn, FnMut, or FnOnce traits without feature gate.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMatchCanBeReplacedWithMethodCall", "Match expression can be replaced with a method call", "Rust",
+                "Suggests replacing verbose match expressions with Option or Result methods like unwrap_or, map, or and_then.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsMisorderedGenericArguments", "Misordered generic arguments", "Rust",
+                "Reports generic argument lists where lifetimes, types, and const arguments are out of order.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMisplacedEllipsisArgument", "Misplaced `...` argument", "Rust",
+                "Reports '...' argument positioned incorrectly in function parameter declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMissingDynInTraitObjects", "Missing `dyn` in trait objects", "Rust",
+                "Reports bare trait objects lacking the 'dyn' keyword.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMissingElse", "Missing `else`", "Rust",
+                "Reports 'if' expressions used in value-producing contexts lacking an 'else' branch.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsMissingFeatures", "Missing features", "Rust",
+                "Reports items requiring Cargo feature flags that are not enabled in Cargo.toml.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsMissingParenthesesForChainedComparison", "Missing parentheses for chained comparison", "Rust",
+                "Reports chained comparison expressions (e.g. 'a < b < c') which are not supported without parentheses.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMissingStructFieldType", "Missing struct field type", "Rust",
+                "Reports struct field declarations that omit a type annotation.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMissingTypeForConstant", "Missing type for constant", "Rust",
+                "Reports const or static declarations missing an explicit type annotation.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsModuleDeclaredOutsideModRs", "Module declared outside mod.rs", "Rust",
+                "Reports submodule declarations outside the containing directory or mod.rs file.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMultipleLifetimeBounds", "Multiple lifetime bounds for trait object", "Rust",
+                "Reports trait objects with more than one lifetime bound specified.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsMultipleRelaxedDefaultBounds", "Multiple relaxed default bounds for type parameter", "Rust",
+                "Reports type parameters declaring more than one '?Sized' relaxed bound.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNestedImplTraitNotAllowed", "Nested `impl Trait` not allowed", "Rust",
+                "Reports nested 'impl Trait' types inside other 'impl Trait' bounds.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNestedLifetimeQuantification", "Nested lifetime quantification", "Rust",
+                "Reports higher-ranked trait bounds (for<...>) with nested lifetime quantifications.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNoBoxingForAsyncRecursion", "No boxing for async recursion", "Rust",
+                "Reports recursive async functions that do not box their return future, causing infinite size.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNoFileFoundForModule", "No file found for module", "Rust",
+                "Reports 'mod foo;' declarations where the corresponding foo.rs or foo/mod.rs file does not exist.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNonExhaustiveMatch", "Non-exhaustive match", "Rust",
+                "Reports match expressions that do not cover all possible patterns of the target type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNonExistentFieldAccess", "Non-existent field access", "Rust",
+                "Reports field access expressions accessing fields that do not exist on the type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNonInlineModuleMissingPath", "Non-inline module declaration missing path attribute", "Rust",
+                "Reports non-inline module declarations inside non-standard paths lacking a #[path] attribute.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNonShorthandFieldInitialization", "Non-shorthand field initialization", "Rust",
+                "Reports struct initializers where field name and variable name match but are written as 'field: field'.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsNonStringAbiLiteral", "Non-string ABI literal", "Rust",
+                "Reports 'extern' declarations using ABI designators that are not string literals.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsNonStructuralMatchTypeUsedForConstGeneric", "Non-structural-match type used for const generic param", "Rust",
+                "Reports types not deriving PartialEq and Eq used as const generic parameters.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsObjectTypeWithNoTraits", "Object type with no traits", "Rust",
+                "Reports 'dyn' keyword followed by empty trait bounds.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnderscoreOnRhsOfAssignment", "`_` on the right-hand side of assignment", "Rust",
+                "Reports '_' wildcard pattern used on the right-hand side of an assignment expression.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsFunctionParametersAreSized", "Parameter type with unknown size", "Rust",
+                "Reports function parameters whose types are unknown at compile time.\n\nInspection ID: RsFunctionParametersAreSized",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsPrintlnMacroCanBeSimplified", "`println!` macro can be simplified", "Rust",
+                "Reports println!(\"\") calls that can be simplified to println!().",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsProcMacroDefinedOutsideProcMacroCrate", "Proc macro defined outside `proc-macro` crate", "Rust",
+                "Reports procedural macro definitions inside crates that are not configured with crate-type = [\"proc-macro\"].",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsPublicItemInProcMacroCrate", "Public item in proc-macro crate", "Rust",
+                "Reports public items in proc-macro crates that are not procedural macro functions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsReexportOfPrivateItem", "Re-export of a private item", "Rust",
+                "Reports 'pub use' statements re-exporting items that are private to current module.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsRedundantColonColon", "Redundant `::`", "Rust",
+                "Reports redundant leading '::' path prefixes.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsRedundantElse", "Redundant `else`", "Rust",
+                "Reports redundant 'else' blocks after a branch that breaks or returns.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsReferenceDropped", "Reference dropped", "Rust",
+                "Reports calls to std::mem::drop on reference types which has no effect.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsRepeatedDiscriminantValue", "Repeated discriminant value", "Rust",
+                "Reports enum variants with repeated explicit discriminant values.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsRepeatedIdentifierInPattern", "Repeated identifier in pattern", "Rust",
+                "Reports duplicate identifier bindings in match patterns.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsReprIntTypeMissingForEnum", "`#[repr(inttype)]` missing for enum", "Rust",
+                "Reports fieldless enums missing repr(u8/i32/...) attribute when required.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsReservedKeywordUsedAsIdentifier", "Reserved keyword used as an identifier", "Rust",
+                "Reports usage of reserved Rust keywords as identifiers.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsReservedLifetimeName", "Reserved lifetime name", "Rust",
+                "Reports usage of reserved lifetime names like 'static.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsReturnCanBeLifted", "`return` can be lifted", "Rust",
+                "Reports 'return' statements that can be lifted out of match or if arms.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsReturnMustHaveValue", "`return` must have a value", "Rust",
+                "Reports return statements with no value in functions that declare a non-unit return type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsRust2018EditionViolation", "Rust 2018 edition violation", "Rust",
+                "Reports idiom and syntax violations against the Rust 2018 edition.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsRust2024EditionViolation", "Rust 2024 edition violation", "Rust",
+                "Reports idiom and syntax violations against the Rust 2024 edition.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSelfSuperMisplacedInPath", "`self` / `super` misplaced in path", "Rust",
+                "Reports 'self' or 'super' path components positioned anywhere other than the start of a path.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSelfFunctionParameterNotAllowed", "`self` function parameter not allowed", "Rust",
+                "Reports 'self' parameter used in functions where method receiver is not permitted.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSelfInStaticMethod", "`self` in static method", "Rust",
+                "Reports 'self' parameter used in static methods or functions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSelfUnavailableInContext", "`self` unavailable in context", "Rust",
+                "Reports 'self' referenced in contexts where no self instance exists.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSizedUnsizedTraitImplementedExplicitly", "`Sized` / `Unsized` trait implemented explicitly", "Rust",
+                "Reports explicit implementations of auto traits Sized or ?Sized.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsStructInheritance", "Struct inheritance (unsupported)", "Rust",
+                "Reports unsupported struct inheritance declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSupertraitIsNotImplemented", "Supertrait is not implemented", "Rust",
+                "Reports trait implementations where required supertraits are not implemented.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsSuspiciousAssignment", "Suspicious assignment", "Rust",
+                "Reports suspicious assignments such as self-assignment or assigning to a parameter without effect.",
+                HighlightSeverity.WARNING, true, "Rust");
+    }
+
+    private void initRustCoreInspectionsPart4() {
+        addTool("RsThreadRngGenCanBeReplacedWithRandom", "`thread_rng().gen()` can be replaced with `random()`", "Rust",
+                "Suggests replacing thread_rng().gen() with the simpler rand::random() function.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsToStringShouldNotBeImplementedDirectly", "`ToString` should not be implemented directly", "Rust",
+                "Suggests implementing Display instead of implementing ToString directly.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsTraitExpected", "Trait expected", "Rust",
+                "Reports type names used where a trait is expected in trait bounds or impl blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTraitImplementationIssue", "Trait implementation issue", "Rust",
+                "Reports missing or mismatched items in trait implementation blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTraitSafetyMismatch", "Trait safety mismatch", "Rust",
+                "Reports unsafe trait implemented without 'unsafe impl' or safe trait implemented with 'unsafe'.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTryMacroUsage", "`try!` macro usage", "Rust",
+                "Suggests replacing try! macro invocations with the '?' operator.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsTupleLikeUnion", "Tuple-like union", "Rust",
+                "Reports union declarations using tuple struct syntax which is not supported.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTypeChecker", "Type checker", "Rust",
+                "Reports type errors, type mismatches, and unsized type violations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTypeCheckerExperimental", "Type checker (experimental)", "Rust",
+                "Experimental type checking analysis for complex trait projections and higher-ranked bounds.",
+                HighlightSeverity.ERROR, false, "Rust");
+        addTool("RsTraitObligations", "Type does not implement trait", "Rust",
+                "Reports the use of types that do not implement the necessary traits.\n\nInspection ID: RsTraitObligations",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsTraitObligationsExperimental", "Type does not implement trait (experimental)", "Rust",
+                "Experimental trait obligation solver checking unsatisfied trait bounds.",
+                HighlightSeverity.ERROR, false, "Rust");
+        addTool("RsTypeMismatchedTraitAssociatedType", "Type mismatched the trait's associated type", "Rust",
+                "Reports associated type values that do not match the expected trait definition.",
+                HighlightSeverity.ERROR, false, "Rust");
+        addTool("RsTypePlaceholderUsedInItemSignature", "Type placeholder used in item signature", "Rust",
+                "Reports '_' type wildcards used in function or item signature definitions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnclosedTextLiteral", "Unclosed text literal", "Rust",
+                "Reports unclosed character or string literal tokens.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUndeclaredLabel", "Undeclared label", "Rust",
+                "Reports loop labels referenced in break/continue that have not been declared.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUndeclaredLifetimeName", "Undeclared lifetime name", "Rust",
+                "Reports lifetime parameters referenced without being declared in generic parameter list.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnionExpressionFieldsCount", "Union expression fields count", "Rust",
+                "Reports union expressions initializing more or fewer than exactly one field.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnlabeledContinueBreakInWhileLoop", "Unlabeled `continue` / `break` in `while` loop condition", "Rust",
+                "Reports unlabeled continue or break statements positioned inside while loop condition expressions.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnlabeledContinueBreakInLabeledBlock", "Unlabeled `continue` / `break` in labeled block", "Rust",
+                "Reports unlabeled continue or break statements inside labeled blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnnecessaryVisibilityQualifier", "Unnecessary visibility qualifier", "Rust",
+                "Reports 'pub' visibility qualifiers on items in private modules or trait declarations.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnreachableLabel", "Unreachable label", "Rust",
+                "Reports loop labels that cannot be reached by control flow.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnresolvedMethod", "Unresolved method", "Rust",
+                "Reports method invocations that cannot be resolved on the receiver type.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnresolvedMethodExperimental", "Unresolved method (experimental)", "Rust",
+                "Experimental method resolution considering ambiguous trait candidates.",
+                HighlightSeverity.ERROR, false, "Rust");
+        addTool("RsUnresolvedPath", "Unresolved path", "Rust",
+                "Reports module, type, or item paths that cannot be resolved in current scope.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnresolvedPathExperimental", "Unresolved path (experimental)", "Rust",
+                "Experimental path resolution with auto-import candidate suggestions.",
+                HighlightSeverity.ERROR, false, "Rust");
+        addTool("RsUnsafeCStringPointer", "Unsafe CString pointer", "Rust",
+                "Reports CString::as_ptr calls where the CString is immediately dropped, creating dangling pointers.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsUnsafeInherentImplementation", "Unsafe inherent implementation", "Rust",
+                "Reports 'unsafe impl' on inherent (non-trait) implementation blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnsafeItemInSafeContext", "Unsafe item in safe context", "Rust",
+                "Reports calls to unsafe functions or dereferencing raw pointers outside 'unsafe' blocks.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnsafeModule", "Unsafe module", "Rust",
+                "Reports 'unsafe mod' declarations which are not permitted in Rust syntax.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnstableItem", "Unstable item", "Rust",
+                "Reports usage of standard library items that require nightly compiler feature gates.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUnsupportedLetExpression", "Unsupported `let` expression", "Rust",
+                "Reports 'let' expressions used outside 'if let' or 'while let' guard contexts.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUseOfDynImplTraitInTypeParameterBounds", "Use of `dyn` / `impl Trait` in type parameter bounds", "Rust",
+                "Reports 'dyn Trait' or 'impl Trait' used as bounds on generic type parameters.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsUseOfIncrementDecrementOperator", "Use of increment/decrement operator (unsupported)", "Rust",
+                "Reports ++ or -- operators which do not exist in Rust syntax (use += 1 or -= 1).",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsVariadicParametersForNonCAbiFunction", "Variadic parameters for non-C ABI function", "Rust",
+                "Reports '...' variadic parameter lists on functions that do not use 'extern \"C\"'.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsWithCallCanBeReplacedWithThreadLocalStableMethod", "`with` call can be replaced with thread local stable method", "Rust",
+                "Suggests replacing thread-local with() closures with stable LocalKey accessor methods.",
+                HighlightSeverity.WARNING, true, "Rust");
+        addTool("RsWrongAssociatedTypeArguments", "Wrong associated type arguments", "Rust",
+                "Reports associated type bindings with missing or unexpected generic arguments.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsWrongNumberOfArguments", "Wrong number of arguments", "Rust",
+                "Reports function or method calls invoked with fewer or more arguments than expected.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsWrongNumberOfGenericArguments", "Wrong number of generic arguments", "Rust",
+                "Reports generic items supplied with too few or too many generic arguments.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsWrongNumberOfLifetimeParameters", "Wrong number of lifetime parameters", "Rust",
+                "Reports items invoked with an incorrect number of lifetime parameters.",
+                HighlightSeverity.ERROR, true, "Rust");
+        addTool("RsWrongNumberOfTypeOrConstParameters", "Wrong number of type or const parameters", "Rust",
+                "Reports items invoked with an incorrect number of type or const parameters.",
+                HighlightSeverity.ERROR, true, "Rust");
+    }
+
+    private void initSassInspections() {
+        // Sass/SCSS ([✓] all 4 enabled matching screenshot)
+        addTool("Sass.MissingImport", "Missing import", "Sass/SCSS",
+                "Reports missing or unresolvable Sass/SCSS @import and @use rules.",
+                HighlightSeverity.WARNING, true, "SCSS");
+        addTool("Sass.UnresolvedMixin", "Unresolved mixin", "Sass/SCSS",
+                "Reports references to Sass mixins (@include) that cannot be resolved.",
+                HighlightSeverity.WARNING, true, "SCSS");
+        addTool("Sass.UnresolvedPlaceholderSelector", "Unresolved placeholder selector", "Sass/SCSS",
+                "Reports Sass placeholder selectors (%placeholder) used in @extend that cannot be resolved.",
+                HighlightSeverity.WARNING, true, "SCSS");
+        addTool("Sass.UnresolvedVariable", "Unresolved variable", "Sass/SCSS",
+                "Reports Sass/SCSS variables that are not defined in the current or imported scopes.",
+                HighlightSeverity.WARNING, true, "SCSS");
+    }
+
+    private void initSbtInspections() {
+        // sbt ([✓] both enabled matching screenshot)
+        addTool("Sbt.NewerVersionAvailable", "Newer stable version for library dependency is available", "sbt",
+                "Reports library dependencies in sbt build files for which newer stable versions are available.",
+                HighlightSeverity.WARNING, true, "sbt");
+        addTool("Sbt.ReplaceProjectWithProjectIn", "Replace Project() with project.in()", "sbt",
+                "Suggests replacing legacy Project(...) definitions with project.in(...) syntax in sbt build files.",
+                HighlightSeverity.WARNING, true, "sbt");
+    }
+
+    private void initSecurityInspections() {
+        // Security ([✓] all 5 enabled matching screenshot)
+        addTool("Security.LinkWithUnencryptedProtocol", "Link with unencrypted protocol", "Security",
+                "Reports HTTP links that should use secure HTTPS protocol to prevent tampering and eavesdropping.",
+                HighlightSeverity.WARNING, true, "Security");
+        addTool("Security.MaliciousDependency", "Malicious dependency", "Security",
+                "Reports dependencies flagged as known malicious packages in public security advisories.",
+                HighlightSeverity.WARNING, true, "Security");
+        addTool("Security.VulnerableApiUsage", "Vulnerable API usage", "Security",
+                "Reports invocations of security-sensitive APIs known to contain vulnerabilities or unsafe defaults.",
+                HighlightSeverity.WARNING, true, "Security");
+        addTool("Security.VulnerableDeclaredDependency", "Vulnerable declared dependency", "Security",
+                "Reports declared package dependencies containing known CVE security vulnerabilities.",
+                HighlightSeverity.WARNING, true, "Security");
+        addTool(InspectionTool.builder("Security.VulnerableImportedDependency")
+                .displayName("Vulnerable imported dependency")
+                .groupPath("Security")
+                .description("Reports transitive imported dependencies containing security vulnerabilities. Available during batch inspection.")
+                .defaultSeverity(HighlightSeverity.WARNING)
+                .defaultEnabled(true)
+                .language("Security")
+                .batchModeOnly(true)
+                .build());
+    }
+
+    private void initShellScriptInspections() {
+        // Shell script ([✓] enabled matching screenshot)
+        addTool("Shell.ShellCheck", "ShellCheck", "Shell script",
+                "Runs ShellCheck static analysis to detect errors, bugs, and stylistic issues in shell scripts.",
+                HighlightSeverity.ERROR, true, "Shell");
+    }
+
+    private void initSpringInspections() {
+        // Spring ([✓] all 10 subcategories enabled matching screenshots)
+        initSpringAopInspections();
+        initSpringBootInspections();
+        initSpringCloudInspections();
+        initSpringCloudStreamInspections();
+        initSpringCoreCodeInspectionsPart1();
+        initSpringCoreCodeInspectionsPart2();
+        initSpringCoreXmlInspectionsPart1();
+        initSpringCoreXmlInspectionsPart2();
+        initSpringCoreDirectInspections();
+        initSpringDataSubInspections();
+        initSpringIntegrationInspections();
+        initSpringMvcInspections();
+        initSpringSecurityInspections();
+        initSpringWebSocketInspections();
+    }
+
+    private void initSpringAopInspections() {
+        // Spring AOP ([✓] 5 tools)
+        addTool("Spring.Aop.IncorrectJdkProxiedBeanType", "Incorrect JDK-proxied bean type", "Spring/Spring AOP",
+                "Reports bean types that are incorrectly configured for JDK dynamic proxies.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Aop.IncorrectAdviceAdvisor", "Incorrect Spring AOP advice or advisor element", "Spring/Spring AOP",
+                "Validates that AOP advice elements define required pointcut or pointcut-ref attributes.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Aop.IncorrectAspectPointcut", "Incorrect Spring AOP aspect or pointcut element", "Spring/Spring AOP",
+                "Reports structural and syntactic issues in Spring AOP aspect and pointcut definitions.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Aop.IncorrectPointcutExpression", "Incorrect Spring AOP pointcut expression", "Spring/Spring AOP",
+                "Validates the syntax and validity of Spring AOP pointcut expression strings.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Aop.MissingAspectjAutoproxy", "Missing aspectj-autoproxy", "Spring/Spring AOP",
+                "Ensures that aspectj-autoproxy is configured when using AspectJ annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringBootInspections() {
+        // Spring Boot ([✓] 6 tools)
+        addTool("Spring.Boot.InvalidConfigurationProperties", "Invalid @ConfigurationProperties", "Spring/Spring Boot",
+                "Reports invalid Spring Boot @ConfigurationProperties binding and prefix definitions.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Boot.InvalidMetadataJson", "Invalid additional-spring-configuration-metadata.json", "Spring/Spring Boot",
+                "Validates additional-spring-configuration-metadata.json format, property types, and structure.",
+                HighlightSeverity.ERROR, true, "JSON");
+        addTool("Spring.Boot.InvalidPropertiesConfiguration", "Invalid properties configuration", "Spring/Spring Boot",
+                "Reports malformed keys and value syntax in Spring Boot application.properties.",
+                HighlightSeverity.ERROR, true, "Properties");
+        addTool("Spring.Boot.InvalidSetup", "Invalid Spring Boot application setup", "Spring/Spring Boot",
+                "Reports invalid @SpringBootApplication setup, conflicting annotations, and bootstrap issues.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Boot.InvalidYamlConfiguration", "Invalid YAML configuration", "Spring/Spring Boot",
+                "Validates application.yml and application.yaml configuration files against configuration metadata.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Spring.Boot.SuspiciousHooksOperatorDebug", "Suspicious Hooks.onOperatorDebug() usage", "Spring/Spring Boot",
+                "Warns about potentially performance-degrading Project Reactor debugging hooks in production.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringCloudInspections() {
+        // Spring Cloud ([✓] 1 tool)
+        addTool("Spring.Cloud.BootstrapConfiguration", "Bootstrap configuration included in application context", "Spring/Spring Cloud",
+                "Reports bootstrap configuration classes included directly in the application context.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringCloudStreamInspections() {
+        // Spring Cloud Stream ([✓] 2 tools)
+        addTool("Spring.CloudStream.StreamHandlerMethodError", "Stream handler method error", "Spring/Spring Cloud Stream",
+                "Reports inconsistency errors and invalid signatures in Spring Cloud Stream handler methods.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.CloudStream.UnresolvedMessageChannel", "Unresolved message channel", "Spring/Spring Cloud Stream",
+                "Reports unresolved channel attributes in annotations like @StreamListener, @SendTo, @Output, and @Input.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringCoreCodeInspectionsPart1() {
+        // Spring Core > Code Part 1 ([✓] 14 tools)
+        addTool("Spring.Core.Code.CacheAnnotationsOnInterfaces", "Cache* annotations defined on interfaces/interface methods", "Spring/Spring Core/Code",
+                "Reports @Cacheable or @CacheEvict placed on interface declarations instead of concrete bean implementations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.CacheableSelfInvocation", "@Cacheable self-invocation method calls", "Spring/Spring Core/Code",
+                "Reports internal self-invocation calls to @Cacheable methods that bypass Spring AOP caching proxies.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.ConfigurationProxyMethods", "@Configuration proxyMethods usage warnings", "Spring/Spring Core/Code",
+                "Reports inter-bean calls between @Bean methods on @Configuration classes where proxyBeanMethods is false.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectAsyncMethodSignature", "Incorrect @Async method signature", "Spring/Spring Core/Code",
+                "Reports @Async methods whose return type is not void, Future, CompletableFuture, or ListenableFuture.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectScheduledMethodSignature", "Incorrect @Scheduled method signature", "Spring/Spring Core/Code",
+                "Reports @Scheduled methods that have parameters or declare a non-void return type.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectAutowiring", "Incorrect autowiring in Spring bean components", "Spring/Spring Core/Code",
+                "Reports unresolved, ambiguous, or un-injectable dependency injection points in Spring bean components.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectRequiredCacheNames", "Incorrect required cache names definition", "Spring/Spring Core/Code",
+                "Reports cache operations where cacheNames or value attribute is missing or empty.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectSpringComponentAutowiring", "Incorrect Spring component autowiring or injection points", "Spring/Spring Core/Code",
+                "Reports injection points that do not match available Spring candidate beans.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectCachePutAndCacheable", "Incorrect usage of @CachePut and @Cacheable on class", "Spring/Spring Core/Code",
+                "Reports @CachePut and @Cacheable applied concurrently on class or method levels in conflicting manners.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectlyConfiguredCaching", "Incorrectly configured 'caching' annotation", "Spring/Spring Core/Code",
+                "Reports invalid attributes or configuration in @Caching composite cache annotations.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectEventListenerMethods", "Incorrectly configured @EventListener methods", "Spring/Spring Core/Code",
+                "Reports @EventListener methods with invalid parameters or mismatched payload events.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.IncorrectProfileExpression", "Incorrectly configured @Profile expression", "Spring/Spring Core/Code",
+                "Validates @Profile expression syntax, operators, and profile name tokens.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectDependsOnBean", "Incorrectly referenced bean in @DependsOn annotation", "Spring/Spring Core/Code",
+                "Reports bean names specified in @DependsOn that cannot be resolved in the bean factory.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectLookupBean", "Incorrectly referenced bean in @Lookup annotation", "Spring/Spring Core/Code",
+                "Reports bean names specified in @Lookup that do not resolve to valid beans in context.",
+                HighlightSeverity.ERROR, true, "Java");
+    }
+
+    private void initSpringCoreCodeInspectionsPart2() {
+        // Spring Core > Code Part 2 ([✓] 14 tools)
+        addTool("Spring.Core.Code.IncorrectMockitoBean", "Incorrectly referenced bean in @MockitoBean, @MockitoSpyBean", "Spring/Spring Core/Code",
+                "Reports bean names in @MockitoBean or @MockitoSpyBean that do not match defined Spring beans.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.IncorrectScheduledBean", "Incorrectly referenced bean in @Scheduled annotation", "Spring/Spring Core/Code",
+                "Reports scheduler bean references in @Scheduled that cannot be found in the application context.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.InvalidPlatformTransactionManager", "Invalid 'PlatformTransactionManager' declaration in @Transactional", "Spring/Spring Core/Code",
+                "Reports transactionManager references in @Transactional that do not resolve to PlatformTransactionManager beans.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.InvalidContextConfiguration", "Invalid @ContextConfiguration", "Spring/Spring Core/Code",
+                "Reports missing or contradictory class, location, or loader attributes in @ContextConfiguration.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.InvalidDirtiesContextMode", "Invalid @DirtiesContext 'mode' configuration", "Spring/Spring Core/Code",
+                "Reports invalid HierarchyMode or MethodMode configurations in @DirtiesContext annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.InvalidSqlAndSqlGroup", "Invalid @Sql and @SqlGroup configurations", "Spring/Spring Core/Code",
+                "Reports missing SQL script paths or conflicting execution phase settings in @Sql configurations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.InvalidComponentScanPackage", "Invalid package in @ComponentScan or its meta-annotations", "Spring/Spring Core/Code",
+                "Reports basePackages in @ComponentScan that do not exist or contain no Spring components.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.InvalidTransactionalLifecycle", "Invalid transactional lifecycle method declaration", "Spring/Spring Core/Code",
+                "Reports @Transactional annotations placed on private, static, or final methods where proxies cannot intercept.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.NonRecommendedFieldInjections", "Non-recommended field injections", "Spring/Spring Core/Code",
+                "Reports @Autowired on fields instead of constructor-based dependency injection.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.RequiredPropertyNotInjected", "@Required Spring bean property is not injected", "Spring/Spring Core/Code",
+                "Reports required bean properties annotated with @Required that are not configured.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.TransactionalSelfInvocation", "@Transactional self-invocation method calls", "Spring/Spring Core/Code",
+                "Reports self-invocation calls to @Transactional methods that bypass transactional AOP proxies.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.UnknownInitDestroyMethod", "Unknown init/destroy method in the @Bean annotation", "Spring/Spring Core/Code",
+                "Reports initMethod or destroyMethod names specified in @Bean that do not exist on the target bean class.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Core.Code.UnresolvedImportResource", "Unresolved file references in @ImportResource locations", "Spring/Spring Core/Code",
+                "Reports file or classpath locations in @ImportResource that cannot be resolved.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.Code.UnresolvedPropertySource", "Unresolved file references in @PropertySource and @TestPropertySource", "Spring/Spring Core/Code",
+                "Reports property resource locations in @PropertySource that cannot be found.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringCoreXmlInspectionsPart1() {
+        // Spring Core > XML Part 1 ([✓] 12 tools)
+        addTool("Spring.Core.Xml.ConflictingBeanAttribute", "Conflicting Spring bean attribute", "Spring/Spring Core/XML",
+                "Reports conflicting bean attributes such as 'autowire' with explicit 'constructor-arg' in XML context.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.DuplicatedBeanNames", "Duplicated bean names in XML-based application context", "Spring/Spring Core/XML",
+                "Reports duplicate bean id or name definitions within the same XML application context scope.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.InactiveProfileHighlighting", "Inactive profile highlighting", "Spring/Spring Core/XML",
+                "Highlights XML elements assigned to inactive Spring profiles.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.InconsistentInjectionValue", "Inconsistent injection value in XML application context", "Spring/Spring Core/XML",
+                "Reports property value types in XML bean definitions that cannot be converted to target property types.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectConstructorInjection", "Incorrect constructor injection in XML Spring bean", "Spring/Spring Core/XML",
+                "Reports constructor-arg tags with mismatched indexes, names, or unresolvable types.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectInjectedBeanType", "Incorrect injected bean type", "Spring/Spring Core/XML",
+                "Reports ref bean attributes that point to beans incompatible with target injection point types.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectNonPublicMethodFactory", "Incorrect non-public method referenced in a \"factory-method\" attribute", "Spring/Spring Core/XML",
+                "Reports factory-method attributes referencing non-public methods on factory classes.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectReferenceToAbstractBean", "Incorrect reference to abstract bean", "Spring/Spring Core/XML",
+                "Reports bean references pointing to beans defined with abstract='true' which cannot be instantiated.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectResourceType", "Incorrect resource type", "Spring/Spring Core/XML",
+                "Reports imported XML configuration resources whose type does not match expected schema.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectXmlContext", "Incorrect Spring Core XML-based application context", "Spring/Spring Core/XML",
+                "Reports structural XML validation and schema errors in Spring Core bean definitions.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectXmlBeanAutowiring", "Incorrect XML Spring bean autowiring", "Spring/Spring Core/XML",
+                "Reports XML beans configured with autowire='byType' or 'byName' that cannot be uniquely resolved.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectUtilSchemaBeans", "Incorrectly configured 'util' schema beans defined in XML application context", "Spring/Spring Core/XML",
+                "Reports invalid attributes and syntax for util:list, util:map, util:set, and util:constant beans.",
+                HighlightSeverity.ERROR, true, "XML");
+    }
+
+    private void initSpringCoreXmlInspectionsPart2() {
+        // Spring Core > XML Part 2 ([✓] 12 tools)
+        addTool("Spring.Core.Xml.IncorrectXmlBeanLookupMethod", "Incorrectly configured XML bean lookup-method", "Spring/Spring Core/XML",
+                "Reports lookup-method elements referencing non-existent or invalid methods on bean classes.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.IncorrectDefinedMethodFactory", "Incorrectly defined method referenced in a \"factory-method\" attribute", "Spring/Spring Core/XML",
+                "Reports factory-method attributes referencing methods that do not exist on the bean or factory-bean.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.InjectionValueViolatesSchema", "Injection value in XML application context violates schema", "Spring/Spring Core/XML",
+                "Reports values injected into XML beans that violate property constraints or validation schemas.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.InvalidFilterInComponentScan", "Invalid filter definition in XML-based component scan", "Spring/Spring Core/XML",
+                "Reports invalid include-filter or exclude-filter configurations in context:component-scan elements.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.InvalidNonAbstractBeanInstantiation", "Invalid non-abstract bean instantiation", "Spring/Spring Core/XML",
+                "Reports XML bean definitions lacking both 'class' and 'factory-bean' attributes unless marked abstract.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.MissingRequiredPropertyInXml", "Missing @Required property injections in the spring XML application context", "Spring/Spring Core/XML",
+                "Reports missing property elements in XML bean definitions for properties annotated with @Required.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.BeanNameViolatesConventions", "Spring bean name violates conventions", "Spring/Spring Core/XML",
+                "Reports bean names in XML definitions that violate standard camelCase naming conventions.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.UnassignableInjectionPointType", "Unassignable injection point type in XML application context", "Spring/Spring Core/XML",
+                "Reports XML bean property injection points that cannot be assigned from target bean types.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.UnknownBeanScope", "Unknown <bean> scope", "Spring/Spring Core/XML",
+                "Reports unrecognized scope attribute values on <bean> elements in XML context.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Core.Xml.UnnecessaryAutowiredDependency", "Unnecessary autowired dependency in XML application context", "Spring/Spring Core/XML",
+                "Reports unnecessary autowired dependencies in XML context where explicit wiring is already defined.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.UnparsedCustomSpringBeans", "Unparsed custom Spring beans", "Spring/Spring Core/XML",
+                "Reports custom namespace XML tags that cannot be parsed by registered namespace handlers.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Spring.Core.Xml.UnresolvedPlaceholdersInXml", "Unresolved placeholders configured in the Spring XML application context", "Spring/Spring Core/XML",
+                "Reports ${...} property placeholders in XML contexts that cannot be resolved from PropertySources.",
+                HighlightSeverity.WARNING, true, "XML");
+    }
+
+    private void initSpringCoreDirectInspections() {
+        // Spring Core direct inspections ([✓] 3 tools)
+        addTool("Spring.Core.IncorrectInjectingSpelStaticField", "Incorrect injecting of SpEL in a static field", "Spring/Spring Core",
+                "Reports @Value annotations containing SpEL expressions placed on static fields.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.IncorrectSpelSyntax", "Incorrect Spring Expression Language (SpEL) syntax", "Spring/Spring Core",
+                "Validates Spring Expression Language (SpEL) syntax and reports parse errors in expressions.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Core.UnresolvedSpringHandlers", "Unresolved file or class reference in 'spring.handlers'", "Spring/Spring Core",
+                "Reports unresolved handler class references in META-INF/spring.handlers descriptor files.",
+                HighlightSeverity.ERROR, true, "Java");
+    }
+
+    private void initSpringDataSubInspections() {
+        // Spring Data subcategory under Spring ([✓] 6 tools)
+        addTool("Spring.Data.PageMustHavePageable", "Query-returning Page must have a Pageable parameter", "Spring/Spring Data",
+                "Reports repository query methods returning Page<T> that lack a required Pageable parameter.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Data.MongoDbJsonUnresolvedFields", "Spring Data MongoDB JSON unresolved fields", "Spring/Spring Data",
+                "Reports unresolved document fields in Spring Data MongoDB @Query JSON filter strings.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Data.RepositoryMethodErrors", "Spring Data repository method errors", "Spring/Spring Data",
+                "Reports syntax and semantic errors in derived Spring Data repository query method names.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Data.RepositoryMethodParametersErrors", "Spring Data repository method parameters errors", "Spring/Spring Data",
+                "Reports parameter count and type mismatches in Spring Data repository query methods.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Data.RepositoryMethodReturnTypeErrors", "Spring Data repository method return type errors", "Spring/Spring Data",
+                "Reports incompatible return types for repository query methods based on query structure.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Data.UpdateDeleteAnnotatedModifying", "Update/Delete queries must be annotated with @Modifying", "Spring/Spring Data",
+                "Reports UPDATE or DELETE queries in Spring Data repositories lacking the required @Modifying annotation.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringIntegrationInspections() {
+        // Spring Integration ([✓] 4 tools)
+        addTool("Spring.Integration.IncorrectChannelAttribute", "Incorrect 'channel' attribute in an endpoint method annotation", "Spring/Spring Integration",
+                "Checks annotations such as @Gateway, @ServiceActivator, and @Filter for invalid message channel references.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Integration.IncorrectEndpointMethod", "Incorrect Spring Integration endpoint method", "Spring/Spring Integration",
+                "Validates endpoint method declarations in Spring Integration messaging beans.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Integration.IncorrectXmlContext", "Incorrect Spring Integration XML-based application context", "Spring/Spring Integration",
+                "Reports configuration issues within Spring Integration XML-based application contexts.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Integration.Deprecated21", "Spring Integration 2.1 deprecations", "Spring/Spring Integration",
+                "Flags XML elements and attributes deprecated in Spring Integration 2.1+.",
+                HighlightSeverity.WARNING, true, "XML");
+    }
+
+    private void initSpringMvcInspections() {
+        // Spring MVC ([✓] 3 tools)
+        addTool("Spring.Mvc.PathVariableMismatch", "Mismatch in @PathVariable declarations and usages", "Spring/Spring MVC",
+                "Reports mismatches between URL template path variables and @PathVariable method parameter names.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Mvc.NonVoidInitBinder", "Non-void @InitBinder method", "Spring/Spring MVC",
+                "Reports @InitBinder controller methods that return non-void values which are ignored by Spring MVC.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Spring.Mvc.UnresolvedView", "Unresolved view reference", "Spring/Spring MVC",
+                "Reports controller methods returning view names that cannot be resolved by configured view resolvers.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringSecurityInspections() {
+        // Spring Security ([✓] 4 tools)
+        addTool("Spring.Security.DebugModeActivated", "Debug mode is activated in the Spring Security configuration", "Spring/Spring Security",
+                "Reports activated security debug mode which can expose sensitive credentials in logs.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Security.IncorrectBeansReferenced", "Incorrect configuration of Spring beans referenced in @PreAuthorize, @PostAuthorize, @PreFilter, and @PostFilter annotations", "Spring/Spring Security",
+                "Reports invalid or unresolved Spring bean references in SpEL expressions within Spring Security annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Spring.Security.IncorrectXmlContext", "Incorrect Spring Security XML-based application context", "Spring/Spring Security",
+                "Reports configuration issues within Spring Security XML-based application contexts.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Spring.Security.SelfInvocation", "@PreFilter/@PreAuthorize/@PostFilter self-invocation", "Spring/Spring Security",
+                "Reports self-invocation calls to methods secured by @PreAuthorize, @PostAuthorize, @PreFilter, or @PostFilter.",
+                HighlightSeverity.WARNING, true, "Java");
+    }
+
+    private void initSpringWebSocketInspections() {
+        // Spring WebSocket ([✓] 1 tool)
+        addTool("Spring.WebSocket.IncorrectXmlContext", "Incorrect Spring WebSocket XML-based application context", "Spring/Spring WebSocket",
+                "Reports configuration issues within Spring WebSocket XML-based application contexts.",
+                HighlightSeverity.ERROR, true, "XML");
+    }
+
+    private void initSpringDataInspections() {
+        // Separate top-level category: Spring Data ([✓] enabled matching screenshot)
+        addTool("SpringData.JdbcAssociatedDbElements", "Spring Data JDBC associated DB elements", "Spring Data",
+                "Validates database tables, columns, and relationships referenced in Spring Data JDBC entities.",
+                HighlightSeverity.ERROR, true, "Java");
+    }
+
+    private void initSpringModulithInspections() {
+        // Separate top-level category: Spring Modulith ([✓] all 3 enabled matching screenshot)
+        addTool("SpringModulith.EventListenerCanBeSimplified", "Event listener declaration can be simplified", "Spring Modulith",
+                "Suggests simplifying domain event listener method declarations in Spring Modulith modules.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("SpringModulith.InvalidDependencyDeclaration", "Invalid dependency declaration", "Spring Modulith",
+                "Reports invalid or prohibited inter-module dependencies violating Modulith architecture boundaries.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("SpringModulith.RestrictedModuleApiUsage", "Restricted module API usage", "Spring Modulith",
+                "Reports access to internal, non-exposed package members of another application module.",
+                HighlightSeverity.ERROR, true, "Java");
+    }
+
+    private void initSqlInspections() {
+        // SQL ([-] indeterminate matching screenshot with 3 disabled items)
+        initSqlInspectionsPart1();
+        initSqlInspectionsPart2();
+    }
+
+    private void initSqlInspectionsPart1() {
+        addTool("SqlAddNotNullColumn", "Adding not null column without default value", "SQL",
+                "Reports attempts to add a NOT NULL column to an existing table without specifying a default value.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlAggregate", "Aggregate-related problems", "SQL",
+                "Detects aggregate functions and expressions used improperly in SELECT and GROUP BY clauses.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlAmbiguousColumn", "Ambiguous reference", "SQL",
+                "Reports column or table references in queries that resolve to multiple ambiguous candidates.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlAutoIncrementDuplicate", "Auto-increment duplicate", "SQL",
+                "Reports table definitions declaring multiple auto-increment columns.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlCheckUsingColumns", "Check using clause columns", "SQL",
+                "Validates that column names in JOIN ... USING (column) exist in all joined tables.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlShadowingAlias", "Column is shadowed by alias", "SQL",
+                "Reports column names shadowed by alias definitions in the same scope.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlGroupBy", "Column should be in group by clause", "SQL",
+                "Reports non-aggregated columns in SELECT expressions that are missing from GROUP BY.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlConstantCondition", "Constant expression", "SQL",
+                "Reports constant expressions in WHERE or HAVING clauses that always evaluate to true or false.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlSingleSessionTemporaryTable", "Create a temporary table without a single session mode", "SQL",
+                "Reports temporary tables created when single session mode is not enabled in database console.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlCurrentSchema", "Current console schema introspected", "SQL",
+                "Reports queries referencing schemas that have not been introspected in database console.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlWithoutWhere", "Delete or update statement without where clauses", "SQL",
+                "Reports DELETE or UPDATE statements lacking a WHERE clause that would modify all rows.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlDeprecatedType", "Deprecated type", "SQL",
+                "Reports usage of deprecated SQL data types in table or variable declarations.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlDuplicateColumn", "Duplicating column name in SELECT", "SQL",
+                "Reports duplicate column names or aliases in SELECT projection lists.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlDerivedTableAlias", "Each derived table should have alias", "SQL",
+                "Reports derived subqueries in FROM clauses that do not declare an alias identifier.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlExcessiveJoin", "Excessive JOIN count", "SQL",
+                "Reports queries that join more tables than the recommended threshold.",
+                HighlightSeverity.WARNING, false, "SQL");
+        addTool("SqlSignature", "Function signature", "SQL",
+                "Validates SQL built-in and user-defined function invocations against their parameter signatures.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlIdentifier", "Identifier should be quoted", "SQL",
+                "Reports SQL reserved words used as identifier names without proper quoting.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlIllFormedStatement", "Ill-formed date/time literals", "SQL",
+                "Reports malformed date, time, and timestamp literal strings in SQL statements.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlIllegalCursorState", "Illegal cursor state", "SQL",
+                "Reports cursor operations invoked on closed or un-opened cursor handles.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlType", "Implicit string truncation", "SQL",
+                "Reports string literals assigned to columns or variables whose length exceeds capacity.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlDropIndexedColumn", "Index is dependent on column", "SQL",
+                "Reports attempts to drop or alter table columns that are indexed by existing database indexes.",
+                HighlightSeverity.WARNING, true, "SQL");
+    }
+
+    private void initSqlInspectionsPart2() {
+        addTool("SqlInsertIntoNonNull", "Insert NULL into NOT NULL column", "SQL",
+                "Reports INSERT statements explicitly inserting NULL into columns with NOT NULL constraints.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlInsertIntoGeneratedColumn", "Insertion into generated columns", "SQL",
+                "Reports attempts to manually insert values into GENERATED ALWAYS or identity columns.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlMisleadingReference", "Misleading references", "SQL",
+                "Reports ambiguous or misleading table and column references across correlated subqueries.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlMissingColumnAliases", "Missing column aliases", "SQL",
+                "Reports expressions in SELECT lists that lack explicit column aliases.",
+                HighlightSeverity.WARNING, false, "SQL");
+        addTool("SqlMissingReturnStatement", "Missing return statement", "SQL",
+                "Reports stored functions and procedures lacking a required RETURN statement.",
+                HighlightSeverity.ERROR, true, "SQL");
+        addTool("SqlMultipleLimitClauses", "Multiple row limiting/offset clauses in queries", "SQL",
+                "Reports queries containing multiple conflicting LIMIT, OFFSET, or TOP clauses.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlNamedArguments", "Named arguments should be used", "SQL",
+                "Suggests using named arguments for stored procedure calls with many parameters.",
+                HighlightSeverity.WARNING, false, "SQL");
+        addTool("SqlNoDataSource", "No data sources configured", "SQL",
+                "Reports SQL files and fragments not associated with any configured database data source.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlRedundantAlias", "Redundant alias expressions", "SQL",
+                "Reports column or table aliases that are identical to the source identifier.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlRedundantCoalesce", "Redundant code in COALESCE call", "SQL",
+                "Reports COALESCE arguments that appear after a non-nullable expression and will never be evaluated.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlRedundantElseNull", "Redundant ELSE NULL clause", "SQL",
+                "Reports CASE expressions with explicit 'ELSE NULL' clauses which are default behavior.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlRedundantOrderingDirection", "Redundant ordering direction", "SQL",
+                "Reports explicit ASC ordering direction in ORDER BY clauses which is default.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlRedundantLimit", "Redundant row limiting in queries", "SQL",
+                "Reports redundant row limiting clauses like FETCH and LIMIT in queries. Example (PostgreSQL):\n\nCREATE TABLE foo(a INT);\n\nSELECT * FROM foo WHERE EXISTS(SELECT * FROM foo LIMIT 2);\nSELECT * FROM foo WHERE EXISTS(SELECT * FROM foo FETCH FIRST 2 ROWS ONLY);\n\nTo fix the warning, you can add OFFSET to limiting clauses. If OFFSET is missing, then LIMIT is redundant because the usage of LIMIT does not influence the operation result of EXISTS. In case with OFFSET, we skip first N rows and this will influence the output.\n\nSELECT * FROM foo WHERE EXISTS(SELECT * FROM foo OFFSET 1 ROW LIMIT 2);\nSELECT * FROM foo WHERE EXISTS(SELECT * FROM foo OFFSET 1 ROW FETCH FIRST 2 ROWS ONLY);",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlDialect", "SQL dialect detection", "SQL",
+                "Detects SQL syntax features that do not match the assigned SQL dialect.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlSourceModification", "SQL source modification detection", "SQL",
+                "Monitors synchronization status between local database scripts and server definitions.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlStatementWithSideEffects", "Statement with side effects", "SQL",
+                "Reports SQL statements with side effects inside read-only transactions or functions.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlSuspiciousCodeInTriggers", "Suspicious code in triggers", "SQL",
+                "Reports potentially problematic constructs inside database trigger bodies.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlTypesCompatibility", "Types compatibility", "SQL",
+                "Validates data types compatibility across expressions, comparisons, and function calls in SQL queries.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlUnicodeStringLiteral", "Unicode usage in SQL", "SQL",
+                "Reports national Unicode characters in string literals lacking required N prefix.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlUnreachableCode", "Unreachable code", "SQL",
+                "Reports SQL statements that will never be executed due to prior RETURN, RAISE, or unconditional branch statements.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlResolve", "Unresolved reference", "SQL",
+                "Reports table, column, procedure, or schema names that cannot be resolved in database context.",
+                HighlightSeverity.ERROR, true, "SQL");
+        addTool("SqlUnsafeJoinInDelete", "Unsafe 'join' clause in 'delete' statement", "SQL",
+                "Reports JOIN clauses in DELETE statements that may cause unintended rows to be deleted.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlUnusedCte", "Unused common table expression", "SQL",
+                "Reports common table expressions (WITH clauses) that are never referenced in the main query.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlUnusedSubqueryItem", "Unused subquery item", "SQL",
+                "Reports columns or aliases defined in subqueries that are never referenced in outer query.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlUnusedVariable", "Unused variable", "SQL",
+                "Reports SQL declared local variables that are never read or referenced in the routine body.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlGotoStatements", "Usages of GOTO statements", "SQL",
+                "Reports usages of GOTO statements in SQL procedures and scripts.",
+                HighlightSeverity.WARNING, false, "SQL");
+        addTool("SqlTransactionInTriggers", "Use of transaction management statements in triggers", "SQL",
+                "Reports COMMIT, ROLLBACK, or SAVEPOINT statements inside trigger definitions.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlCaseCoalesce", "Using CASE instead of COALESCE function and vice versa", "SQL",
+                "Suggests replacing CASE expressions with COALESCE function calls or vice versa for cleaner syntax.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlCaseConditional", "Using CASE instead of conditional function and vice versa", "SQL",
+                "Suggests replacing CASE expressions with NULLIF, IIF, or IFNULL conditional functions and vice versa.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlNamedAndPositionalArguments", "Using of named and positional arguments", "SQL",
+                "Reports mixing named and positional arguments in procedure and function calls where forbidden.",
+                HighlightSeverity.ERROR, true, "SQL");
+        addTool("SqlValuesClauseCardinality", "VALUES clause cardinality", "SQL",
+                "Reports mismatched column counts across different row tuples in a VALUES clause.",
+                HighlightSeverity.ERROR, true, "SQL");
+    }
+
+    private void initSqlServerInspections() {
+        // SQL server ([✓] all 2 enabled matching screenshot)
+        addTool("SqlServer.BuiltinFunctions", "Builtin functions", "SQL server",
+                "Reports SQL Server built-in functions called with incorrect arguments or unsupported options.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("SqlServer.OrderByInQueries", "ORDER BY in queries", "SQL server",
+                "Reports ORDER BY clauses in views, inline functions, derived tables, and subqueries without TOP or OFFSET.",
+                HighlightSeverity.ERROR, true, "SQL");
+    }
+
+    private void initThymeleafInspections() {
+        // Thymeleaf ([✓] all 3 enabled matching screenshot)
+        addTool("Thymeleaf.DialectExtensionsErrors", "Thymeleaf Dialect Extensions errors", "Thymeleaf",
+                "Reports syntax and structural errors in custom Thymeleaf dialect attributes and element processors.",
+                HighlightSeverity.ERROR, true, "HTML");
+        addTool("Thymeleaf.UnresolvedMessageResourceKeys", "Unresolved message resource keys", "Thymeleaf",
+                "Reports Thymeleaf #{...} message keys that cannot be resolved in message property bundles.",
+                HighlightSeverity.ERROR, true, "HTML");
+        addTool("Thymeleaf.UnresolvedReferencesInExpressionVariables", "Unresolved references in Thymeleaf expression variables", "Thymeleaf",
+                "Reports Thymeleaf ${...} and *{...} expression variables that cannot be resolved in model context.",
+                HighlightSeverity.WARNING, true, "HTML");
+    }
+
+    private void initTomlInspections() {
+        // TOML ([✓] 1 enabled matching screenshot)
+        addTool("Toml.UnresolvedReference", "Unresolved reference", "TOML",
+                "Reports unresolved table or array references and invalid key paths in TOML configuration files.",
+                HighlightSeverity.WARNING, true, "TOML");
+    }
+
+    private void initVelocityInspections() {
+        // Velocity ([✓] all 5 enabled matching screenshot)
+        addTool("Velocity.DirectiveArgumentsInspection", "Directive arguments inspection", "Velocity",
+                "Validates argument count and types passed to Apache Velocity template directives.",
+                HighlightSeverity.WARNING, true, "Velocity");
+        addTool("Velocity.FileReferencesInspection", "File references inspection", "Velocity",
+                "Validates #parse and #include directive file paths to ensure target velocity template files exist.",
+                HighlightSeverity.WARNING, true, "Velocity");
+        addTool("Velocity.ReferencesInspection", "References inspection", "Velocity",
+                "Reports unresolved context variable and property references in Velocity template files.",
+                HighlightSeverity.WARNING, true, "Velocity");
+        addTool("Velocity.TypesInspection", "Types inspection", "Velocity",
+                "Checks types in method calls and property access within Velocity expressions.",
+                HighlightSeverity.WARNING, true, "Velocity");
+        addTool("Velocity.WellFormednessInspection", "Well-formedness inspection", "Velocity",
+                "Reports unclosed directives, unmatched #end statements, and syntactic malformations in Velocity templates.",
+                HighlightSeverity.ERROR, true, "Velocity");
+    }
+
+    private void initVersionControlInspections() {
+        // Version control ([✓] 1 enabled matching screenshot)
+        addTool("Vcs.IgnoreFileDuplicates", "Ignore file duplicates", "Version control",
+                "Reports duplicate rules and entries in .gitignore, .hgignore, and other ignore files.",
+                HighlightSeverity.WARNING, true, "General");
+    }
+
+    private void initVueInspections() {
+        // Vue ([✓] all 6 enabled matching screenshot)
+        addTool("Vue.DataFunction", "Data function", "Vue",
+                "Reports Vue component 'data' properties that are not declared as a function returning an object.",
+                HighlightSeverity.WARNING, true, "Vue");
+        addTool("Vue.DeprecatedSymbol", "Deprecated symbol", "Vue",
+                "Reports usage of deprecated Vue APIs, lifecycle hooks, and template directives.",
+                HighlightSeverity.WARNING, true, "Vue");
+        addTool("Vue.DuplicateTemplateScriptTag", "Duplicate template/script tag", "Vue",
+                "Reports duplicate <template>, <script>, or <style> tags in a single Vue component file.",
+                HighlightSeverity.WARNING, true, "Vue");
+        addTool("Vue.MissingComponentImport", "Missing component import", "Vue",
+                "Reports Vue components used in template that are not imported or registered in script.",
+                HighlightSeverity.WARNING, true, "Vue");
+        addTool("Vue.UnrecognizedDirective", "Unrecognized directive", "Vue",
+                "Reports unknown or unrecognized Vue v- directives on template elements.",
+                HighlightSeverity.WARNING, true, "Vue");
+        addTool("Vue.UnrecognizedSlot", "Unrecognized slot", "Vue",
+                "Reports slot names used on child components that are not defined in child's template.",
+                HighlightSeverity.WARNING, true, "Vue");
+    }
+
+    private void initXmlInspections() {
+        // XML ([✓] all 14 enabled matching screenshot)
+        addTool("Xml.DeprecatedApiUsage", "Deprecated API usage in XML", "XML",
+                "Reports references to deprecated XML elements, attributes, or API tags in XML configurations.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.DeprecatedSymbol", "Deprecated symbol", "XML",
+                "Reports symbols and entities deprecated in schemas or DTD specifications.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.DuplicateIdAttribute", "Duplicate 'id' attribute", "XML",
+                "Reports duplicate xml:id or id attributes within the same XML document scope.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.EmptyElementContent", "Empty element content", "XML",
+                "Reports XML elements with empty bodies that should either contain content or be self-closing.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.FailedExternalValidation", "Failed external validation", "XML",
+                "Reports validation errors against external DTD, XSD schema, or RelaxNG specifications.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.RedundantAttributeWithDefaultValue", "Redundant attribute with default value", "XML",
+                "Reports XML attributes explicitly set to values that match their DTD or schema default.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.UnboundNamespacePrefix", "Unbound namespace prefix", "XML",
+                "Reports XML element or attribute namespace prefixes that have no corresponding xmlns declaration.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.UnresolvedIdReference", "Unresolved 'id' reference", "XML",
+                "Reports IDREF or IDREFS attributes referencing non-existent ID targets.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.UnresolvedDtdReference", "Unresolved DTD reference", "XML",
+                "Reports DOCTYPE declarations pointing to missing or unreachable external DTD files.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.UnresolvedFileReference", "Unresolved file reference", "XML",
+                "Reports file system or resource paths in XML attributes that cannot be resolved.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.UnresolvedReferences", "Unresolved references", "XML",
+                "Reports general unresolved symbol, bean, or entity references in XML descriptor files.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.UnusedSchemaDeclaration", "Unused schema declaration", "XML",
+                "Reports XML schema namespace declarations (xsi:schemaLocation) that are not used.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xml.WrongRootElement", "Wrong root element", "XML",
+                "Reports XML documents whose root element does not match expected schema or doctype root.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xml.Highlighting", "XML highlighting", "XML",
+                "Performs comprehensive batch validation and highlighting of XML syntax and structure.",
+                HighlightSeverity.WARNING, true, "XML", true, false);
+    }
+
+    private void initXPathInspections() {
+        // XPath ([✓] all 5 enabled matching screenshot)
+        addTool("XPath.HardcodedNamespacePrefix", "Hardcoded namespace prefix", "XPath",
+                "Reports hardcoded namespace prefixes in XPath expressions that should be resolved dynamically.",
+                HighlightSeverity.WARNING, true, "XPath");
+        addTool("XPath.ImplicitTypeConversion", "Implicit type conversion", "XPath",
+                "Reports implicit conversions between node-sets, strings, numbers, and booleans in XPath expressions.",
+                HighlightSeverity.WARNING, true, "XPath");
+        addTool("XPath.RedundantTypeConversion", "Redundant type conversion", "XPath",
+                "Reports explicit string(), number(), or boolean() conversions that are already performed implicitly.",
+                HighlightSeverity.WARNING, true, "XPath");
+        addTool("XPath.UnknownElementOrAttributeName", "Unknown element or attribute name", "XPath",
+                "Reports element or attribute step names in XPath expressions that do not exist in associated schema.",
+                HighlightSeverity.WARNING, true, "XPath");
+        addTool("XPath.PredicateWithIndex0", "XPath predicate with index 0", "XPath",
+                "Reports XPath position predicates with index [0], since XPath indexing is 1-based.",
+                HighlightSeverity.WARNING, true, "XPath");
+    }
+
+    private void initXsltInspections() {
+        // XSLT ([✓] all 4 enabled matching screenshot)
+        addTool("Xslt.IncorrectDeclaration", "Incorrect declaration", "XSLT",
+                "Reports invalid xsl:output, xsl:key, or xsl:namespace declarations in XSLT stylesheets.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xslt.IncorrectTemplateInvocation", "Incorrect template invocation", "XSLT",
+                "Reports xsl:call-template instructions with invalid names or mismatched xsl:with-param arguments.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Xslt.ShadowedVariable", "Shadowed variable", "XSLT",
+                "Reports local xsl:variable declarations that shadow global variables or parameters.",
+                HighlightSeverity.WARNING, true, "XML");
+        addTool("Xslt.UnusedVariableOrParameter", "Unused variable or parameter", "XSLT",
+                "Reports xsl:variable or xsl:param definitions that are never referenced within template scope.",
+                HighlightSeverity.WARNING, true, "XML");
+    }
+
+    private void initYamlInspections() {
+        // YAML ([✓] all 7 enabled matching screenshot)
+        addTool("Yaml.DeprecatedKey", "Deprecated YAML key", "YAML",
+                "Reports deprecated keys in YAML files based on schema definitions.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Yaml.DuplicatedKeys", "Duplicated YAML keys", "YAML",
+                "Reports duplicate keys within the same YAML mapping.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Yaml.RecursiveAlias", "Recursive alias", "YAML",
+                "Reports circular alias references that cause infinite recursion when resolving YAML anchors.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Yaml.SuspiciousTypeMismatch", "Suspicious type mismatch", "YAML",
+                "Reports values whose types do not conform to expected schema types in YAML documents.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Yaml.UnresolvedAlias", "Unresolved alias", "YAML",
+                "Reports YAML alias references (*alias) that cannot be resolved to any anchor (&anchor).",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Yaml.UnusedAnchor", "Unused anchor", "YAML",
+                "Reports YAML anchors (&anchor) that are defined but never referenced by any alias.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Yaml.ValidationByJsonSchema", "Validation by JSON Schema", "YAML",
+                "Validates YAML documents against associated JSON schemas and reports validation errors.",
+                HighlightSeverity.WARNING, true, "YAML");
+    }
+
+    // =========================================================================
+    // 77. Scala Hierarchy (Screenshots 1-5 Parity)
+    // =========================================================================
+
+    private void initScalaInspections() {
+        initScalaAkkaInspections();
+        initScalaCodeStyleInspections();
+        initScalaCollectionsInspections();
+        initScalaDirectiveInspections();
+        initScalaGeneralInspectionsPart1();
+        initScalaGeneralInspectionsPart2();
+        initScalaGeneralInspectionsPart3();
+        initScalaMethodSignatureInspections();
+        initScalaPlayAndPropertiesInspections();
+        initScalaScaladocAndSpecs2Inspections();
+        initScalaSyntacticAndWorksheetInspections();
+    }
+
+    private void initScalaAkkaInspections() {
+        // Scala/Akka ([✓] 4 tools, all Warning, all enabled)
+        addTool("Scala.Akka.ActorMutableState", "Actor mutable state", "Scala/Akka",
+                "Reports mutable state (such as vars or mutable collections) in Akka Actor classes that can lead to race conditions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Akka.AppropriateActorConstructorNotFound", "Appropriate Actor constructor not found", "Scala/Akka",
+                "Reports Props creations where no matching constructor exists on the target Actor class.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Akka.CouldBeReplacedWithFactoryMethodCall", "Could be replaced with a factory method call", "Scala/Akka",
+                "Reports Props instantiations that can be replaced with calls to existing companion factory methods.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Akka.DynamicInvocationCouldBeReplacedWithConstructorCall", "Dynamic invocation could be replaced with a constructor call", "Scala/Akka",
+                "Reports Props invocations using reflection or class name strings that can use direct typed constructors.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCodeStyleInspections() {
+        // Scala/Code style ([✓] 2 tools, all Warning, all enabled)
+        addTool("Scala.CodeStyle.ScalaStyleInspection", "Scala style inspection", "Scala/Code style",
+                "Inspects Scala files according to scalastyle rules and configuration.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.CodeStyle.Scala2SyntaxWithXsource3", "Scala 2 syntax with -Xsource:3", "Scala/Code style",
+                "Reports Scala 2 syntax constructs that can be migrated to Scala 3 syntax when compiling with -Xsource:3.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCollectionsInspections() {
+        initScalaCollectionsComparing();
+        initScalaCollectionsIndicesAndMaps();
+        initScalaCollectionsOptionsAndOther();
+        initScalaCollectionsSimplifications();
+        initScalaCollectionsSizeAndDirect();
+    }
+
+    private void initScalaCollectionsComparing() {
+        // Scala/Collections/Comparing ([-] 5 tools, 1 disabled)
+        addTool("Scala.Collections.Comparing.ComparingLengthToLengthCompare", "Comparing length to lengthCompare", "Scala/Collections/Comparing",
+                "Suggests comparing collection length with lengthCompare for better performance on linear sequences.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.Collections.Comparing.CorrespondsSameElementsOnUnsortedCollection", "Corresponds/sameElements on unsorted collection", "Scala/Collections/Comparing",
+                "Reports corresponds or sameElements calls on unsorted collections like Set or Map where order is non-deterministic.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Comparing.EqualsOnArraysAndIterators", "Equals on arrays and iterators", "Scala/Collections/Comparing",
+                "Reports == or equals calls on arrays and iterators that check reference identity rather than content equality.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Comparing.EqualsOnCollectionsOfDifferentKinds", "Equals on collections of different kinds", "Scala/Collections/Comparing",
+                "Reports == or equals comparisons between collections of different kinds (e.g., List and Set) that always evaluate to false.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Comparing.SameElementsOnCollectionsOfSameKind", "SameElements onCollections of a same kind", "Scala/Collections/Comparing",
+                "Reports sameElements invocations on collections of the same type where == or equals is clearer and more idiomatic.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCollectionsIndicesAndMaps() {
+        // Scala/Collections/Indices ([✓] 4 tools)
+        addTool("Scala.Collections.Indices.AccessToFirstElementByIndex", "Access to first element by index", "Scala/Collections/Indices",
+                "Suggests replacing collection(0) with collection.head.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Indices.AccessToLastElementByIndex", "Access to last element by index", "Scala/Collections/Indices",
+                "Suggests replacing collection(collection.size - 1) with collection.last.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Indices.ConstructingRangeForSeqIndices", "Constructing range for seq indices", "Scala/Collections/Indices",
+                "Suggests replacing 0 until seq.length with seq.indices.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Indices.ManuallyZippingWithIndices", "Manually zipping with indices", "Scala/Collections/Indices",
+                "Suggests replacing seq.zip(seq.indices) with seq.zipWithIndex.",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Collections/Maps ([✓] 7 tools)
+        addTool("Scala.Collections.Maps.EmptinessCheckOnGetToContains", "Emptiness check on Get to Contains", "Scala/Collections/Maps",
+                "Suggests replacing map.get(k).isDefined or map.get(k).nonEmpty with map.contains(k).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.ExtractingKeysManually", "Extracting keys manually", "Scala/Collections/Maps",
+                "Suggests replacing map.map(_._1) with map.keys or map.keySet.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.ExtractingValuesManually", "Extracting values manually", "Scala/Collections/Maps",
+                "Suggests replacing map.map(_._2) with map.values.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.GetAndGetOrElseToGetOrElse", "Get and getOrElse to getOrElse", "Scala/Collections/Maps",
+                "Suggests replacing map.get(k).getOrElse(v) with map.getOrElse(k, v).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.LiftToGet", "Lift to Get", "Scala/Collections/Maps",
+                "Suggests replacing map.lift(k) with map.get(k).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.RedundantGetWhenGettingValueFromMap", "Redundant get when getting a value from Map", "Scala/Collections/Maps",
+                "Suggests replacing map.get(k).get with map(k).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Maps.UnitReturnTypeInArgumentOfMap", "Unit return type in the argument of map", "Scala/Collections/Maps",
+                "Reports map calls where the transformation function returns Unit, suggesting foreach instead.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCollectionsOptionsAndOther() {
+        // Scala/Collections/Options ([-] 8 tools, 2 disabled)
+        addTool("Scala.Collections.Options.ChangeToFilter", "Change to filter", "Scala/Collections/Options",
+                "Suggests replacing if (p(x)) opt else None with opt.filter(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.EmulatedOptionX", "Emulated Option(x)", "Scala/Collections/Options",
+                "Suggests replacing if (x != null) Some(x) else None with Option(x).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.EqualsSomeXToContainsX", "Equals Some(x) to contains(x)", "Scala/Collections/Options",
+                "Suggests replacing opt == Some(x) with opt.contains(x).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.GetOrElseNullToOrNull", "GetOrElse(null) to orNull", "Scala/Collections/Options",
+                "Suggests replacing opt.getOrElse(null) with opt.orNull.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.MapAndGetOrElseFalseToExists", "Map and getOrElse(false) to exists", "Scala/Collections/Options",
+                "Suggests replacing opt.map(p).getOrElse(false) with opt.exists(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.MapAndGetOrElseToFold", "Map and getOrElse to fold", "Scala/Collections/Options",
+                "Suggests replacing opt.map(f).getOrElse(default) with opt.fold(default)(f).",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.Collections.Options.RedundantHeadOptionOrLastOption", "Redundant headOption or lastOption", "Scala/Collections/Options",
+                "Reports redundant headOption or lastOption calls on an expression that is already an Option.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Options.SomeToOption", "Some to Option", "Scala/Collections/Options",
+                "Suggests replacing Some(x) with Option(x) when x may be null.",
+                HighlightSeverity.WARNING, false, "Scala");
+
+        // Scala/Collections/Other ([✓] 2 tools)
+        addTool("Scala.Collections.Other.FilterAfterSort", "Filter after sort", "Scala/Collections/Other",
+                "Suggests performing filter before sort to reduce the number of elements sorted.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Other.UnzipForExtractingSingleElement", "Unzip for extracting a single element", "Scala/Collections/Other",
+                "Suggests replacing seq.unzip._1 with seq.map(_._1) to avoid allocating unnecessary temporary collections.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCollectionsSimplifications() {
+        // Scala/Collections/Simplifications: filter and exists ([-] 8 tools, 1 disabled)
+        addTool("Scala.Collections.SimplificationsFilterAndExists.ExistsSimplifiableToContains", "Exists simplifiable to contains", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.exists(_ == x) with seq.contains(x).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.FilterAndContainsToIntersectOrDiff", "Filter and contains to intersect or diff", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.filter(other.contains) with seq.intersect(other) or seq.diff(other).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.FilterAndEmptinessCheckToExistsForall", "Filter and emptiness check to exists/forall", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.filter(p).nonEmpty with seq.exists(p) or seq.filter(p).isEmpty with !seq.exists(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.FilterAndHeadOptionToFind", "Filter and headOption to find", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.filter(p).headOption with seq.find(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.FilterAndSizeToCount", "Filter and size to count", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.filter(p).size with seq.count(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.FindAndEmptinessCheckToExists", "Find and emptiness check to exists", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.find(p).isDefined with seq.exists(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.MapAndContainsTrueFalseToExistsOrNotForall", "Map and contains(true/false) to exists or !forall", "Scala/Collections/Simplifications: filter and exists",
+                "Suggests replacing seq.map(p).contains(true) with seq.exists(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsFilterAndExists.RedundantContainsInFilter", "Redundant contains in filter", "Scala/Collections/Simplifications: filter and exists",
+                "Reports redundant contains checks inside filter predicates.",
+                HighlightSeverity.WARNING, false, "Scala");
+
+        // Scala/Collections/Simplifications: find and map to apply ([✓] 1 tool)
+        addTool("Scala.Collections.SimplificationsFindAndMapToApply.FindAndMapToGet", "Find and map to get", "Scala/Collections/Simplifications: find and map to apply",
+                "Suggests replacing map.find(_._1 == k).map(_._2) with map.get(k).",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Collections/Simplifications: forall and exists ([✓] 1 tool)
+        addTool("Scala.Collections.SimplificationsForallAndExists.DoubleNegationInForallAndExists", "Double negation in forall and exists", "Scala/Collections/Simplifications: forall and exists",
+                "Suggests replacing !seq.forall(!p) with seq.exists(p) or !seq.exists(!p) with seq.forall(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Collections/Simplifications: other ([✓] 15 tools)
+        addTool("Scala.Collections.SimplificationsOther.CollectAndHeadOptionToCollectFirst", "Collect and headOption to collectFirst", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.collect(pf).headOption with seq.collectFirst(pf).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ConversionToSetAndBackToDistinct", "Conversion to Set and back to distinct", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.toSet.toSeq with seq.distinct.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.DropAndTakeToSlice", "Drop and take to slice", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.drop(from).take(until - from) with seq.slice(from, until).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.EmulatedHeadOptionOrLastOption", "Emulated headOption or lastOption", "Scala/Collections/Simplifications: other",
+                "Suggests replacing if (seq.nonEmpty) Some(seq.head) else None with seq.headOption.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.FoldSimplifiableToForall", "Fold simplifiable to forall", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.foldLeft(true)((acc, x) => acc && p(x)) with seq.forall(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.IndexBoundsCheck", "Index bounds check", "Scala/Collections/Simplifications: other",
+                "Suggests replacing 0 <= i && i < seq.length with seq.isDefinedAt(i).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.MakeArrayToString", "Make Array to String", "Scala/Collections/Simplifications: other",
+                "Suggests replacing new String(arr) or arr.mkString with arr.mkString for consistent array serialization.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.MapAndFlattenToFlatMap", "Map and flatten to flatMap", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.map(f).flatten with seq.flatMap(f).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ReplaceToWithUntil", "Replace to with until", "Scala/Collections/Simplifications: other",
+                "Suggests replacing 0 to len - 1 with 0 until len.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ReplaceWithFlatten", "Replace with flatten", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.flatMap(identity) with seq.flatten.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ReverseTakeAndReverseToTakeRight", "Reverse, take and reverse to takeRight", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.reverse.take(n).reverse with seq.takeRight(n).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ReverseAndFindToFindLast", "Reverse and find to findLast", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.reverse.find(p) with seq.findLast(p).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.ReverseAndIteratorToReverseIterator", "Reverse and iterator to reverseIterator", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.reverse.iterator with seq.reverseIterator.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.SimplifiableFoldOrReduceMethod", "Simplifiable fold or reduce method", "Scala/Collections/Simplifications: other",
+                "Suggests replacing fold or reduce invocations with specialized methods like sum, product, min, or max.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SimplificationsOther.SortedAndHeadLastToMaxMin", "Sorted and head/last to max/min", "Scala/Collections/Simplifications: other",
+                "Suggests replacing seq.sorted.head with seq.min or seq.sorted.last with seq.max.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaCollectionsSizeAndDirect() {
+        // Scala/Collections/Size ([✓] 2 tools)
+        addTool("Scala.Collections.Size.SimplifiableEmptyCheck", "Simplifiable empty check", "Scala/Collections/Size",
+                "Suggests replacing seq.size == 0 with seq.isEmpty and seq.size > 0 with seq.nonEmpty.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.Size.SizeToLengthOnArraysAndStrings", "Size to length on arrays and strings", "Scala/Collections/Size",
+                "Suggests replacing .size with .length on arrays and strings.",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Direct under Scala/Collections (1 enabled, 1 disabled -> Collections is indeterminate [-])
+        addTool("Scala.Collections.RedundantCollectionConversion", "Redundant collection conversion", "Scala/Collections",
+                "Reports collection conversion calls (like .toList or .toSeq) that produce the same collection type or are immediately converted again.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Collections.SideEffectsInMonadicTransformation", "Side effects in a monadic transformation", "Scala/Collections",
+                "Reports side-effecting operations like println or mutable updates inside map, flatMap, and filter operations.",
+                HighlightSeverity.WARNING, false, "Scala");
+    }
+
+    private void initScalaDirectiveInspections() {
+        // Scala/Directive ([✓] 1 tool)
+        addTool("Scala.Directive.NewerStableVersionForLibraryDependencyIsAvailable", "Newer stable version for library dependency is available", "Scala/Directive",
+                "Reports newer stable library dependency versions available in maven repositories.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaGeneralInspectionsPart1() {
+        // Scala/General (Part 1 of 3: tools 1 to 22)
+        addTool("Scala.General.AbsoluteImport", "Absolute import", "Scala/General",
+                "Reports package-relative import paths that can be made absolute with _root_.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.AbstractValueInTrait", "Abstract value in trait", "Scala/General",
+                "Reports abstract val definitions in traits that can lead to null pointer errors during trait initialization.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.AdvancedLanguageFeatures", "Advanced language features", "Scala/General",
+                "Reports usage of advanced Scala language features (such as higherKinds, reflectiveCalls, existentials) without explicit language imports.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.AlphanumericDefinitionUsedAsInfixOperator", "Alphanumeric definition used as infix operator is not declared 'infix'", "Scala/General",
+                "Reports alphanumeric method definitions used as infix operators without the 'infix' modifier in Scala 3.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.BasePackageDeclaration", "Base package declaration", "Scala/General",
+                "Reports package statements that do not align with configured base package conventions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.CaseClassParameter", "Case class parameter", "Scala/General",
+                "Reports redundant val modifiers on case class constructor parameters.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ClassDoesNotCorrespondToFileName", "Class doesn't correspond to file name", "Scala/General",
+                "Reports toplevel classes or objects whose names do not match the containing Scala source file name.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ClassParameterShadowsSuperclassVar", "Class parameter shadows superclass var", "Scala/General",
+                "Reports constructor parameters that shadow mutable var fields of superclasses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ComparingUnrelatedTypes", "Comparing unrelated types", "Scala/General",
+                "Reports equality checks between expressions of unrelated types that will always evaluate to false.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ConvertExpressionToSAM", "Convert expression to Single Abstract Method (SAM)", "Scala/General",
+                "Suggests converting anonymous class instances to lambda expressions when targeting single abstract method interfaces.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.DeclarationAccessCanBeWeaker", "Declaration access can be weaker", "Scala/General",
+                "Reports members whose visibility can be made private or protected based on usage analysis.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.DefinitionAndOverriddenMemberHaveDifferentTargetName", "Definition and the overridden member have different @targetName", "Scala/General",
+                "Reports overriding members whose @targetName annotation does not match the superclass member's @targetName.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.DefinitionMissesTargetNameAnnotation", "Definition misses a @targetName annotation", "Scala/General",
+                "Reports overriding members that omit a @targetName annotation when the overridden member specifies one.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.DefinitionWithOperatorNameDoesNotHaveTargetName", "Definition with an operator name doesn't have @targetName", "Scala/General",
+                "Reports operator-named definitions in Scala 3 that lack a corresponding @targetName annotation.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.DeprecatedIdentifier", "Deprecated identifier", "Scala/General",
+                "Reports identifiers that use deprecated keywords or syntax.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.DeprecatedKindProjectorSyntax", "Deprecated kind-projector syntax", "Scala/General",
+                "Reports legacy kind-projector type lambda syntax that can be updated to modern syntax.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.DeprecatedPackageObject", "Deprecated package object", "Scala/General",
+                "Reports package object declarations deprecated in Scala 3 in favor of toplevel definitions.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.DoubleNegation", "Double negation", "Scala/General",
+                "Reports redundant double boolean negation expressions like !!x.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.EmptyTargetNameExternalName", "Empty @targetName external name", "Scala/General",
+                "Reports @targetName annotations with empty external names.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.FieldFromDelayedInit", "Field from DelayedInit", "Scala/General",
+                "Reports fields accessed in classes extending App or DelayedInit that may not yet be initialized.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.FinalModifierRedundantForToplevelObjects", "'final' modifier is redundant for toplevel objects", "Scala/General",
+                "Reports redundant 'final' modifiers on toplevel object declarations.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.FloatingPointLiteralEndingWithDot", "Floating point literal ending with '.'", "Scala/General",
+                "Reports floating point numbers written with a trailing dot (e.g. 1.) which can cause syntactic ambiguity.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaGeneralInspectionsPart2() {
+        // Scala/General (Part 2 of 3: tools 23 to 45)
+        addTool("Scala.General.IsInstanceOf", "isInstanceOf", "Scala/General",
+                "Reports isInstanceOf type checks that can be replaced with pattern matching or polymorphism.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.KindProjectorSimplifyType", "Kind Projector: simplify type", "Scala/General",
+                "Suggests simplifying kind-projector type projections and type lambdas.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.KindProjectorUseCorrectLambdaKeyword", "Kind Projector: Use correct lambda keyword", "Scala/General",
+                "Reports incorrect or outdated lambda keyword usage in kind-projector syntax.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.LegacyStringFormatting", "Legacy string formatting", "Scala/General",
+                "Suggests converting legacy String.format or concatenation to string interpolators.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.LoopVariableNotUpdatedInsideLoop", "Loop variable not updated inside loop", "Scala/General",
+                "Reports while loops where the loop condition variable is not updated within the body, causing an infinite loop.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.MalformedFormatString", "Malformed format string", "Scala/General",
+                "Reports format strings with invalid specifiers, unbalanced arguments, or mismatched types.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.MarkInnerCaseObjectsAsFinal", "Mark inner case objects as final", "Scala/General",
+                "Suggests adding 'final' modifier to inner case objects to improve pattern match exhaustiveness.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.MatchStatementConvertibleToPatternMatchingAnonymousFunction", "Match statement convertible to pattern matching anonymous function", "Scala/General",
+                "Suggests converting match statements to pattern-matching partial functions (e.g., x => x match { ... }).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.MemberHasTargetNameWhenOverriddenMemberDoesNot", "Member has @targetName annotation when the overridden member doesn't", "Scala/General",
+                "Reports overriding members that add a @targetName annotation when the superclass member does not define one.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.MissingTypeAnnotation", "Missing type annotation", "Scala/General",
+                "Reports public declarations lacking explicit return type annotations.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("MultipleTargetNameAnnotations", "Multiple @targetName annotations", "Scala/General",
+                "Reports the usage of multiple @targetName annotations on a single element.\n\n" +
+                "All but the last @targetName annotation are ignored. Consider using at most one annotation per definition.\n\n" +
+                "The quick-fix removes selected @targetName annotation.\n\n" +
+                "Inspection ID: MultipleTargetNameAnnotations",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.MultipleArgListsInAnnotationConstructor", "Multiple arg lists in annotation constructor", "Scala/General",
+                "Reports annotation invocations specifying multiple argument lists which is unsupported by the Scala compiler.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.MultipleTargetsForTargetName", "Multiple targets for @targetName", "Scala/General",
+                "Reports multiple definitions having the same @targetName in the same scope, which causes JVM name collisions.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.NameBooleanParameters", "Name boolean parameters", "Scala/General",
+                "Suggests using named arguments for boolean parameters to improve call-site readability.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.NestedStatefulMonads", "Nested stateful monads", "Scala/General",
+                "Reports deeply nested stateful monad transformers that can be restructured or flattened.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.NoTailRecursionAnnotation", "No tail recursion annotation", "Scala/General",
+                "Suggests adding @tailrec annotation to tail-recursive method definitions to guarantee optimization.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.NonLocalReturnStatement", "Non-local return statement", "Scala/General",
+                "Reports return statements inside closures and anonymous functions that cause non-local returns.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.NonValueFieldAccessedInHashCode", "Non-value field is accessed in 'hashCode()'", "Scala/General",
+                "Reports mutable var fields accessed in hashCode() implementations which breaks hash map consistency.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.NotImplementedCode", "Not implemented code", "Scala/General",
+                "Reports usages of ??? or NotImplementedError in production code paths.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.OldStyleSyntaxForAggregateContextBoundsIsDeprecated", "Old style syntax for aggregate context bounds is deprecated", "Scala/General",
+                "Reports deprecated old-style context bound syntax in Scala 3.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.RedundantBlock", "Redundant block", "Scala/General",
+                "Reports redundant curly brace blocks wrapping single expressions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.RedundantCastInspection", "Redundant cast inspection", "Scala/General",
+                "Reports redundant asInstanceOf casts where the target type is already guaranteed.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.RedundantClassParameterClause", "Redundant class parameter clause", "Scala/General",
+                "Reports redundant empty constructor parameter clauses on class declarations.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaGeneralInspectionsPart3() {
+        // Scala/General (Part 3 of 3: tools 46 to 67)
+        addTool("Scala.General.RedundantConversionInspection", "Redundant conversion inspection", "Scala/General",
+                "Reports redundant type conversion invocations that convert an expression to its own type.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ReferenceMustBePrefixed", "Reference must be prefixed", "Scala/General",
+                "Reports references that should be qualified with explicit package or class prefixes to prevent ambiguity.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.RelativeImport", "Relative import", "Scala/General",
+                "Reports relative package imports that can be rewritten to absolute imports.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.ScalaDeprecation", "Scala deprecation", "Scala/General",
+                "Reports usages of deprecated Scala standard library symbols and compiler features.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.SimplifyBooleanExpression", "Simplify boolean expression", "Scala/General",
+                "Reports complex boolean expressions that can be simplified using boolean algebra laws.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.SuspiciousForwardReference", "Suspicious forward reference", "Scala/General",
+                "Reports references to fields before their declaration point in class bodies.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.SuspiciousShadowingByTypeParameter", "Suspicious shadowing by a Type Parameter", "Scala/General",
+                "Reports method or inner class type parameters that shadow type parameters in enclosing scopes.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.SuspiciousShadowingByVariablePattern", "Suspicious shadowing by a Variable Pattern", "Scala/General",
+                "Reports variable pattern names in match clauses that shadow existing local variables.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.TrivialMatchCanBeSimplified", "Trivial match can be simplified", "Scala/General",
+                "Suggests simplifying boolean or single-case match expressions with if-else or direct assignments.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.TypeAnnotationRequired", "Type annotation required", "Scala/General",
+                "Reports declarations that require explicit type annotations according to configured coding rules.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.TypeCheckCanBePatternMatching", "Type check can be pattern matching", "Scala/General",
+                "Suggests replacing isInstanceOf checks combined with asInstanceOf casts by pattern matching.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnmatchedTag", "Unmatched tag", "Scala/General",
+                "Reports unmatched opening or closing XML literals in Scala XML code blocks.",
+                HighlightSeverity.ERROR, true, "Scala");
+        addTool("Scala.General.UnnecessaryBracesInImportInspection", "Unnecessary braces in import inspection", "Scala/General",
+                "Reports redundant curly braces in import statements containing only a single import target.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnnecessaryParentheses", "Unnecessary parentheses", "Scala/General",
+                "Reports redundant parentheses in expressions that do not affect operator precedence.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnnecessaryPartialFunction", "Unnecessary partial function", "Scala/General",
+                "Reports partial function literals that can be simplified into standard lambda functions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnreachableCode", "Unreachable code", "Scala/General",
+                "Reports code that cannot be reached during execution following returns, throws, or unconditional branches.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnusedDeclaration", "Unused declaration", "Scala/General",
+                "Reports declarations that are never used across the project or local scope.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UnusedExpression", "Unused expression", "Scala/General",
+                "Reports expressions whose evaluated values are never used and have no side effects.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.UseOfPostfixMethodCall", "Use of postfix method call", "Scala/General",
+                "Reports postfix method call syntax which requires explicit compiler feature flag and is discouraged.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.General.VarCouldBeVal", "'var' could be a 'val'", "Scala/General",
+                "Reports mutable var definitions that are never reassigned after initialization and can be made val.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.ViewBoundsAreDeprecated", "View bounds are deprecated", "Scala/General",
+                "Reports view bound syntax (e.g., [T <% Ordered[T]]) deprecated in Scala 2.13 and removed in Scala 3.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.General.WrongPackageStatement", "Wrong package statement", "Scala/General",
+                "Reports package declarations that do not match the directory structure of the file.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaMethodSignatureInspections() {
+        // Scala/Method signature ([✓] 16 tools, all enabled matching media_1790826033450.png)
+        addTool("Scala.MethodSignature.OverrideAbstractMember", "Abstract method implementation without override keyword", "Scala/Method signature",
+                "Reports abstract method implementations that omit the override keyword.",
+                HighlightSeverity.NO_HIGHLIGHTING, true, "Scala");
+        addTool("Scala.MethodSignature.AccessorLikeMethodIsEmptyParen", "Accessor-like method has empty parameter clause", "Scala/Method signature",
+                "Reports accessor-like methods declared with empty parentheses () which should be parameterless according to conventions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.AccessorLikeMethodIsUnit", "Accessor-like method has Unit result type", "Scala/Method signature",
+                "Reports accessor-like methods that return Unit instead of an accessor value.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.ApparentResultTypeRefinement", "Apparent result type refinement; is an assignment missing?", "Scala/Method signature",
+                "Reports apparent result type refinement where an '=' assignment might be missing.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.EmptyParenMethodAccessedAsParameterless", "Empty-paren method accessed as parameterless", "Scala/Method signature",
+                "Reports empty-paren methods called without parentheses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.EmptyParenMethodOverriddenAsParameterless", "Empty-paren Scala method overridden as parameterless", "Scala/Method signature",
+                "Reports empty-paren Scala methods overridden as parameterless in subclasses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.JavaAccessorEmptyParenCall", "Java accessor method called with empty argument clause", "Scala/Method signature",
+                "Reports Java accessor methods invoked with empty parentheses ().",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.JavaAccessorMethodOverriddenAsEmptyParen", "Java accessor method overridden with empty argument clause", "Scala/Method signature",
+                "Reports parameterless Java accessor methods overridden with empty argument clauses ().",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.JavaMutatorMethodAccessedAsParameterless", "Java mutator method accessed as parameterless", "Scala/Method signature",
+                "Reports Java mutator methods called without parentheses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.JavaMutatorMethodOverriddenAsParameterless", "Java mutator method overridden as parameterless", "Scala/Method signature",
+                "Reports Java mutator methods overridden as parameterless in Scala classes.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.UnitMethodIsParameterless", "Method with Unit result type is parameterless", "Scala/Method signature",
+                "Reports side-effecting methods returning Unit that are declared without parentheses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.MutatorLikeMethodIsParameterless", "Mutator-like named method is parameterless", "Scala/Method signature",
+                "Reports mutator-like named methods (e.g., set*, init*) declared without parentheses.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.ParameterlessMemberOverriddenAsEmptyParen", "Parameterless Scala member overridden as empty-paren", "Scala/Method signature",
+                "Reports parameterless Scala members overridden with empty argument clauses ().",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.ProcedureDeclaration", "Procedure syntax in method declaration", "Scala/Method signature",
+                "Reports procedure syntax method declarations deprecated in Scala 3.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.ProcedureDefinition", "Procedure syntax in method definition", "Scala/Method signature",
+                "Reports procedure syntax method definitions deprecated in Scala 3.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.MethodSignature.TypedParameterWithoutParen", "Typed parameter without parenthesis in functional literal", "Scala/Method signature",
+                "Reports typed parameters in function literals that lack enclosing parentheses.",
+                HighlightSeverity.NO_HIGHLIGHTING, true, "Scala");
+    }
+
+    private void initScalaPlayAndPropertiesInspections() {
+        // Scala/Play ([✓] 4 tools, all Warning, all enabled matching media_1790826033450.png)
+        addTool("Scala.Play.BadFileNameInspection", "Play file name inspection", "Scala/Play",
+                "Validates Play template and route file names to ensure they are valid Scala identifiers.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Play.RoutingActionInspection", "Play Routing action inspection", "Scala/Play",
+                "Validates Play framework route action methods, parameter counts, and signatures.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Play.RoutingUrlClashInspection", "Play Routing URL clash inspection", "Scala/Play",
+                "Reports conflicting route URLs in Play framework routes files.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Play.UnresolvedResource", "Play unresolved resource inspection", "Scala/Play",
+                "Reports unresolved static resources and assets in Play framework templates and route files.",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Properties files ([✓] 1 tool, Error !, enabled matching media_1790826033450.png)
+        addTool("Scala.PropertiesFiles.InvalidPropertyKey", "Invalid property key", "Scala/Properties files",
+                "Reports unresolved or invalid property keys in Scala property bundles and i18n references.",
+                HighlightSeverity.ERROR, true, "Scala");
+
+        // Scala/Resource leaks ([✓] 1 tool, Warning ▲, enabled matching media_1790826033450.png)
+        addTool("Scala.ResourceLeaks.SourceNotClosed", "Source is not closed", "Scala/Resource leaks",
+                "Reports scala.io.Source instances that are created but not closed.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaScaladocAndSpecs2Inspections() {
+        // Scala/Scaladoc ([✓] 7 tools, all Warning, all enabled matching media_1790826033450.png)
+        addTool("Scala.Scaladoc.HeaderTagsUnbalanced", "Header tags unbalanced", "Scala/Scaladoc",
+                "Reports unbalanced = header markup tags in Scaladoc comments.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.InlinedTag", "Inlined tag", "Scala/Scaladoc",
+                "Reports incorrectly placed inline tags in Scaladoc comments.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.MissingTagParameterDescription", "Missing tag parameter description", "Scala/Scaladoc",
+                "Reports Scaladoc @param or @tparam tags lacking parameter descriptions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.TagUnclosed", "Tag unclosed", "Scala/Scaladoc",
+                "Reports unclosed HTML or Scaladoc formatting tags.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.UnknownParameter", "Unknown parameter", "Scala/Scaladoc",
+                "Reports @param or @tparam tags in Scaladoc comments that do not correspond to any method parameter.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.UnknownTag", "Unknown tag", "Scala/Scaladoc",
+                "Reports unrecognized @ tags in Scaladoc comments.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Scaladoc.WrongScaladocElement", "Wrong scaladoc element", "Scala/Scaladoc",
+                "Reports syntax and parser errors in Scaladoc comments.",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Specs2 ([✓] 1 tool, Warning ▲, enabled matching media_1790826063653.png)
+        addTool("Scala.Specs2.Specs2Matchers", "Specs2 matchers", "Scala/Specs2",
+                "Validates specs2 matcher usages, assertion structures, and verification blocks.",
+                HighlightSeverity.WARNING, true, "Scala");
+    }
+
+    private void initScalaSyntacticAndWorksheetInspections() {
+        // Scala/Syntactic clarification ([-] 2 tools: 1 enabled, 1 disabled matching media_1790826063653.png)
+        addTool("Scala.SyntacticClarification.AutoTupling", "Auto-tupling", "Scala/Syntactic clarification",
+                "Reports implicit auto-tupling conversions where multiple arguments are converted into a single Tuple.",
+                HighlightSeverity.WARNING, false, "Scala");
+        addTool("Scala.SyntacticClarification.ConvertNullInitializerToUnderscore", "Null initializer can be replaced by _", "Scala/Syntactic clarification",
+                "Suggests replacing explicit null initialization of var fields with default wildcard _ initialization.",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Syntactic simplification ([✓] 8 tools, all Warning, all enabled matching media_1790826063653.png)
+        addTool("Scala.SyntacticSimplification.ConvertibleToMethodValue", "Anonymous function convertible to a method value", "Scala/Syntactic simplification",
+                "Suggests replacing anonymous functions like (x => foo(x)) with method values (foo _ or foo).",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.AppliedTypeLambdaCanBeSimplified", "Applied Type Lambda can be simplified", "Scala/Syntactic simplification",
+                "Suggests simplifying applied type lambdas in Scala type expressions.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.RedundantDefaultArgument", "Argument duplicates corresponding parameter default value", "Scala/Syntactic simplification",
+                "Reports explicit method call arguments that match the default parameter values.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.PostfixUnaryOperation", "Postfix unary operation", "Scala/Syntactic simplification",
+                "Reports postfix unary operations that can lead to subtle operator precedence bugs.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.RedundantNewOnCaseClass", "Redundant new on case class", "Scala/Syntactic simplification",
+                "Suggests removing redundant 'new' keywords when instantiating case classes.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.RemoveRedundantReturn", "Redundant return", "Scala/Syntactic simplification",
+                "Reports redundant 'return' statements at the end of method bodies.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.ScalaUnnecessarySemicolon", "Scala unnecessary semicolon inspection", "Scala/Syntactic simplification",
+                "Reports redundant semicolons at line endings in Scala source code.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.SyntacticSimplification.FunctionTupleSyntacticSugar", "Syntactic sugar", "Scala/Syntactic simplification",
+                "Suggests using idiomatic syntactic sugar for tuples and function types (e.g. (A, B) instead of Tuple2[A, B]).",
+                HighlightSeverity.WARNING, true, "Scala");
+
+        // Scala/Worksheet ([✓] 2 tools: 1 Warning, 1 Error, all enabled matching media_1790826063653.png)
+        addTool("Scala.Worksheet.AmmoniteUnresolvedLibrary", "Ammonite unresolved import", "Scala/Worksheet",
+                "Reports unresolved $ivy dependencies or imports in Ammonite scripts.",
+                HighlightSeverity.WARNING, true, "Scala");
+        addTool("Scala.Worksheet.WorksheetPackageDeclaration", "Worksheet package declaration", "Scala/Worksheet",
+                "Reports package declarations inside worksheets which are not allowed.",
+                HighlightSeverity.ERROR, true, "Scala");
+    }
 }
+
