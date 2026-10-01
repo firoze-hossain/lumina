@@ -2094,161 +2094,1018 @@ public final class InspectionRegistry {
                 "Reports package-private or protected members whose visibility can be made more restrictive.",
                 HighlightSeverity.WARNING, true, "Java");
 
-        // 33. Java EE ([-])
-        addTool("JavaEE.ServletMapping", "Invalid servlet mapping", "Java EE",
-                "Validates servlet url-pattern mappings in web.xml.",
+        // 33. Java EE ([✓] all 6 inspections from Image 1)
+        addTool("JavaEE.AppDescriptorCorrectness", "Java EE application descriptor correctness", "Java EE",
+                "Reports configuration and structural errors in application.xml deployment descriptors.",
                 HighlightSeverity.ERROR, true, "Java");
-        addTool("JavaEE.EjbBinding", "Unresolved EJB reference", "Java EE",
-                "Reports EJB lookup references that cannot be resolved in JNDI context.",
-                HighlightSeverity.WARNING, false, "Java");
+        addTool("JavaEE.MimeType", "MIME type", "Java EE",
+                "Reports unrecognized or malformed MIME type declarations in web deployment descriptors.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JavaEE.SecurityRoleNameCorrectness", "Security role name correctness", "Java EE",
+                "Reports security-role-ref mappings that reference undefined security roles.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JavaEE.ServletMapping", "Servlet mapping", "Java EE",
+                "Reports servlet url-pattern mappings that are invalid or conflict with other mappings.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JavaEE.WebXmlErrors", "Web.xml errors", "Java EE",
+                "Reports structural and validation errors in web.xml deployment descriptors.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JavaEE.WebXmlWarnings", "Web.xml warnings", "Java EE",
+                "Reports deprecated configurations and potential issues in web.xml files.",
+                HighlightSeverity.WARNING, true, "Java");
 
-        // 34. JavaFX ([-])
+        // 34. JavaFX ([✓] all 8 inspections from Image 1)
+        addTool("JavaFX.ColorOutOfRange", "Color component is out of range", "JavaFX",
+                "Reports RGB or HSB color component values outside valid ranges in JavaFX and FXML.",
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.EventHandlerMethodSignature", "Event handler method signature problems", "JavaFX",
+                "Reports FXML event handler methods whose signatures do not match the expected event type.",
+                HighlightSeverity.WARNING, true, "FXML");
         addTool("JavaFX.RedundantPropertyValue", "JavaFX redundant property values", "JavaFX",
                 "Reports FXML property values that match default control values.",
-                HighlightSeverity.WEAK_WARNING, true, "FXML");
-        addTool("JavaFX.UnusedImport", "JavaFX unused imports", "JavaFX",
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.UnusedImports", "JavaFX unused imports", "JavaFX",
                 "Reports unused type imports in FXML documents.",
-                HighlightSeverity.WARNING, false, "FXML");
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.PropertiesFileIncompatibleType", "The value from properties file is incompatible with the attribute type", "JavaFX",
+                "Reports property resource bundle values that cannot be converted to the target FXML attribute type.",
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.UnnecessaryDefaultTag", "Unnecessary default tag", "JavaFX",
+                "Reports FXML container default property tags that can be omitted.",
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.UnresolvedFxId", "Unresolved fx:id attribute reference", "JavaFX",
+                "Reports fx:id attributes in FXML that do not correspond to controller fields.",
+                HighlightSeverity.WARNING, true, "FXML");
+        addTool("JavaFX.UnresolvedStyleClass", "Unresolved style class reference", "JavaFX",
+                "Reports CSS style class references in FXML that are not defined in referenced stylesheets.",
+                HighlightSeverity.WARNING, true, "FXML");
 
-        // 35. JavaScript and TypeScript ([-])
-        addTool("JS.UnusedVariable", "Unused JavaScript variable", "JavaScript and TypeScript",
-                "Reports variables that are declared but never read.",
+        // 35. JavaScript and TypeScript ([-] with 26 subcategories from Image 2)
+        // Subcategory: Assignment issues ([-] Indeterminate)
+        addTool("JS.Assignment.ForLoopParam", "Assignment to for-loop parameter", "JavaScript and TypeScript/Assignment issues",
+                "Reports assignments to for-loop iteration variables.",
                 HighlightSeverity.WARNING, true, "JavaScript");
-        addTool("JS.ExplicitAny", "Usage of explicit 'any' type", "JavaScript and TypeScript",
-                "Reports TypeScript 'any' type annotations where specific types can be inferred.",
-                HighlightSeverity.WEAK_WARNING, false, "TypeScript");
+        addTool("JS.Assignment.FunctionParam", "Assignment to function parameter", "JavaScript and TypeScript/Assignment issues",
+                "Reports assignments to incoming function arguments.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 36. JPA ([-])
-        addTool("JPA.EntityIdentifier", "Entity without primary key", "JPA",
-                "Reports JPA entity classes missing an @Id or @EmbeddedId attribute.",
-                HighlightSeverity.ERROR, true, "Java");
-        addTool("JPA.QueryCheck", "JPA Query parameter mismatch", "JPA",
-                "Reports named parameters in query string that do not match setParameter calls.",
-                HighlightSeverity.WARNING, false, "Java");
+        // Subcategory: Async code and promises ([-] Indeterminate)
+        addTool("JS.Async.AwaitOutsideAsync", "Missing 'await' for an async function call", "JavaScript and TypeScript/Async code and promises",
+                "Reports async calls without await whose return promise is ignored.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Async.PromiseReturnedWithoutAwait", "Promise returned in non-async function", "JavaScript and TypeScript/Async code and promises",
+                "Reports functions returning Promise instances without async keyword.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 37. JRuby ([✓])
-        addTool("JRuby.JavaInterop", "JRuby Java interop problem", "JRuby",
-                "Reports invalid Java class calls and package references in JRuby code.",
-                HighlightSeverity.WARNING, true, "Ruby");
+        // Subcategory: Bitwise operation issues ([-] Indeterminate)
+        addTool("JS.Bitwise.IncompatibleMask", "Incompatible bitwise mask expression", "JavaScript and TypeScript/Bitwise operation issues",
+                "Reports bitwise expressions that always evaluate to constant results.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Bitwise.PointlessOperation", "Pointless bitwise expression", "JavaScript and TypeScript/Bitwise operation issues",
+                "Reports bitwise operations that have no effect.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 38. JSON and JSON5 ([✓])
-        addTool("JSON.SyntaxError", "JSON syntax error", "JSON and JSON5",
-                "Reports syntax errors, missing commas, and unexpected tokens in JSON documents.",
-                HighlightSeverity.ERROR, true, "JSON");
+        // Subcategory: Code quality tools ([ ] Unchecked)
+        addTool("JS.CodeQuality.ESLint", "ESLint verification", "JavaScript and TypeScript/Code quality tools",
+                "Runs ESLint static analyzer rules on JavaScript and TypeScript files.",
+                HighlightSeverity.WARNING, false, "JavaScript");
+        addTool("JS.CodeQuality.JSHint", "JSHint verification", "JavaScript and TypeScript/Code quality tools",
+                "Runs JSHint linter rules on source files.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 39. JSONPath ([✓])
-        addTool("JSONPath.SyntaxValidation", "Invalid JSONPath syntax", "JSONPath",
-                "Validates JSONPath queries and filter expressions.",
-                HighlightSeverity.ERROR, true, "JSONPath");
+        // Subcategory: Code style issues ([-] Indeterminate)
+        addTool("JS.CodeStyle.UnnecessarySemicolon", "Unnecessary semicolon", "JavaScript and TypeScript/Code style issues",
+                "Reports redundant semicolons.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.CodeStyle.ChainedEquality", "Chained equality", "JavaScript and TypeScript/Code style issues",
+                "Reports chained equality comparisons (a == b == c) that behave unexpectedly.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 40. JSP ([✓])
-        addTool("JSP.DirectiveSyntax", "JSP directive syntax", "JSP",
-                "Validates JSP page and taglib directives.",
-                HighlightSeverity.ERROR, true, "JSP");
+        // Subcategory: Control flow issues ([-] Indeterminate)
+        addTool("JS.ControlFlow.InfiniteLoop", "Infinite loop statement", "JavaScript and TypeScript/Control flow issues",
+                "Reports loops that cannot terminate normally.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.ControlFlow.UnneededLoop", "Loop statement that does not loop", "JavaScript and TypeScript/Control flow issues",
+                "Reports loop statements that execute at most one iteration.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 41. JUnit ([✓])
-        addTool("JUnit.MalformedTestMethod", "Malformed test method", "JUnit",
-                "Reports test methods that are static, private, or have return values.",
-                HighlightSeverity.WARNING, true, "Java");
+        // Subcategory: Data flow ([-] Indeterminate)
+        addTool("JS.DataFlow.ConstantCondition", "Constant conditional expression", "JavaScript and TypeScript/Data flow",
+                "Reports conditions that evaluate to constant boolean values.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.DataFlow.UnassignedVariable", "Variable is never assigned", "JavaScript and TypeScript/Data flow",
+                "Reports variables declared without an initializer that are never written to.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 42. JVM languages ([✓])
-        addTool("JVM.SignatureClash", "Bridge method signature clash", "JVM languages",
-                "Reports conflicting bytecode signatures in multi-language projects.",
-                HighlightSeverity.ERROR, true, "JVM");
+        // Subcategory: DOM issues ([ ] Unchecked)
+        addTool("JS.DOM.DeprecatedApi", "Deprecated DOM API usage", "JavaScript and TypeScript/DOM issues",
+                "Reports calls to deprecated DOM methods and properties.",
+                HighlightSeverity.WARNING, false, "JavaScript");
+        addTool("JS.DOM.InvalidEventName", "Invalid DOM event name", "JavaScript and TypeScript/DOM issues",
+                "Reports event listener names that are not standard DOM event types.",
+                HighlightSeverity.WARNING, false, "JavaScript");
 
-        // 43. Kotlin ([-])
-        addTool("Kotlin.RedundantNullCheck", "Redundant null check", "Kotlin",
-                "Reports unnecessary null checks on non-nullable Kotlin expressions.",
-                HighlightSeverity.WEAK_WARNING, true, "Kotlin");
-        addTool("Kotlin.UnusedSymbol", "Unused Kotlin symbol", "Kotlin",
-                "Reports Kotlin functions, classes, and properties that are never used.",
-                HighlightSeverity.WARNING, false, "Kotlin");
+        // Subcategory: ES2015 migration aids ([✓] Checked)
+        addTool("JS.ES2015.VarCanBeConst", "'var' declaration can be replaced with 'let' or 'const'", "JavaScript and TypeScript/ES2015 migration aids",
+                "Reports 'var' variables that can be modernized to block-scoped 'let' or 'const'.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.ES2015.TemplateString", "String concatenation can be converted to template string", "JavaScript and TypeScript/ES2015 migration aids",
+                "Reports complex string concatenation expressions that can use ES6 template literals.",
+                HighlightSeverity.WARNING, true, "JavaScript");
 
-        // 44. Ktor ([✓])
-        addTool("Ktor.RoutingConflict", "Conflicting routing path", "Ktor",
-                "Reports conflicting or overlapping endpoint route definitions in Ktor applications.",
+        // Subcategory: Flow type checker ([✓] Checked)
+        addTool("JS.Flow.TypeMismatch", "Flow type mismatch", "JavaScript and TypeScript/Flow type checker",
+                "Reports type annotation incompatibilities in Flow-annotated code.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Flow.UntypedImport", "Flow untyped import", "JavaScript and TypeScript/Flow type checker",
+                "Reports imports of untyped JavaScript modules in Flow-checked files.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Function metrics ([ ] Unchecked)
+        addTool("JS.FunctionMetrics.OverlyComplex", "Overly complex function", "JavaScript and TypeScript/Function metrics",
+                "Reports functions whose cyclomatic complexity exceeds threshold.",
+                HighlightSeverity.WARNING, false, "JavaScript");
+        addTool("JS.FunctionMetrics.ParametersCount", "Parameters number exceeds threshold", "JavaScript and TypeScript/Function metrics",
+                "Reports functions declaring more arguments than recommended.",
+                HighlightSeverity.WARNING, false, "JavaScript");
+
+        // Subcategory: General ([-] Indeterminate)
+        addTool("JS.General.DuplicateCase", "Duplicate 'case' label", "JavaScript and TypeScript/General",
+                "Reports duplicate case clauses in switch statements.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.General.UnresolvedReference", "Unresolved JavaScript reference", "JavaScript and TypeScript/General",
+                "Reports variable or function identifiers that cannot be resolved in scope.",
+                HighlightSeverity.WARNING, false, "JavaScript");
+
+        // Subcategory: Imports and dependencies ([✓] Checked)
+        addTool("JS.Imports.UnusedImport", "Unused import declaration", "JavaScript and TypeScript/Imports and dependencies",
+                "Reports imported symbols that are never referenced.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Imports.DuplicateImport", "Duplicate import", "JavaScript and TypeScript/Imports and dependencies",
+                "Reports multiple import statements importing the same module path.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Naming conventions ([✓] Checked)
+        addTool("JS.Naming.FunctionNaming", "Function naming convention", "JavaScript and TypeScript/Naming conventions",
+                "Reports function names that do not follow camelCase naming conventions.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Naming.VariableNaming", "Variable naming convention", "JavaScript and TypeScript/Naming conventions",
+                "Reports variable names that do not follow project naming rules.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Node.js ([✓] Checked)
+        addTool("JS.Node.UnresolvedModule", "Unresolved Node.js module", "JavaScript and TypeScript/Node.js",
+                "Reports require() calls pointing to missing npm packages or local modules.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Node.RequireCall", "Deprecated 'require' call", "JavaScript and TypeScript/Node.js",
+                "Suggests converting CommonJS require calls to ES module imports.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Potentially confusing code constructs ([✓] Checked)
+        addTool("JS.Confusing.CommaExpression", "Comma expression", "JavaScript and TypeScript/Potentially confusing code constructs",
+                "Reports comma operator usage which may obscure side-effects.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Confusing.NestedTernary", "Nested conditional expression", "JavaScript and TypeScript/Potentially confusing code constructs",
+                "Reports ternary expressions nested inside other conditional operators.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Potentially undesirable code constructs ([✓] Checked)
+        addTool("JS.Undesirable.WithStatement", "'with' statement", "JavaScript and TypeScript/Potentially undesirable code constructs",
+                "Reports deprecated 'with' statements.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Undesirable.CallerCallee", "Use of caller or callee properties", "JavaScript and TypeScript/Potentially undesirable code constructs",
+                "Reports arguments.caller and arguments.callee references banned in strict mode.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Probable bugs ([✓] Checked)
+        addTool("JS.ProbableBugs.EqualityComparisonWithNaN", "Comparison with NaN", "JavaScript and TypeScript/Probable bugs",
+                "Reports equality comparisons with NaN that always evaluate to false.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.ProbableBugs.InfiniteRecursion", "Infinite recursion", "JavaScript and TypeScript/Probable bugs",
+                "Reports recursive calls with no reachable base condition.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: React ([✓] Checked)
+        addTool("JS.React.MissingKey", "Missing 'key' prop in element list", "JavaScript and TypeScript/React",
+                "Reports array map elements missing a unique key prop in JSX.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.React.InvalidHookCall", "Invalid Hook call", "JavaScript and TypeScript/React",
+                "Reports React hooks invoked conditionally or outside component render functions.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Security ([✓] Checked)
+        addTool("JS.Security.Eval", "Use of 'eval()' function", "JavaScript and TypeScript/Security",
+                "Reports calls to dangerous eval() function.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Security.InnerHTML", "Unsafe assignment to innerHTML", "JavaScript and TypeScript/Security",
+                "Reports untrusted string assignments to innerHTML or outerHTML.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Switch statement issues ([✓] Checked)
+        addTool("JS.Switch.FallThrough", "Fallthrough in 'switch' statement", "JavaScript and TypeScript/Switch statement issues",
+                "Reports case clauses in switch statements that fall through without break or return.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Switch.MissingDefault", "Missing 'default' branch in 'switch' statement", "JavaScript and TypeScript/Switch statement issues",
+                "Reports switch statements that do not include a default case branch.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Try statement issues ([✓] Checked)
+        addTool("JS.Try.EmptyCatch", "Empty 'catch' block", "JavaScript and TypeScript/Try statement issues",
+                "Reports catch blocks containing no statements.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Try.FinallyReturn", "'return' inside 'finally' block", "JavaScript and TypeScript/Try statement issues",
+                "Reports return statements inside finally blocks that discard thrown exceptions.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: TypeScript ([✓] Checked)
+        addTool("JS.TS.ExplicitAny", "Explicit 'any' type", "JavaScript and TypeScript/TypeScript",
+                "Reports variables or parameters declared with explicit 'any' type.",
+                HighlightSeverity.WARNING, true, "TypeScript");
+        addTool("JS.TS.UnnecessaryTypeAssertion", "Unnecessary type assertion", "JavaScript and TypeScript/TypeScript",
+                "Reports 'as' type casts where the type is already inferred.",
+                HighlightSeverity.WARNING, true, "TypeScript");
+
+        // Subcategory: Unit testing ([✓] Checked)
+        addTool("JS.Testing.MissingAssertions", "Test without assertions", "JavaScript and TypeScript/Unit testing",
+                "Reports unit test methods that execute without asserting expectations.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Testing.DuplicateTestName", "Duplicate test title", "JavaScript and TypeScript/Unit testing",
+                "Reports identical describe or it test suite titles.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Unused symbols ([✓] Checked)
+        addTool("JS.Unused.UnusedVariable", "Unused local variable", "JavaScript and TypeScript/Unused symbols",
+                "Reports declared local variables that are never read.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Unused.UnusedFunction", "Unused function", "JavaScript and TypeScript/Unused symbols",
+                "Reports declared functions that are never called.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // Subcategory: Validity issues ([✓] Checked)
+        addTool("JS.Validity.DuplicateProperty", "Duplicate object property name", "JavaScript and TypeScript/Validity issues",
+                "Reports duplicate property keys in object literal declarations.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("JS.Validity.ReservedWord", "Use of reserved word as identifier", "JavaScript and TypeScript/Validity issues",
+                "Reports JavaScript reserved keywords used as variable or parameter names.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+
+        // 36. JPA ([✓] with Kotlin subcategory and 24 direct items from Image 3)
+        // Subcategory: Kotlin
+        addTool("JPA.Kotlin.ImmutableCollectionProperty", "Immutable collection-like property", "JPA/Kotlin",
+                "Reports immutable collection properties in JPA entities that Hibernate cannot update.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("JPA.Kotlin.ImmutableNotNullableProperty", "Immutable not-nullable JPA property", "JPA/Kotlin",
+                "Reports non-nullable entity properties in Kotlin missing no-arg initialization.",
                 HighlightSeverity.WARNING, true, "Kotlin");
 
-        // 45. Kubernetes ([✓])
-        addTool("Kubernetes.ResourceValidation", "Kubernetes manifest validation", "Kubernetes",
-                "Validates Kubernetes resource YAML against official schemas.",
-                HighlightSeverity.ERROR, true, "YAML");
-
-        // 46. Language injection ([✓])
-        addTool("LangInjection.SyntaxError", "Injected language syntax error", "Language injection",
-                "Reports syntax errors inside injected language fragments (SQL, RegExp, HTML, etc.).",
-                HighlightSeverity.ERROR, true, "General");
-
-        // 47. Less ([✓])
-        addTool("Less.VariableReference", "Unresolved Less variable", "Less",
-                "Reports Less variables that are referenced without declaration.",
-                HighlightSeverity.ERROR, true, "Less");
-
-        // 48. Liquibase ([✓])
-        addTool("Liquibase.ChangeSetId", "Duplicate changeset id", "Liquibase",
-                "Reports changelog files containing duplicate changeSet IDs.",
-                HighlightSeverity.ERROR, true, "XML");
-
-        // 49. Manifest ([✓])
-        addTool("Manifest.BundleHeader", "Invalid OSGi / JAR manifest header", "Manifest",
-                "Validates MANIFEST.MF header syntax and exported package formats.",
-                HighlightSeverity.WARNING, true, "Manifest");
-
-        // 50. Markdown ([✓])
-        addTool("Markdown.BrokenLink", "Broken Markdown link", "Markdown",
-                "Reports references to local files or headers that do not exist.",
-                HighlightSeverity.WARNING, true, "Markdown");
-
-        // 51. Maven ([✓])
-        addTool("Maven.DuplicateDependency", "Duplicate dependency declaration", "Maven",
-                "Reports dependencies declared multiple times in pom.xml.",
-                HighlightSeverity.WARNING, true, "Maven");
-
-        // 52. Micronaut ([✓])
-        addTool("Micronaut.EndpointValidation", "Invalid Micronaut endpoint mapping", "Micronaut",
-                "Validates Micronaut controller URI templates and parameter bindings.",
+        // Direct JPA items
+        addTool("JPA.AssociationMarkedWithColumn", "Association field marked with @Colum", "JPA",
+                "Reports relationship fields marked with @Column instead of @JoinColumn.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.EntityAttributeNotMarkedWithAssociation", "Entity attribute is not marked with association annotation", "JPA",
+                "Reports entity fields referencing other entity types without relationship annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.EntityHasMoreThanOneIdAttribute", "Entity has more than one id attribute.", "JPA",
+                "Reports entities declaring multiple @Id attributes without @IdClass.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.EntityListenerProblems", "Entity listener problems", "JPA",
+                "Reports invalid method signatures on JPA entity listener classes.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.EntityListenerWarnings", "Entity listener warnings", "JPA",
+                "Reports non-standard lifecycle callback methods in entity listeners.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.ManyToManyCascadeRemove", "For @ManyToMany associations, the REMOVE entity state transition doesn't make sense", "JPA",
+                "Reports @ManyToMany associations configured with CascadeType.REMOVE which causes unintended deletions.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.ConverterAnnotation", "JPA converter must be annotated with @Converter annotation", "JPA",
+                "Reports AttributeConverter implementations missing the @Converter annotation.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.LombokBuilderConstructor", "Lombok @Builder needs a proper constructor for this class", "JPA",
+                "Reports entities with Lombok @Builder lacking an explicit all-args or no-args constructor.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.OrmXmlProblems", "Orm.xml problems", "JPA",
+                "Reports mapping and validation errors in JPA orm.xml configuration files.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.PersistenceXmlNotAddedToFacet", "Persistence.xml is not added to facet", "JPA",
+                "Reports persistence.xml files that are not registered in the project JPA facet.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.PersistenceXmlProblems", "persistence.xml problems", "JPA",
+                "Reports syntax, validation, and missing unit errors in persistence.xml.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.PersistentAttributeSignatureChecks", "Persistent attribute signature checks", "JPA",
+                "Reports getter/setter signature mismatches on persistent entity properties.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.PersistentAttributeTypeChecks", "Persistent attribute type checks", "JPA",
+                "Reports unsupported attribute types mapped in JPA entities.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.PersistentEntityMissesPrimaryKey", "Persistent entity misses primary key", "JPA",
+                "Reports JPA entity classes lacking an @Id or @EmbeddedId attribute.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.PersistentObjectClassSignatureChecks", "Persistent object class signature checks", "JPA",
+                "Reports entity classes that are final or lack a public/protected no-argument constructor.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.QueryLanguageChecks", "Query language checks", "JPA",
+                "Validates JPQL and HQL query strings for syntax and semantic correctness.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.LazyOneToOneNonOwning", "Specifying FetchType.LAZY for the non-owning side of the @OneToOne", "JPA",
+                "Reports FetchType.LAZY on mappedBy side of @OneToOne which is ignored by JPA providers.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.UnresolvedDbReferencesInAnnotations", "Unresolved database references in annotations", "JPA",
+                "Reports database table or column names in annotations that cannot be resolved in the dataSource.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.UnresolvedDbReferencesInXml", "Unresolved database references in XML", "JPA",
+                "Reports unresolved database table and column references in JPA XML mapping files.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.UnresolvedEntityGraphNames", "Unresolved entity graph names", "JPA",
+                "Reports named entity graphs referenced in query hints that do not exist.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.UnresolvedQueriesAndQueryParams", "Unresolved queries and query parameters", "JPA",
+                "Reports named queries and query parameter names that cannot be resolved.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.UnresolvedReferencesInQueries", "Unresolved references in queries", "JPA",
+                "Reports entity property and alias references in JPQL queries that do not resolve.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JPA.AllArgsConstructorWithoutNoArg", "Using @AllArgsConstructor for JPA entities without defined no-argument", "JPA",
+                "Reports JPA entities with Lombok @AllArgsConstructor missing an explicit @NoArgsConstructor.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JPA.BuilderWithoutNoArg", "Using @Builder for JPA entities without defined no-argument constructo", "JPA",
+                "Reports JPA entities with Lombok @Builder missing a no-argument constructor required by JPA.",
                 HighlightSeverity.WARNING, true, "Java");
 
-        // 53. MongoDB ([✓])
-        addTool("MongoDB.QuerySyntax", "MongoDB shell query syntax", "MongoDB",
-                "Validates MongoDB aggregation pipelines and JSON query documents.",
+        // 37. JRuby ([✓] all 8 inspections from Image 3)
+        addTool("JRuby.MissingJavaInterfaceMethod", "Class missing Java interface method implementations", "JRuby",
+                "Reports Ruby classes implementing Java interfaces that omit required method implementations.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.DeprecatedMethodUsage", "Deprecated method usage", "JRuby",
+                "Reports usage of deprecated Java methods and fields in JRuby code.",
+                HighlightSeverity.WARNING, true, "Ruby");
+        addTool("JRuby.IncorrectTopLevelPackage", "Incorrect top-level package specification", "JRuby",
+                "Reports invalid top-level Java package imports in JRuby files.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.InvalidImportFormat", "Invalid import format", "JRuby",
+                "Reports invalid syntax in 'java_import' statements.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.NoFieldAccessorFound", "No field accessor found", "JRuby",
+                "Reports Java field references that do not provide corresponding getter/setter accessors.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.PrivateClassImported", "Private class imported", "JRuby",
+                "Reports imports of non-public Java classes.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.SuperclassIsAnInterface", "Superclass is an interface", "JRuby",
+                "Reports Ruby classes extending Java interfaces as superclasses instead of implementing them.",
+                HighlightSeverity.ERROR, true, "Ruby");
+        addTool("JRuby.UnusedImport", "Unused import", "JRuby",
+                "Reports unused Java class imports in JRuby files.",
+                HighlightSeverity.WARNING, true, "Ruby");
+
+        // 38. JSON and JSON5 ([✓] all 7 inspections from Image 4)
+        addTool("JSON.ComplianceWithSchema", "Compliance with JSON schema", "JSON and JSON5",
+                "Validates JSON documents against configured JSON Schema specifications.",
+                HighlightSeverity.WARNING, true, "JSON");
+        addTool("JSON.ComplianceWithStandard", "Compliance with JSON standard", "JSON and JSON5",
+                "Reports violations of the standard JSON format (RFC 8259).",
                 HighlightSeverity.ERROR, true, "JSON");
+        addTool("JSON5.ComplianceWithStandard", "Compliance with JSON5 standard", "JSON and JSON5",
+                "Reports syntax errors and invalid tokens according to the JSON5 standard.",
+                HighlightSeverity.ERROR, true, "JSON5");
+        addTool("JSON.DeprecatedProperty", "Deprecated JSON property", "JSON and JSON5",
+                "Reports usage of deprecated properties defined in schema definitions.",
+                HighlightSeverity.WARNING, true, "JSON");
+        addTool("JSON.DuplicateKeysInObjectLiterals", "Duplicate keys in object literals", "JSON and JSON5",
+                "Reports duplicate property keys in JSON objects.",
+                HighlightSeverity.WARNING, true, "JSON");
+        addTool("JSON5.DuplicateKeysInObjectLiterals", "Duplicate keys in object literals", "JSON and JSON5",
+                "Reports duplicate property keys in JSON5 objects.",
+                HighlightSeverity.WARNING, true, "JSON5");
+        addTool("JSON.UnresolvedRefAndSchema", "Unresolved '$ref' and '$schema' references", "JSON and JSON5",
+                "Reports schema URI references in $ref and $schema properties that cannot be resolved.",
+                HighlightSeverity.WARNING, true, "JSON");
+
+        // 39. JSONPath ([✓] all 3 inspections from Image 4)
+        addTool("JSONPath.UnknownFunction", "Unknown JSONPath function", "JSONPath",
+                "Reports unrecognized function calls in JSONPath expressions.",
+                HighlightSeverity.WARNING, true, "JSONPath");
+        addTool("JSONPath.UnknownOperator", "Unknown JSONPath operator", "JSONPath",
+                "Reports unrecognized filter and comparison operators in JSONPath expressions.",
+                HighlightSeverity.WARNING, true, "JSONPath");
+        addTool("JSONPath.UnknownPropertyKey", "Unknown property key used for JSONPath evaluate expression", "JSONPath",
+                "Reports property keys in JSONPath expressions that do not exist in the target payload.",
+                HighlightSeverity.WARNING, true, "JSONPath");
+
+        // 40. JSP ([-] with 13 inspections from Image 4)
+        addTool("JSP.AbsolutePaths", "Absolute paths", "JSP",
+                "Reports absolute file paths in JSP include and forward actions.",
+                HighlightSeverity.WARNING, true, "JSP");
+        addTool("JSP.ElDeferredExpressions", "EL deferred expressions inspection", "JSP",
+                "Validates deferred syntax (#{...}) in JSP EL expressions.",
+                HighlightSeverity.WARNING, true, "JSP");
+        addTool("JSP.ElMethodFunctionParamsCount", "EL method function parameters count", "JSP",
+                "Reports EL method invocations with incorrect parameter count.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.ElMethodSignature", "EL method signature inspection", "JSP",
+                "Reports EL method invocations whose argument types do not match method signatures.",
+                HighlightSeverity.WARNING, true, "JSP");
+        addTool("JSP.DirectiveInspection", "Jsp directive inspection", "JSP",
+                "Reports malformed or unknown attributes in JSP directives.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.ElSpecificationValidation", "JSP EL specification validation", "JSP",
+                "Validates Expression Language syntax against the JSP EL specification.",
+                HighlightSeverity.WARNING, true, "JSP");
+        addTool("JSP.PropertiesInspection", "Jsp properties inspection", "JSP",
+                "Reports unresolved JavaBean property references in <jsp:getProperty> and EL expressions.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.ReferencesToClassesFromDefaultPackage", "References to classes from the default package in JSP files", "JSP",
+                "Reports classes in the default package referenced from JSP pages.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.SelfIncludingFiles", "Self-including JSP files", "JSP",
+                "Reports JSP pages that directly or indirectly include themselves.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.TagBodyContentType", "Tag body content type", "JSP",
+                "Reports custom tags whose body content does not match the tag library descriptor.",
+                HighlightSeverity.WARNING, true, "JSP");
+        addTool("JSP.TagLibraryDescriptor", "Tag library descriptor inspection", "JSP",
+                "Validates TLD tag library descriptor XML files.",
+                HighlightSeverity.ERROR, true, "JSP");
+        addTool("JSP.UnescapedElExpressions", "Unescaped EL Expressions", "JSP",
+                "Reports unescaped EL expressions vulnerable to Cross-Site Scripting (XSS).",
+                HighlightSeverity.WARNING, false, "JSP");
+        addTool("JSP.UnhandledException", "Unhandled Exception in JSP", "JSP",
+                "Reports checked exceptions thrown in JSP scriptlets without error page handlers.",
+                HighlightSeverity.WARNING, true, "JSP");
+
+        // 41. JUnit ([-] with 16 inspections from Image 5)
+        addTool("JUnit.AssertEqualsCalledOnArray", "'assertEquals()' called on array", "JUnit",
+                "Reports assertEquals() invocations with array arguments which should use assertArrayEquals().",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.AssertEqualsMayBeAssertSame", "'assertEquals()' may be 'assertSame()'", "JUnit",
+                "Reports assertEquals() calls between singleton instances that can use assertSame().",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.ExpectedExceptionNeverThrown", "Expected exception never thrown in test method body", "JUnit",
+                "Reports @Test(expected=...) tests whose body cannot throw the expected exception.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.ApiUsageFromMultipleVersions", "JUnit API usage from multiple versions in a single TestCase", "JUnit",
+                "Reports test classes mixing annotations and assertions from different JUnit versions (JUnit 3, 4, 5).",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JUnit.AssertionCanBeAssertThat", "JUnit assertion can be 'assertThat()' call", "JUnit",
+                "Suggests converting classic assertions to Hamcrest or AssertJ assertThat().",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.MalformedDeclaration", "JUnit malformed declaration", "JUnit",
+                "Reports test methods that are static, private, return a value, or declare parameters incorrectly.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("JUnit.TestAnnotatedWithIgnoreDisabled", "JUnit test annotated with '@Ignore'/'@Disabled'", "JUnit",
+                "Reports disabled or ignored test methods.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.SuperTearDownNotCalledFromFinally", "JUnit 3 'super.tearDown()' is not called from 'finally' block", "JUnit",
+                "Reports JUnit 3 tearDown() overrides that do not call super.tearDown() inside a finally block.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.JUnit3TestCanBeJUnit4", "JUnit 3 test can be JUnit 4", "JUnit",
+                "Suggests modernizing TestCase subclasses to JUnit 4 @Test annotations.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.JUnit4TestCanBeJUnit5", "JUnit 4 test can be JUnit 5", "JUnit",
+                "Suggests migrating JUnit 4 tests to JUnit Jupiter 5 APIs.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.JUnit5ObsoleteAssertions", "JUnit 5 obsolete assertions", "JUnit",
+                "Reports deprecated JUnit 4 assertions used within JUnit 5 test classes.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JUnit.MultipleExceptionsDeclaredOnTestMethod", "Multiple exceptions declared on test method", "JUnit",
+                "Reports test methods declaring multiple redundant checked exceptions.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.OldStyleTestMethodInJUnit4", "Old style JUnit test method in JUnit 4 class", "JUnit",
+                "Reports testXxx() methods in JUnit 4 classes missing the @Test annotation.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JUnit.ParameterizedTestWithoutDataProvider", "Parameterized test class without data provider method", "JUnit",
+                "Reports @RunWith(Parameterized.class) classes missing @Parameters factory methods.",
+                HighlightSeverity.WARNING, false, "Java");
+        addTool("JUnit.RunWithAnnotationAlreadyExistsInParent", "'@RunWith' annotation already exists in a parent class", "JUnit",
+                "Reports redundant @RunWith annotations on test subclasses.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("JUnit.UsageOfObsoleteAssertMethod", "Usage of obsolete 'junit.framework.Assert' method", "JUnit",
+                "Reports calls to deprecated junit.framework.Assert methods.",
+                HighlightSeverity.WARNING, false, "Java");
+
+        // 42. JVM languages ([-] with Logging & Test frameworks subcategories and 21 direct items from Image 1)
+        // Subcategory: Logging ([-] Indeterminate)
+        addTool("JVM.Logging.ConditionMismatch", "Log condition does not match logging call", "JVM languages/Logging",
+                "Reports log calls where condition guard doesn't match the logging level.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.Logging.CallNotGuarded", "Logging call not guarded by log condition", "JVM languages/Logging",
+                "Reports expensive log calls that are not guarded by a logging level check.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Logging.CallsGuarded", "Logging calls guarded by log condition", "JVM languages/Logging",
+                "Reports log calls wrapped with redundant condition guards.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Logging.NonDistinguishableCalls", "Non-distinguishable logging calls", "JVM languages/Logging",
+                "Reports multiple identical log statements that cannot be distinguished in log outputs.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Logging.PlaceholdersMismatch", "Number of placeholders does not match number of arguments in logg", "JVM languages/Logging",
+                "Reports format string placeholder count mismatches in parameterized logging calls.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Logging.StringTemplate", "String template as argument to logging call", "JVM languages/Logging",
+                "Reports string concatenation or template arguments in logging calls that should use placeholders.",
+                HighlightSeverity.WARNING, true, "JVM");
+
+        // Subcategory: Test frameworks ([-] Indeterminate)
+        addTool("JVM.Testing.AssertEqualsInconvertibleTypes", "'assertEquals()' between objects of inconvertible types", "JVM languages/Test frameworks",
+                "Reports assertEquals calls between types that share no common hierarchy.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Testing.FailedLineInTest", "Failed line in test", "JVM languages/Test frameworks",
+                "Highlights source lines where tests failed during last execution run.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.Testing.TestOnlyInProduction", "Test-only usage in production code", "JVM languages/Test frameworks",
+                "Reports references to @VisibleForTesting symbols outside test roots.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.Testing.TestClassWithoutTests", "Test class without tests", "JVM languages/Test frameworks",
+                "Reports test classes that declare no test methods.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.Testing.TestInProductSource", "Test in product source", "JVM languages/Test frameworks",
+                "Reports test classes located in production source directories.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.Testing.TestMethodWithoutAssertions", "Test method without assertions", "JVM languages/Test frameworks",
+                "Reports test methods that do not verify expectations with assertions.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.Testing.TestCaseWithNonTrivialConstructors", "TestCase with non-trivial constructors", "JVM languages/Test frameworks",
+                "Reports JUnit test classes that execute logic inside constructors instead of setup methods.",
+                HighlightSeverity.WARNING, false, "JVM");
+
+        // Direct JVM languages items
+        addTool("JVM.ApiMustAlreadyBeRemoved", "API must already be removed", "JVM languages",
+                "Reports usage of scheduled-for-removal APIs whose planned removal release has passed.",
+                HighlightSeverity.ERROR, true, "JVM");
+        addTool("JVM.EqualsHashCodeOnUrl", "Call to 'equals()' or 'hashCode()' on 'URL' object", "JVM languages",
+                "Reports equals() or hashCode() calls on java.net.URL objects which trigger blocking DNS lookups.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.SystemGetPropertySimplified", "Call to 'System.getProperty(str)' could be simplified", "JVM languages",
+                "Reports System.getProperty() calls that can use Boolean.getBoolean() or standard constants.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.ThreadRun", "Call to 'Thread.run()'", "JVM languages",
+                "Reports calls to Thread.run() instead of Thread.start().",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.ShouldNotBeExtended", "Class, interface, or method should not be extended", "JVM languages",
+                "Reports classes or methods extending types marked non-extendable.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.EmptyMethod", "Empty method (available for Code | Inspect Code)", "JVM languages",
+                "Reports methods with empty bodies.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.IllegalDependencyOnInternal", "Illegal dependency on internal package", "JVM languages",
+                "Reports dependencies on internal, non-public packages.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.IllegalPackageDependencies", "Illegal package dependencies", "JVM languages",
+                "Reports prohibited package dependency relationships configured by project rules.",
+                HighlightSeverity.ERROR, true, "JVM");
+        addTool("JVM.IncorrectMimeType", "Incorrect MIME Type declaration", "JVM languages",
+                "Reports malformed or non-standard MIME type strings.",
+                HighlightSeverity.ERROR, true, "JVM");
+        addTool("JVM.InspectionSuppression", "Inspection suppression annotation", "JVM languages",
+                "Reports redundant or unneeded inspection suppression annotations.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.MethodCanOnlyBeOverridden", "Method can only be overridden", "JVM languages",
+                "Reports methods that are intended only for overriding, not direct invocation.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.MissingDeprecatedOnRemoval", "Missing '@Deprecated' annotation on scheduled for removal API", "JVM languages",
+                "Reports scheduled-for-removal elements that lack an explicit @Deprecated annotation.",
+                HighlightSeverity.ERROR, true, "JVM");
+        addTool("JVM.NonSafeStringToSafeMethod", "Non-safe string is passed to safe method", "JVM languages",
+                "Reports tainted string arguments passed to methods requiring sanitized inputs.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.NonSafeStringUsedAsSql", "Non-safe string is used as SQL", "JVM languages",
+                "Reports unsanitized string concatenation used to construct SQL query strings.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.BlockingInNonBlocking", "Possibly blocking call in non-blocking context", "JVM languages",
+                "Reports blocking thread or I/O operations inside reactive or coroutine dispatchers.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.SerializableWithoutSerialVersionUID", "Serializable class without 'serialVersionUID'", "JVM languages",
+                "Reports Serializable classes that omit a serialVersionUID field.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.UnknownHttpHeader", "Unknown HTTP header", "JVM languages",
+                "Reports unrecognized HTTP header names.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.UnstableApiUsage", "Unstable API Usage", "JVM languages",
+                "Reports usage of experimental or unstable library APIs.",
+                HighlightSeverity.WARNING, true, "JVM");
+        addTool("JVM.UnstableTypeInSignature", "Unstable type is used in signature", "JVM languages",
+                "Reports experimental types exposed in public method signatures.",
+                HighlightSeverity.WARNING, false, "JVM");
+        addTool("JVM.ApiNotAvailableAtLanguageLevel", "Usages of API which isn't available at the configured language level", "JVM languages",
+                "Reports APIs requiring a higher language level than the module configuration.",
+                HighlightSeverity.ERROR, true, "JVM");
+        addTool("JVM.UsagesOfApiStatusObsolete", "Usages of ApiStatus.@Obsolete", "JVM languages",
+                "Reports usage of declarations annotated with @ApiStatus.Obsolete.",
+                HighlightSeverity.WARNING, true, "JVM");
+
+        // 43. Kotlin ([-] with 11 subcategories and 9 direct items from Image 2)
+        // Subcategories
+        addTool("Kotlin.Migration.CodeMigration", "Code migration inspection", "Kotlin/Code migration",
+                "Reports outdated Kotlin syntax that can be modernized.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Coroutines.RedundantSuspend", "Redundant 'suspend' modifier", "Kotlin/Coroutine inspections",
+                "Reports suspend functions that do not perform any suspending calls.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Coroutines.BlockingInSuspend", "Blocking call in suspend function", "Kotlin/Coroutine inspections",
+                "Reports blocking calls inside coroutine suspend functions.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.JavaInterop.PlatformType", "Platform type dereference", "Kotlin/Java interop issues",
+                "Reports unsafe dereferences on platform types returned from Java calls.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Migration.ApiMigration", "Kotlin API migration", "Kotlin/Migration",
+                "Assists with upgrading between major Kotlin language and stdlib versions.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Naming.ClassNaming", "Class naming convention", "Kotlin/Naming conventions",
+                "Reports class names that do not follow Kotlin naming conventions.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.Numeric.ImplicitCast", "Implicit numeric cast", "Kotlin/Numeric issues",
+                "Reports implicit conversions between numeric types.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Numeric.FloatComparison", "Floating-point comparison", "Kotlin/Numeric issues",
+                "Reports exact equality comparisons on floating-point values.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.Other.RedundantVisibility", "Redundant visibility modifier", "Kotlin/Other problems",
+                "Reports explicit visibility modifiers that match the default (public).",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Other.UnnecessaryLateinit", "Unnecessary 'lateinit'", "Kotlin/Other problems",
+                "Reports lateinit properties initialized immediately at declaration.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.ProbableBugs.InfiniteRecursion", "Infinite recursion", "Kotlin/Probable bugs",
+                "Reports recursive calls with no reachable base condition.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.ProbableBugs.NullDereference", "Nullable receiver dereference", "Kotlin/Probable bugs",
+                "Reports potential NullPointerException on nullable receiver calls.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.React.MissingKey", "Missing key prop in Kotlin/JS React element", "Kotlin/React",
+                "Reports JSX element iterators missing unique keys in Kotlin/JS.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Redundant.RedundantSam", "Redundant SAM constructor", "Kotlin/Redundant constructs",
+                "Reports explicit SAM constructor calls that can use lambda expressions.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Redundant.RedundantUnit", "Redundant 'Unit' return type", "Kotlin/Redundant constructs",
+                "Reports explicit Unit return types on functions.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+        addTool("Kotlin.Style.CanBeReplacedWithOperator", "Function call can be replaced with operator", "Kotlin/Style issues",
+                "Reports named method calls (e.g. plus, get) that can be written with operator syntax.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.Style.ExplicitType", "Explicit type argument can be inferred", "Kotlin/Style issues",
+                "Reports explicit generic type arguments that can be omitted.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+
+        // Direct Kotlin leaf tools (all 9 checked from Image 2)
+        addTool("Kotlin.DeprecatedLibraryInGradle", "Deprecated library is used in Gradle", "Kotlin",
+                "Reports deprecated Kotlin libraries declared in build.gradle dependencies.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.DeprecatedLibraryInMaven", "Deprecated library is used in Maven", "Kotlin",
+                "Reports deprecated Kotlin libraries declared in pom.xml dependencies.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.InvalidPropertyKey", "Invalid property key", "Kotlin",
+                "Reports unresolved property bundle keys referenced in Kotlin source.",
+                HighlightSeverity.ERROR, true, "Kotlin");
+        addTool("Kotlin.TestJunitCouldBeUsed", "kotlin-test-junit could be used", "Kotlin",
+                "Suggests using kotlin-test-junit integration libraries.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.GradleAndIdePluginsDifferent", "Kotlin Gradle and IDE plugins versions are different", "Kotlin",
+                "Reports version mismatch between project Gradle Kotlin plugin and IDE Kotlin plugin.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.LibraryAndGradlePluginDifferent", "Kotlin library and Gradle plugin versions are different", "Kotlin",
+                "Reports version mismatch between Kotlin stdlib and Gradle Kotlin plugin.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.MavenPluginMisconfigured", "Kotlin Maven Plugin misconfigured", "Kotlin",
+                "Reports configuration issues in kotlin-maven-plugin executions.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.LibraryAndMavenPluginDifferent", "Library and maven plugin versions are different", "Kotlin",
+                "Reports version mismatch between Kotlin stdlib and kotlin-maven-plugin.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Kotlin.MavenAndIdePluginsDifferent", "Maven and IDE plugins versions are different", "Kotlin",
+                "Reports version mismatch between Maven Kotlin plugin and IDE Kotlin plugin.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+
+        // 44. Ktor ([-] with 2 inspections from Image 2)
+        addTool("Ktor.ApplicationYaml", "Ktor application.yaml", "Ktor",
+                "Validates Ktor application.yaml configuration structure and module references.",
+                HighlightSeverity.WARNING, true, "Kotlin");
+        addTool("Ktor.OpenApiDocOutdated", "OpenAPI documentation for current module is outdated", "Ktor",
+                "Reports OpenAPI documentation files that are out of sync with Ktor route definitions.",
+                HighlightSeverity.WARNING, false, "Kotlin");
+
+        // 45. Kubernetes ([✓] all 13 inspections from Image 3)
+        addTool("Kubernetes.DeprecatedResourceProperties", "Deprecated Kubernetes resource properties", "Kubernetes",
+                "Reports deprecated properties used in Kubernetes YAML manifests.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.DeprecatedResourcePropertyValues", "Deprecated Kubernetes resource property values", "Kubernetes",
+                "Reports deprecated property values in Kubernetes resources.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.DeprecatedResources", "Deprecated Kubernetes resources", "Kubernetes",
+                "Reports deprecated API versions and resource types in Kubernetes manifests.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.DuplicatedEnvVarDefinitions", "Duplicated EnvVar definitions", "Kubernetes",
+                "Reports duplicate environment variable names declared within a container definition.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Kubernetes.InvalidChartYamlValues", "Invalid Chart.yaml values", "Kubernetes",
+                "Reports invalid metadata values in Helm Chart.yaml files.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Kubernetes.MissingChartYamlKeys", "Missing Chart.yaml keys", "Kubernetes",
+                "Reports missing required keys (apiVersion, name, version) in Helm Chart.yaml.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Kubernetes.MissingKubernetesYamlKeys", "Missing Kubernetes YAML keys", "Kubernetes",
+                "Reports missing mandatory fields in Kubernetes resource definitions.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Kubernetes.NonEditableResourceProperties", "Non-editable Kubernetes resource properties", "Kubernetes",
+                "Reports modifications to immutable Kubernetes resource properties.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.NonEditableResources", "Non-editable Kubernetes resources", "Kubernetes",
+                "Reports update attempts on non-updatable Kubernetes resources.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.UnknownChartYamlKeys", "Unknown Chart.yaml keys", "Kubernetes",
+                "Reports unrecognized keys in Helm Chart.yaml files.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.UnknownResources", "Unknown Kubernetes resources", "Kubernetes",
+                "Reports Kubernetes YAML documents with unrecognized apiVersion or kind.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Kubernetes.UnknownKubernetesYamlKeys", "Unknown Kubernetes YAML keys", "Kubernetes",
+                "Reports unrecognized keys in Kubernetes resource manifests.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("Kubernetes.UnknownKubernetesYamlValues", "Unknown Kubernetes YAML values", "Kubernetes",
+                "Reports invalid property values according to Kubernetes schema definitions.",
+                HighlightSeverity.ERROR, true, "YAML");
+
+        // 46. Language injection ([✓] all 3 inspections from Image 3)
+        addTool("LangInjection.AnnotationNotApplicable", "Injection annotation is not applicable", "Language injection",
+                "Reports @Language annotations placed on elements that cannot accept injected language fragments.",
+                HighlightSeverity.ERROR, true, "General");
+        addTool("LangInjection.LanguageMismatch", "Language mismatch", "Language injection",
+                "Reports injected code fragments whose syntax violates the expected language dialect.",
+                HighlightSeverity.WARNING, true, "General");
+        addTool("LangInjection.UnknownLanguageId", "Unknown Language ID", "Language injection",
+                "Reports unrecognized language IDs specified in @Language annotations.",
+                HighlightSeverity.ERROR, true, "General");
+
+        // 47. Less ([✓] all 3 inspections from Image 3)
+        addTool("Less.MissingImport", "Missing import", "Less",
+                "Reports @import statements in Less stylesheets referencing non-existent files.",
+                HighlightSeverity.WARNING, true, "Less");
+        addTool("Less.UnresolvedMixin", "Unresolved mixin", "Less",
+                "Reports references to Less mixins that are not declared or imported.",
+                HighlightSeverity.WARNING, true, "Less");
+        addTool("Less.UnresolvedVariable", "Unresolved variable", "Less",
+                "Reports references to undefined Less variables.",
+                HighlightSeverity.WARNING, true, "Less");
+
+        // 48. Liquibase ([✓] all 2 inspections from Image 3)
+        addTool("Liquibase.DuplicateChangeSetId", "Duplicate changeset's 'id' attribute within one file for the same 'author'.", "Liquibase",
+                "Reports changelog files containing duplicate changeSet IDs for the same author.",
+                HighlightSeverity.ERROR, true, "XML");
+        addTool("Liquibase.UnresolvedProperty", "Unresolved Liquibase property", "Liquibase",
+                "Reports unresolved property references in Liquibase changelog files.",
+                HighlightSeverity.ERROR, true, "XML");
+
+        // 49. Manifest ([✓] all 2 inspections from Image 3)
+        addTool("Manifest.MissingFinalNewLine", "Missing final new line", "Manifest",
+                "Reports MANIFEST.MF files missing a terminating newline required by JAR specifications.",
+                HighlightSeverity.ERROR, true, "Manifest");
+        addTool("Manifest.UnknownHeaderName", "Unknown or misspelled header name", "Manifest",
+                "Reports unrecognized header names in MANIFEST.MF files.",
+                HighlightSeverity.WARNING, true, "Manifest");
+
+        // 50. Markdown ([✓] all 8 inspections from Image 3)
+        addTool("Markdown.IncorrectTableFormatting", "Incorrect table formatting", "Markdown",
+                "Reports misaligned columns and pipes in Markdown tables.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.IncorrectlyNumberedList", "Incorrectly numbered list item", "Markdown",
+                "Reports ordered list items with non-sequential numbering.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.LinksShouldNotContainSpaces", "Links should not contain spaces", "Markdown",
+                "Reports URL destinations in Markdown links containing unencoded whitespace.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.OutdatedTableOfContents", "Outdated table of contents section", "Markdown",
+                "Reports table of contents blocks that do not reflect document headers.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.TableNoSideBorders", "Table doesn't have side borders", "Markdown",
+                "Reports Markdown tables that lack outer boundary vertical pipes.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.UnresolvedFileReferences", "Unresolved file references", "Markdown",
+                "Reports relative link targets pointing to non-existent local files.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.UnresolvedHeaderReference", "Unresolved header reference", "Markdown",
+                "Reports anchor links pointing to missing section headers.",
+                HighlightSeverity.WARNING, true, "Markdown");
+        addTool("Markdown.UnresolvedLinkLabel", "Unresolved link label", "Markdown",
+                "Reports reference-style links whose label definitions cannot be found.",
+                HighlightSeverity.WARNING, true, "Markdown");
+
+        // 51. Maven ([✓] all 16 inspections from Image 4)
+        addTool("Maven.DuplicateDependencies", "Duplicate Dependencies", "Maven",
+                "Reports dependencies declared multiple times within the same POM.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.DuplicatePluginDeclaration", "Duplicate plugin declaration", "Maven",
+                "Reports plugins configured multiple times in build/plugins section.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.ModelInspection", "Maven Model Inspection", "Maven",
+                "Validates POM XML documents against official Maven POM schema specifications.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.Version4RequiredFor410Schema", "Maven version 4+ is required for projects with 4.1.0 schema", "Maven",
+                "Reports POMs using the 4.1.0 schema running on Maven versions prior to 4.0.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.ModelVersion410RequiredPackaging", "Model version 4.1.0 is required for the packaging", "Maven",
+                "Reports packaging types requiring Maven POM model version 4.1.0.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.ModelVersionChildTagDefined", "'modelVersion' child tag should be defined", "Maven",
+                "Reports POM files missing the mandatory <modelVersion> child tag.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.MultiModuleDirectoryNotDefined", "Multi-module directory is not defined", "Maven",
+                "Reports projects with submodules that do not declare a top-level root directory.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.ParentGroupIdOrArtifactIdMissing", "Parent groupId or artifactId is missing", "Maven",
+                "Reports <parent> declarations missing groupId or artifactId tags.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.ParentVersionMissed", "Parent version missed", "Maven",
+                "Reports <parent> declarations missing version tag.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.RedundantGroupId", "Redundant groupId", "Maven",
+                "Reports child POMs repeating the groupId already declared in their parent POM.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.RedundantVersion", "Redundant version", "Maven",
+                "Reports child POMs repeating the version already declared in their parent POM.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.ModulesTagDeprecated", "The <modules> tag is deprecated; use <subprojects> instead", "Maven",
+                "Suggests modernizing <modules> to <subprojects> in Maven 4 projects.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.ParentCoordinatesRedundantMaven4", "The parent coordinates are redundant and not required in Maven 4", "Maven",
+                "Reports parent POM coordinates that can be omitted under Maven 4.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.UsageOfPropertiesInParentDescription", "Usage of properties in parent description", "Maven",
+                "Reports property expressions used inside parent coordinate elements.",
+                HighlightSeverity.WARNING, true, "Maven");
+        addTool("Maven.WrongModelVersionTag1", "Wrong model version. Model version should be 4.1.0 for this tag", "Maven",
+                "Reports tags supported only starting from model version 4.1.0.",
+                HighlightSeverity.ERROR, true, "Maven");
+        addTool("Maven.WrongModelVersionTag2", "Wrong model version. Model version should be 4.1.0 for this tag (packaging)", "Maven",
+                "Reports configuration tags that require model version 4.1.0.",
+                HighlightSeverity.ERROR, true, "Maven");
+
+        // 52. Micronaut ([✓] with Micronaut & Micronaut Data subcategories and 5 direct items from Image 4)
+        addTool("Micronaut.ExpressionLanguageSyntax", "Incorrect Micronaut Expression Language (MicronautEl) syntax", "Micronaut/Micronaut",
+                "Reports syntax errors in Micronaut Expression Language annotations.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Micronaut.Data.IncorrectRepoDeclaration", "Incorrect repository method declaration", "Micronaut/Micronaut Data",
+                "Reports repository query methods whose return types cannot match query semantics.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("Micronaut.Data.IncorrectRepoParameter", "Incorrect repository method parameter", "Micronaut/Micronaut Data",
+                "Reports repository method parameters that do not match entity properties.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Micronaut.Data.IncorrectRepoReturnType", "Incorrect repository method return type", "Micronaut/Micronaut Data",
+                "Reports invalid return types for Micronaut Data repository finder methods.",
+                HighlightSeverity.WARNING, true, "Java");
+
+        // Direct Micronaut items
+        addTool("Micronaut.ApplicationProperties", "Micronaut application.properties", "Micronaut",
+                "Validates Micronaut application.properties key-value configurations.",
+                HighlightSeverity.WARNING, true, "Properties");
+        addTool("Micronaut.ApplicationYaml", "Micronaut application.yaml", "Micronaut",
+                "Validates Micronaut application.yaml structure and configuration schemas.",
+                HighlightSeverity.WARNING, true, "YAML");
+        addTool("Micronaut.UnresolvedPathVariable", "Unresolved @PathVariable reference", "Micronaut",
+                "Reports controller route @PathVariable parameters that do not match URI template variables.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Micronaut.UnresolvedCacheAnnotation1", "Unresolved cache annotation parameter reference", "Micronaut",
+                "Reports cache key expressions referencing parameters that do not exist.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("Micronaut.UnresolvedCacheAnnotation2", "Unresolved cache annotation parameter reference (Strict)", "Micronaut",
+                "Reports missing cache configuration names in caching annotations.",
+                HighlightSeverity.ERROR, true, "Java");
+
+        // 53. MongoJS ([✓] all 6 inspections from Image 4)
+        addTool("MongoJS.DeprecatedElement1", "Deprecated element", "MongoJS",
+                "Reports calls to deprecated Mongo shell commands and functions.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("MongoJS.DeprecatedElement2", "Deprecated element (Legacy)", "MongoJS",
+                "Reports usage of obsolete MongoDB JavaScript operators.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("MongoJS.ResolutionProblems1", "Resolution problems", "MongoJS",
+                "Reports unresolved collection or database references in MongoJS queries.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("MongoJS.ResolutionProblems2", "Resolution problems (Field)", "MongoJS",
+                "Reports unresolved document field paths in Mongo aggregation pipelines.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("MongoJS.StatementWithSideEffects1", "Statement with side effects", "MongoJS",
+                "Reports queries whose side effects may impact concurrent operations.",
+                HighlightSeverity.WARNING, true, "JavaScript");
+        addTool("MongoJS.StatementWithSideEffects2", "Statement with side effects (Mutating)", "MongoJS",
+                "Reports uncommitted modifying statements inside read contexts.",
+                HighlightSeverity.WARNING, true, "JavaScript");
 
         // 54. MySQL ([✓])
         addTool("MySQL.SyntaxError", "MySQL dialect syntax error", "MySQL",
                 "Reports syntax errors specific to MySQL dialect.",
                 HighlightSeverity.ERROR, true, "SQL");
 
-        // 55. OpenAPI specifications ([✓]) - Selected in screenshot
-        addTool("OpenAPI.SchemaValidation", "OpenAPI schema validation", "OpenAPI specifications",
-                "Validates OpenAPI / Swagger 3.x specification documents against official schemas.",
-                HighlightSeverity.ERROR, true, "YAML");
-        addTool("OpenAPI.MissingResponse", "Missing response code", "OpenAPI specifications",
-                "Reports operations missing success (2xx) or default response codes.",
+        // 55. OpenAPI specifications ([✓] all 4 inspections from Image 5)
+        addTool("OpenAPI.PossibleSpecificationCandidate1", "Possible OpenAPI/Swagger specification candidate", "OpenAPI specifications",
+                "Suggests associating OpenAPI schema validation with JSON/YAML documents.",
                 HighlightSeverity.WARNING, true, "YAML");
+        addTool("OpenAPI.PossibleSpecificationCandidate2", "Possible OpenAPI/Swagger specification candidate (JSON)", "OpenAPI specifications",
+                "Suggests registering OpenAPI capabilities for REST specification files.",
+                HighlightSeverity.WARNING, true, "JSON");
+        addTool("OpenAPI.UnresolvedReference1", "Unresolved reference", "OpenAPI specifications",
+                "Reports $ref schema references that cannot be resolved.",
+                HighlightSeverity.ERROR, true, "YAML");
+        addTool("OpenAPI.UnresolvedReference2", "Unresolved reference (Remote)", "OpenAPI specifications",
+                "Reports remote URL $ref targets that fail network or file resolution.",
+                HighlightSeverity.ERROR, true, "YAML");
 
-        // 56. Oracle ([✓])
-        addTool("Oracle.PLSQLSyntax", "Oracle PL/SQL syntax validation", "Oracle",
-                "Validates PL/SQL packages, procedures, and trigger definitions.",
+        // 56. Oracle ([✓] all 3 inspections from Image 5)
+        addTool("Oracle.ForwardDeclarationWithoutDefinition", "Forward declaration without definition", "Oracle",
+                "Reports forward-declared PL/SQL procedures and functions missing implementation bodies.",
                 HighlightSeverity.ERROR, true, "SQL");
+        addTool("Oracle.MissingBodyForPackageSpecification", "Missing body for package/object type specification", "Oracle",
+                "Reports package specifications that lack a corresponding package body.",
+                HighlightSeverity.WARNING, true, "SQL");
+        addTool("Oracle.OverloadingErrors", "Overloading errors", "Oracle",
+                "Reports conflicting overloaded subprogram signatures in PL/SQL packages.",
+                HighlightSeverity.WARNING, true, "SQL");
 
-        // 57. Pandas ([✓])
-        addTool("Pandas.DeprecatedMethod", "Deprecated Pandas API", "Pandas",
-                "Reports calls to deprecated methods in Pandas dataframes.",
+        // 57. Pandas ([✓] all 2 inspections from Image 5)
+        addTool("Pandas.MethodSeriesToListRecommended", "Method Series.to_list() is recommended", "Pandas",
+                "Suggests replacing Series.tolist() with Series.to_list() according to Pandas recommendations.",
+                HighlightSeverity.WARNING, true, "Python");
+        addTool("Pandas.TruthValueOfDataFrameAmbiguous", "The truth value of a DataFrame is ambiguous", "Pandas",
+                "Reports boolean evaluations on DataFrame or Series objects that should use .empty, .bool(), .any(), or .all().",
                 HighlightSeverity.WARNING, true, "Python");
 
-        // 58. Pattern validation ([✓])
-        addTool("PatternValidation.SyntaxError", "Pattern validation syntax", "Pattern validation",
-                "Validates search and replace structural pattern templates.",
-                HighlightSeverity.ERROR, true, "General");
+        // 58. Pattern validation ([✓] all 3 inspections from Image 5)
+        addTool("PatternValidation.NonAnnotatedMethodOverridesPatternMethod", "Non-annotated Method overrides @Pattern Method", "Pattern validation",
+                "Reports overriding methods that omit @Pattern annotations present on the overridden method.",
+                HighlightSeverity.WARNING, true, "Java");
+        addTool("PatternValidation.PatternAnnotationNotApplicable", "Pattern annotation is not applicable", "Pattern validation",
+                "Reports @Pattern annotations placed on incompatible field or parameter types.",
+                HighlightSeverity.ERROR, true, "Java");
+        addTool("PatternValidation.ValidateAnnotatedPatterns", "Validate annotated patterns", "Pattern validation",
+                "Validates regular expression syntax defined in @Pattern annotation value attributes.",
+                HighlightSeverity.WARNING, true, "Java");
 
-        // 59. PHP ([-])
-        addTool("PHP.UndefinedVariable", "Undefined PHP variable", "PHP",
-                "Reports variables referenced before assignment in PHP scripts.",
+        // 59. PHP ([-] with 20 subcategories from Image 5)
+        // Subcategories
+        addTool("PHP.Attributes.InvalidAttribute", "Invalid attribute target", "PHP/Attributes",
+                "Reports PHP 8 attributes declared on invalid syntax targets.",
                 HighlightSeverity.WARNING, true, "PHP");
-        addTool("PHP.DocblockType", "PHPDoc type mismatch", "PHP",
-                "Reports inconsistencies between PHPDoc comments and method signatures.",
-                HighlightSeverity.WEAK_WARNING, false, "PHP");
+        addTool("PHP.CodeSmell.LongMethod", "Overly long method", "PHP/Code smell",
+                "Reports PHP functions and methods whose line count exceeds threshold.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.CodeStyle.UnnecessarySemicolon", "Unnecessary semicolon", "PHP/Code style",
+                "Reports redundant semicolons in PHP files.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Composer.DuplicateDependency", "Duplicate Composer package dependency", "PHP/Composer",
+                "Reports duplicate package requirements in composer.json.",
+                HighlightSeverity.WARNING, true, "JSON");
+        addTool("PHP.ControlFlow.InfiniteLoop", "Infinite loop", "PHP/Control flow",
+                "Reports while/for loops that cannot terminate normally.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.ErrorHandling.EmptyCatch", "Empty 'catch' block", "PHP/Error handling",
+                "Reports catch blocks containing no statements.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.General.DuplicateCase", "Duplicate 'case' label", "PHP/General",
+                "Reports duplicate case labels in switch statements.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Naming.ClassNaming", "Class naming convention", "PHP/Naming conventions",
+                "Reports PHP class names that do not follow PascalCase conventions.",
+                HighlightSeverity.WARNING, false, "PHP");
+        addTool("PHP.Strict.StrictTypesMissing", "Missing declare(strict_types=1)", "PHP/PHP strict standards",
+                "Reports PHP files missing strict types declarations.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Strict.DeprecatedDynamicProperties", "Deprecated dynamic properties", "PHP/PHP strict standards",
+                "Reports creation of dynamic properties deprecated in PHP 8.2.",
+                HighlightSeverity.WARNING, false, "PHP");
+        addTool("PHP.PHPDoc.MissingParamTag", "Missing @param tag", "PHP/PHPDoc",
+                "Reports functions missing docblock parameter tags.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.PHPUnit.AssertionWithoutExpectation", "Test without assertions", "PHP/PHPUnit",
+                "Reports PHPUnit test methods with no assertion calls.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.ProbableBugs.DivisionByZero", "Division by zero", "PHP/Probable bugs",
+                "Reports division or modulo operations where divisor evaluates to zero.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Psalm.TypeMismatch", "Psalm type mismatch", "PHP/Psalm",
+                "Reports type inconsistencies detected by Psalm annotations.",
+                HighlightSeverity.WARNING, false, "PHP");
+        addTool("PHP.Quality.PHPCSFixer", "PHP CS Fixer inspection", "PHP/Quality tools",
+                "Runs PHP CS Fixer style inspections.",
+                HighlightSeverity.WARNING, false, "PHP");
+        addTool("PHP.RegExp.InvalidPattern", "Invalid regular expression", "PHP/Regular expressions",
+                "Reports syntax errors in PCRE regex pattern strings.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Assignments.CanUseCoalesce", "Can use null coalescing assignment", "PHP/Replaceable assignments",
+                "Suggests using ??= null coalescing assignment operators.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Symfony.UnresolvedService", "Unresolved Symfony service", "PHP/Symfony",
+                "Reports service identifiers that cannot be located in the Symfony container.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.TypeCompatibility.TypeMismatch", "Type mismatch in return", "PHP/Type compatibility",
+                "Reports return expressions incompatible with declared return types.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Undefined.UndefinedVariable", "Undefined variable", "PHP/Undefined symbols",
+                "Reports variables referenced before definition.",
+                HighlightSeverity.WARNING, true, "PHP");
+        addTool("PHP.Undefined.UndefinedConstant", "Undefined constant", "PHP/Undefined symbols",
+                "Reports constants that are not declared.",
+                HighlightSeverity.WARNING, false, "PHP");
+        addTool("PHP.Unused.UnusedPrivateField", "Unused private field", "PHP/Unused symbols",
+                "Reports private class properties that are never read.",
+                HighlightSeverity.WARNING, true, "PHP");
 
         // 60. PostCSS ([✓])
         addTool("PostCSS.PluginSyntax", "PostCSS plugin syntax", "PostCSS",

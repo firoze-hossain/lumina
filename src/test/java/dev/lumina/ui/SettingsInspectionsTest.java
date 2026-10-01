@@ -113,7 +113,7 @@ class SettingsInspectionsTest {
                 "JPA", "JRuby", "JSON and JSON5", "JSONPath", "JSP", "JUnit",
                 "JVM languages", "Kotlin", "Ktor", "Kubernetes", "Language injection",
                 "Less", "Liquibase", "Manifest", "Markdown", "Maven", "Micronaut",
-                "MongoDB", "MySQL", "OpenAPI specifications", "Oracle", "Pandas",
+                "MongoJS", "MySQL", "OpenAPI specifications", "Oracle", "Pandas",
                 "Pattern validation", "PHP", "PostCSS", "PostgreSQL", "Proofreading",
                 "Properties files", "Protocol Buffers", "Python", "Qodana", "Quarkus",
                 "RBS", "RegExp", "RELAX NG", "Requirements", "RESTful Web Service (JAX-RS)",
@@ -446,6 +446,193 @@ class SettingsInspectionsTest {
                 "Java/Resource management", "Java/Threading issues"
         );
         for (String subCat : uncheckedJavaSubCats) {
+            assertEquals(InspectionProfile.TriState.UNCHECKED, defaultProfile.getCategoryState(subCat, registry),
+                    "Expected UNCHECKED for " + subCat);
+        }
+
+        // Java EE: 6 inspections from Image 1
+        List<InspectionTool> javaEeTools = registry.getToolsForCategory("Java EE");
+        assertEquals(6, javaEeTools.size());
+        assertTrue(javaEeTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(5, javaEeTools.stream().filter(t -> t.getDefaultSeverity() == HighlightSeverity.ERROR).count());
+        assertEquals(1, javaEeTools.stream().filter(t -> t.getDefaultSeverity() == HighlightSeverity.WARNING).count());
+
+        // JavaFX: 8 inspections from Image 1
+        List<InspectionTool> javaFxTools = registry.getToolsForCategory("JavaFX");
+        assertEquals(8, javaFxTools.size());
+        assertTrue(javaFxTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertTrue(javaFxTools.stream().allMatch(t -> t.getDefaultSeverity() == HighlightSeverity.WARNING));
+
+        // JavaScript and TypeScript: 26 subcategories from Image 2
+        List<String> jsSubCats = registry.getAllSubCategories("JavaScript and TypeScript");
+        assertEquals(26, jsSubCats.size());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("JavaScript and TypeScript", registry));
+
+        List<String> uncheckedJsSubCats = List.of(
+                "JavaScript and TypeScript/Code quality tools",
+                "JavaScript and TypeScript/DOM issues",
+                "JavaScript and TypeScript/Function metrics"
+        );
+        for (String subCat : uncheckedJsSubCats) {
+            assertEquals(InspectionProfile.TriState.UNCHECKED, defaultProfile.getCategoryState(subCat, registry),
+                    "Expected UNCHECKED for " + subCat);
+        }
+
+        // JPA: 26 inspections (2 under Kotlin, 24 direct) from Image 3
+        List<InspectionTool> jpaTools = registry.getToolsForCategory("JPA");
+        assertEquals(26, jpaTools.size());
+        assertEquals(2, registry.getToolsDirectlyInCategory("JPA/Kotlin").size());
+        assertEquals(24, registry.getToolsDirectlyInCategory("JPA").size());
+        assertTrue(jpaTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("JPA", registry));
+
+        // JRuby: 8 inspections from Image 3
+        List<InspectionTool> jrubyTools = registry.getToolsForCategory("JRuby");
+        assertEquals(8, jrubyTools.size());
+        assertTrue(jrubyTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(6, jrubyTools.stream().filter(t -> t.getDefaultSeverity() == HighlightSeverity.ERROR).count());
+        assertEquals(2, jrubyTools.stream().filter(t -> t.getDefaultSeverity() == HighlightSeverity.WARNING).count());
+
+        // JSON and JSON5: 7 inspections from Image 4
+        List<InspectionTool> jsonTools = registry.getToolsForCategory("JSON and JSON5");
+        assertEquals(7, jsonTools.size());
+        assertTrue(jsonTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("JSON and JSON5", registry));
+
+        // JSONPath: 3 inspections from Image 4
+        List<InspectionTool> jsonPathTools = registry.getToolsForCategory("JSONPath");
+        assertEquals(3, jsonPathTools.size());
+        assertTrue(jsonPathTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("JSONPath", registry));
+
+        // JSP: 13 inspections from Image 4 (12 enabled, 1 disabled)
+        List<InspectionTool> jspTools = registry.getToolsForCategory("JSP");
+        assertEquals(13, jspTools.size());
+        assertEquals(12, jspTools.stream().filter(InspectionTool::isDefaultEnabled).count());
+        assertEquals(1, jspTools.stream().filter(t -> !t.isDefaultEnabled()).count());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("JSP", registry));
+
+        // JUnit: 16 inspections from Image 5 (5 enabled, 11 disabled)
+        List<InspectionTool> junitTools = registry.getToolsForCategory("JUnit");
+        assertEquals(16, junitTools.size());
+        assertEquals(5, junitTools.stream().filter(InspectionTool::isDefaultEnabled).count());
+        assertEquals(11, junitTools.stream().filter(t -> !t.isDefaultEnabled()).count());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("JUnit", registry));
+
+        // JVM languages: 34 inspections (6 in Logging, 7 in Test frameworks, 21 direct) from Image 1
+        List<InspectionTool> jvmTools = registry.getToolsForCategory("JVM languages");
+        assertEquals(34, jvmTools.size());
+        assertEquals(6, registry.getToolsDirectlyInCategory("JVM languages/Logging").size());
+        assertEquals(7, registry.getToolsDirectlyInCategory("JVM languages/Test frameworks").size());
+        assertEquals(21, registry.getToolsDirectlyInCategory("JVM languages").size());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("JVM languages", registry));
+
+        // Kotlin: 26 inspections (11 subcategories, 9 direct) from Image 2
+        List<InspectionTool> kotlinTools = registry.getToolsForCategory("Kotlin");
+        assertEquals(26, kotlinTools.size());
+        assertEquals(11, registry.getAllSubCategories("Kotlin").size());
+        assertEquals(9, registry.getToolsDirectlyInCategory("Kotlin").size());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("Kotlin", registry));
+
+        // Ktor: 2 inspections from Image 2
+        List<InspectionTool> ktorTools = registry.getToolsForCategory("Ktor");
+        assertEquals(2, ktorTools.size());
+        assertEquals(1, ktorTools.stream().filter(InspectionTool::isDefaultEnabled).count());
+        assertEquals(1, ktorTools.stream().filter(t -> !t.isDefaultEnabled()).count());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("Ktor", registry));
+
+        // Kubernetes: 13 inspections from Image 3
+        List<InspectionTool> k8sTools = registry.getToolsForCategory("Kubernetes");
+        assertEquals(13, k8sTools.size());
+        assertTrue(k8sTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Kubernetes", registry));
+
+        // Language injection: 3 inspections from Image 3
+        List<InspectionTool> liTools = registry.getToolsForCategory("Language injection");
+        assertEquals(3, liTools.size());
+        assertTrue(liTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Language injection", registry));
+
+        // Less: 3 inspections from Image 3
+        List<InspectionTool> lessTools = registry.getToolsForCategory("Less");
+        assertEquals(3, lessTools.size());
+        assertTrue(lessTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Less", registry));
+
+        // Liquibase: 2 inspections from Image 3
+        List<InspectionTool> lbTools = registry.getToolsForCategory("Liquibase");
+        assertEquals(2, lbTools.size());
+        assertTrue(lbTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Liquibase", registry));
+
+        // Manifest: 2 inspections from Image 3
+        List<InspectionTool> manifestTools = registry.getToolsForCategory("Manifest");
+        assertEquals(2, manifestTools.size());
+        assertTrue(manifestTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Manifest", registry));
+
+        // Markdown: 8 inspections from Image 3
+        List<InspectionTool> mdTools = registry.getToolsForCategory("Markdown");
+        assertEquals(8, mdTools.size());
+        assertTrue(mdTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Markdown", registry));
+
+        // Maven: 16 inspections from Image 4
+        List<InspectionTool> mavenTools = registry.getToolsForCategory("Maven");
+        assertEquals(16, mavenTools.size());
+        assertTrue(mavenTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Maven", registry));
+
+        // Micronaut: 9 inspections (1 in Micronaut, 3 in Micronaut Data, 5 direct) from Image 4
+        List<InspectionTool> mnTools = registry.getToolsForCategory("Micronaut");
+        assertEquals(9, mnTools.size());
+        assertEquals(1, registry.getToolsDirectlyInCategory("Micronaut/Micronaut").size());
+        assertEquals(3, registry.getToolsDirectlyInCategory("Micronaut/Micronaut Data").size());
+        assertEquals(5, registry.getToolsDirectlyInCategory("Micronaut").size());
+        assertTrue(mnTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Micronaut", registry));
+
+        // MongoJS: 6 inspections from Image 4
+        List<InspectionTool> mongoTools = registry.getToolsForCategory("MongoJS");
+        assertEquals(6, mongoTools.size());
+        assertTrue(mongoTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("MongoJS", registry));
+
+        // OpenAPI specifications: 4 inspections from Image 5
+        List<InspectionTool> openApiTools = registry.getToolsForCategory("OpenAPI specifications");
+        assertEquals(4, openApiTools.size());
+        assertTrue(openApiTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("OpenAPI specifications", registry));
+
+        // Oracle: 3 inspections from Image 5
+        List<InspectionTool> oracleTools = registry.getToolsForCategory("Oracle");
+        assertEquals(3, oracleTools.size());
+        assertTrue(oracleTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Oracle", registry));
+
+        // Pandas: 2 inspections from Image 5
+        List<InspectionTool> pandasTools = registry.getToolsForCategory("Pandas");
+        assertEquals(2, pandasTools.size());
+        assertTrue(pandasTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Pandas", registry));
+
+        // Pattern validation: 3 inspections from Image 5
+        List<InspectionTool> pvTools = registry.getToolsForCategory("Pattern validation");
+        assertEquals(3, pvTools.size());
+        assertTrue(pvTools.stream().allMatch(InspectionTool::isDefaultEnabled));
+        assertEquals(InspectionProfile.TriState.CHECKED, defaultProfile.getCategoryState("Pattern validation", registry));
+
+        // PHP: 20 subcategories from Image 5
+        List<String> phpSubCats = registry.getAllSubCategories("PHP");
+        assertEquals(20, phpSubCats.size());
+        assertEquals(InspectionProfile.TriState.INDETERMINATE, defaultProfile.getCategoryState("PHP", registry));
+
+        List<String> uncheckedPhpSubCats = List.of(
+                "PHP/Naming conventions",
+                "PHP/Psalm",
+                "PHP/Quality tools"
+        );
+        for (String subCat : uncheckedPhpSubCats) {
             assertEquals(InspectionProfile.TriState.UNCHECKED, defaultProfile.getCategoryState(subCat, registry),
                     "Expected UNCHECKED for " + subCat);
         }
