@@ -90,11 +90,11 @@ public class PluginRegistry {
     public List<PluginManifest> getBuiltInPlugins() {
         List<PluginManifest> builtIn = new ArrayList<>();
 
-        // Language plugins (from the first image)
+        // Language plugins (built-in)
         builtIn.add(new PluginManifest(
             "go", "Go", "2024.1.0",
             "Intelligent Go language support with modules, debugging, and testing tools.",
-            "JetBrains", "Languages", null,
+            "Lumina", "Languages", null,
             List.of("go", "golang"), "https://lumina.dev/plugins/go", "G",
             "4.5", 500000, true, true, "#00ADD8"
         ));
@@ -102,7 +102,7 @@ public class PluginRegistry {
         builtIn.add(new PluginManifest(
             "php", "PHP", "2024.1.2",
             "PHP 5.3-8.4 editing and debugging, PHPUnit, Smarty, Twig and various frameworks support.",
-            "JetBrains", "Languages", null,
+            "Lumina", "Languages", null,
             List.of("php", "laravel", "symfony"), "https://lumina.dev/plugins/php", "PHP",
             "4.4", 700000, true, true, "#8892BF"
         ));
@@ -110,15 +110,15 @@ public class PluginRegistry {
         builtIn.add(new PluginManifest(
             "python", "Python", "2024.1.2",
             "Professional Python development with debugging, testing, and virtual environment support.",
-            "JetBrains", "Languages", null,
+            "Lumina", "Languages", null,
             List.of("python", "django", "flask"), "https://lumina.dev/plugins/python", "P",
             "4.6", 900000, false, true, "#3776AB"
         ));
 
         builtIn.add(new PluginManifest(
             "plugin-devkit", "Plugin DevKit", "2024.1.0",
-            "Tools for developing IntelliJ Platform plugins and extensions.",
-            "JetBrains", "Development", null,
+            "Tools for developing Lumina Platform plugins and extensions.",
+            "Lumina", "Development", null,
             List.of("plugin", "development", "sdk"), "https://lumina.dev/plugins/plugin-devkit", "🔌",
             "4.3", 300000, false, true, "#6C6C6C"
         ));
@@ -126,7 +126,7 @@ public class PluginRegistry {
         builtIn.add(new PluginManifest(
             "ruby", "Ruby", "2024.1.1",
             "Ruby and Rails development with testing, debugging, and code navigation.",
-            "JetBrains", "Languages", null,
+            "Lumina", "Languages", null,
             List.of("ruby", "rails"), "https://lumina.dev/plugins/ruby", "R",
             "4.3", 400000, false, true, "#CC342D"
         ));
@@ -134,7 +134,7 @@ public class PluginRegistry {
         builtIn.add(new PluginManifest(
             "scala", "Scala", "2024.1.0",
             "Scala language support with SBT, Maven, and advanced type inference.",
-            "JetBrains", "Languages", null,
+            "Lumina", "Languages", null,
             List.of("scala", "functional"), "https://lumina.dev/plugins/scala", "S",
             "4.2", 300000, false, true, "#DC322F"
         ));

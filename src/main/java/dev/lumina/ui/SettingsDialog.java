@@ -70,6 +70,7 @@ public class SettingsDialog {
     private SettingsStickyLinesPage currentStickyLinesPage;
     private SettingsCodeEditingPage currentCodeEditingPage;
     private SettingsInspectionsPage currentInspectionsPage;
+    private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -2947,6 +2948,8 @@ public class SettingsDialog {
             buildDataEditorPage();
         } else if ("Quick Lists".equals(pageName)) {
             buildQuickListsPage();
+        } else if ("Plugins".equals(pageName)) {
+            buildPluginsPage();
         } else if ("Required Plugins".equals(pageName)) {
             buildRequiredPluginsPage();
         } else if ("Trusted Locations".equals(pageName)) {
@@ -3190,6 +3193,19 @@ public class SettingsDialog {
         currentQuickListsPage = new SettingsQuickListsPage();
         VBox.setVgrow(currentQuickListsPage, Priority.ALWAYS);
         contentContainer.getChildren().setAll(currentQuickListsPage);
+    }
+
+    private void buildPluginsPage() {
+        if (currentPluginsPage == null) {
+            currentPluginsPage = new SettingsPluginsPage();
+        }
+        VBox.setVgrow(currentPluginsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentPluginsPage);
+    }
+
+    public SettingsPluginsPage getCurrentPluginsPage() {
+        return currentPluginsPage;
     }
 
     private void buildRequiredPluginsPage() {
@@ -4171,7 +4187,7 @@ public class SettingsDialog {
                 "Editor Actions", "Main Menu", "Tool Windows", "External Tools",
                 "External Build Systems", "Version Control Systems", "Debugger Actions",
                 "Remote External Tools", "Database", "Macros", "Intentions",
-                "Quick Lists", "Plugins", "Other"
+                "Quick Lists", "Other"
         ).contains(pageName);
     }
 
@@ -4459,7 +4475,7 @@ public class SettingsDialog {
                     cellBox.getChildren().setAll(titleLabel, spacer);
 
                     if ("Plugins".equals(item)) {
-                        badgeLabel.setText("10");
+                        badgeLabel.setText(String.valueOf(dev.lumina.plugin.PluginManager.getInstance().getBadgeCount()));
                         badgeLabel.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-padding: 1 6 1 6; -fx-background-radius: 8;");
                         cellBox.getChildren().add(badgeLabel);
                     } else if (isProjectSetting(item)) {
