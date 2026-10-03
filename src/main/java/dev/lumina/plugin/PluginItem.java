@@ -39,6 +39,11 @@ public class PluginItem {
     private List<CarouselSlide> carouselSlides = new ArrayList<>();
     private String iconSymbol;
     private String iconBgColor;
+    private String downloadUrl;
+    private String sha256;
+    private String packageType = "jar";
+    private String fileName;
+    private boolean fromRozeHub;
 
     public PluginItem() {}
 
@@ -180,6 +185,21 @@ public class PluginItem {
 
     public String getIconBgColor() { return iconBgColor; }
     public void setIconBgColor(String iconBgColor) { this.iconBgColor = iconBgColor; }
+
+    public String getDownloadUrl() { return downloadUrl; }
+    public void setDownloadUrl(String downloadUrl) { this.downloadUrl = downloadUrl; }
+
+    public String getSha256() { return sha256; }
+    public void setSha256(String sha256) { this.sha256 = sha256; }
+
+    public String getPackageType() { return packageType != null ? packageType : "jar"; }
+    public void setPackageType(String packageType) { this.packageType = packageType; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+
+    public boolean isFromRozeHub() { return fromRozeHub; }
+    public void setFromRozeHub(boolean fromRozeHub) { this.fromRozeHub = fromRozeHub; }
 
     @Override
     public boolean equals(Object o) {
