@@ -54,42 +54,30 @@ public class PluginManagerDialog {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Plugins - Lumina IDE");
 
+        SettingsPluginsPage pluginsPage = new SettingsPluginsPage();
+        VBox.setVgrow(pluginsPage, Priority.ALWAYS);
+
+        Button okButton = new Button("OK");
+        okButton.getStyleClass().add("primary-button");
+        okButton.setOnAction(e -> {
+            stage.close();
+            if (onPluginChanged != null) onPluginChanged.run();
+        });
+
+        HBox buttonBar = new HBox(okButton);
+        buttonBar.setAlignment(Pos.CENTER_RIGHT);
+        buttonBar.setPadding(new Insets(10, 16, 12, 16));
+        buttonBar.setStyle("-fx-background-color: #191C26; -fx-border-color: #2B2D30; -fx-border-width: 1 0 0 0;");
+
         BorderPane root = new BorderPane();
         root.getStyleClass().addAll("app-root", "plugin-manager-dialog");
+        root.setCenter(pluginsPage);
+        root.setBottom(buttonBar);
 
-        // ---- Top: Search and filter ----
-        HBox topBar = buildTopBar();
-        root.setTop(topBar);
-
-        // ---- Left: Plugin list ----
-        pluginList.getStyleClass().add("plugin-list");
-        pluginList.setCellFactory(lv -> new PluginCell());
-        pluginList.getSelectionModel().selectedItemProperty()
-                .addListener((obs, old, selected) -> {
-                    if (selected != null) {
-                        detailPanel.showPlugin(selected);
-                    }
-                });
-
-        // ---- Center: Detail panel ----
-        detailPanel.getStyleClass().add("plugin-detail");
-
-        SplitPane split = new SplitPane(pluginList, detailPanel);
-        split.setDividerPositions(0.38);
-        split.getStyleClass().add("plugin-split-pane");
-
-        root.setCenter(split);
-
-        // ---- Bottom: Buttons ----
-        HBox buttons = buildButtonBar();
-        root.setBottom(buttons);
-
-        Scene scene = new Scene(root, 860, 540);
+        Scene scene = new Scene(root, 920, 580);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
         stage.setScene(scene);
-
-        loadPlugins();
     }
 
     public void show() {

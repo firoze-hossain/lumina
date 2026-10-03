@@ -49,6 +49,7 @@ public class PluginManager {
     private PluginManager() {
         initDefaultCatalog();
         loadPersistedState();
+        refreshMarketplaceFromRozeHubAsync();
     }
 
     public static synchronized PluginManager getInstance() {
@@ -469,28 +470,105 @@ public class PluginManager {
 
     // --- Dynamic Mutations ---
 
-    public synchronized void installPlugin(String id) {
-        PluginItem p = findMarketplacePlugin(id);
-        if (p != null) {
-            p.setInstalled(true);
-            p.setEnabled(true);
-            if (!installedPlugins.contains(p)) {
-                PluginItem copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
-                copy.setBundled(false);
-                copy.setInstalled(true);
-                copy.setEnabled(true);
-                copy.setShortDescription(p.getShortDescription());
-                copy.setDescriptionHeading(p.getDescriptionHeading());
-                copy.setFeatures(p.getFeatures());
-                copy.setIconSymbol(p.getIconSymbol());
-                copy.setIconBgColor(p.getIconBgColor());
-                copy.setFreemium(p.isFreemium());
-                copy.setTags(p.getTags());
-                copy.setCarouselSlides(p.getCarouselSlides());
-                installedPlugins.add(copy);
+    public synchronized void refreshMarketplaceFromRozeHub() {
+        try {
+            List<PluginItem> remoteItems = RozeHubClient.getInstance().fetchMarketplacePlugins(null);
+            if (remoteItems != null && !remoteItems.isEmpty()) {
+                for (PluginItem remote : remoteItems) {
+                    boolean isInstalledLocally = installedPlugins.stream().anyMatch(p -> p.getId().equals(remote.getId()))
+                            || PluginRegistry.getInstance().isInstalled(remote.getId());
+                    remote.setInstalled(isInstalledLocally);
+                    marketplacePlugins.removeIf(p -> p.getId().equals(remote.getId()));
+                    marketplacePlugins.add(0, remote);
+                }
+                notifyListeners();
             }
-            savePersistedState();
-            notifyListeners();
+        } catch (Throwable t) {
+            System.err.println("[RozeHub] Marketplace sync: " + t.getMessage());
+        }
+    }
+
+    public void refreshMarketplaceFromRozeHubAsync() {
+        Thread.ofVirtual().start(this::refreshMarketplaceFromRozeHub);
+    }
+
+    public synchronized void installPlugin(String id) {
+        installPlugin(id, null, null, null);
+    }
+
+    public void installPlugin(String id, java.util.function.Consumer<String> onSuccess,
+                              java.util.function.Consumer<String> onError,
+                              java.util.function.Consumer<Double> onProgress) {
+        PluginItem p = findMarketplacePlugin(id);
+        if (p == null) {
+            if (onError != null) onError.accept("Plugin not found: " + id);
+            return;
+        }
+
+        if (p.getDownloadUrl() != null && !p.getDownloadUrl().isBlank()) {
+            Thread.ofVirtual().start(() -> {
+                try {
+                    RozeHubClient.getInstance().downloadAndInstallPlugin(p, onProgress);
+                    synchronized (PluginManager.this) {
+                        p.setInstalled(true);
+                        p.setEnabled(true);
+                        if (installedPlugins.stream().noneMatch(existing -> existing.getId().equals(p.getId()))) {
+                            PluginItem copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
+                            copy.setBundled(false);
+                            copy.setInstalled(true);
+                            copy.setEnabled(true);
+                            copy.setShortDescription(p.getShortDescription());
+                            copy.setDescriptionHeading(p.getDescriptionHeading());
+                            copy.setFeatures(p.getFeatures());
+                            copy.setIconSymbol(p.getIconSymbol());
+                            copy.setIconBgColor(p.getIconBgColor());
+                            copy.setFreemium(p.isFreemium());
+                            copy.setTags(p.getTags());
+                            copy.setCarouselSlides(p.getCarouselSlides());
+                            copy.setDownloadUrl(p.getDownloadUrl());
+                            copy.setSha256(p.getSha256());
+                            copy.setFromRozeHub(true);
+                            installedPlugins.add(copy);
+                        }
+                        savePersistedState();
+                    }
+                    javafx.application.Platform.runLater(() -> {
+                        notifyListeners();
+                        if (onSuccess != null) {
+                            onSuccess.accept("Plugin '" + p.getName() + "' successfully downloaded and installed from RozeHub.");
+                        }
+                    });
+                } catch (Exception e) {
+                    javafx.application.Platform.runLater(() -> {
+                        if (onError != null) {
+                            onError.accept("Failed to install plugin: " + e.getMessage());
+                        }
+                    });
+                }
+            });
+        } else {
+            synchronized (this) {
+                p.setInstalled(true);
+                p.setEnabled(true);
+                if (installedPlugins.stream().noneMatch(existing -> existing.getId().equals(p.getId()))) {
+                    PluginItem copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
+                    copy.setBundled(false);
+                    copy.setInstalled(true);
+                    copy.setEnabled(true);
+                    copy.setShortDescription(p.getShortDescription());
+                    copy.setDescriptionHeading(p.getDescriptionHeading());
+                    copy.setFeatures(p.getFeatures());
+                    copy.setIconSymbol(p.getIconSymbol());
+                    copy.setIconBgColor(p.getIconBgColor());
+                    copy.setFreemium(p.isFreemium());
+                    copy.setTags(p.getTags());
+                    copy.setCarouselSlides(p.getCarouselSlides());
+                    installedPlugins.add(copy);
+                }
+                savePersistedState();
+                notifyListeners();
+            }
+            if (onSuccess != null) onSuccess.accept("Plugin '" + p.getName() + "' installed.");
         }
     }
 
@@ -500,6 +578,31 @@ public class PluginManager {
         if (m != null) {
             m.setInstalled(false);
         }
+        PluginRegistry.getInstance().uninstallPlugin(id);
+
+        // Also clean up local file if present in ~/.lumina/plugins/
+        try {
+            Path pluginDir = Path.of(System.getProperty("user.home"), ".lumina", "plugins");
+            if (Files.isDirectory(pluginDir)) {
+                try (var s = Files.list(pluginDir)) {
+                    s.filter(path -> path.getFileName().toString().startsWith(id))
+                     .forEach(path -> {
+                         try {
+                             if (Files.isDirectory(path)) {
+                                 try (var walk = Files.walk(path)) {
+                                     walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                                         try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+                                     });
+                                 }
+                             } else {
+                                 Files.deleteIfExists(path);
+                             }
+                         } catch (Exception ignored) {}
+                     });
+                }
+            }
+        } catch (Exception ignored) {}
+
         savePersistedState();
         notifyListeners();
     }

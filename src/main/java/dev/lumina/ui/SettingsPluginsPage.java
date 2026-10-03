@@ -227,9 +227,21 @@ public class SettingsPluginsPage extends VBox {
         MenuItem enableAllItem = new MenuItem("Enable All Downloaded Plugins");
         enableAllItem.setOnAction(e -> pluginManager.enableAllDownloaded());
 
+        // RozeHub Platform Integration
+        MenuItem rozehubSyncItem = new MenuItem("Refresh from RozeHub Marketplace");
+        rozehubSyncItem.setOnAction(e -> {
+            pluginManager.refreshMarketplaceFromRozeHubAsync();
+            refreshUI();
+        });
+
+        MenuItem rozehubConfigItem = new MenuItem("Configure RozeHub Server...");
+        rozehubConfigItem.setOnAction(e -> new RozeHubConfigDialog(getScene() != null ? getScene().getWindow() : null).showAndWait());
+
         menu.getItems().addAll(
                 autoUpdateItem,
                 new SeparatorMenuItem(),
+                rozehubSyncItem,
+                rozehubConfigItem,
                 manageReposItem,
                 httpProxyItem,
                 new SeparatorMenuItem(),
@@ -491,8 +503,22 @@ public class SettingsPluginsPage extends VBox {
             Button installBtn = new Button("Install");
             installBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #3574F0; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 12; -fx-font-size: 11px; -fx-cursor: hand;");
             installBtn.setOnAction(e -> {
-                pluginManager.installPlugin(item.getId());
-                refreshUI();
+                installBtn.setText("Installing...");
+                installBtn.setDisable(true);
+                pluginManager.installPlugin(item.getId(),
+                        msg -> refreshUI(),
+                        err -> {
+                            installBtn.setText("Install");
+                            installBtn.setDisable(false);
+                            Alert a = new Alert(Alert.AlertType.ERROR, err, ButtonType.OK);
+                            a.showAndWait();
+                        },
+                        prog -> {
+                            if (prog != null && prog > 0) {
+                                Platform.runLater(() -> installBtn.setText((int)(prog * 100) + "%"));
+                            }
+                        }
+                );
             });
             rightAction = installBtn;
         }
@@ -738,8 +764,22 @@ public class SettingsPluginsPage extends VBox {
             Button installBtn = new Button("Install");
             installBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 12px; -fx-padding: 5 18; -fx-background-radius: 4; -fx-cursor: hand;");
             installBtn.setOnAction(e -> {
-                pluginManager.installPlugin(p.getId());
-                refreshUI();
+                installBtn.setText("Installing...");
+                installBtn.setDisable(true);
+                pluginManager.installPlugin(p.getId(),
+                        msg -> refreshUI(),
+                        err -> {
+                            installBtn.setText("Install");
+                            installBtn.setDisable(false);
+                            Alert a = new Alert(Alert.AlertType.ERROR, err, ButtonType.OK);
+                            a.showAndWait();
+                        },
+                        prog -> {
+                            if (prog != null && prog > 0) {
+                                Platform.runLater(() -> installBtn.setText((int)(prog * 100) + "%"));
+                            }
+                        }
+                );
             });
             bar.getChildren().add(installBtn);
 

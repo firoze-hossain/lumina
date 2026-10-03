@@ -20,6 +20,7 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -28,6 +29,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -479,7 +481,49 @@ public class LuminaApp extends Application {
         root.setBottom(buildBottomArea());
         updateEditorVisibility();
 
-        Scene scene = new Scene(root, 1400, 860);
+        // Responsive laptop / monitor screen bounds calculation
+        Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
+        double screenW = visualBounds.getWidth();
+        double screenH = visualBounds.getHeight();
+
+        double defaultW = Math.min(1280, screenW * 0.95);
+        double defaultH = Math.min(760, screenH * 0.95);
+
+        String savedMaximized = Settings.get("window.maximized");
+        String savedW = Settings.get("window.width");
+        String savedH = Settings.get("window.height");
+        String savedX = Settings.get("window.x");
+        String savedY = Settings.get("window.y");
+
+        double initW = defaultW;
+        double initH = defaultH;
+        Double initX = null;
+        Double initY = null;
+
+        if (savedW != null && savedH != null) {
+            try {
+                double w = Double.parseDouble(savedW);
+                double h = Double.parseDouble(savedH);
+                if (w >= 700 && w <= screenW && h >= 450 && h <= screenH) {
+                    initW = w;
+                    initH = h;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (savedX != null && savedY != null) {
+            try {
+                double x = Double.parseDouble(savedX);
+                double y = Double.parseDouble(savedY);
+                if (x >= visualBounds.getMinX() - 50 && x <= visualBounds.getMaxX() - 200
+                        && y >= visualBounds.getMinY() && y <= visualBounds.getMaxY() - 100) {
+                    initX = x;
+                    initY = y;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        Scene scene = new Scene(root, initW, initH);
         scene.getStylesheets().add(
                 getClass().getResource("/css/lumina-dark.css").toExternalForm());
 
@@ -544,6 +588,28 @@ public class LuminaApp extends Application {
 
         stage.setTitle("Lumina");
         stage.setScene(scene);
+        stage.setMinWidth(720);
+        stage.setMinHeight(460);
+
+        if (initX != null && initY != null) {
+            stage.setX(initX);
+            stage.setY(initY);
+        } else {
+            stage.setX(visualBounds.getMinX() + (screenW - initW) / 2.0);
+            stage.setY(visualBounds.getMinY() + (screenH - initH) / 2.0);
+        }
+        stage.setWidth(initW);
+        stage.setHeight(initH);
+
+        // Standard IDE behavior for laptops: if display is compact (e.g. <= 1440x900)
+        // or user previously maximized, start maximized to fit perfectly within the working area
+        boolean shouldMaximize = "true".equalsIgnoreCase(savedMaximized)
+                || (savedMaximized == null && (screenW <= 1440 || screenH <= 900));
+
+        if (shouldMaximize) {
+            stage.setMaximized(true);
+        }
+
         ACTIVE_INSTANCES.add(this);
 
         SystemSettings.getInstance().apply();
@@ -1201,7 +1267,7 @@ public class LuminaApp extends Application {
                 new SeparatorMenuItem(), placeholder("Show Log in Files", null), placeholder("Show SQL Log in Files", null),
                 placeholder("Collect Logs and Diagnostic Data", null), placeholder("Delete Leftover IDE Directories…", null), diagnostics,
                 placeholder("Change Memory Settings", null), placeholder("Edit Custom Properties…", null), placeholder("Edit Custom VM Options…", null),
-                placeholder("Manage Subscriptions…", null), new SeparatorMenuItem(), placeholder("Check for Updates…", null), item("About", null, e -> showAbout()));
+                placeholder("Manage Subscriptions…", null), new SeparatorMenuItem(), item("Check for Updates…", null, e -> checkForUpdates(true)), item("About", null, e -> showAbout()));
 
         MenuBar bar = new MenuBar(file, edit, view, navigate, code, refactor,
                 build, run, git, tools, window, help);
@@ -1255,15 +1321,11 @@ public class LuminaApp extends Application {
     }
 
     private void showPluginManager() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.initOwner(stage);
-        alert.setTitle("Plugins");
-        alert.setHeaderText("Plugin Manager coming soon");
-        alert.setContentText("Plugin-based project templates and more IDE extensions "
-                + "will be available in a future version.");
-        alert.getDialogPane().getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        alert.showAndWait();
+        openPluginsSettings();
+    }
+
+    public void openPluginsSettings() {
+        new SettingsDialog(stage, "Plugins").show();
     }
 
     // --------------------------------------------------------------- toolbar
@@ -1271,10 +1333,12 @@ public class LuminaApp extends Application {
     private HBox buildToolBar() {
         projectChip = new Button("No project \u25BE");
         projectChip.getStyleClass().add("project-chip");
+        projectChip.setMinWidth(Region.USE_PREF_SIZE);
         projectChip.setOnAction(e -> toggleProjectWidgetPopup());
 
         branchButton = new Button("no vcs \u25BE");
         branchButton.getStyleClass().add("branch-chip");
+        branchButton.setMinWidth(Region.USE_PREF_SIZE);
         branchButton.setOnAction(e -> showBranchesPopup());
 
         Region spacer = new Region();
@@ -1282,7 +1346,9 @@ public class LuminaApp extends Application {
 
         runConfigBox = new ComboBox<>();
         runConfigBox.getStyleClass().add("run-config-box");
-        runConfigBox.setPrefWidth(240);
+        runConfigBox.setPrefWidth(200);
+        runConfigBox.setMinWidth(110);
+        runConfigBox.setMaxWidth(260);
         runConfigBox.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(RunConfiguration item, boolean empty) {
@@ -5799,6 +5865,18 @@ public class LuminaApp extends Application {
         ACTIVE_INSTANCES.remove(this);
         saveSession();
         try {
+            if (stage != null) {
+                boolean isMax = stage.isMaximized();
+                Settings.put("window.maximized", String.valueOf(isMax));
+                if (!isMax) {
+                    Settings.put("window.width", String.valueOf((int) stage.getWidth()));
+                    Settings.put("window.height", String.valueOf((int) stage.getHeight()));
+                    Settings.put("window.x", String.valueOf((int) stage.getX()));
+                    Settings.put("window.y", String.valueOf((int) stage.getY()));
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
             console.shutdown();
             terminal.stop();
             dbPanel.shutdown();
@@ -6200,23 +6278,33 @@ public class LuminaApp extends Application {
                 disabled("Zen Mode"),
                 disabled("Presentation Mode"));
 
-        ContextMenu menu = new ContextMenu(
-                item("Check for Updates\u2026", null,
-                        e -> showComingSoon("Check for Updates")),
-                new SeparatorMenuItem(),
-                item("Run Anything\u2026", null, e -> showComingSoon("Run Anything")),
-                new SeparatorMenuItem(),
-                item("Project Structure\u2026", projectStructureShortcut(),
-                        e -> openProjectStructure()),
-                item("Settings\u2026", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()),
-                item("Plugins\u2026", null, e -> new PluginManagerDialog(stage).show()),
-                disabled("Backup and Sync\u2026 Off"),
-                new SeparatorMenuItem(),
-                item("Theme\u2026", null, e -> new SettingsDialog(stage, "Appearance").show()),
-                item("Keymap\u2026", null, e -> new SettingsDialog(stage, "Keymap").show()),
-                viewMode,
-                item("Customize Main Toolbar\u2026", null,
-                        e -> showComingSoon("Customize Main Toolbar")));
+        int updateCount = dev.lumina.plugin.PluginManager.getInstance().getUpdatesCount();
+        List<MenuItem> items = new ArrayList<>();
+
+        if (updateCount > 0) {
+            MenuItem updateItem = item("Update " + updateCount + " Plugins\u2026", null,
+                    e -> openPluginsSettings());
+            updateItem.setStyle("-fx-text-fill: #5FB865; -fx-font-weight: bold;");
+            items.add(updateItem);
+            items.add(new SeparatorMenuItem());
+        }
+
+        items.add(item("Check for Updates\u2026", null, e -> checkForUpdates(true)));
+        items.add(new SeparatorMenuItem());
+        items.add(item("Run Anything\u2026", null, e -> showComingSoon("Run Anything")));
+        items.add(new SeparatorMenuItem());
+        items.add(item("Project Structure\u2026", projectStructureShortcut(), e -> openProjectStructure()));
+        items.add(item("Settings\u2026", "Shortcut+Alt+S", e -> new SettingsDialog(stage).show()));
+        items.add(item("Plugins\u2026", null, e -> openPluginsSettings()));
+        items.add(disabled("Backup and Sync\u2026 Off"));
+        items.add(new SeparatorMenuItem());
+        items.add(item("Theme\u2026", null, e -> new SettingsDialog(stage, "Appearance").show()));
+        items.add(item("Keymap\u2026", null, e -> new SettingsDialog(stage, "Keymap").show()));
+        items.add(viewMode);
+        items.add(item("Customize Main Toolbar\u2026", null, e -> showComingSoon("Customize Main Toolbar")));
+
+        ContextMenu menu = new ContextMenu();
+        menu.getItems().addAll(items);
         menu.show(anchor, javafx.geometry.Side.BOTTOM, 0, 4);
     }
 
@@ -6237,6 +6325,40 @@ public class LuminaApp extends Application {
      *  tab strip's "+" dropdown. */
     private void openTerminalSettings() {
         new SettingsDialog(stage, "Terminal").show();
+    }
+
+    public void checkForUpdates(boolean userInitiated) {
+        String currentVersion = "0.1.0";
+        Thread.ofVirtual().start(() -> {
+            try {
+                dev.lumina.plugin.RozeHubClient.UpdateInfo info =
+                        dev.lumina.plugin.RozeHubClient.getInstance().checkForUpdates(currentVersion);
+
+                Platform.runLater(() -> {
+                    if (info.available()) {
+                        new dev.lumina.ui.UpdateAvailableDialog(stage, info).show();
+                    } else if (userInitiated) {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.initOwner(stage);
+                        alert.setTitle("Check for Updates");
+                        alert.setHeaderText("You already have the latest version");
+                        alert.setContentText(String.format("Lumina IDE %s is currently the newest version available on the Stable channel from RozeHub.", currentVersion));
+                        alert.showAndWait();
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    if (userInitiated) {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.initOwner(stage);
+                        alert.setTitle("Update Check Failed");
+                        alert.setHeaderText("Unable to connect to RozeHub server");
+                        alert.setContentText("Could not reach RozeHub at " + dev.lumina.plugin.RozeHubClient.getInstance().getBaseUrl() + ":\n" + ex.getMessage());
+                        alert.showAndWait();
+                    }
+                });
+            }
+        });
     }
 
     /** Hides the whole bottom Terminal dock \u2014 shared by "closing the last
