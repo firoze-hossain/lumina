@@ -533,6 +533,12 @@ public class PluginManager {
                         savePersistedState();
                     }
                     javafx.application.Platform.runLater(() -> {
+                        try {
+                            dev.lumina.ui.ThemeManager.getInstance().scanPluginThemes();
+                            if (p.getTags() != null && (p.getTags().contains("Themes") || p.getTags().contains("theme") || p.getName().toLowerCase().contains("theme"))) {
+                                dev.lumina.ui.ThemeManager.getInstance().applyTheme(p.getName());
+                            }
+                        } catch (Throwable ignored) {}
                         notifyListeners();
                         if (onSuccess != null) {
                             onSuccess.accept("Plugin '" + p.getName() + "' successfully downloaded and installed from RozeHub.");
@@ -573,12 +579,18 @@ public class PluginManager {
     }
 
     public synchronized void uninstallPlugin(String id) {
+        PluginItem removing = installedPlugins.stream().filter(p -> p.getId().equals(id)).findFirst().orElse(null);
         installedPlugins.removeIf(p -> p.getId().equals(id) && !p.isBundled());
         PluginItem m = findMarketplacePlugin(id);
         if (m != null) {
             m.setInstalled(false);
         }
         PluginRegistry.getInstance().uninstallPlugin(id);
+
+        if (removing != null && removing.getName() != null
+                && removing.getName().equals(dev.lumina.ui.ThemeManager.getInstance().getCurrentThemeName())) {
+            dev.lumina.ui.ThemeManager.getInstance().applyTheme(dev.lumina.ui.ThemeManager.DEFAULT_THEME);
+        }
 
         // Also clean up local file if present in ~/.lumina/plugins/
         try {

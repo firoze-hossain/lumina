@@ -524,8 +524,7 @@ public class LuminaApp extends Application {
         }
 
         Scene scene = new Scene(root, initW, initH);
-        scene.getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        ThemeManager.getInstance().applyCurrentTheme(scene);
 
         // Key shortcuts
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {

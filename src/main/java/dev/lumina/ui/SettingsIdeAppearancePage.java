@@ -1,6 +1,7 @@
 package dev.lumina.ui;
 
 import java.util.prefs.Preferences;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -89,11 +90,23 @@ public class SettingsIdeAppearancePage extends VBox {
         themeLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-min-width: 140px;");
 
         themeCombo = new ComboBox<>();
-        // User specification: strictly only "Dark" theme
-        themeCombo.getItems().addAll("Dark");
-        themeCombo.getSelectionModel().select("Dark");
-        themeCombo.setPrefWidth(160);
+        themeCombo.getItems().setAll(ThemeManager.getInstance().getAvailableThemeNames());
+        themeCombo.getSelectionModel().select(ThemeManager.getInstance().getCurrentThemeName());
+        themeCombo.setPrefWidth(180);
         styleCombo(themeCombo);
+        themeCombo.setOnAction(e -> {
+            String selected = themeCombo.getValue();
+            if (selected != null) {
+                ThemeManager.getInstance().applyTheme(selected);
+            }
+        });
+        ThemeManager.getInstance().addListener(() -> {
+            Platform.runLater(() -> {
+                String cur = ThemeManager.getInstance().getCurrentThemeName();
+                themeCombo.getItems().setAll(ThemeManager.getInstance().getAvailableThemeNames());
+                themeCombo.getSelectionModel().select(cur);
+            });
+        });
 
         syncWithOsCheck = new CheckBox("Sync with OS");
         syncWithOsCheck.setSelected(prefs.getBoolean("appearance_sync_os", false));
