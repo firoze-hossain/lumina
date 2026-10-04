@@ -70,6 +70,7 @@ public class SettingsDialog {
     private SettingsStickyLinesPage currentStickyLinesPage;
     private SettingsCodeEditingPage currentCodeEditingPage;
     private SettingsInspectionsPage currentInspectionsPage;
+    private SettingsFileAndCodeTemplatesPage currentFileAndCodeTemplatesPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1429,6 +1430,25 @@ public class SettingsDialog {
                             updateApplyButtonState();
                         }
                     });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("File and Code Templates".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentFileAndCodeTemplatesPage != null) {
+                            currentFileAndCodeTemplatesPage.revertCurrent();
+                            updateApplyButtonState();
+                        }
+                    });
+                    if (currentFileAndCodeTemplatesPage != null) {
+                        revertLink.visibleProperty().bind(currentFileAndCodeTemplatesPage.canRevertProperty());
+                        revertLink.managedProperty().bind(revertLink.visibleProperty());
+                    } else {
+                        revertLink.setVisible(false);
+                        revertLink.setManaged(false);
+                    }
                     breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
@@ -2924,6 +2944,17 @@ public class SettingsDialog {
                 VBox.setVgrow(currentInspectionsPage, Priority.ALWAYS);
                 contentContainer.setStyle("-fx-background-color: #1E1F22;");
                 contentContainer.getChildren().setAll(currentInspectionsPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("File and Code Templates".equals(pageName)) {
+                if (currentFileAndCodeTemplatesPage == null) {
+                    currentFileAndCodeTemplatesPage = new SettingsFileAndCodeTemplatesPage();
+                }
+                currentFileAndCodeTemplatesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentFileAndCodeTemplatesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentFileAndCodeTemplatesPage);
                 updateApplyButtonState();
                 return;
             }
@@ -4685,6 +4716,9 @@ public class SettingsDialog {
         if (currentInspectionsPage != null && currentInspectionsPage.isModified()) {
             currentInspectionsPage.apply();
         }
+        if (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified()) {
+            currentFileAndCodeTemplatesPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -4938,6 +4972,7 @@ public class SettingsDialog {
                 || (currentStickyLinesPage != null && currentStickyLinesPage.isModified())
                 || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
                 || (currentInspectionsPage != null && currentInspectionsPage.isModified())
+                || (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5329,6 +5364,9 @@ public class SettingsDialog {
             }
             if (currentCodeStyleLanguagePage != null) {
                 currentCodeStyleLanguagePage.reset();
+            }
+            if (currentFileAndCodeTemplatesPage != null) {
+                currentFileAndCodeTemplatesPage.reset();
             }
             stage.close();
         });
