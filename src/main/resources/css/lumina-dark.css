@@ -4714,4 +4714,77 @@
     -fx-padding: 8px 12px;
 }
 
+/* ============================================================
+   Global Text Area & File Templates Dark Styling
+   ============================================================ */
+.text-area {
+    -fx-control-inner-background: #1E1F22;
+    -fx-background-color: #1E1F22;
+    -fx-text-fill: #DFE1E5;
+    -fx-highlight-fill: #2E436E;
+    -fx-highlight-text-fill: #FFFFFF;
+}
+
+.text-area .content {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+}
+
+.text-area:focused .content {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+}
+
+.file-templates-page {
+    -fx-background-color: #1E1F22;
+}
+
+.file-templates-code-editor {
+    -fx-control-inner-background: #1E1F22;
+    -fx-background-color: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: #DFE1E5;
+    -fx-font-family: 'JetBrains Mono', 'Consolas', monospace;
+    -fx-font-size: 13px;
+}
+
+.file-templates-code-editor .content {
+    -fx-background-color: #1E1F22;
+    -fx-control-inner-background: #1E1F22;
+}
+
+.file-templates-tree {
+    -fx-background-color: #1E1F22;
+    -fx-border-color: #393B40;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.file-templates-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #DFE1E5;
+    -fx-padding: 3px 6px;
+    -fx-font-size: 12px;
+}
+
+.file-templates-tree .tree-cell:hover {
+    -fx-background-color: #2B2D30;
+}
+
+.file-templates-tree .tree-cell:selected {
+    -fx-background-color: #2E436E;
+    -fx-text-fill: #FFFFFF;
+}
+
+.file-templates-tree .tree-cell .arrow {
+    -fx-background-color: #8C9099;
+}
+
+.file-templates-tree .tree-cell:selected .arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+
 
