@@ -5031,6 +5031,11 @@ public class SettingsDialog {
         ok.setOnAction(e -> {
             applyAll();
             stage.close();
+            if (dev.lumina.plugin.PluginManager.getInstance().hasPendingRestart()) {
+                List<String> names = dev.lumina.plugin.PluginManager.getInstance().getPendingRestartPlugins()
+                        .stream().map(dev.lumina.plugin.PluginItem::getName).toList();
+                dev.lumina.util.IdeRestartHelper.promptAndRestart(stage.getOwner(), null, names);
+            }
         });
 
         Button cancel = new Button("Cancel");
@@ -5330,7 +5335,14 @@ public class SettingsDialog {
 
         applyButton = new Button("Apply");
         applyButton.getStyleClass().add("dialog-secondary");
-        applyButton.setOnAction(e -> applyAll());
+        applyButton.setOnAction(e -> {
+            applyAll();
+            if (dev.lumina.plugin.PluginManager.getInstance().hasPendingRestart()) {
+                List<String> names = dev.lumina.plugin.PluginManager.getInstance().getPendingRestartPlugins()
+                        .stream().map(dev.lumina.plugin.PluginItem::getName).toList();
+                dev.lumina.util.IdeRestartHelper.promptAndRestart(stage, null, names);
+            }
+        });
         updateApplyButtonState();
 
         Region spacer = new Region();

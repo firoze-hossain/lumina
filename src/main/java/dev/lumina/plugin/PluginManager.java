@@ -45,6 +45,8 @@ public class PluginManager {
     private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
     private boolean autoUpdateEnabled = true;
+    private final Set<String> pendingRestartPluginIds = new LinkedHashSet<>();
+    private final List<String> newlyActivatedPluginNames = new ArrayList<>();
 
     private PluginManager() {
         initDefaultCatalog();
@@ -64,9 +66,39 @@ public class PluginManager {
         installedPlugins.clear();
         customRepositories.clear();
         certificates.clear();
+        pendingRestartPluginIds.clear();
+        newlyActivatedPluginNames.clear();
         autoUpdateEnabled = true;
         initDefaultCatalog();
         notifyListeners();
+    }
+
+    public synchronized boolean isPendingRestart(String id) {
+        return id != null && pendingRestartPluginIds.contains(id);
+    }
+
+    public synchronized boolean hasPendingRestart() {
+        return !pendingRestartPluginIds.isEmpty();
+    }
+
+    public synchronized Set<String> getPendingRestartPluginIds() {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(pendingRestartPluginIds));
+    }
+
+    public synchronized List<PluginItem> getPendingRestartPlugins() {
+        List<PluginItem> list = new ArrayList<>();
+        for (String id : pendingRestartPluginIds) {
+            PluginItem p = findInstalledPlugin(id);
+            if (p == null) p = findMarketplacePlugin(id);
+            if (p != null) list.add(p);
+        }
+        return list;
+    }
+
+    public synchronized List<String> getNewlyActivatedPluginNames() {
+        List<String> list = new ArrayList<>(newlyActivatedPluginNames);
+        newlyActivatedPluginNames.clear();
+        return list;
     }
 
     private void initDefaultCatalog() {
@@ -512,11 +544,13 @@ public class PluginManager {
                     synchronized (PluginManager.this) {
                         p.setInstalled(true);
                         p.setEnabled(true);
-                        if (installedPlugins.stream().noneMatch(existing -> existing.getId().equals(p.getId()))) {
-                            PluginItem copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
+                        p.setPendingRestart(true);
+                        pendingRestartPluginIds.add(p.getId());
+
+                        PluginItem copy = findInstalledPlugin(p.getId());
+                        if (copy == null) {
+                            copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
                             copy.setBundled(false);
-                            copy.setInstalled(true);
-                            copy.setEnabled(true);
                             copy.setShortDescription(p.getShortDescription());
                             copy.setDescriptionHeading(p.getDescriptionHeading());
                             copy.setFeatures(p.getFeatures());
@@ -530,18 +564,16 @@ public class PluginManager {
                             copy.setFromRozeHub(true);
                             installedPlugins.add(copy);
                         }
+                        copy.setInstalled(true);
+                        copy.setEnabled(true);
+                        copy.setPendingRestart(true);
+
                         savePersistedState();
                     }
                     javafx.application.Platform.runLater(() -> {
-                        try {
-                            dev.lumina.ui.ThemeManager.getInstance().scanPluginThemes();
-                            if (p.getTags() != null && (p.getTags().contains("Themes") || p.getTags().contains("theme") || p.getName().toLowerCase().contains("theme"))) {
-                                dev.lumina.ui.ThemeManager.getInstance().applyTheme(p.getName());
-                            }
-                        } catch (Throwable ignored) {}
                         notifyListeners();
                         if (onSuccess != null) {
-                            onSuccess.accept("Plugin '" + p.getName() + "' successfully downloaded and installed from RozeHub.");
+                            onSuccess.accept("Plugin '" + p.getName() + "' installed. Restart Lumina to activate.");
                         }
                     });
                 } catch (Exception e) {
@@ -556,11 +588,13 @@ public class PluginManager {
             synchronized (this) {
                 p.setInstalled(true);
                 p.setEnabled(true);
-                if (installedPlugins.stream().noneMatch(existing -> existing.getId().equals(p.getId()))) {
-                    PluginItem copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
+                p.setPendingRestart(true);
+                pendingRestartPluginIds.add(p.getId());
+
+                PluginItem copy = findInstalledPlugin(p.getId());
+                if (copy == null) {
+                    copy = new PluginItem(p.getId(), p.getName(), p.getVersion(), p.getVendor());
                     copy.setBundled(false);
-                    copy.setInstalled(true);
-                    copy.setEnabled(true);
                     copy.setShortDescription(p.getShortDescription());
                     copy.setDescriptionHeading(p.getDescriptionHeading());
                     copy.setFeatures(p.getFeatures());
@@ -571,19 +605,25 @@ public class PluginManager {
                     copy.setCarouselSlides(p.getCarouselSlides());
                     installedPlugins.add(copy);
                 }
+                copy.setInstalled(true);
+                copy.setEnabled(true);
+                copy.setPendingRestart(true);
+
                 savePersistedState();
                 notifyListeners();
             }
-            if (onSuccess != null) onSuccess.accept("Plugin '" + p.getName() + "' installed.");
+            if (onSuccess != null) onSuccess.accept("Plugin '" + p.getName() + "' installed. Restart Lumina to activate.");
         }
     }
 
     public synchronized void uninstallPlugin(String id) {
+        pendingRestartPluginIds.remove(id);
         PluginItem removing = installedPlugins.stream().filter(p -> p.getId().equals(id)).findFirst().orElse(null);
         installedPlugins.removeIf(p -> p.getId().equals(id) && !p.isBundled());
         PluginItem m = findMarketplacePlugin(id);
         if (m != null) {
             m.setInstalled(false);
+            m.setPendingRestart(false);
         }
         PluginRegistry.getInstance().uninstallPlugin(id);
 
@@ -624,6 +664,8 @@ public class PluginManager {
             if (p.getId().equals(id) && p.hasUpdate()) {
                 p.setVersion(p.getAvailableVersion());
                 p.setAvailableVersion(null);
+                p.setPendingRestart(true);
+                pendingRestartPluginIds.add(id);
             }
         }
         savePersistedState();
@@ -635,6 +677,8 @@ public class PluginManager {
             if (p.hasUpdate()) {
                 p.setVersion(p.getAvailableVersion());
                 p.setAvailableVersion(null);
+                p.setPendingRestart(true);
+                pendingRestartPluginIds.add(p.getId());
             }
         }
         savePersistedState();
@@ -680,10 +724,20 @@ public class PluginManager {
         diskPlugin.setBundled(false);
         diskPlugin.setInstalled(true);
         diskPlugin.setEnabled(true);
+        diskPlugin.setPendingRestart(true);
+        pendingRestartPluginIds.add(id);
         diskPlugin.setShortDescription("Installed from local disk archive: " + fileName);
         diskPlugin.setIconSymbol("DISK");
         diskPlugin.setIconBgColor("#475569");
         installedPlugins.add(diskPlugin);
+
+        // Copy file to ~/.lumina/plugins/ so it is persisted for restart
+        try {
+            Path targetDir = LUMINA_DIR.resolve("plugins");
+            Files.createDirectories(targetDir);
+            Files.copy(file.toPath(), targetDir.resolve(fileName), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Throwable ignored) {}
+
         savePersistedState();
         notifyListeners();
     }
@@ -784,20 +838,160 @@ public class PluginManager {
                 Gson gson = new Gson();
                 Type type = new TypeToken<Map<String, Object>>(){}.getType();
                 Map<String, Object> map = gson.fromJson(json, type);
-                if (map != null && map.containsKey("autoUpdate")) {
-                    this.autoUpdateEnabled = Boolean.TRUE.equals(map.get("autoUpdate"));
+                if (map != null) {
+                    if (map.containsKey("autoUpdate")) {
+                        this.autoUpdateEnabled = Boolean.TRUE.equals(map.get("autoUpdate"));
+                    }
+                    if (map.containsKey("customRepos") && map.get("customRepos") instanceof List<?> list) {
+                        for (Object o : list) {
+                            if (o instanceof String s && !customRepositories.contains(s)) {
+                                customRepositories.add(s);
+                            }
+                        }
+                    }
+                    if (map.containsKey("downloadedPlugins") && map.get("downloadedPlugins") instanceof List<?> list) {
+                        for (Object o : list) {
+                            if (o instanceof Map<?, ?> itemMap) {
+                                String id = (String) itemMap.get("id");
+                                if (id != null && installedPlugins.stream().noneMatch(x -> x.getId().equals(id))) {
+                                    String name = (String) itemMap.get("name");
+                                    String ver = (String) itemMap.get("version");
+                                    String vendor = (String) itemMap.get("vendor");
+                                    PluginItem pi = new PluginItem(id, name != null ? name : id, ver != null ? ver : "1.0.0", vendor);
+                                    pi.setBundled(false);
+                                    pi.setInstalled(true);
+                                    pi.setEnabled(!Boolean.FALSE.equals(itemMap.get("enabled")));
+                                    pi.setShortDescription((String) itemMap.get("shortDescription"));
+                                    pi.setIconSymbol((String) itemMap.get("iconSymbol"));
+                                    pi.setIconBgColor((String) itemMap.get("iconBgColor"));
+                                    pi.setFromRozeHub(Boolean.TRUE.equals(itemMap.get("fromRozeHub")));
+                                    pi.setDownloadUrl((String) itemMap.get("downloadUrl"));
+                                    pi.setSha256((String) itemMap.get("sha256"));
+                                    if (itemMap.get("tags") instanceof List<?> tagsList) {
+                                        List<String> tags = new ArrayList<>();
+                                        for (Object t : tagsList) if (t instanceof String ts) tags.add(ts);
+                                        pi.setTags(tags);
+                                    }
+                                    installedPlugins.add(pi);
+                                }
+                            }
+                        }
+                    }
+                    if (map.containsKey("pendingActivation") && map.get("pendingActivation") instanceof List<?> pendingList) {
+                        List<String> toActivate = new ArrayList<>();
+                        for (Object o : pendingList) {
+                            if (o instanceof String s) toActivate.add(s);
+                        }
+                        if (!toActivate.isEmpty()) {
+                            activatePendingPluginsOnRestart(toActivate);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        scanPluginsDirOnStartup();
+    }
+
+    private void scanPluginsDirOnStartup() {
+        try {
+            Path pluginDir = LUMINA_DIR.resolve("plugins");
+            if (Files.isDirectory(pluginDir)) {
+                try (var stream = Files.list(pluginDir)) {
+                    stream.filter(p -> p.toString().endsWith(".jar")).forEach(jarPath -> {
+                        try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarPath.toFile())) {
+                            java.util.jar.JarEntry entry = jar.getJarEntry("plugin.json");
+                            if (entry != null) {
+                                String json = new String(jar.getInputStream(entry).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                                com.google.gson.JsonObject obj = new Gson().fromJson(json, com.google.gson.JsonObject.class);
+                                if (obj != null && obj.has("id")) {
+                                    String id = obj.get("id").getAsString();
+                                    String name = obj.has("name") ? obj.get("name").getAsString() : id;
+                                    String ver = obj.has("version") ? obj.get("version").getAsString() : "1.0.0";
+                                    String vendor = obj.has("author") ? obj.get("author").getAsString() : "Community";
+                                    PluginItem existing = findInstalledPlugin(id);
+                                    if (existing == null) {
+                                        PluginItem item = new PluginItem(id, name, ver, vendor);
+                                        item.setBundled(false);
+                                        item.setInstalled(true);
+                                        item.setEnabled(true);
+                                        if (obj.has("description")) item.setShortDescription(obj.get("description").getAsString());
+                                        if (obj.has("category")) item.setTags(List.of(obj.get("category").getAsString()));
+                                        item.setFromRozeHub(true);
+                                        installedPlugins.add(item);
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    });
                 }
             }
         } catch (Throwable ignored) {}
     }
 
-    private void savePersistedState() {
+    private void activatePendingPluginsOnRestart(List<String> toActivate) {
+        if (toActivate == null || toActivate.isEmpty()) return;
+
+        scanPluginsDirOnStartup();
+
+        for (String id : toActivate) {
+            PluginItem p = findInstalledPlugin(id);
+            if (p == null) p = findMarketplacePlugin(id);
+            if (p != null) {
+                p.setInstalled(true);
+                p.setEnabled(true);
+                p.setPendingRestart(false);
+                newlyActivatedPluginNames.add(p.getName());
+
+                boolean isTheme = (p.getTags() != null && (p.getTags().contains("Themes") || p.getTags().contains("theme")))
+                        || (p.getName() != null && p.getName().toLowerCase().contains("theme"))
+                        || (id.contains("theme"));
+
+                if (isTheme) {
+                    try {
+                        dev.lumina.ui.ThemeManager.getInstance().scanPluginThemes();
+                        dev.lumina.ui.ThemeManager.getInstance().applyTheme(p.getName());
+                    } catch (Throwable ignored) {}
+                }
+
+                try {
+                    PluginRegistry.getInstance().installPlugin(id);
+                } catch (Throwable ignored) {}
+            }
+        }
+        pendingRestartPluginIds.clear();
+        savePersistedState();
+    }
+
+    public synchronized void savePersistedState() {
         try {
             Files.createDirectories(LUMINA_DIR);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             Map<String, Object> map = new HashMap<>();
             map.put("autoUpdate", autoUpdateEnabled);
             map.put("customRepos", customRepositories);
+            map.put("pendingActivation", new ArrayList<>(pendingRestartPluginIds));
+
+            List<Map<String, Object>> installedData = new ArrayList<>();
+            for (PluginItem item : installedPlugins) {
+                if (!item.isBundled()) {
+                    Map<String, Object> pi = new HashMap<>();
+                    pi.put("id", item.getId());
+                    pi.put("name", item.getName());
+                    pi.put("version", item.getVersion());
+                    pi.put("vendor", item.getVendor());
+                    pi.put("enabled", item.isEnabled());
+                    pi.put("shortDescription", item.getShortDescription());
+                    pi.put("tags", item.getTags());
+                    pi.put("iconSymbol", item.getIconSymbol());
+                    pi.put("iconBgColor", item.getIconBgColor());
+                    pi.put("fromRozeHub", item.isFromRozeHub());
+                    pi.put("downloadUrl", item.getDownloadUrl());
+                    pi.put("sha256", item.getSha256());
+                    installedData.add(pi);
+                }
+            }
+            map.put("downloadedPlugins", installedData);
             Files.writeString(STATE_FILE, gson.toJson(map));
         } catch (Throwable ignored) {}
     }

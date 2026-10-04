@@ -237,6 +237,32 @@ public class SettingsPluginsTest {
     }
 
     @Test
+    void testPluginInstallRestartAndActivation() {
+        assertFalse(pluginManager.hasPendingRestart());
+
+        // 1. Install Junie plugin
+        pluginManager.installPlugin("dev.lumina.junie");
+        assertTrue(pluginManager.isPendingRestart("dev.lumina.junie"));
+        assertTrue(pluginManager.hasPendingRestart());
+
+        PluginItem installed = pluginManager.findInstalledPlugin("dev.lumina.junie");
+        assertNotNull(installed);
+        assertTrue(installed.isPendingRestart());
+
+        List<PluginItem> pending = pluginManager.getPendingRestartPlugins();
+        assertEquals(1, pending.size());
+        assertEquals("dev.lumina.junie", pending.get(0).getId());
+
+        // 2. Persist state as if restart is about to happen
+        pluginManager.savePersistedState();
+
+        // 3. Uninstall
+        pluginManager.uninstallPlugin("dev.lumina.junie");
+        assertFalse(pluginManager.isPendingRestart("dev.lumina.junie"));
+        assertFalse(pluginManager.hasPendingRestart());
+    }
+
+    @Test
     void testBrandIsolation() throws Exception {
         // Ensure no competitor names in new classes
         List<String> filesToCheck = List.of(

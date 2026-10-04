@@ -123,6 +123,11 @@ public class ThemeManager {
                 JsonObject obj = new Gson().fromJson(json, JsonObject.class);
                 if (obj != null) {
                     if (obj.has("name")) themeName = obj.get("name").getAsString();
+                    if (obj.has("theme") && obj.get("theme").isJsonObject()) {
+                        JsonObject th = obj.getAsJsonObject("theme");
+                        if (th.has("name")) themeName = th.get("name").getAsString();
+                        if (th.has("style")) cssEntryName = th.get("style").getAsString();
+                    }
                     if (obj.has("themeCss")) cssEntryName = obj.get("themeCss").getAsString();
                 }
             }
@@ -139,7 +144,11 @@ public class ThemeManager {
                 try (InputStream in = jar.getInputStream(cssEntry)) {
                     Files.copy(in, targetCss, StandardCopyOption.REPLACE_EXISTING);
                 }
-                themeStylesheets.put(themeName, targetCss.toUri().toURL().toExternalForm());
+                String cssUrl = targetCss.toUri().toURL().toExternalForm();
+                themeStylesheets.put(themeName, cssUrl);
+                if (themeName.toLowerCase().contains("white")) {
+                    themeStylesheets.put(WHITE_THEME, cssUrl);
+                }
             }
         } catch (Exception ignored) {}
     }
@@ -155,6 +164,11 @@ public class ThemeManager {
                 JsonObject obj = new Gson().fromJson(json, JsonObject.class);
                 if (obj != null) {
                     if (obj.has("name")) themeName = obj.get("name").getAsString();
+                    if (obj.has("theme") && obj.get("theme").isJsonObject()) {
+                        JsonObject th = obj.getAsJsonObject("theme");
+                        if (th.has("name")) themeName = th.get("name").getAsString();
+                        if (th.has("style")) cssPath = dir.resolve(th.get("style").getAsString());
+                    }
                     if (obj.has("themeCss")) cssPath = dir.resolve(obj.get("themeCss").getAsString());
                 }
             } catch (Exception ignored) {}
@@ -165,7 +179,11 @@ public class ThemeManager {
                 themeName = dir.getFileName().toString();
             }
             try {
-                themeStylesheets.put(themeName, cssPath.toUri().toURL().toExternalForm());
+                String cssUrl = cssPath.toUri().toURL().toExternalForm();
+                themeStylesheets.put(themeName, cssUrl);
+                if (themeName.toLowerCase().contains("white")) {
+                    themeStylesheets.put(WHITE_THEME, cssUrl);
+                }
             } catch (Exception ignored) {}
         }
     }

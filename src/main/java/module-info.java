@@ -17,6 +17,7 @@ module dev.lumina {
     requires java.prefs;
     requires pty4j;
     requires jdk.jdi;
+    requires java.management;
     exports dev.lumina;
     exports dev.lumina.debugger;
     exports dev.lumina.ui;
@@ -28,6 +29,7 @@ module dev.lumina {
     exports dev.lumina.git;
     exports dev.lumina.refactor;
     exports dev.lumina.util;
+    exports dev.lumina.plugin;
     opens dev.lumina.plugin to com.google.gson;
     exports dev.lumina.settings;
     exports dev.lumina.spring;

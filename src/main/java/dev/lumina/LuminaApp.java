@@ -650,6 +650,11 @@ public class LuminaApp extends Application {
 
         stage.show();
 
+        List<String> activated = dev.lumina.plugin.PluginManager.getInstance().getNewlyActivatedPluginNames();
+        if (!activated.isEmpty()) {
+            console.println("✓ Plugin" + (activated.size() > 1 ? "s" : "") + " activated on restart: " + String.join(", ", activated));
+        }
+
         terminal.start(Path.of(System.getProperty("user.home")));
         refreshRunConfigs();
         refreshGitInfo();
@@ -864,24 +869,14 @@ public class LuminaApp extends Application {
                 item("Save All", "Shortcut+S", e -> saveAllEditors()),
                 item("Reload All from Disk", "Shortcut+Alt+Y", e -> reloadAllFromDisk()),
                 item("Repair IDE", null, e -> showInfo("Repair IDE", "The project indexes and tool windows are healthy.")),
-                //  item("Invalidate Caches…", null, e -> showInfo("Invalidate Caches", "Caches will be rebuilt the next time a project opens.")),
-                // In buildMenuBar(), find the Invalidate Caches item:
+                item("Restart IDE…", null, e -> {
+                    List<String> names = dev.lumina.plugin.PluginManager.getInstance().getPendingRestartPlugins()
+                            .stream().map(dev.lumina.plugin.PluginItem::getName).toList();
+                    dev.lumina.util.IdeRestartHelper.promptAndRestart(stage, "Lumina will be restarted.", names);
+                }),
                 item("Invalidate Caches…", null, e -> {
                     new InvalidateCachesDialog(stage, () -> {
-                        // Restart logic - close and reopen the IDE
-                        Platform.runLater(() -> {
-                            try {
-                                // Save current state
-                                Settings.put(Settings.LAST_PROJECT, projectRoot != null ? projectRoot.toString() : null);
-                                // Restart the application
-                                Stage currentStage = (Stage) stage.getScene().getWindow();
-                                currentStage.close();
-                                // Re-launch
-                                new LuminaApp().start(new Stage());
-                            } catch (Exception ex) {
-                                showInfo("Restart", "Please restart Lumina manually to complete cache invalidation.");
-                            }
-                        });
+                        dev.lumina.util.IdeRestartHelper.restart();
                     }).show();
                 }),
                 new SeparatorMenuItem(),
@@ -3019,7 +3014,7 @@ public class LuminaApp extends Application {
     // ============================================================== M5
 
     /** Every open, file-backed tab is written to disk (rename needs truth). */
-    private void saveAllEditors() {
+    public void saveAllEditors() {
         for (Tab t : allEditorTabs()) {
             if (t instanceof EditorTab et && et.getPath() != null
                     && et.getText().startsWith("\u25CF")) {
