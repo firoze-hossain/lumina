@@ -44,6 +44,7 @@ public class PluginItem {
     private String packageType = "jar";
     private String fileName;
     private boolean fromRozeHub;
+    private boolean pendingRestart;
 
     public PluginItem() {}
 
@@ -129,6 +130,9 @@ public class PluginItem {
 
     public boolean isInstalled() { return installed; }
     public void setInstalled(boolean installed) { this.installed = installed; }
+
+    public boolean isPendingRestart() { return pendingRestart; }
+    public void setPendingRestart(boolean pendingRestart) { this.pendingRestart = pendingRestart; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

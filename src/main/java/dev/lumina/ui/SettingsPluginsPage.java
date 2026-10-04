@@ -48,6 +48,9 @@ public class SettingsPluginsPage extends VBox {
     private final VBox detailContainer = new VBox();
     private final ScrollPane detailScrollPane = new ScrollPane(detailContainer);
 
+    // Banner for plugins pending restart
+    private final VBox restartBannerBox = new VBox();
+
     // Selected plugin
     private PluginItem selectedPlugin;
     private String activeDetailTab = "Overview";
@@ -94,7 +97,9 @@ public class SettingsPluginsPage extends VBox {
         splitPane.getItems().addAll(masterColumn, detailColumn);
         splitPane.setDividerPositions(0.42);
 
-        getChildren().addAll(topBar, splitPane);
+        getChildren().addAll(topBar, restartBannerBox, splitPane);
+
+        updateRestartBanner();
 
         // Initial selection and render
         refreshMasterList();
@@ -337,7 +342,45 @@ public class SettingsPluginsPage extends VBox {
     // Master List Rendering (Marketplace vs Installed)
     // =========================================================================
 
+    private void updateRestartBanner() {
+        restartBannerBox.getChildren().clear();
+        if (!pluginManager.hasPendingRestart()) {
+            restartBannerBox.setVisible(false);
+            restartBannerBox.setManaged(false);
+            return;
+        }
+
+        restartBannerBox.setVisible(true);
+        restartBannerBox.setManaged(true);
+
+        List<PluginItem> pending = pluginManager.getPendingRestartPlugins();
+        List<String> names = pending.stream().map(PluginItem::getName).toList();
+        String summary = names.size() == 1 ? names.get(0) : (names.get(0) + " (and " + (names.size() - 1) + " more)");
+
+        HBox banner = new HBox(12);
+        banner.setAlignment(Pos.CENTER_LEFT);
+        banner.setPadding(new Insets(8, 16, 8, 16));
+        banner.setStyle("-fx-background-color: #1E2D4A; -fx-border-color: #3574F0; -fx-border-width: 0 0 1 0;");
+
+        Label icon = new Label("🔄");
+        icon.setStyle("-fx-font-size: 13px;");
+
+        Label msg = new Label("IDE restart is required to activate plugins: " + summary);
+        msg.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-weight: 500;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button restartBtn = new Button("Restart IDE");
+        restartBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 4 14; -fx-background-radius: 4; -fx-cursor: hand;");
+        restartBtn.setOnAction(e -> dev.lumina.util.IdeRestartHelper.promptAndRestart(getScene().getWindow(), null, names));
+
+        banner.getChildren().addAll(icon, msg, spacer, restartBtn);
+        restartBannerBox.getChildren().add(banner);
+    }
+
     private void refreshMasterList() {
+        updateRestartBanner();
         listContainer.getChildren().clear();
         String query = searchField.getText();
 
@@ -488,17 +531,24 @@ public class SettingsPluginsPage extends VBox {
         metaLine.getChildren().addAll(downloadsLbl, ratingLbl, vendorLbl);
         textInfo.getChildren().addAll(nameLabel, metaLine);
 
-        // Right side action control: Install button or Checkbox if already installed
+        // Right side action control: Install button, Restart IDE button, or Checkbox if already installed
         Node rightAction;
         if (item.isInstalled()) {
-            CheckBox enabledCheck = new CheckBox();
-            enabledCheck.setSelected(item.isEnabled());
-            enabledCheck.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
-            enabledCheck.setOnAction(e -> {
-                item.setEnabled(enabledCheck.isSelected());
-                pluginManager.setPluginEnabled(item.getId(), enabledCheck.isSelected());
-            });
-            rightAction = enabledCheck;
+            if (pluginManager.isPendingRestart(item.getId())) {
+                Button restartBtn = new Button("Restart IDE");
+                restartBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 12; -fx-background-radius: 4; -fx-cursor: hand;");
+                restartBtn.setOnAction(e -> dev.lumina.util.IdeRestartHelper.promptAndRestart(getScene().getWindow(), null, List.of(item.getName())));
+                rightAction = restartBtn;
+            } else {
+                CheckBox enabledCheck = new CheckBox();
+                enabledCheck.setSelected(item.isEnabled());
+                enabledCheck.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
+                enabledCheck.setOnAction(e -> {
+                    item.setEnabled(enabledCheck.isSelected());
+                    pluginManager.setPluginEnabled(item.getId(), enabledCheck.isSelected());
+                });
+                rightAction = enabledCheck;
+            }
         } else {
             Button installBtn = new Button("Install");
             installBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #3574F0; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 3 12; -fx-font-size: 11px; -fx-cursor: hand;");
@@ -572,29 +622,36 @@ public class SettingsPluginsPage extends VBox {
 
         textInfo.getChildren().addAll(titleRow, subLabel);
 
-        // Right side: Update button (if update available) + Checkbox
+        // Right side: Restart IDE button (if pending restart), Update button (if update available) + Checkbox
         HBox rightBox = new HBox(8);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
 
-        if (item.hasUpdate()) {
-            Button updateBtn = new Button("Update");
-            updateBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 12; -fx-background-radius: 4; -fx-cursor: hand;");
-            updateBtn.setOnAction(e -> {
-                pluginManager.updatePlugin(item.getId());
+        if (pluginManager.isPendingRestart(item.getId())) {
+            Button restartBtn = new Button("Restart IDE");
+            restartBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 12; -fx-background-radius: 4; -fx-cursor: hand;");
+            restartBtn.setOnAction(e -> dev.lumina.util.IdeRestartHelper.promptAndRestart(getScene().getWindow(), null, List.of(item.getName())));
+            rightBox.getChildren().add(restartBtn);
+        } else {
+            if (item.hasUpdate()) {
+                Button updateBtn = new Button("Update");
+                updateBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 12; -fx-background-radius: 4; -fx-cursor: hand;");
+                updateBtn.setOnAction(e -> {
+                    pluginManager.updatePlugin(item.getId());
+                    refreshUI();
+                });
+                rightBox.getChildren().add(updateBtn);
+            }
+
+            CheckBox enabledCheck = new CheckBox();
+            enabledCheck.setSelected(item.isEnabled());
+            enabledCheck.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
+            enabledCheck.setOnAction(e -> {
+                item.setEnabled(enabledCheck.isSelected());
+                pluginManager.setPluginEnabled(item.getId(), enabledCheck.isSelected());
                 refreshUI();
             });
-            rightBox.getChildren().add(updateBtn);
+            rightBox.getChildren().add(enabledCheck);
         }
-
-        CheckBox enabledCheck = new CheckBox();
-        enabledCheck.setSelected(item.isEnabled());
-        enabledCheck.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
-        enabledCheck.setOnAction(e -> {
-            item.setEnabled(enabledCheck.isSelected());
-            pluginManager.setPluginEnabled(item.getId(), enabledCheck.isSelected());
-            refreshUI();
-        });
-        rightBox.getChildren().add(enabledCheck);
 
         cell.getChildren().addAll(icon, textInfo, rightBox);
         return cell;
@@ -724,32 +781,43 @@ public class SettingsPluginsPage extends VBox {
         }
 
         if (p.isInstalled()) {
-            // Split button: Disable/Enable + Dropdown arrow for Uninstall (Image 2)
-            Button disableBtn = new Button(p.isEnabled() ? "Disable" : "Enable");
-            disableBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 5 14; -fx-background-radius: 4 0 0 4; -fx-border-color: #393B40; -fx-cursor: hand;");
-            disableBtn.setOnAction(e -> {
-                boolean newState = !p.isEnabled();
-                p.setEnabled(newState);
-                pluginManager.setPluginEnabled(p.getId(), newState);
-                refreshUI();
-            });
+            if (pluginManager.isPendingRestart(p.getId())) {
+                Button restartBtn = new Button("Restart IDE");
+                restartBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-weight: bold; -fx-font-size: 12px; -fx-padding: 5 18; -fx-background-radius: 4; -fx-cursor: hand;");
+                restartBtn.setOnAction(e -> dev.lumina.util.IdeRestartHelper.promptAndRestart(getScene().getWindow(), null, List.of(p.getName())));
+                bar.getChildren().add(restartBtn);
 
-            Button arrowBtn = new Button("▾");
-            arrowBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #868A91; -fx-font-size: 10px; -fx-padding: 6 8; -fx-background-radius: 0 4 4 0; -fx-border-color: #393B40; -fx-border-width: 1 1 1 0; -fx-cursor: hand;");
-            arrowBtn.setOnAction(e -> {
-                ContextMenu ctx = new ContextMenu();
-                ctx.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40;");
-                MenuItem uninstallItem = new MenuItem("Uninstall");
-                uninstallItem.setOnAction(ev -> {
-                    pluginManager.uninstallPlugin(p.getId());
+                Label pendingLabel = new Label("Restart required to activate");
+                pendingLabel.setStyle("-fx-text-fill: #E5A93C; -fx-font-size: 11px;");
+                bar.getChildren().add(pendingLabel);
+            } else {
+                // Split button: Disable/Enable + Dropdown arrow for Uninstall (Image 2)
+                Button disableBtn = new Button(p.isEnabled() ? "Disable" : "Enable");
+                disableBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 5 14; -fx-background-radius: 4 0 0 4; -fx-border-color: #393B40; -fx-cursor: hand;");
+                disableBtn.setOnAction(e -> {
+                    boolean newState = !p.isEnabled();
+                    p.setEnabled(newState);
+                    pluginManager.setPluginEnabled(p.getId(), newState);
                     refreshUI();
                 });
-                ctx.getItems().add(uninstallItem);
-                ctx.show(arrowBtn, javafx.geometry.Side.BOTTOM, 0, 0);
-            });
 
-            HBox splitBtn = new HBox(0, disableBtn, arrowBtn);
-            bar.getChildren().add(splitBtn);
+                Button arrowBtn = new Button("▾");
+                arrowBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #868A91; -fx-font-size: 10px; -fx-padding: 6 8; -fx-background-radius: 0 4 4 0; -fx-border-color: #393B40; -fx-border-width: 1 1 1 0; -fx-cursor: hand;");
+                arrowBtn.setOnAction(e -> {
+                    ContextMenu ctx = new ContextMenu();
+                    ctx.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40;");
+                    MenuItem uninstallItem = new MenuItem("Uninstall");
+                    uninstallItem.setOnAction(ev -> {
+                        pluginManager.uninstallPlugin(p.getId());
+                        refreshUI();
+                    });
+                    ctx.getItems().add(uninstallItem);
+                    ctx.show(arrowBtn, javafx.geometry.Side.BOTTOM, 0, 0);
+                });
+
+                HBox splitBtn = new HBox(0, disableBtn, arrowBtn);
+                bar.getChildren().add(splitBtn);
+            }
 
             // Version text
             String verText = p.hasUpdate()
