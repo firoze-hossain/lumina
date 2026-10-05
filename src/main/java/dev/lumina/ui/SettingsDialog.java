@@ -71,6 +71,7 @@ public class SettingsDialog {
     private SettingsCodeEditingPage currentCodeEditingPage;
     private SettingsInspectionsPage currentInspectionsPage;
     private SettingsFileAndCodeTemplatesPage currentFileAndCodeTemplatesPage;
+    private SettingsFileEncodingsPage currentFileEncodingsPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -2958,6 +2959,17 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("File Encodings".equals(pageName)) {
+                if (currentFileEncodingsPage == null) {
+                    currentFileEncodingsPage = new SettingsFileEncodingsPage();
+                }
+                currentFileEncodingsPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentFileEncodingsPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentFileEncodingsPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -4719,6 +4731,9 @@ public class SettingsDialog {
         if (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified()) {
             currentFileAndCodeTemplatesPage.apply();
         }
+        if (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified()) {
+            currentFileEncodingsPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -4973,6 +4988,7 @@ public class SettingsDialog {
                 || (currentCodeEditingPage != null && currentCodeEditingPage.isModified())
                 || (currentInspectionsPage != null && currentInspectionsPage.isModified())
                 || (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified())
+                || (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5367,6 +5383,9 @@ public class SettingsDialog {
             }
             if (currentFileAndCodeTemplatesPage != null) {
                 currentFileAndCodeTemplatesPage.reset();
+            }
+            if (currentFileEncodingsPage != null) {
+                currentFileEncodingsPage.reset();
             }
             stage.close();
         });
