@@ -72,6 +72,7 @@ public class SettingsDialog {
     private SettingsInspectionsPage currentInspectionsPage;
     private SettingsFileAndCodeTemplatesPage currentFileAndCodeTemplatesPage;
     private SettingsFileEncodingsPage currentFileEncodingsPage;
+    private SettingsLiveTemplatesPage currentLiveTemplatesPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -2970,6 +2971,17 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Live Templates".equals(pageName)) {
+                if (currentLiveTemplatesPage == null) {
+                    currentLiveTemplatesPage = new SettingsLiveTemplatesPage();
+                }
+                currentLiveTemplatesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentLiveTemplatesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentLiveTemplatesPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -4734,6 +4746,9 @@ public class SettingsDialog {
         if (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified()) {
             currentFileEncodingsPage.apply();
         }
+        if (currentLiveTemplatesPage != null && currentLiveTemplatesPage.isModified()) {
+            currentLiveTemplatesPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -4989,6 +5004,7 @@ public class SettingsDialog {
                 || (currentInspectionsPage != null && currentInspectionsPage.isModified())
                 || (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified())
                 || (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified())
+                || (currentLiveTemplatesPage != null && currentLiveTemplatesPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5387,6 +5403,9 @@ public class SettingsDialog {
             if (currentFileEncodingsPage != null) {
                 currentFileEncodingsPage.reset();
             }
+            if (currentLiveTemplatesPage != null) {
+                currentLiveTemplatesPage.reset();
+            }
             stage.close();
         });
 
@@ -5410,6 +5429,10 @@ public class SettingsDialog {
         bar.setPadding(new Insets(10, 20, 12, 20));
         bar.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
         return bar;
+    }
+
+    public SettingsLiveTemplatesPage getCurrentLiveTemplatesPage() {
+        return currentLiveTemplatesPage;
     }
 
     public SettingsColorSchemeDebuggerPage getCurrentColorSchemeDebuggerPage() {
