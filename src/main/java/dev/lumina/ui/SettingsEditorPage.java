@@ -232,6 +232,10 @@ public class SettingsEditorPage extends VBox {
     }
 
     private void showFileEncodingsPage() {
+        pageTitle.setVisible(false);
+        pageTitle.setManaged(false);
+        description.setVisible(false);
+        description.setManaged(false);
         SettingsFileEncodingsPage page = new SettingsFileEncodingsPage();
         contentArea.getChildren().add(page);
     }
