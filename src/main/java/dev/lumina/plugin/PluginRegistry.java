@@ -89,13 +89,14 @@ public class PluginRegistry {
      */
     public List<PluginManifest> getBuiltInPlugins() {
         List<PluginManifest> builtIn = new ArrayList<>();
+        String rozeHubMarketplace = RozeHubClient.getInstance().getBaseUrl() + "/marketplace/";
 
         // Language plugins (built-in)
         builtIn.add(new PluginManifest(
             "go", "Go", "2024.1.0",
             "Intelligent Go language support with modules, debugging, and testing tools.",
             "Lumina", "Languages", null,
-            List.of("go", "golang"), "https://lumina.dev/plugins/go", "G",
+            List.of("go", "golang"), rozeHubMarketplace + "go", "G",
             "4.5", 500000, true, true, "#00ADD8"
         ));
 
@@ -103,7 +104,7 @@ public class PluginRegistry {
             "php", "PHP", "2024.1.2",
             "PHP 5.3-8.4 editing and debugging, PHPUnit, Smarty, Twig and various frameworks support.",
             "Lumina", "Languages", null,
-            List.of("php", "laravel", "symfony"), "https://lumina.dev/plugins/php", "PHP",
+            List.of("php", "laravel", "symfony"), rozeHubMarketplace + "php", "PHP",
             "4.4", 700000, true, true, "#8892BF"
         ));
 
@@ -111,7 +112,7 @@ public class PluginRegistry {
             "python", "Python", "2024.1.2",
             "Professional Python development with debugging, testing, and virtual environment support.",
             "Lumina", "Languages", null,
-            List.of("python", "django", "flask"), "https://lumina.dev/plugins/python", "P",
+            List.of("python", "django", "flask"), rozeHubMarketplace + "python", "P",
             "4.6", 900000, false, true, "#3776AB"
         ));
 
@@ -119,7 +120,7 @@ public class PluginRegistry {
             "plugin-devkit", "Plugin DevKit", "2024.1.0",
             "Tools for developing Lumina Platform plugins and extensions.",
             "Lumina", "Development", null,
-            List.of("plugin", "development", "sdk"), "https://lumina.dev/plugins/plugin-devkit", "🔌",
+            List.of("plugin", "development", "sdk"), rozeHubMarketplace + "plugin-devkit", "🔌",
             "4.3", 300000, false, true, "#6C6C6C"
         ));
 
@@ -127,7 +128,7 @@ public class PluginRegistry {
             "ruby", "Ruby", "2024.1.1",
             "Ruby and Rails development with testing, debugging, and code navigation.",
             "Lumina", "Languages", null,
-            List.of("ruby", "rails"), "https://lumina.dev/plugins/ruby", "R",
+            List.of("ruby", "rails"), rozeHubMarketplace + "ruby", "R",
             "4.3", 400000, false, true, "#CC342D"
         ));
 
@@ -135,7 +136,7 @@ public class PluginRegistry {
             "scala", "Scala", "2024.1.0",
             "Scala language support with SBT, Maven, and advanced type inference.",
             "Lumina", "Languages", null,
-            List.of("scala", "functional"), "https://lumina.dev/plugins/scala", "S",
+            List.of("scala", "functional"), rozeHubMarketplace + "scala", "S",
             "4.2", 300000, false, true, "#DC322F"
         ));
 

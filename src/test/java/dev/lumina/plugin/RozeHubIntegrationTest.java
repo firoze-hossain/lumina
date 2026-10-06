@@ -1,8 +1,11 @@
 package dev.lumina.plugin;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -12,6 +15,15 @@ import static org.junit.jupiter.api.Assertions.*;
 public class RozeHubIntegrationTest {
 
     private RozeHubClient client;
+
+    private boolean isRozeHubReachable() {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("127.0.0.1", 8000), 250);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @BeforeEach
     public void setUp() {
@@ -28,6 +40,7 @@ public class RozeHubIntegrationTest {
 
     @Test
     public void testFetchMarketplacePluginsFromRozeHub() {
+        Assumptions.assumeTrue(isRozeHubReachable(), "RozeHub server not running at 127.0.0.1:8000");
         try {
             List<PluginItem> plugins = client.fetchMarketplacePlugins(null);
             assertNotNull(plugins, "Plugin list should not be null");
@@ -51,6 +64,7 @@ public class RozeHubIntegrationTest {
 
     @Test
     public void testDownloadAndInstallPluginFromRozeHub() {
+        Assumptions.assumeTrue(isRozeHubReachable(), "RozeHub server not running at 127.0.0.1:8000");
         try {
             List<PluginItem> plugins = client.fetchMarketplacePlugins(null);
             PluginItem rozePlugin = plugins.stream()
@@ -76,6 +90,7 @@ public class RozeHubIntegrationTest {
 
     @Test
     public void testCheckForIdeUpdatesFromRozeHub() {
+        Assumptions.assumeTrue(isRozeHubReachable(), "RozeHub server not running at 127.0.0.1:8000");
         try {
             RozeHubClient.UpdateInfo updateInfo = client.checkForUpdates("0.1.0");
             assertNotNull(updateInfo);

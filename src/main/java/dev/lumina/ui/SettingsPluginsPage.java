@@ -737,6 +737,16 @@ public class SettingsPluginsPage extends VBox {
 
         Hyperlink homepageLink = new Hyperlink("Plugin homepage ↗");
         homepageLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0;");
+        homepageLink.setOnAction(e -> {
+            String url = p.getHomepageUrl();
+            if (url != null && !url.isBlank()) {
+                try {
+                    java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                } catch (Exception ex) {
+                    System.err.println("Could not open plugin homepage: " + ex.getMessage());
+                }
+            }
+        });
         vendorRow.getChildren().add(homepageLink);
 
         // 4. Action Bar (Install / Update / Disable split button with Uninstall)
