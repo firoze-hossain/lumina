@@ -457,16 +457,27 @@ public class SettingsCopyrightFormattingLanguagePage extends VBox {
             blockEnd = " -->";
             linePrefix = " - ";
             lineComment = "<!-- ";
+        } else if ("JSP".equalsIgnoreCase(language) || "JSPX".equalsIgnoreCase(language)) {
+            blockStart = "<%--";
+            blockEnd = "  --%>";
+            linePrefix = "  ~ ";
+            lineComment = "<%-- ";
         } else if (isXmlOrHtmlLanguage(language)) {
             blockStart = "<!--";
             blockEnd = "-->";
             linePrefix = " ~ ";
             lineComment = "<!-- ";
-        } else if ("Shell Script".equalsIgnoreCase(language) || "Properties".equalsIgnoreCase(language)) {
-            blockStart = "##";
-            blockEnd = "##";
+        } else if ("Shell Script".equalsIgnoreCase(language) || "Properties".equalsIgnoreCase(language)
+                || "SPI".equalsIgnoreCase(language) || "Spring Boot SPI".equalsIgnoreCase(language)) {
+            blockStart = "#";
+            blockEnd = "#";
             linePrefix = "# ";
             lineComment = "# ";
+        } else if ("Sass".equalsIgnoreCase(language)) {
+            blockStart = "//";
+            blockEnd = " /";
+            linePrefix = " / ";
+            lineComment = "// ";
         } else if ("SQL".equalsIgnoreCase(language)) {
             blockStart = "/*";
             blockEnd = " */";
@@ -516,6 +527,8 @@ public class SettingsCopyrightFormattingLanguagePage extends VBox {
             case "properties" -> "properties";
             case "rust" -> "rs";
             case "shell script" -> "sh";
+            case "spi" -> "spi";
+            case "spring boot spi" -> "factories";
             case "sql" -> "sql";
             default -> "txt";
         };
@@ -591,6 +604,10 @@ public class SettingsCopyrightFormattingLanguagePage extends VBox {
 
         if (locationInFileBox != null) {
             CopyrightFormattingOptions.LocationInFile loc = custom.getLocationInFile();
+            if (loc == null) {
+                loc = CopyrightFormattingOptions.getDefaultLocationForLanguage(language);
+                custom.setLocationInFile(loc);
+            }
             if (isJavaLanguage(language)) {
                 if (loc == CopyrightFormattingOptions.LocationInFile.BEFORE_IMPORTS) {
                     beforeImportsRadio.setSelected(true);

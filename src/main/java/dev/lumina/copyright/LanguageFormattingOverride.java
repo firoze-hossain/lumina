@@ -24,6 +24,8 @@ public class LanguageFormattingOverride {
     public LanguageFormattingOverride(String language, Mode mode) {
         this.language = language;
         this.mode = mode != null ? mode : Mode.USE_DEFAULT;
+        this.customOptions = new CopyrightFormattingOptions();
+        this.customOptions.setLocationInFile(CopyrightFormattingOptions.getDefaultLocationForLanguage(language));
     }
 
     public LanguageFormattingOverride(String language, Mode mode, CopyrightFormattingOptions customOptions) {
@@ -31,6 +33,9 @@ public class LanguageFormattingOverride {
         this.mode = mode != null ? mode : Mode.USE_DEFAULT;
         if (customOptions != null) {
             this.customOptions = customOptions.copy();
+        } else {
+            this.customOptions = new CopyrightFormattingOptions();
+            this.customOptions.setLocationInFile(CopyrightFormattingOptions.getDefaultLocationForLanguage(language));
         }
     }
 
@@ -53,6 +58,7 @@ public class LanguageFormattingOverride {
     public CopyrightFormattingOptions getCustomOptions() {
         if (customOptions == null) {
             customOptions = new CopyrightFormattingOptions();
+            customOptions.setLocationInFile(CopyrightFormattingOptions.getDefaultLocationForLanguage(language));
         }
         return customOptions;
     }
