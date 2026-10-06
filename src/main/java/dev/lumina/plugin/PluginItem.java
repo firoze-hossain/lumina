@@ -113,7 +113,12 @@ public class PluginItem {
     public String getVendorUrl() { return vendorUrl; }
     public void setVendorUrl(String vendorUrl) { this.vendorUrl = vendorUrl; }
 
-    public String getHomepageUrl() { return homepageUrl != null ? homepageUrl : "https://lumina.dev/plugins/" + id; }
+    public String getHomepageUrl() {
+        if (homepageUrl != null && !homepageUrl.isBlank() && !homepageUrl.contains("lumina.dev/plugins")) {
+            return homepageUrl;
+        }
+        return RozeHubClient.getInstance().getBaseUrl() + "/marketplace/" + (id != null ? id : "");
+    }
     public void setHomepageUrl(String homepageUrl) { this.homepageUrl = homepageUrl; }
 
     public String getDownloads() { return downloads != null ? downloads : "1.0M"; }

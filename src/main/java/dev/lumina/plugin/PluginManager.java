@@ -431,7 +431,7 @@ public class PluginManager {
         installedPlugins.add(ignore);
 
         // Default repositories
-        customRepositories.add("https://plugins.lumina.dev/plugins/nightly");
+        customRepositories.add(RozeHubClient.getInstance().getBaseUrl() + "/api/v1/marketplace/lumina");
     }
 
     // --- State Queries ---
