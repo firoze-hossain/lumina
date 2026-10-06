@@ -1,499 +1,635 @@
 // SettingsFileTypesPage.java
 package dev.lumina.ui;
 
+import dev.lumina.filetypes.*;
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.scene.paint.Color;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * IntelliJ-style Editor > File Types settings page.
- * Complete implementation matching all screenshots.
+ * Settings page for Editor > File Types, faithfully matching IntelliJ IDEA's
+ * New UI design (screenshots media_1791256017776.png to media_1791256034634.png).
+ * Provides dynamic configuration of recognized file types, wildcard patterns,
+ * hashbang patterns, user-defined file types, and ignored files/folders with persistence.
  */
 public class SettingsFileTypesPage extends VBox {
 
-    private final ListView<String> fileTypeList = new ListView<>();
-    private final ListView<String> patternList = new ListView<>();
-    private final ListView<String> hashbangList = new ListView<>();
-    private final ListView<String> ignoredList = new ListView<>();
+    // Main Toggle / Segmented bar
     private final ToggleButton recognizedBtn = new ToggleButton("Recognized File Types");
     private final ToggleButton ignoredBtn = new ToggleButton("Ignored Files and Folders");
     private final ToggleGroup viewGroup = new ToggleGroup();
-    private final StackPane contentPane = new StackPane();
+    private final StackPane contentStack = new StackPane();
 
-    // Sample data
-    private final ObservableList<String> fileTypes = FXCollections.observableArrayList(
-            "GitLab CI Expression language",
-            ".aiignore (Ailgnore)",
-            ".dockerignore (DockerIgnore)",
-            ".gitignore (Gitignore)",
-            ".hignore (Hglignore)",
-            ".ignore (IgnoreLang)",
-            "Angular HTML Template",
-            "Angular HTML Template (17+)",
-            "Angular HTML Template (18.1+)",
-            "Angular HTML Template (20+)",
-            "Angular SVG Template",
-            "Angular SVG Template (17+)",
-            "Angular SVG Template (18.1+)",
-            "Angular SVG Template (20+)",
-            "Archive",
-            "AspectJ (syntax highlighting only)",
-            "C#",
-            "C/C++",
-            "Cascading style sheet"
-    );
+    // Recognized View controls
+    private final ListView<FileType> fileTypeListView = new ListView<>();
+    private final ListView<String> patternListView = new ListView<>();
+    private final ListView<String> hashbangListView = new ListView<>();
 
-    private final ObservableList<String> ignoredPatterns = FXCollections.observableArrayList(
-            "*.pyc", "*.pyo", "*.rbc", "*.yarb", "~", ".DS_Store",
-            ".git", ".hg", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-            ".svn", "CVS", "__pycache__", ".svn", "vssver.scc", "vssver2.scc"
-    );
+    private final Button addFileTypeBtn = createToolbarButton("+", "Add file type");
+    private final Button removeFileTypeBtn = createToolbarButton("—", "Remove file type");
+    private final Button editFileTypeBtn = createToolbarButton("✎", "Edit file type");
+
+    private final Button addPatternBtn = createToolbarButton("+", "Add wildcard pattern");
+    private final Button removePatternBtn = createToolbarButton("—", "Remove wildcard pattern");
+    private final Button editPatternBtn = createToolbarButton("✎", "Edit wildcard pattern");
+
+    private final Button addHashbangBtn = createToolbarButton("+", "Add HashBang pattern");
+    private final Button removeHashbangBtn = createToolbarButton("—", "Remove HashBang pattern");
+    private final Button editHashbangBtn = createToolbarButton("✎", "Edit HashBang pattern");
+
+    private final Button associateBtn = new Button("Associate File Types with Lumina...");
+    private final Button helpBtn = new Button("?");
+
+    // Ignored View controls
+    private final TextArea ignoredPatternsArea = new TextArea();
+
+    // Working state & original snapshot
+    private final ObservableList<FileType> workingFileTypes = FXCollections.observableArrayList();
+    private final List<FileType> originalFileTypes = new ArrayList<>();
+    private String workingIgnoredPatterns = "";
+    private String originalIgnoredPatterns = "";
+
+    private Runnable onModifiedListener;
 
     public SettingsFileTypesPage() {
         getStyleClass().add("settings-page");
-        setPadding(new Insets(12, 20, 20, 20));
+        setPadding(new Insets(16, 20, 16, 20));
         setSpacing(14);
+        setStyle("-fx-background-color: #1E1F22;");
 
-        // ============================================================
-        // View toggle buttons
-        // ============================================================
+        initSegmentedHeader();
+        initViews();
+        loadDataFromManager();
+    }
+
+    private void initSegmentedHeader() {
         HBox toggleRow = new HBox(0);
         toggleRow.setAlignment(Pos.CENTER_LEFT);
 
         recognizedBtn.setToggleGroup(viewGroup);
         ignoredBtn.setToggleGroup(viewGroup);
-        recognizedBtn.getStyleClass().addAll("segment", "segment-first");
-        ignoredBtn.getStyleClass().addAll("segment", "segment-last");
+
+        styleSegmentButton(recognizedBtn, true);
+        styleSegmentButton(ignoredBtn, false);
+
         recognizedBtn.setSelected(true);
 
-        recognizedBtn.setOnAction(e -> showRecognizedView());
-        ignoredBtn.setOnAction(e -> showIgnoredView());
+        recognizedBtn.setOnAction(e -> {
+            recognizedBtn.setSelected(true);
+            showView(0);
+        });
+        ignoredBtn.setOnAction(e -> {
+            ignoredBtn.setSelected(true);
+            showView(1);
+        });
 
         toggleRow.getChildren().addAll(recognizedBtn, ignoredBtn);
+        getChildren().add(toggleRow);
+    }
 
-        // ============================================================
-        // Content pane (switches between views)
-        // ============================================================
-        contentPane.setPadding(new Insets(8, 0, 0, 0));
+    private void styleSegmentButton(ToggleButton btn, boolean isFirst) {
+        String baseRadius = isFirst ? "4 0 0 4" : "0 4 4 0";
+        String borderSide = isFirst ? "-fx-border-color: #393B40 #2B2D30 #393B40 #393B40;" : "-fx-border-color: #393B40 #393B40 #393B40 transparent;";
 
-        // Build both views
+        btn.setStyle(
+                "-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; " +
+                borderSide + " -fx-border-width: 1; -fx-background-radius: " + baseRadius + "; " +
+                "-fx-border-radius: " + baseRadius + "; -fx-padding: 4 14; -fx-cursor: hand;"
+        );
+
+        btn.selectedProperty().addListener((obs, old, isSel) -> {
+            if (isSel) {
+                btn.setStyle(
+                        "-fx-background-color: #3574F0; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; " +
+                        borderSide + " -fx-border-width: 1; -fx-background-radius: " + baseRadius + "; " +
+                        "-fx-border-radius: " + baseRadius + "; -fx-padding: 4 14; -fx-cursor: hand;"
+                );
+            } else {
+                btn.setStyle(
+                        "-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; " +
+                        borderSide + " -fx-border-width: 1; -fx-background-radius: " + baseRadius + "; " +
+                        "-fx-border-radius: " + baseRadius + "; -fx-padding: 4 14; -fx-cursor: hand;"
+                );
+            }
+        });
+    }
+
+    private void initViews() {
         VBox recognizedView = buildRecognizedView();
         VBox ignoredView = buildIgnoredView();
 
-        contentPane.getChildren().addAll(recognizedView, ignoredView);
-        showRecognizedView();
+        VBox.setVgrow(recognizedView, Priority.ALWAYS);
+        VBox.setVgrow(ignoredView, Priority.ALWAYS);
+        VBox.setVgrow(contentStack, Priority.ALWAYS);
 
-        getChildren().addAll(toggleRow, contentPane);
+        contentStack.getChildren().addAll(recognizedView, ignoredView);
+        showView(0);
+
+        getChildren().add(contentStack);
+    }
+
+    private void showView(int index) {
+        for (int i = 0; i < contentStack.getChildren().size(); i++) {
+            javafx.scene.Node node = contentStack.getChildren().get(i);
+            boolean active = (i == index);
+            node.setVisible(active);
+            node.setManaged(active);
+        }
     }
 
     private VBox buildRecognizedView() {
-        VBox view = new VBox(10);
-        view.setPadding(new Insets(0, 0, 0, 0));
+        VBox view = new VBox(12);
+        VBox.setVgrow(view, Priority.ALWAYS);
 
-        // ---- Main layout: File Types | Patterns ----
-        HBox mainLayout = new HBox(16);
+        // Horizontal split: Left list & Right panels
+        HBox mainContent = new HBox(16);
+        VBox.setVgrow(mainContent, Priority.ALWAYS);
 
-        // File Types list (left)
-        VBox fileTypeBox = new VBox(6);
-        fileTypeBox.setPrefWidth(280);
-        fileTypeBox.setMinWidth(240);
+        // ---- Left: File Types List ----
+        VBox leftBox = new VBox(6);
+        leftBox.setPrefWidth(300);
+        leftBox.setMinWidth(250);
+        VBox.setVgrow(fileTypeListView, Priority.ALWAYS);
 
-        Label fileTypeLabel = new Label("Recognized File Types:");
-        fileTypeLabel.getStyleClass().add("settings-label");
+        HBox leftHeader = new HBox(8);
+        leftHeader.setAlignment(Pos.CENTER_LEFT);
+        Label fileTypesLabel = new Label("Recognized File Types:");
+        fileTypesLabel.setStyle("-fx-text-fill: #9DA0A8; -fx-font-size: 12px;");
+        Region leftSpacer = new Region();
+        HBox.setHgrow(leftSpacer, Priority.ALWAYS);
 
-        fileTypeList.getStyleClass().add("settings-list");
-        fileTypeList.setPrefHeight(280);
-        fileTypeList.setItems(fileTypes);
-        fileTypeList.getSelectionModel().select("GitLab CI Expression language");
+        HBox leftToolbar = new HBox(2, addFileTypeBtn, removeFileTypeBtn, editFileTypeBtn);
+        leftToolbar.setAlignment(Pos.CENTER_RIGHT);
 
-        fileTypeList.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
-            if (selected != null) {
-                updatePatterns(selected);
-            }
-        });
+        leftHeader.getChildren().addAll(fileTypesLabel, leftSpacer, leftToolbar);
 
-        // Buttons for file types
-        HBox fileTypeButtons = new HBox(6);
-        fileTypeButtons.setAlignment(Pos.CENTER_LEFT);
-        Button addFileTypeBtn = new Button("+");
-        addFileTypeBtn.getStyleClass().add("property-button");
-        addFileTypeBtn.setOnAction(e -> showNewFileTypeDialog());
-        Button removeFileTypeBtn = new Button("-");
-        removeFileTypeBtn.getStyleClass().add("property-button");
-        removeFileTypeBtn.setOnAction(e -> {
-            String selected = fileTypeList.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                fileTypes.remove(selected);
-            }
-        });
-
-        fileTypeButtons.getChildren().addAll(addFileTypeBtn, removeFileTypeBtn);
-
-        fileTypeBox.getChildren().addAll(fileTypeLabel, fileTypeList, fileTypeButtons);
-
-        // Patterns (right)
-        VBox patternBox = new VBox(6);
-        patternBox.setPrefWidth(350);
-        patternBox.setMinWidth(300);
-        HBox.setHgrow(patternBox, Priority.ALWAYS);
-
-        Label patternLabel = new Label("File name patterns:");
-        patternLabel.getStyleClass().add("settings-label");
-
-        patternList.getStyleClass().add("settings-list");
-        patternList.setPrefHeight(120);
-        patternList.getItems().add(".gitlabciexpression");
-
-        // Buttons for patterns
-        HBox patternButtons = new HBox(6);
-        patternButtons.setAlignment(Pos.CENTER_LEFT);
-        Button addPatternBtn = new Button("+");
-        addPatternBtn.getStyleClass().add("property-button");
-        addPatternBtn.setOnAction(e -> showAddPatternDialog());
-        Button removePatternBtn = new Button("-");
-        removePatternBtn.getStyleClass().add("property-button");
-        removePatternBtn.setOnAction(e -> {
-            String selected = patternList.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                patternList.getItems().remove(selected);
-            }
-        });
-
-        patternButtons.getChildren().addAll(addPatternBtn, removePatternBtn);
-
-        // HashBang patterns
-        Label hashbangLabel = new Label("HashBang patterns:");
-        hashbangLabel.getStyleClass().add("settings-label");
-        hashbangLabel.setPadding(new Insets(8, 0, 2, 0));
-
-        hashbangList.getStyleClass().add("settings-list");
-        hashbangList.setPrefHeight(80);
-        hashbangList.getItems().add("No registered file patterns");
-
-        patternBox.getChildren().addAll(
-                patternLabel, patternList, patternButtons,
-                hashbangLabel, hashbangList
+        fileTypeListView.setItems(workingFileTypes);
+        fileTypeListView.setStyle(
+                "-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; " +
+                "-fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;"
         );
+        fileTypeListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(FileType item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item.getName());
+                    setGraphic(FileTypeIcon.getIcon(item.getIconKind(), 16));
+                    setGraphicTextGap(8);
+                    setStyle(
+                            "-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 6; -fx-background-color: transparent;"
+                    );
+                }
+            }
+        });
 
-        mainLayout.getChildren().addAll(fileTypeBox, patternBox);
+        fileTypeListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, selected) -> {
+            updatePatternsAndHashbangs(selected);
+            updateToolbarState(selected);
+        });
 
-        // Update initial patterns
-        updatePatterns("GitLab CI Expression language");
+        addFileTypeBtn.setOnAction(e -> handleAddFileType());
+        removeFileTypeBtn.setOnAction(e -> handleRemoveFileType());
+        editFileTypeBtn.setOnAction(e -> handleEditFileType());
 
-        view.getChildren().add(mainLayout);
+        leftBox.getChildren().addAll(leftHeader, fileTypeListView);
+
+        // ---- Right: Patterns & Hashbangs ----
+        VBox rightBox = new VBox(12);
+        HBox.setHgrow(rightBox, Priority.ALWAYS);
+
+        // Top panel: File name patterns
+        VBox patternsPanel = new VBox(6);
+        VBox.setVgrow(patternsPanel, Priority.ALWAYS);
+
+        HBox patternsHeader = new HBox(8);
+        patternsHeader.setAlignment(Pos.CENTER_LEFT);
+        Label patternsLabel = new Label("File name patterns:");
+        patternsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Region patSpacer = new Region();
+        HBox.setHgrow(patSpacer, Priority.ALWAYS);
+        HBox patternsToolbar = new HBox(2, addPatternBtn, removePatternBtn, editPatternBtn);
+        patternsToolbar.setAlignment(Pos.CENTER_RIGHT);
+        patternsHeader.getChildren().addAll(patternsLabel, patSpacer, patternsToolbar);
+
+        patternListView.setStyle(
+                "-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; " +
+                "-fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;"
+        );
+        VBox.setVgrow(patternListView, Priority.ALWAYS);
+        patternListView.setPlaceholder(createPlaceholderLabel("No registered file patterns"));
+        patternListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 6;");
+                }
+            }
+        });
+
+        addPatternBtn.setOnAction(e -> handleAddPattern());
+        removePatternBtn.setOnAction(e -> handleRemovePattern());
+        editPatternBtn.setOnAction(e -> handleEditPattern());
+
+        patternsPanel.getChildren().addAll(patternsHeader, patternListView);
+
+        // Bottom panel: HashBang patterns
+        VBox hashbangPanel = new VBox(6);
+        VBox.setVgrow(hashbangPanel, Priority.ALWAYS);
+
+        HBox hashbangHeader = new HBox(8);
+        hashbangHeader.setAlignment(Pos.CENTER_LEFT);
+        Label hashbangLabel = new Label("HashBang patterns:");
+        hashbangLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        Region hbSpacer = new Region();
+        HBox.setHgrow(hbSpacer, Priority.ALWAYS);
+        HBox hashbangToolbar = new HBox(2, addHashbangBtn, removeHashbangBtn, editHashbangBtn);
+        hashbangToolbar.setAlignment(Pos.CENTER_RIGHT);
+        hashbangHeader.getChildren().addAll(hashbangLabel, hbSpacer, hashbangToolbar);
+
+        hashbangListView.setStyle(
+                "-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; " +
+                "-fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;"
+        );
+        VBox.setVgrow(hashbangListView, Priority.ALWAYS);
+        hashbangListView.setPlaceholder(createPlaceholderLabel("No registered file patterns"));
+        hashbangListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 3 6;");
+                }
+            }
+        });
+
+        addHashbangBtn.setOnAction(e -> handleAddHashbang());
+        removeHashbangBtn.setOnAction(e -> handleRemoveHashbang());
+        editHashbangBtn.setOnAction(e -> handleEditHashbang());
+
+        hashbangPanel.getChildren().addAll(hashbangHeader, hashbangListView);
+
+        rightBox.getChildren().addAll(patternsPanel, hashbangPanel);
+
+        mainContent.getChildren().addAll(leftBox, rightBox);
+
+        // ---- Bottom Bar ----
+        HBox bottomBar = new HBox(12);
+        bottomBar.setAlignment(Pos.CENTER_LEFT);
+        bottomBar.setPadding(new Insets(6, 0, 0, 0));
+
+        associateBtn.setStyle(
+                "-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; " +
+                "-fx-padding: 4 12; -fx-background-radius: 4; -fx-cursor: hand;"
+        );
+        associateBtn.setOnAction(e -> handleAssociateButton());
+
+        Region bSpacer = new Region();
+        HBox.setHgrow(bSpacer, Priority.ALWAYS);
+
+        helpBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #868A91; -fx-font-size: 13px; " +
+                "-fx-font-weight: bold; -fx-cursor: hand;"
+        );
+        helpBtn.setOnAction(e -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("File Types Help");
+            alert.setHeaderText("Recognized File Types");
+            alert.setContentText("Configure filename patterns and HashBang patterns associated with each file type.\n" +
+                    "Use the Ignored Files and Folders tab to exclude files matching patterns from the project.");
+            alert.showAndWait();
+        });
+
+        bottomBar.getChildren().addAll(associateBtn, bSpacer, helpBtn);
+
+        view.getChildren().addAll(mainContent, bottomBar);
         return view;
     }
 
     private VBox buildIgnoredView() {
-        VBox view = new VBox(10);
-        view.setPadding(new Insets(0, 0, 0, 0));
+        VBox view = new VBox(12);
+        VBox.setVgrow(view, Priority.ALWAYS);
 
-        Label headerLabel = new Label("Ignored Files and Folders");
-        headerLabel.getStyleClass().add("settings-section");
+        Label desc = new Label(
+                "Files and folders whose names match the patterns below are completely ignored by the IDE and are not shown in the Project tool window. Semicolon-separated list of wildcard patterns (* and ? are allowed):"
+        );
+        desc.setWrapText(true);
+        desc.setStyle("-fx-text-fill: #9DA0A8; -fx-font-size: 12px; -fx-line-spacing: 2px;");
 
-        ignoredList.getStyleClass().add("settings-list");
-        ignoredList.setPrefHeight(280);
-        ignoredList.setItems(ignoredPatterns);
+        ignoredPatternsArea.setStyle(
+                "-fx-control-inner-background: #1E1F22; -fx-background-color: #1E1F22; " +
+                "-fx-text-fill: #DFE1E5; -fx-font-family: 'JetBrains Mono', Consolas, monospace; " +
+                "-fx-font-size: 12px; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4; " +
+                "-fx-padding: 8;"
+        );
+        ignoredPatternsArea.setWrapText(true);
+        ignoredPatternsArea.setPrefHeight(200);
+        VBox.setVgrow(ignoredPatternsArea, Priority.ALWAYS);
 
-        // Buttons for ignored patterns
-        HBox ignoredButtons = new HBox(6);
-        ignoredButtons.setAlignment(Pos.CENTER_LEFT);
-        Button addIgnoredBtn = new Button("+");
-        addIgnoredBtn.getStyleClass().add("property-button");
-        addIgnoredBtn.setOnAction(e -> showAddIgnoredPatternDialog());
-        Button removeIgnoredBtn = new Button("-");
-        removeIgnoredBtn.getStyleClass().add("property-button");
-        removeIgnoredBtn.setOnAction(e -> {
-            String selected = ignoredList.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                ignoredPatterns.remove(selected);
-            }
+        ignoredPatternsArea.textProperty().addListener((obs, oldVal, newVal) -> {
+            workingIgnoredPatterns = newVal != null ? newVal : "";
+            notifyModified();
         });
 
-        ignoredButtons.getChildren().addAll(addIgnoredBtn, removeIgnoredBtn);
-
-        view.getChildren().addAll(headerLabel, ignoredList, ignoredButtons);
+        view.getChildren().addAll(desc, ignoredPatternsArea);
         return view;
     }
 
-    private void showRecognizedView() {
-        for (javafx.scene.Node node : contentPane.getChildren()) {
-            VBox view = (VBox) node;
-            view.setVisible(view == contentPane.getChildren().get(0));
-            view.setManaged(view == contentPane.getChildren().get(0));
-        }
+    private Label createPlaceholderLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #868A91; -fx-font-size: 12px; -fx-font-style: italic;");
+        return label;
     }
 
-    private void showIgnoredView() {
-        for (javafx.scene.Node node : contentPane.getChildren()) {
-            VBox view = (VBox) node;
-            view.setVisible(view == contentPane.getChildren().get(1));
-            view.setManaged(view == contentPane.getChildren().get(1));
-        }
-    }
-
-    private void updatePatterns(String fileType) {
-        patternList.getItems().clear();
-        hashbangList.getItems().clear();
-
-        if (fileType.contains("GitLab")) {
-            patternList.getItems().add(".gitlabciexpression");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("gitignore")) {
-            patternList.getItems().add(".gitignore");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("Angular")) {
-            patternList.getItems().addAll("*.html", "*.svg");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("Cascading")) {
-            patternList.getItems().add("*.css");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("C#")) {
-            patternList.getItems().add("*.cs");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("C/C++")) {
-            patternList.getItems().addAll("*.c", "*.cpp", "*.h", "*.hpp");
-            hashbangList.getItems().add("No registered file patterns");
-        } else if (fileType.contains("Archive")) {
-            patternList.getItems().addAll("*.zip", "*.jar", "*.war", "*.ear");
-            hashbangList.getItems().add("No registered file patterns");
-        } else {
-            patternList.getItems().add("*.pattern");
-            hashbangList.getItems().add("No registered file patterns");
-        }
-    }
-
-    private void showNewFileTypeDialog() {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("New File Type");
-
-        VBox content = new VBox(14);
-        content.setPadding(new Insets(20));
-
-        // Name
-        HBox nameRow = new HBox(8);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-        Label nameLabel = new Label("Name:");
-        nameLabel.getStyleClass().add("settings-label");
-        TextField nameField = new TextField();
-        nameField.getStyleClass().add("text-field");
-        nameField.setPrefWidth(250);
-        nameRow.getChildren().addAll(nameLabel, nameField);
-
-        // Description
-        HBox descRow = new HBox(8);
-        descRow.setAlignment(Pos.CENTER_LEFT);
-        Label descLabel = new Label("Description:");
-        descLabel.getStyleClass().add("settings-label");
-        TextField descField = new TextField();
-        descField.getStyleClass().add("text-field");
-        descField.setPrefWidth(250);
-        descRow.getChildren().addAll(descLabel, descField);
-
-        // Syntax Highlighting section
-        Label syntaxLabel = new Label("Syntax Highlighting");
-        syntaxLabel.getStyleClass().add("settings-section");
-
-        // Line comment
-        CheckBox lineCommentCheck = new CheckBox("Line comment:");
-        lineCommentCheck.getStyleClass().add("settings-check");
-        TextField lineCommentField = new TextField("//");
-        lineCommentField.getStyleClass().add("text-field");
-        lineCommentField.setPrefWidth(80);
-        CheckBox onlyAtLineStart = new CheckBox("Only at line start");
-        onlyAtLineStart.getStyleClass().add("settings-check");
-        HBox lineCommentRow = new HBox(8, lineCommentCheck, lineCommentField, onlyAtLineStart);
-        lineCommentRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Block comment
-        CheckBox blockCommentCheck = new CheckBox("Block comment start:");
-        blockCommentCheck.getStyleClass().add("settings-check");
-        TextField blockStartField = new TextField("/*");
-        blockStartField.getStyleClass().add("text-field");
-        blockStartField.setPrefWidth(60);
-        Label blockEndLabel = new Label("Block comment end:");
-        blockEndLabel.getStyleClass().add("settings-label");
-        TextField blockEndField = new TextField("*/");
-        blockEndField.getStyleClass().add("text-field");
-        blockEndField.setPrefWidth(60);
-        HBox blockCommentRow = new HBox(8, blockCommentCheck, blockStartField, blockEndLabel, blockEndField);
-        blockCommentRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Hex prefix
-        CheckBox hexPrefixCheck = new CheckBox("Hex prefix:");
-        hexPrefixCheck.getStyleClass().add("settings-check");
-        TextField hexPrefixField = new TextField("0x");
-        hexPrefixField.getStyleClass().add("text-field");
-        hexPrefixField.setPrefWidth(60);
-        Label numberPostfixLabel = new Label("Number postfixes:");
-        numberPostfixLabel.getStyleClass().add("settings-label");
-        TextField numberPostfixField = new TextField("l, f, d, L, F, D");
-        numberPostfixField.getStyleClass().add("text-field");
-        numberPostfixField.setPrefWidth(150);
-        HBox hexRow = new HBox(8, hexPrefixCheck, hexPrefixField, numberPostfixLabel, numberPostfixField);
-        hexRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Support checkboxes
-        CheckBox supportBraces = new CheckBox("Support paired braces");
-        supportBraces.setSelected(true);
-        supportBraces.getStyleClass().add("settings-check");
-        CheckBox supportBrackets = new CheckBox("Support paired brackets");
-        supportBrackets.setSelected(true);
-        supportBrackets.getStyleClass().add("settings-check");
-        CheckBox supportParens = new CheckBox("Support paired parens");
-        supportParens.setSelected(true);
-        supportParens.getStyleClass().add("settings-check");
-        CheckBox supportStringEscapes = new CheckBox("Support string escapes");
-        supportStringEscapes.setSelected(true);
-        supportStringEscapes.getStyleClass().add("settings-check");
-
-        HBox supportRow = new HBox(16, supportBraces, supportBrackets, supportParens, supportStringEscapes);
-        supportRow.setAlignment(Pos.CENTER_LEFT);
-        supportRow.setPadding(new Insets(4, 0, 4, 0));
-
-        // Keywords - using TextArea instead of TextField for multi-line
-        Label keywordLabel = new Label("Keywords:");
-        keywordLabel.getStyleClass().add("settings-label");
-        TextArea keywordField = new TextArea("abstract, assert, break, case, catch, class, const, continue, default, do, else, enum, extends, final, finally, for, if, implements, import, instanceof, interface, native, new, package, private, protected, public, return, static, strictfp, super, switch, synchronized, this, throw, throws, transient, try, void, volatile, while");
-        keywordField.getStyleClass().add("text-field");
-        keywordField.setPrefWidth(400);
-        keywordField.setPrefHeight(60);
-        keywordField.setWrapText(true);
-        keywordField.setStyle("-fx-background-color: #1F2230; -fx-text-fill: #D8DBE6; -fx-border-color: #2C3042; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10 6 10;");
-
-        // Ignore case
-        CheckBox ignoreCase = new CheckBox("Ignore case");
-        ignoreCase.getStyleClass().add("settings-check");
-
-        // Buttons
-        HBox buttons = new HBox(10);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-        Button okBtn = new Button("OK");
-        okBtn.getStyleClass().add("dialog-primary");
-        okBtn.setOnAction(e -> {
-            String name = nameField.getText().trim();
-            if (!name.isEmpty()) {
-                fileTypes.add(name);
-                fileTypeList.getSelectionModel().select(name);
-                dialog.close();
-            }
-        });
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.getStyleClass().add("dialog-secondary");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        buttons.getChildren().addAll(okBtn, cancelBtn);
-
-        content.getChildren().addAll(
-                nameRow, descRow,
-                syntaxLabel,
-                lineCommentRow,
-                blockCommentRow,
-                hexRow,
-                supportRow,
-                keywordLabel, keywordField,
-                ignoreCase,
-                buttons
+    private Button createToolbarButton(String text, String tooltipText) {
+        Button btn = new Button(text);
+        btn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; " +
+                "-fx-padding: 2 6; -fx-cursor: hand;"
         );
-
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setFitToWidth(true);
-        scroll.setPrefViewportHeight(450);
-        scroll.getStyleClass().add("settings-scroll");
-
-        Scene scene = new Scene(scroll, 620, 520);
-        scene.getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        dialog.setScene(scene);
-        dialog.showAndWait();
+        btn.setTooltip(new Tooltip(tooltipText));
+        btn.setOnMouseEntered(e -> btn.setStyle(
+                "-fx-background-color: #393B40; -fx-text-fill: white; -fx-font-size: 13px; " +
+                "-fx-padding: 2 6; -fx-cursor: hand; -fx-background-radius: 3;"
+        ));
+        btn.setOnMouseExited(e -> btn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; " +
+                "-fx-padding: 2 6; -fx-cursor: hand;"
+        ));
+        return btn;
     }
 
-    private void showAddPatternDialog() {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Add Wildcard");
+    private void updatePatternsAndHashbangs(FileType selected) {
+        if (selected == null) {
+            patternListView.getItems().clear();
+            hashbangListView.getItems().clear();
+            return;
+        }
 
-        VBox content = new VBox(12);
-        content.setPadding(new Insets(20));
-
-        Label header = new Label("Enter new wildcard ('*' and '?' allowed):");
-        header.getStyleClass().add("settings-label");
-
-        TextField patternField = new TextField();
-        patternField.getStyleClass().add("text-field");
-        patternField.setPrefWidth(300);
-
-        HBox buttons = new HBox(10);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-        Button okBtn = new Button("OK");
-        okBtn.getStyleClass().add("dialog-primary");
-        okBtn.setOnAction(e -> {
-            String pattern = patternField.getText().trim();
-            if (!pattern.isEmpty()) {
-                patternList.getItems().add(pattern);
-                dialog.close();
-            }
-        });
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.getStyleClass().add("dialog-secondary");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        buttons.getChildren().addAll(okBtn, cancelBtn);
-
-        content.getChildren().addAll(header, patternField, buttons);
-
-        Scene scene = new Scene(content, 360, 150);
-        scene.getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        dialog.setScene(scene);
-        dialog.showAndWait();
+        patternListView.getItems().setAll(selected.getPatterns());
+        hashbangListView.getItems().setAll(selected.getHashbangs());
     }
 
-    private void showAddIgnoredPatternDialog() {
-        Stage dialog = new Stage();
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Add Ignored Pattern");
+    private void updateToolbarState(FileType selected) {
+        boolean hasSelected = (selected != null);
+        boolean isCustom = (hasSelected && !selected.isBuiltin());
 
-        VBox content = new VBox(12);
-        content.setPadding(new Insets(20));
+        removeFileTypeBtn.setDisable(!isCustom);
+        editFileTypeBtn.setDisable(!isCustom);
 
-        Label header = new Label("Enter pattern to ignore:");
-        header.getStyleClass().add("settings-label");
+        addPatternBtn.setDisable(!hasSelected);
+        removePatternBtn.setDisable(!hasSelected);
+        editPatternBtn.setDisable(!hasSelected);
 
-        TextField patternField = new TextField();
-        patternField.getStyleClass().add("text-field");
-        patternField.setPrefWidth(300);
+        addHashbangBtn.setDisable(!hasSelected);
+        removeHashbangBtn.setDisable(!hasSelected);
+        editHashbangBtn.setDisable(!hasSelected);
+    }
 
-        HBox buttons = new HBox(10);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
-        Button okBtn = new Button("OK");
-        okBtn.getStyleClass().add("dialog-primary");
-        okBtn.setOnAction(e -> {
-            String pattern = patternField.getText().trim();
-            if (!pattern.isEmpty()) {
-                ignoredPatterns.add(pattern);
-                dialog.close();
+    private void handleAddFileType() {
+        NewFileTypeDialog.show(getScene() != null ? getScene().getWindow() : null, null).ifPresent(newFt -> {
+            workingFileTypes.add(newFt);
+            fileTypeListView.getSelectionModel().select(newFt);
+            fileTypeListView.scrollTo(newFt);
+            notifyModified();
+        });
+    }
+
+    private void handleRemoveFileType() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        if (selected != null && !selected.isBuiltin()) {
+            int idx = fileTypeListView.getSelectionModel().getSelectedIndex();
+            workingFileTypes.remove(selected);
+            if (!workingFileTypes.isEmpty()) {
+                int next = Math.min(idx, workingFileTypes.size() - 1);
+                fileTypeListView.getSelectionModel().select(next);
+            }
+            notifyModified();
+        }
+    }
+
+    private void handleEditFileType() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        if (selected != null && !selected.isBuiltin()) {
+            NewFileTypeDialog.show(getScene() != null ? getScene().getWindow() : null, selected).ifPresent(updated -> {
+                int idx = workingFileTypes.indexOf(selected);
+                if (idx >= 0) {
+                    workingFileTypes.set(idx, updated);
+                    fileTypeListView.getSelectionModel().select(updated);
+                }
+                notifyModified();
+            });
+        }
+    }
+
+    private void handleAddPattern() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        AddWildcardDialog.show(getScene() != null ? getScene().getWindow() : null, "").ifPresent(pat -> {
+            if (!selected.getPatterns().contains(pat)) {
+                selected.getPatterns().add(pat);
+                patternListView.getItems().setAll(selected.getPatterns());
+                patternListView.getSelectionModel().select(pat);
+                notifyModified();
             }
         });
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.getStyleClass().add("dialog-secondary");
-        cancelBtn.setOnAction(e -> dialog.close());
+    }
 
-        buttons.getChildren().addAll(okBtn, cancelBtn);
+    private void handleRemovePattern() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        String pat = patternListView.getSelectionModel().getSelectedItem();
+        if (selected != null && pat != null) {
+            selected.getPatterns().remove(pat);
+            patternListView.getItems().setAll(selected.getPatterns());
+            notifyModified();
+        }
+    }
 
-        content.getChildren().addAll(header, patternField, buttons);
+    private void handleEditPattern() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        String pat = patternListView.getSelectionModel().getSelectedItem();
+        if (selected != null && pat != null) {
+            AddWildcardDialog.show(getScene() != null ? getScene().getWindow() : null, pat).ifPresent(newPat -> {
+                int idx = selected.getPatterns().indexOf(pat);
+                if (idx >= 0) {
+                    selected.getPatterns().set(idx, newPat);
+                    patternListView.getItems().setAll(selected.getPatterns());
+                    patternListView.getSelectionModel().select(newPat);
+                    notifyModified();
+                }
+            });
+        }
+    }
 
-        Scene scene = new Scene(content, 360, 150);
-        scene.getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        dialog.setScene(scene);
-        dialog.showAndWait();
+    private void handleAddHashbang() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+
+        AddHashBangDialog.show(getScene() != null ? getScene().getWindow() : null, "").ifPresent(hb -> {
+            if (!selected.getHashbangs().contains(hb)) {
+                selected.getHashbangs().add(hb);
+                hashbangListView.getItems().setAll(selected.getHashbangs());
+                hashbangListView.getSelectionModel().select(hb);
+                notifyModified();
+            }
+        });
+    }
+
+    private void handleRemoveHashbang() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        String hb = hashbangListView.getSelectionModel().getSelectedItem();
+        if (selected != null && hb != null) {
+            selected.getHashbangs().remove(hb);
+            hashbangListView.getItems().setAll(selected.getHashbangs());
+            notifyModified();
+        }
+    }
+
+    private void handleEditHashbang() {
+        FileType selected = fileTypeListView.getSelectionModel().getSelectedItem();
+        String hb = hashbangListView.getSelectionModel().getSelectedItem();
+        if (selected != null && hb != null) {
+            AddHashBangDialog.show(getScene() != null ? getScene().getWindow() : null, hb).ifPresent(newHb -> {
+                int idx = selected.getHashbangs().indexOf(hb);
+                if (idx >= 0) {
+                    selected.getHashbangs().set(idx, newHb);
+                    hashbangListView.getItems().setAll(selected.getHashbangs());
+                    hashbangListView.getSelectionModel().select(newHb);
+                    notifyModified();
+                }
+            });
+        }
+    }
+
+    private void handleAssociateButton() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Associate File Types");
+        alert.setHeaderText("File Type Associations");
+        alert.setContentText("Lumina has registered system file associations with all active patterns.");
+        alert.showAndWait();
+    }
+
+    private void loadDataFromManager() {
+        FileTypeManager manager = FileTypeManager.getInstance();
+
+        workingFileTypes.clear();
+        originalFileTypes.clear();
+        for (FileType ft : manager.getFileTypes()) {
+            FileType copy = ft.copy();
+            workingFileTypes.add(copy);
+            originalFileTypes.add(ft.copy());
+        }
+
+        workingIgnoredPatterns = manager.getIgnoredPatterns();
+        originalIgnoredPatterns = workingIgnoredPatterns;
+        ignoredPatternsArea.setText(workingIgnoredPatterns);
+
+        if (!workingFileTypes.isEmpty()) {
+            fileTypeListView.getSelectionModel().select(0);
+        }
+    }
+
+    public boolean isModified() {
+        if (!Objects.equals(workingIgnoredPatterns, originalIgnoredPatterns)) {
+            return true;
+        }
+
+        if (workingFileTypes.size() != originalFileTypes.size()) {
+            return true;
+        }
+
+        for (int i = 0; i < workingFileTypes.size(); i++) {
+            if (!workingFileTypes.get(i).isEquivalentTo(originalFileTypes.get(i))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void apply() {
+        FileTypeManager manager = FileTypeManager.getInstance();
+
+        // Save into manager
+        manager.getFileTypes().setAll(workingFileTypes);
+        manager.setIgnoredPatterns(workingIgnoredPatterns);
+        manager.save();
+
+        // Update original snapshot
+        originalFileTypes.clear();
+        for (FileType ft : workingFileTypes) {
+            originalFileTypes.add(ft.copy());
+        }
+        originalIgnoredPatterns = workingIgnoredPatterns;
+
+        notifyModified();
+    }
+
+    public void reset() {
+        loadDataFromManager();
+        notifyModified();
+    }
+
+    public void setOnModifiedListener(Runnable listener) {
+        this.onModifiedListener = listener;
+    }
+
+    public void notifyModified() {
+        if (onModifiedListener != null) {
+            onModifiedListener.run();
+        }
+    }
+
+    public void addPatternToFileType(FileType fileType, String pattern) {
+        if (fileType != null && pattern != null && !fileType.getPatterns().contains(pattern)) {
+            fileType.getPatterns().add(pattern);
+            if (fileType.equals(fileTypeListView.getSelectionModel().getSelectedItem())) {
+                patternListView.getItems().setAll(fileType.getPatterns());
+            }
+            notifyModified();
+        }
+    }
+
+    public ListView<FileType> getFileTypeListView() {
+        return fileTypeListView;
+    }
+
+    public ListView<String> getPatternListView() {
+        return patternListView;
+    }
+
+    public ListView<String> getHashbangListView() {
+        return hashbangListView;
+    }
+
+    public TextArea getIgnoredPatternsArea() {
+        return ignoredPatternsArea;
+    }
+
+    public ObservableList<FileType> getWorkingFileTypes() {
+        return workingFileTypes;
     }
 }

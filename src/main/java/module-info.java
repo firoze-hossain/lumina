@@ -35,4 +35,6 @@ module dev.lumina {
     exports dev.lumina.spring;
     exports dev.lumina.livetemplates;
     opens dev.lumina.livetemplates to com.google.gson;
+    exports dev.lumina.filetypes;
+    opens dev.lumina.filetypes to com.google.gson;
 }
