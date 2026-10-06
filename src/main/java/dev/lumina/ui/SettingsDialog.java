@@ -5,6 +5,7 @@ import dev.lumina.settings.EditorColorSchemeSettings.AttributesDescriptor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -76,6 +77,8 @@ public class SettingsDialog {
     private SettingsFileTypesPage currentFileTypesPage;
     private SettingsCopyrightPage currentCopyrightPage;
     private SettingsCopyrightProfilesPage currentCopyrightProfilesPage;
+    private SettingsCopyrightFormattingPage currentCopyrightFormattingPage;
+    private final java.util.Map<String, SettingsCopyrightFormattingLanguagePage> languageFormattingPages = new java.util.HashMap<>();
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1491,6 +1494,31 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Formatting".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Copyright".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCopyrightFormattingPage != null) {
+                            currentCopyrightFormattingPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if (chain.stream().anyMatch(ci -> "Formatting".equals(ci.getValue())) && chain.stream().anyMatch(ci -> "Copyright".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        SettingsCopyrightFormattingLanguagePage lp = languageFormattingPages.get(item.getValue());
+                        if (lp != null) {
+                            lp.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -1571,6 +1599,8 @@ public class SettingsDialog {
         boolean underColorScheme = false;
         boolean underCodeStyle = false;
         boolean underSmartKeys = false;
+        boolean underCopyright = false;
+        boolean underFormatting = false;
 
         while (ancestor != null) {
             String v = ancestor.getValue();
@@ -1580,6 +1610,8 @@ public class SettingsDialog {
                 if (v.equals("Color Scheme")) underColorScheme = true;
                 if (v.equals("Code Style")) underCodeStyle = true;
                 if (v.equals("Smart Keys")) underSmartKeys = true;
+                if (v.equals("Copyright")) underCopyright = true;
+                if (v.equals("Formatting")) underFormatting = true;
             }
             ancestor = ancestor.getParent();
         }
@@ -3058,6 +3090,30 @@ public class SettingsDialog {
                 VBox.setVgrow(currentCopyrightProfilesPage, Priority.ALWAYS);
                 contentContainer.setStyle("-fx-background-color: #1E1F22;");
                 contentContainer.getChildren().setAll(currentCopyrightProfilesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Formatting".equals(pageName) && (underCopyright || "Copyright".equals(selected.getParent() != null ? selected.getParent().getValue() : ""))) {
+                if (currentCopyrightFormattingPage == null) {
+                    currentCopyrightFormattingPage = new SettingsCopyrightFormattingPage();
+                }
+                currentCopyrightFormattingPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentCopyrightFormattingPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentCopyrightFormattingPage);
+                updateApplyButtonState();
+                return;
+            }
+            if (underFormatting) {
+                SettingsCopyrightFormattingLanguagePage langPage =
+                        languageFormattingPages.computeIfAbsent(pageName, k -> {
+                            SettingsCopyrightFormattingLanguagePage p = new SettingsCopyrightFormattingLanguagePage(k);
+                            p.setOnModifiedListener(this::updateApplyButtonState);
+                            return p;
+                        });
+                VBox.setVgrow(langPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(langPage);
                 updateApplyButtonState();
                 return;
             }
@@ -4837,6 +4893,14 @@ public class SettingsDialog {
         if (currentCopyrightProfilesPage != null && currentCopyrightProfilesPage.isModified()) {
             currentCopyrightProfilesPage.apply();
         }
+        if (currentCopyrightFormattingPage != null && currentCopyrightFormattingPage.isModified()) {
+            currentCopyrightFormattingPage.apply();
+        }
+        for (SettingsCopyrightFormattingLanguagePage lp : languageFormattingPages.values()) {
+            if (lp.isModified()) {
+                lp.apply();
+            }
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5096,6 +5160,8 @@ public class SettingsDialog {
                 || (currentFileTypesPage != null && currentFileTypesPage.isModified())
                 || (currentCopyrightPage != null && currentCopyrightPage.isModified())
                 || (currentCopyrightProfilesPage != null && currentCopyrightProfilesPage.isModified())
+                || (currentCopyrightFormattingPage != null && currentCopyrightFormattingPage.isModified())
+                || languageFormattingPages.values().stream().anyMatch(SettingsCopyrightFormattingLanguagePage::isModified)
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5506,6 +5572,12 @@ public class SettingsDialog {
             if (currentCopyrightProfilesPage != null) {
                 currentCopyrightProfilesPage.reset();
             }
+            if (currentCopyrightFormattingPage != null) {
+                currentCopyrightFormattingPage.reset();
+            }
+            for (SettingsCopyrightFormattingLanguagePage lp : languageFormattingPages.values()) {
+                lp.reset();
+            }
             stage.close();
         });
 
@@ -5545,6 +5617,14 @@ public class SettingsDialog {
 
     public SettingsCopyrightProfilesPage getCurrentCopyrightProfilesPage() {
         return currentCopyrightProfilesPage;
+    }
+
+    public SettingsCopyrightFormattingPage getCurrentCopyrightFormattingPage() {
+        return currentCopyrightFormattingPage;
+    }
+
+    public Map<String, SettingsCopyrightFormattingLanguagePage> getLanguageFormattingPages() {
+        return languageFormattingPages;
     }
 
     public SettingsColorSchemeDebuggerPage getCurrentColorSchemeDebuggerPage() {
