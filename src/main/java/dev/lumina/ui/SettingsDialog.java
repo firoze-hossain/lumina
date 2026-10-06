@@ -4546,9 +4546,9 @@ public class SettingsDialog {
                 new TreeItem<>("JSP"), new TreeItem<>("JSPX"), new TreeItem<>("Kotlin"),
                 new TreeItem<>("Less"), new TreeItem<>("PostCSS"), new TreeItem<>("Properties"),
                 new TreeItem<>("Rust"), new TreeItem<>("Sass"), new TreeItem<>("SCSS"),
-                new TreeItem<>("Shell Script"), new TreeItem<>("SPI"), new TreeItem<>("SQL"),
-                new TreeItem<>("SVG"), new TreeItem<>("TypeScript"), new TreeItem<>("Vue template"),
-                new TreeItem<>("XHTML"), new TreeItem<>("XML")
+                new TreeItem<>("Shell Script"), new TreeItem<>("SPI"), new TreeItem<>("Spring Boot SPI"),
+                new TreeItem<>("SQL"), new TreeItem<>("SVG"), new TreeItem<>("TypeScript"),
+                new TreeItem<>("Vue template"), new TreeItem<>("XHTML"), new TreeItem<>("XML")
         );
         copyright.getChildren().addAll(copyrightProfiles, formatting);
 

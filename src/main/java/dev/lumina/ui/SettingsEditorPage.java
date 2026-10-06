@@ -124,6 +124,7 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("SCSS") ||
                 pageName.equals("Shell Script") ||
                 pageName.equals("SPI") ||
+                pageName.equals("Spring Boot SPI") ||
                 pageName.equals("SQL") ||
                 pageName.equals("SVG") ||
                 pageName.equals("TypeScript") ||

@@ -190,4 +190,36 @@ public class CopyrightFormattingTest {
         assertEquals(CopyrightFormattingOptions.LocationInFile.BEFORE_DOCTYPE,
                 CopyrightFormattingOptions.getDefaultLocationForLanguage("HTML"));
     }
+
+    @Test
+    void testFormatPreviewLanguageStyles() {
+        CopyrightFormattingOptions opts = new CopyrightFormattingOptions();
+        String[] lines = new String[]{"Copyright (c) 2026", "Lumina Project"};
+
+        // Properties & Shell Script style: "#", "# ", "#"
+        String propFmt = opts.formatPreview(lines, "#", "#", "# ", "# ");
+        assertTrue(propFmt.startsWith("#\n"));
+        assertTrue(propFmt.contains("# Copyright (c) 2026\n"));
+        assertTrue(propFmt.contains("# Lumina Project\n"));
+        assertTrue(propFmt.endsWith("#\n"));
+
+        // Sass style: "//", " / ", " /"
+        String sassFmt = opts.formatPreview(lines, "//", " /", " / ", "// ");
+        assertTrue(sassFmt.startsWith("//\n"));
+        assertTrue(sassFmt.contains(" / Copyright (c) 2026\n"));
+        assertTrue(sassFmt.contains(" / Lumina Project\n"));
+        assertTrue(sassFmt.endsWith(" /\n"));
+
+        // JSP style: "<%--", "  ~ ", "  --%>"
+        String jspFmt = opts.formatPreview(lines, "<%--", "  --%>", "  ~ ", "<%-- ");
+        assertTrue(jspFmt.startsWith("<%--\n"));
+        assertTrue(jspFmt.contains("  ~ Copyright (c) 2026\n"));
+        assertTrue(jspFmt.endsWith("  --%>\n"));
+
+        // DTD style: "<!--", " - ", " -->"
+        String dtdFmt = opts.formatPreview(lines, "<!--", " -->", " - ", "<!-- ");
+        assertTrue(dtdFmt.startsWith("<!--\n"));
+        assertTrue(dtdFmt.contains(" - Copyright (c) 2026\n"));
+        assertTrue(dtdFmt.endsWith(" -->\n"));
+    }
 }

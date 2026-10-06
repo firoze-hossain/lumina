@@ -203,4 +203,49 @@ public class SettingsCopyrightFormattingPageTest {
         });
         assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
+
+    @Test
+    void testLanguagePreviewsAndNewSubclasses() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                // Properties Page
+                SettingsCopyrightFormattingPropertiesPage propPage = new SettingsCopyrightFormattingPropertiesPage();
+                assertEquals("Properties", propPage.getLanguage());
+                assertNull(propPage.getLocationInFileBox());
+                String propPreview = propPage.getPreviewCodeArea().getText();
+                assertTrue(propPreview.startsWith("#\n"));
+                assertTrue(propPreview.contains("# Copyright (c)"));
+                assertTrue(propPreview.endsWith("#\n"));
+
+                // Shell Script Page
+                SettingsCopyrightFormattingShellScriptPage shPage = new SettingsCopyrightFormattingShellScriptPage();
+                assertEquals("Shell Script", shPage.getLanguage());
+                String shPreview = shPage.getPreviewCodeArea().getText();
+                assertTrue(shPreview.startsWith("#\n"));
+                assertTrue(shPreview.contains("# Copyright (c)"));
+                assertTrue(shPreview.endsWith("#\n"));
+
+                // Sass Page
+                SettingsCopyrightFormattingSassPage sassPage = new SettingsCopyrightFormattingSassPage();
+                assertEquals("Sass", sassPage.getLanguage());
+                String sassPreview = sassPage.getPreviewCodeArea().getText();
+                assertTrue(sassPreview.startsWith("//\n"));
+                assertTrue(sassPreview.contains(" / Copyright (c)"));
+                assertTrue(sassPreview.endsWith(" /\n"));
+
+                // Spring Boot SPI Page
+                SettingsCopyrightFormattingSpringBootSPIPage spiPage = new SettingsCopyrightFormattingSpringBootSPIPage();
+                assertEquals("Spring Boot SPI", spiPage.getLanguage());
+                String spiPreview = spiPage.getPreviewCodeArea().getText();
+                assertTrue(spiPreview.startsWith("#\n"));
+                assertTrue(spiPreview.contains("# Copyright (c)"));
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
 }
