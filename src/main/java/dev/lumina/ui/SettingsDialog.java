@@ -74,6 +74,8 @@ public class SettingsDialog {
     private SettingsFileEncodingsPage currentFileEncodingsPage;
     private SettingsLiveTemplatesPage currentLiveTemplatesPage;
     private SettingsFileTypesPage currentFileTypesPage;
+    private SettingsCopyrightPage currentCopyrightPage;
+    private SettingsCopyrightProfilesPage currentCopyrightProfilesPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1461,6 +1463,30 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentFileTypesPage != null) {
                             currentFileTypesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Copyright".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCopyrightPage != null) {
+                            currentCopyrightPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Copyright Profiles".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCopyrightProfilesPage != null) {
+                            currentCopyrightProfilesPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3003,6 +3029,35 @@ public class SettingsDialog {
                 VBox.setVgrow(currentFileTypesPage, Priority.ALWAYS);
                 contentContainer.setStyle("-fx-background-color: #1E1F22;");
                 contentContainer.getChildren().setAll(currentFileTypesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Copyright".equals(pageName)) {
+                if (currentCopyrightPage == null) {
+                    currentCopyrightPage = new SettingsCopyrightPage();
+                    currentCopyrightPage.setOnNavigateToScopes(() -> {
+                        TreeItem<String> scopesItem = findItem(tree.getRoot(), "Scopes");
+                        if (scopesItem != null) {
+                            expandAncestors(scopesItem);
+                            tree.getSelectionModel().select(scopesItem);
+                        }
+                    });
+                }
+                currentCopyrightPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentCopyrightPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentCopyrightPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Copyright Profiles".equals(pageName)) {
+                if (currentCopyrightProfilesPage == null) {
+                    currentCopyrightProfilesPage = new SettingsCopyrightProfilesPage();
+                }
+                currentCopyrightProfilesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentCopyrightProfilesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentCopyrightProfilesPage);
                 updateApplyButtonState();
                 return;
             }
@@ -4776,6 +4831,12 @@ public class SettingsDialog {
         if (currentFileTypesPage != null && currentFileTypesPage.isModified()) {
             currentFileTypesPage.apply();
         }
+        if (currentCopyrightPage != null && currentCopyrightPage.isModified()) {
+            currentCopyrightPage.apply();
+        }
+        if (currentCopyrightProfilesPage != null && currentCopyrightProfilesPage.isModified()) {
+            currentCopyrightProfilesPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5033,6 +5094,8 @@ public class SettingsDialog {
                 || (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified())
                 || (currentLiveTemplatesPage != null && currentLiveTemplatesPage.isModified())
                 || (currentFileTypesPage != null && currentFileTypesPage.isModified())
+                || (currentCopyrightPage != null && currentCopyrightPage.isModified())
+                || (currentCopyrightProfilesPage != null && currentCopyrightProfilesPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5437,6 +5500,12 @@ public class SettingsDialog {
             if (currentFileTypesPage != null) {
                 currentFileTypesPage.reset();
             }
+            if (currentCopyrightPage != null) {
+                currentCopyrightPage.reset();
+            }
+            if (currentCopyrightProfilesPage != null) {
+                currentCopyrightProfilesPage.reset();
+            }
             stage.close();
         });
 
@@ -5468,6 +5537,14 @@ public class SettingsDialog {
 
     public SettingsFileTypesPage getCurrentFileTypesPage() {
         return currentFileTypesPage;
+    }
+
+    public SettingsCopyrightPage getCurrentCopyrightPage() {
+        return currentCopyrightPage;
+    }
+
+    public SettingsCopyrightProfilesPage getCurrentCopyrightProfilesPage() {
+        return currentCopyrightProfilesPage;
     }
 
     public SettingsColorSchemeDebuggerPage getCurrentColorSchemeDebuggerPage() {
