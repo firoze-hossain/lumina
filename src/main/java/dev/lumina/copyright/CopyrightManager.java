@@ -11,13 +11,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
- * Manages copyright profiles, default project copyright, and scope mappings,
- * mirroring IntelliJ IDEA's dynamic Copyright configuration.
+ * Manages copyright profiles, default project copyright, scope mappings,
+ * and copyright formatting options & per-language overrides, mirroring
+ * IntelliJ IDEA's dynamic Copyright configuration.
  */
 public class CopyrightManager {
 
@@ -35,6 +34,12 @@ public class CopyrightManager {
     private String defaultProjectCopyright = NO_COPYRIGHT;
     private final ObservableList<CopyrightProfile> profiles = FXCollections.observableArrayList();
     private final ObservableList<ScopeCopyrightMapping> scopeMappings = FXCollections.observableArrayList();
+
+    // Default formatting options (Editor > Copyright > Formatting)
+    private CopyrightFormattingOptions defaultFormatting = new CopyrightFormattingOptions();
+
+    // Per-language formatting overrides (Editor > Copyright > Formatting > [Language])
+    private final Map<String, LanguageFormattingOverride> languageOverrides = new HashMap<>();
 
     private CopyrightManager() {
         load();
@@ -58,6 +63,48 @@ public class CopyrightManager {
 
     public ObservableList<ScopeCopyrightMapping> getScopeMappings() {
         return scopeMappings;
+    }
+
+    public CopyrightFormattingOptions getDefaultFormatting() {
+        return defaultFormatting;
+    }
+
+    public void setDefaultFormatting(CopyrightFormattingOptions defaultFormatting) {
+        this.defaultFormatting = defaultFormatting != null ? defaultFormatting.copy() : new CopyrightFormattingOptions();
+    }
+
+    public Map<String, LanguageFormattingOverride> getLanguageOverrides() {
+        return languageOverrides;
+    }
+
+    public LanguageFormattingOverride getLanguageOverride(String language) {
+        if (language == null) return new LanguageFormattingOverride("", LanguageFormattingOverride.Mode.USE_DEFAULT);
+        return languageOverrides.computeIfAbsent(
+                language.trim(),
+                lang -> new LanguageFormattingOverride(lang, LanguageFormattingOverride.Mode.USE_DEFAULT)
+        );
+    }
+
+    public void setLanguageOverride(String language, LanguageFormattingOverride override) {
+        if (language != null && override != null) {
+            languageOverrides.put(language.trim(), override.copy());
+        }
+    }
+
+    /**
+     * Resolves the effective formatting options for a specific language.
+     * Returns null if "No copyright" is chosen for the language.
+     */
+    public CopyrightFormattingOptions getEffectiveFormatting(String language) {
+        LanguageFormattingOverride override = languageOverrides.get(language);
+        if (override != null) {
+            if (override.getMode() == LanguageFormattingOverride.Mode.NO_COPYRIGHT) {
+                return null;
+            } else if (override.getMode() == LanguageFormattingOverride.Mode.USE_CUSTOM) {
+                return override.getCustomOptions();
+            }
+        }
+        return defaultFormatting;
     }
 
     public CopyrightProfile findProfileByName(String name) {
@@ -147,6 +194,8 @@ public class CopyrightManager {
         defaultProjectCopyright = NO_COPYRIGHT;
         profiles.clear();
         scopeMappings.clear();
+        defaultFormatting = new CopyrightFormattingOptions();
+        languageOverrides.clear();
     }
 
     public void save() {
@@ -160,6 +209,8 @@ public class CopyrightManager {
             state.defaultProjectCopyright = this.defaultProjectCopyright;
             state.profiles = new ArrayList<>(this.profiles);
             state.scopeMappings = new ArrayList<>(this.scopeMappings);
+            state.defaultFormatting = this.defaultFormatting;
+            state.languageOverrides = new HashMap<>(this.languageOverrides);
 
             try (FileWriter writer = new FileWriter(CONFIG_FILE, StandardCharsets.UTF_8)) {
                 GSON.toJson(state, writer);
@@ -187,6 +238,13 @@ public class CopyrightManager {
                 if (state.scopeMappings != null) {
                     this.scopeMappings.setAll(state.scopeMappings);
                 }
+                if (state.defaultFormatting != null) {
+                    this.defaultFormatting = state.defaultFormatting;
+                }
+                if (state.languageOverrides != null) {
+                    this.languageOverrides.clear();
+                    this.languageOverrides.putAll(state.languageOverrides);
+                }
             }
         } catch (Exception e) {
             // Ignore parse errors and retain defaults
@@ -197,5 +255,7 @@ public class CopyrightManager {
         String defaultProjectCopyright;
         List<CopyrightProfile> profiles;
         List<ScopeCopyrightMapping> scopeMappings;
+        CopyrightFormattingOptions defaultFormatting;
+        Map<String, LanguageFormattingOverride> languageOverrides;
     }
 }
