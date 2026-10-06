@@ -132,6 +132,8 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("XHTML") ||
                 pageName.equals("XML")) {
             showCopyrightFormattingSubPage(pageName);
+        } else if (pageName.equals("Inlay Hints")) {
+            showInlayHintsPage();
         } else if (pageName.equals("Inline Completion")) {
             showInlineCompletionPage();
         } else if (pageName.equals("Postfix Completion")) {
@@ -166,6 +168,12 @@ public class SettingsEditorPage extends VBox {
     private void showCopyrightFormattingSubPage(String pageName) {
         SettingsCopyrightFormattingLanguagePage page = new SettingsCopyrightFormattingLanguagePage(pageName);
         pageTitle.setText("Editor > Copyright > Formatting > " + pageName);
+        contentArea.getChildren().add(page);
+    }
+
+    private void showInlayHintsPage() {
+        pageTitle.setText("Editor > Inlay Hints");
+        SettingsInlayHintsPage page = new SettingsInlayHintsPage();
         contentArea.getChildren().add(page);
     }
 

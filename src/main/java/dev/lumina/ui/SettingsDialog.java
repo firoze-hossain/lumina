@@ -79,6 +79,7 @@ public class SettingsDialog {
     private SettingsCopyrightProfilesPage currentCopyrightProfilesPage;
     private SettingsCopyrightFormattingPage currentCopyrightFormattingPage;
     private final java.util.Map<String, SettingsCopyrightFormattingLanguagePage> languageFormattingPages = new java.util.HashMap<>();
+    private SettingsInlayHintsPage currentInlayHintsPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1515,6 +1516,18 @@ public class SettingsDialog {
                         SettingsCopyrightFormattingLanguagePage lp = languageFormattingPages.get(item.getValue());
                         if (lp != null) {
                             lp.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Inlay Hints".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentInlayHintsPage != null) {
+                            currentInlayHintsPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3114,6 +3127,17 @@ public class SettingsDialog {
                 VBox.setVgrow(langPage, Priority.ALWAYS);
                 contentContainer.setStyle("-fx-background-color: #1E1F22;");
                 contentContainer.getChildren().setAll(langPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Inlay Hints".equals(pageName)) {
+                if (currentInlayHintsPage == null) {
+                    currentInlayHintsPage = new SettingsInlayHintsPage();
+                }
+                currentInlayHintsPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentInlayHintsPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentInlayHintsPage);
                 updateApplyButtonState();
                 return;
             }
@@ -4901,6 +4925,9 @@ public class SettingsDialog {
                 lp.apply();
             }
         }
+        if (currentInlayHintsPage != null && currentInlayHintsPage.isModified()) {
+            currentInlayHintsPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5162,6 +5189,7 @@ public class SettingsDialog {
                 || (currentCopyrightProfilesPage != null && currentCopyrightProfilesPage.isModified())
                 || (currentCopyrightFormattingPage != null && currentCopyrightFormattingPage.isModified())
                 || languageFormattingPages.values().stream().anyMatch(SettingsCopyrightFormattingLanguagePage::isModified)
+                || (currentInlayHintsPage != null && currentInlayHintsPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5578,6 +5606,9 @@ public class SettingsDialog {
             for (SettingsCopyrightFormattingLanguagePage lp : languageFormattingPages.values()) {
                 lp.reset();
             }
+            if (currentInlayHintsPage != null) {
+                currentInlayHintsPage.reset();
+            }
             stage.close();
         });
 
@@ -5625,6 +5656,10 @@ public class SettingsDialog {
 
     public Map<String, SettingsCopyrightFormattingLanguagePage> getLanguageFormattingPages() {
         return languageFormattingPages;
+    }
+
+    public SettingsInlayHintsPage getCurrentInlayHintsPage() {
+        return currentInlayHintsPage;
     }
 
     public SettingsColorSchemeDebuggerPage getCurrentColorSchemeDebuggerPage() {
