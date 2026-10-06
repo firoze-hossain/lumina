@@ -73,6 +73,7 @@ public class SettingsDialog {
     private SettingsFileAndCodeTemplatesPage currentFileAndCodeTemplatesPage;
     private SettingsFileEncodingsPage currentFileEncodingsPage;
     private SettingsLiveTemplatesPage currentLiveTemplatesPage;
+    private SettingsFileTypesPage currentFileTypesPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1451,6 +1452,18 @@ public class SettingsDialog {
                         revertLink.setVisible(false);
                         revertLink.setManaged(false);
                     }
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("File Types".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentFileTypesPage != null) {
+                            currentFileTypesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
                     breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
@@ -2979,6 +2992,17 @@ public class SettingsDialog {
                 VBox.setVgrow(currentLiveTemplatesPage, Priority.ALWAYS);
                 contentContainer.setStyle("-fx-background-color: #1E1F22;");
                 contentContainer.getChildren().setAll(currentLiveTemplatesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("File Types".equals(pageName)) {
+                if (currentFileTypesPage == null) {
+                    currentFileTypesPage = new SettingsFileTypesPage();
+                }
+                currentFileTypesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentFileTypesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentFileTypesPage);
                 updateApplyButtonState();
                 return;
             }
@@ -4749,6 +4773,9 @@ public class SettingsDialog {
         if (currentLiveTemplatesPage != null && currentLiveTemplatesPage.isModified()) {
             currentLiveTemplatesPage.apply();
         }
+        if (currentFileTypesPage != null && currentFileTypesPage.isModified()) {
+            currentFileTypesPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5005,6 +5032,7 @@ public class SettingsDialog {
                 || (currentFileAndCodeTemplatesPage != null && currentFileAndCodeTemplatesPage.isModified())
                 || (currentFileEncodingsPage != null && currentFileEncodingsPage.isModified())
                 || (currentLiveTemplatesPage != null && currentLiveTemplatesPage.isModified())
+                || (currentFileTypesPage != null && currentFileTypesPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5406,6 +5434,9 @@ public class SettingsDialog {
             if (currentLiveTemplatesPage != null) {
                 currentLiveTemplatesPage.reset();
             }
+            if (currentFileTypesPage != null) {
+                currentFileTypesPage.reset();
+            }
             stage.close();
         });
 
@@ -5433,6 +5464,10 @@ public class SettingsDialog {
 
     public SettingsLiveTemplatesPage getCurrentLiveTemplatesPage() {
         return currentLiveTemplatesPage;
+    }
+
+    public SettingsFileTypesPage getCurrentFileTypesPage() {
+        return currentFileTypesPage;
     }
 
     public SettingsColorSchemeDebuggerPage getCurrentColorSchemeDebuggerPage() {
