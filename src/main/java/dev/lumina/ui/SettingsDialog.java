@@ -89,6 +89,9 @@ public class SettingsDialog {
     private SettingsIntentionsPage currentIntentionsPage;
     private SettingsLanguageInjectionsPage currentLanguageInjectionsPage;
     private SettingsLanguageInjectionsAdvancedPage currentLanguageInjectionsAdvancedPage;
+    private SettingsNaturalLanguagesPage currentNaturalLanguagesPage;
+    private SettingsGrammarAndStylePage currentGrammarAndStylePage;
+    private SettingsSpellingPage currentSpellingPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -1559,6 +1562,42 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguageInjectionsAdvancedPage != null) {
                             currentLanguageInjectionsAdvancedPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Natural Languages".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentNaturalLanguagesPage != null) {
+                            currentNaturalLanguagesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Grammar and Style".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentGrammarAndStylePage != null) {
+                            currentGrammarAndStylePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Spelling".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSpellingPage != null) {
+                            currentSpellingPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3330,6 +3369,46 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Natural Languages".equals(pageName)) {
+                if (currentNaturalLanguagesPage == null) {
+                    currentNaturalLanguagesPage = new SettingsNaturalLanguagesPage();
+                }
+                currentNaturalLanguagesPage.setOnModifiedListener(this::updateApplyButtonState);
+                currentNaturalLanguagesPage.setOnNavigateToInspections(() -> {
+                    TreeItem<String> inspItem = findItem(tree.getRoot(), "Inspections");
+                    if (inspItem != null) {
+                        expandAncestors(inspItem);
+                        tree.getSelectionModel().select(inspItem);
+                    }
+                });
+                VBox.setVgrow(currentNaturalLanguagesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentNaturalLanguagesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Grammar and Style".equals(pageName)) {
+                if (currentGrammarAndStylePage == null) {
+                    currentGrammarAndStylePage = new SettingsGrammarAndStylePage();
+                }
+                currentGrammarAndStylePage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentGrammarAndStylePage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentGrammarAndStylePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Spelling".equals(pageName)) {
+                if (currentSpellingPage == null) {
+                    currentSpellingPage = new SettingsSpellingPage();
+                }
+                currentSpellingPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentSpellingPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentSpellingPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -3630,6 +3709,18 @@ public class SettingsDialog {
 
     public SettingsLanguageInjectionsAdvancedPage getCurrentLanguageInjectionsAdvancedPage() {
         return currentLanguageInjectionsAdvancedPage;
+    }
+
+    public SettingsNaturalLanguagesPage getCurrentNaturalLanguagesPage() {
+        return currentNaturalLanguagesPage;
+    }
+
+    public SettingsGrammarAndStylePage getCurrentGrammarAndStylePage() {
+        return currentGrammarAndStylePage;
+    }
+
+    public SettingsSpellingPage getCurrentSpellingPage() {
+        return currentSpellingPage;
     }
 
     private void buildRequiredPluginsPage() {
@@ -4602,6 +4693,7 @@ public class SettingsDialog {
                 "Code Style", "Inspections", "File and Code Templates", "File Encodings",
                 "Live Templates", "File Types", "Copyright", "Inlay Hints", "Duplicates",
                 "Emmet", "Intentions", "Language Injections", "Advanced", "Natural Languages",
+                "Grammar and Style", "Spelling",
                 "Reader Mode", "TextMate Bundles", "TODO"
         ).contains(pageName) || dev.lumina.settings.CodeStyleSettings.LanguageCodeStyleProvider.getProvider(pageName) != null;
     }
@@ -4638,6 +4730,16 @@ public class SettingsDialog {
     private TreeItem<String> buildLanguageInjectionsTree() {
         TreeItem<String> root = new TreeItem<>("Language Injections");
         root.getChildren().add(new TreeItem<>("Advanced"));
+        root.setExpanded(true);
+        return root;
+    }
+
+    private TreeItem<String> buildNaturalLanguagesTree() {
+        TreeItem<String> root = new TreeItem<>("Natural Languages");
+        root.getChildren().addAll(
+                new TreeItem<>("Grammar and Style"),
+                new TreeItem<>("Spelling")
+        );
         root.setExpanded(true);
         return root;
     }
@@ -4820,7 +4922,7 @@ public class SettingsDialog {
                 buildEmmetTree(),
                 new TreeItem<>("Intentions"),
                 buildLanguageInjectionsTree(),
-                new TreeItem<>("Natural Languages"),
+                buildNaturalLanguagesTree(),
                 new TreeItem<>("Reader Mode"),
                 new TreeItem<>("TextMate Bundles"),
                 new TreeItem<>("TODO")
@@ -5179,6 +5281,15 @@ public class SettingsDialog {
         if (currentLanguageInjectionsAdvancedPage != null && currentLanguageInjectionsAdvancedPage.isModified()) {
             currentLanguageInjectionsAdvancedPage.apply();
         }
+        if (currentNaturalLanguagesPage != null && currentNaturalLanguagesPage.isModified()) {
+            currentNaturalLanguagesPage.apply();
+        }
+        if (currentGrammarAndStylePage != null && currentGrammarAndStylePage.isModified()) {
+            currentGrammarAndStylePage.apply();
+        }
+        if (currentSpellingPage != null && currentSpellingPage.isModified()) {
+            currentSpellingPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5449,6 +5560,9 @@ public class SettingsDialog {
                 || (currentIntentionsPage != null && currentIntentionsPage.isModified())
                 || (currentLanguageInjectionsPage != null && currentLanguageInjectionsPage.isModified())
                 || (currentLanguageInjectionsAdvancedPage != null && currentLanguageInjectionsAdvancedPage.isModified())
+                || (currentNaturalLanguagesPage != null && currentNaturalLanguagesPage.isModified())
+                || (currentGrammarAndStylePage != null && currentGrammarAndStylePage.isModified())
+                || (currentSpellingPage != null && currentSpellingPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5639,6 +5753,15 @@ public class SettingsDialog {
             }
             if (currentLanguageInjectionsAdvancedPage != null) {
                 currentLanguageInjectionsAdvancedPage.reset();
+            }
+            if (currentNaturalLanguagesPage != null) {
+                currentNaturalLanguagesPage.reset();
+            }
+            if (currentGrammarAndStylePage != null) {
+                currentGrammarAndStylePage.reset();
+            }
+            if (currentSpellingPage != null) {
+                currentSpellingPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
