@@ -80,6 +80,11 @@ public class SettingsDialog {
     private SettingsCopyrightFormattingPage currentCopyrightFormattingPage;
     private final java.util.Map<String, SettingsCopyrightFormattingLanguagePage> languageFormattingPages = new java.util.HashMap<>();
     private SettingsInlayHintsPage currentInlayHintsPage;
+    private SettingsDuplicatesPage currentDuplicatesPage;
+    private SettingsEmmetPage currentEmmetPage;
+    private SettingsEmmetCssPage currentEmmetCssPage;
+    private SettingsEmmetHtmlPage currentEmmetHtmlPage;
+    private SettingsEmmetJsxPage currentEmmetJsxPage;
     private SettingsPluginsPage currentPluginsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
@@ -1532,6 +1537,66 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Duplicates".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDuplicatesPage != null) {
+                            currentDuplicatesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Emmet".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentEmmetPage != null) {
+                            currentEmmetPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("CSS".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Emmet".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentEmmetCssPage != null) {
+                            currentEmmetCssPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("HTML".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Emmet".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentEmmetHtmlPage != null) {
+                            currentEmmetHtmlPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSX".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Emmet".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentEmmetJsxPage != null) {
+                            currentEmmetJsxPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Required Plugins".equals(item.getValue())) {
                     Label projectIcon = new Label("📦");
                     projectIcon.setStyle("-fx-text-fill: #848BA3; -fx-font-size: 11px; -fx-padding: 0 0 0 6;");
@@ -1614,6 +1679,7 @@ public class SettingsDialog {
         boolean underSmartKeys = false;
         boolean underCopyright = false;
         boolean underFormatting = false;
+        boolean underEmmet = false;
 
         while (ancestor != null) {
             String v = ancestor.getValue();
@@ -1625,6 +1691,7 @@ public class SettingsDialog {
                 if (v.equals("Smart Keys")) underSmartKeys = true;
                 if (v.equals("Copyright")) underCopyright = true;
                 if (v.equals("Formatting")) underFormatting = true;
+                if (v.equals("Emmet")) underEmmet = true;
             }
             ancestor = ancestor.getParent();
         }
@@ -3141,6 +3208,57 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Duplicates".equals(pageName)) {
+                if (currentDuplicatesPage == null) {
+                    currentDuplicatesPage = new SettingsDuplicatesPage();
+                }
+                currentDuplicatesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentDuplicatesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentDuplicatesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("Emmet".equals(pageName)) {
+                if (currentEmmetPage == null) {
+                    currentEmmetPage = new SettingsEmmetPage();
+                }
+                currentEmmetPage.setOnModifiedListener(this::updateApplyButtonState);
+                wrapInScroll(currentEmmetPage);
+                updateApplyButtonState();
+                return;
+            }
+            if (underEmmet) {
+                if ("CSS".equals(pageName)) {
+                    if (currentEmmetCssPage == null) {
+                        currentEmmetCssPage = new SettingsEmmetCssPage();
+                    }
+                    currentEmmetCssPage.setOnModifiedListener(this::updateApplyButtonState);
+                    VBox.setVgrow(currentEmmetCssPage, Priority.ALWAYS);
+                    contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                    contentContainer.getChildren().setAll(currentEmmetCssPage);
+                    updateApplyButtonState();
+                    return;
+                }
+                if ("HTML".equals(pageName)) {
+                    if (currentEmmetHtmlPage == null) {
+                        currentEmmetHtmlPage = new SettingsEmmetHtmlPage();
+                    }
+                    currentEmmetHtmlPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentEmmetHtmlPage);
+                    updateApplyButtonState();
+                    return;
+                }
+                if ("JSX".equals(pageName)) {
+                    if (currentEmmetJsxPage == null) {
+                        currentEmmetJsxPage = new SettingsEmmetJsxPage();
+                    }
+                    currentEmmetJsxPage.setOnModifiedListener(this::updateApplyButtonState);
+                    wrapInScroll(currentEmmetJsxPage);
+                    updateApplyButtonState();
+                    return;
+                }
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -3382,6 +3500,15 @@ public class SettingsDialog {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("Subversion".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderEmmet(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Emmet".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -4415,6 +4542,16 @@ public class SettingsDialog {
         return codeStyle;
     }
 
+    private TreeItem<String> buildEmmetTree() {
+        TreeItem<String> emmet = new TreeItem<>("Emmet");
+        emmet.getChildren().addAll(
+                new TreeItem<>("CSS"),
+                new TreeItem<>("HTML"),
+                new TreeItem<>("JSX")
+        );
+        return emmet;
+    }
+
     private TreeView<String> buildCategoryTree() {
         TreeItem<String> root = new TreeItem<>("Settings");
         root.setExpanded(true);
@@ -4590,7 +4727,7 @@ public class SettingsDialog {
                 copyright,
                 new TreeItem<>("Inlay Hints"),
                 new TreeItem<>("Duplicates"),
-                new TreeItem<>("Emmet"),
+                buildEmmetTree(),
                 new TreeItem<>("Intentions"),
                 new TreeItem<>("Language Injections"),
                 new TreeItem<>("Natural Languages"),
@@ -4928,6 +5065,21 @@ public class SettingsDialog {
         if (currentInlayHintsPage != null && currentInlayHintsPage.isModified()) {
             currentInlayHintsPage.apply();
         }
+        if (currentDuplicatesPage != null && currentDuplicatesPage.isModified()) {
+            currentDuplicatesPage.apply();
+        }
+        if (currentEmmetPage != null && currentEmmetPage.isModified()) {
+            currentEmmetPage.apply();
+        }
+        if (currentEmmetCssPage != null && currentEmmetCssPage.isModified()) {
+            currentEmmetCssPage.apply();
+        }
+        if (currentEmmetHtmlPage != null && currentEmmetHtmlPage.isModified()) {
+            currentEmmetHtmlPage.apply();
+        }
+        if (currentEmmetJsxPage != null && currentEmmetJsxPage.isModified()) {
+            currentEmmetJsxPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5190,6 +5342,11 @@ public class SettingsDialog {
                 || (currentCopyrightFormattingPage != null && currentCopyrightFormattingPage.isModified())
                 || languageFormattingPages.values().stream().anyMatch(SettingsCopyrightFormattingLanguagePage::isModified)
                 || (currentInlayHintsPage != null && currentInlayHintsPage.isModified())
+                || (currentDuplicatesPage != null && currentDuplicatesPage.isModified())
+                || (currentEmmetPage != null && currentEmmetPage.isModified())
+                || (currentEmmetCssPage != null && currentEmmetCssPage.isModified())
+                || (currentEmmetHtmlPage != null && currentEmmetHtmlPage.isModified())
+                || (currentEmmetJsxPage != null && currentEmmetJsxPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5608,6 +5765,21 @@ public class SettingsDialog {
             }
             if (currentInlayHintsPage != null) {
                 currentInlayHintsPage.reset();
+            }
+            if (currentDuplicatesPage != null) {
+                currentDuplicatesPage.reset();
+            }
+            if (currentEmmetPage != null) {
+                currentEmmetPage.reset();
+            }
+            if (currentEmmetCssPage != null) {
+                currentEmmetCssPage.reset();
+            }
+            if (currentEmmetHtmlPage != null) {
+                currentEmmetHtmlPage.reset();
+            }
+            if (currentEmmetJsxPage != null) {
+                currentEmmetJsxPage.reset();
             }
             stage.close();
         });
