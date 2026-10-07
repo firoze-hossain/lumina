@@ -86,6 +86,7 @@ public class SettingsDialog {
     private SettingsEmmetHtmlPage currentEmmetHtmlPage;
     private SettingsEmmetJsxPage currentEmmetJsxPage;
     private SettingsPluginsPage currentPluginsPage;
+    private SettingsIntentionsPage currentIntentionsPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -1521,6 +1522,17 @@ public class SettingsDialog {
                         SettingsCopyrightFormattingLanguagePage lp = languageFormattingPages.get(item.getValue());
                         if (lp != null) {
                             lp.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                } else if ("Intentions".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentIntentionsPage != null) {
+                            currentIntentionsPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3259,6 +3271,17 @@ public class SettingsDialog {
                     return;
                 }
             }
+            if ("Intentions".equals(pageName)) {
+                if (currentIntentionsPage == null) {
+                    currentIntentionsPage = new SettingsIntentionsPage();
+                }
+                currentIntentionsPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentIntentionsPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentIntentionsPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -3547,6 +3570,10 @@ public class SettingsDialog {
 
     public SettingsPluginsPage getCurrentPluginsPage() {
         return currentPluginsPage;
+    }
+
+    public SettingsIntentionsPage getCurrentIntentionsPage() {
+        return currentIntentionsPage;
     }
 
     private void buildRequiredPluginsPage() {
@@ -4527,7 +4554,7 @@ public class SettingsDialog {
         return "Keymap".equals(pageName) || List.of(
                 "Editor Actions", "Main Menu", "Tool Windows", "External Tools",
                 "External Build Systems", "Version Control Systems", "Debugger Actions",
-                "Remote External Tools", "Database", "Macros", "Intentions",
+                "Remote External Tools", "Database", "Macros",
                 "Quick Lists", "Other"
         ).contains(pageName);
     }
@@ -5080,6 +5107,9 @@ public class SettingsDialog {
         if (currentEmmetJsxPage != null && currentEmmetJsxPage.isModified()) {
             currentEmmetJsxPage.apply();
         }
+        if (currentIntentionsPage != null && currentIntentionsPage.isModified()) {
+            currentIntentionsPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5347,6 +5377,7 @@ public class SettingsDialog {
                 || (currentEmmetCssPage != null && currentEmmetCssPage.isModified())
                 || (currentEmmetHtmlPage != null && currentEmmetHtmlPage.isModified())
                 || (currentEmmetJsxPage != null && currentEmmetJsxPage.isModified())
+                || (currentIntentionsPage != null && currentIntentionsPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5528,6 +5559,9 @@ public class SettingsDialog {
             }
             if (currentInspectionsPage != null) {
                 currentInspectionsPage.reset();
+            }
+            if (currentIntentionsPage != null) {
+                currentIntentionsPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
