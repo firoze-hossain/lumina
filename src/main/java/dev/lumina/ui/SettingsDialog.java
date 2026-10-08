@@ -4,6 +4,8 @@ import dev.lumina.settings.EditorColorSchemeSettings;
 import dev.lumina.settings.EditorColorSchemeSettings.AttributesDescriptor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,6 +116,11 @@ public class SettingsDialog {
     private SettingsBuildKubernetesPage currentBuildKubernetesPage;
     private SettingsRemoteJarRepositoriesPage currentRemoteJarRepositoriesPage;
     private SettingsRunTargetsPage currentRunTargetsPage;
+    private SettingsLanguagesPHPPage currentLanguagesPhpPage;
+    private SettingsLanguagesJavaFXPage currentLanguagesJavaFxPage;
+    private SettingsLanguagesJavaScriptPage currentLanguagesJavaScriptPage;
+    private SettingsLanguagesJSEsLintPage currentLanguagesJsEsLintPage;
+    private SettingsLanguagesJSJsHintPage currentLanguagesJsJsHintPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -617,30 +624,94 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
-                } else if ("JavaScript".equals(item.getValue())) {
+                } else if ("JavaFX".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
                     revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
                     revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
                     revertLink.setOnAction(e -> {
-                        if (currentSmartKeysJsPage != null) {
-                            currentSmartKeysJsPage.reset();
+                        if (currentLanguagesJavaFxPage != null) {
+                            currentLanguagesJavaFxPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JavaScript".equals(item.getValue())) {
+                    if (chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                        Hyperlink revertLink = new Hyperlink("Revert changes");
+                        revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                        revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnAction(e -> {
+                            if (currentLanguagesJavaScriptPage != null) {
+                                currentLanguagesJavaScriptPage.revertChanges();
+                                updateApplyButtonState();
+                            }
+                        });
+                        breadcrumbBox.getChildren().add(revertLink);
+                    } else {
+                        Hyperlink revertLink = new Hyperlink("Revert changes");
+                        revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                        revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnAction(e -> {
+                            if (currentSmartKeysJsPage != null) {
+                                currentSmartKeysJsPage.reset();
+                                updateApplyButtonState();
+                            }
+                        });
+                        breadcrumbBox.getChildren().add(revertLink);
+                    }
+                } else if ("ESLint".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsEsLintPage != null) {
+                            currentLanguagesJsEsLintPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSHint".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsJsHintPage != null) {
+                            currentLanguagesJsJsHintPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
                 } else if ("PHP".equals(item.getValue())) {
-                    Hyperlink revertLink = new Hyperlink("Revert changes");
-                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
-                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
-                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
-                    revertLink.setOnAction(e -> {
-                        if (currentSmartKeysPhpPage != null) {
-                            currentSmartKeysPhpPage.reset();
-                            updateApplyButtonState();
-                        }
-                    });
-                    breadcrumbBox.getChildren().add(revertLink);
+                    if (chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                        Hyperlink revertLink = new Hyperlink("Revert changes");
+                        revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                        revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnAction(e -> {
+                            if (currentLanguagesPhpPage != null) {
+                                currentLanguagesPhpPage.revertChanges();
+                                updateApplyButtonState();
+                            }
+                        });
+                        breadcrumbBox.getChildren().add(revertLink);
+                    } else {
+                        Hyperlink revertLink = new Hyperlink("Revert changes");
+                        revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                        revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                        revertLink.setOnAction(e -> {
+                            if (currentSmartKeysPhpPage != null) {
+                                currentSmartKeysPhpPage.reset();
+                                updateApplyButtonState();
+                            }
+                        });
+                        breadcrumbBox.getChildren().add(revertLink);
+                    }
                 } else if ("Sticky Lines".equals(item.getValue())) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -4157,6 +4228,18 @@ public class SettingsDialog {
             buildRemoteJarRepositoriesPage();
         } else if ("Run Targets".equals(pageName) && isUnderBuild(selected)) {
             buildRunTargetsPage();
+        } else if ("PHP".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpPage();
+        } else if ("JavaFX".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesJavaFxPage();
+        } else if ("JavaScript".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesJavaScriptPage();
+        } else if ("Code Quality Tools".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesCodeQualityToolsPage();
+        } else if ("ESLint".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesEsLintPage();
+        } else if ("JSHint".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesJsHintPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -4363,6 +4446,15 @@ public class SettingsDialog {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("Build, Execution, Deployment".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderLanguages(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Languages & Frameworks".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -4880,6 +4972,90 @@ public class SettingsDialog {
 
     public SettingsRunTargetsPage getCurrentRunTargetsPage() {
         return currentRunTargetsPage;
+    }
+
+    private void buildLanguagesPhpPage() {
+        if (currentLanguagesPhpPage == null) {
+            currentLanguagesPhpPage = new SettingsLanguagesPHPPage();
+        }
+        currentLanguagesPhpPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesPhpPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesPhpPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesPHPPage getCurrentLanguagesPhpPage() {
+        return currentLanguagesPhpPage;
+    }
+
+    private void buildLanguagesJavaFxPage() {
+        if (currentLanguagesJavaFxPage == null) {
+            currentLanguagesJavaFxPage = new SettingsLanguagesJavaFXPage();
+        }
+        currentLanguagesJavaFxPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJavaFxPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJavaFxPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJavaFXPage getCurrentLanguagesJavaFxPage() {
+        return currentLanguagesJavaFxPage;
+    }
+
+    private void buildLanguagesJavaScriptPage() {
+        if (currentLanguagesJavaScriptPage == null) {
+            currentLanguagesJavaScriptPage = new SettingsLanguagesJavaScriptPage();
+        }
+        currentLanguagesJavaScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+        currentLanguagesJavaScriptPage.setOnNavigateToCodeCompletion(() -> selectCategory("Code Completion"));
+        VBox.setVgrow(currentLanguagesJavaScriptPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJavaScriptPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJavaScriptPage getCurrentLanguagesJavaScriptPage() {
+        return currentLanguagesJavaScriptPage;
+    }
+
+    private void buildLanguagesCodeQualityToolsPage() {
+        SettingsLanguagesJSCodeQualityToolsPage page = new SettingsLanguagesJSCodeQualityToolsPage(this::selectCategory);
+        VBox.setVgrow(page, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(page);
+    }
+
+    private void buildLanguagesEsLintPage() {
+        if (currentLanguagesJsEsLintPage == null) {
+            currentLanguagesJsEsLintPage = new SettingsLanguagesJSEsLintPage();
+        }
+        currentLanguagesJsEsLintPage.setOnModifiedListener(this::updateApplyButtonState);
+        currentLanguagesJsEsLintPage.setOnNavigateToActionsOnSave(() -> selectCategory("Actions on Save"));
+        VBox.setVgrow(currentLanguagesJsEsLintPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsEsLintPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSEsLintPage getCurrentLanguagesJsEsLintPage() {
+        return currentLanguagesJsEsLintPage;
+    }
+
+    private void buildLanguagesJsHintPage() {
+        if (currentLanguagesJsJsHintPage == null) {
+            currentLanguagesJsJsHintPage = new SettingsLanguagesJSJsHintPage();
+        }
+        currentLanguagesJsJsHintPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsJsHintPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsJsHintPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSJsHintPage getCurrentLanguagesJsJsHintPage() {
+        return currentLanguagesJsJsHintPage;
     }
 
     private void buildApplicationServersPage() {
@@ -6465,6 +6641,74 @@ public class SettingsDialog {
                 new TreeItem<>("Run Targets")
         );
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
+        TreeItem<String> phpItem = new TreeItem<>("PHP");
+        phpItem.getChildren().addAll(
+                new TreeItem<>("Composer"),
+                new TreeItem<>("Debug"),
+                new TreeItem<>("Quality Tools"),
+                new TreeItem<>("Test Frameworks")
+        );
+        TreeItem<String> javaScriptItem = new TreeItem<>("JavaScript");
+        TreeItem<String> codeQualityToolsItem = new TreeItem<>("Code Quality Tools");
+        codeQualityToolsItem.getChildren().addAll(
+                new TreeItem<>("ESLint"),
+                new TreeItem<>("JSHint")
+        );
+        javaScriptItem.getChildren().addAll(
+                codeQualityToolsItem,
+                new TreeItem<>("Libraries"),
+                new TreeItem<>("Prettier"),
+                new TreeItem<>("Styled Components"),
+                new TreeItem<>("Vite"),
+                new TreeItem<>("Webpack")
+        );
+        TreeItem<String> kotlinItem = new TreeItem<>("Kotlin");
+        kotlinItem.getChildren().addAll(
+                new TreeItem<>("Compiler"),
+                new TreeItem<>("Scripts")
+        );
+        TreeItem<String> protoItem = new TreeItem<>("Protocol Buffers");
+        protoItem.getChildren().add(new TreeItem<>("Imports"));
+
+        TreeItem<String> schemasItem = new TreeItem<>("Schemas and DTDs");
+        schemasItem.getChildren().addAll(
+                new TreeItem<>("XML Schemas"),
+                new TreeItem<>("Default XML Schemas")
+        );
+
+        TreeItem<String> styleSheetsItem = new TreeItem<>("Style Sheets");
+        styleSheetsItem.getChildren().add(new TreeItem<>("CSS Specifications"));
+
+        TreeItem<String> typeScriptItem = new TreeItem<>("TypeScript");
+        typeScriptItem.getChildren().add(new TreeItem<>("Compiler"));
+
+        languages.getChildren().addAll(
+                phpItem,
+                new TreeItem<>("JavaFX"),
+                javaScriptItem,
+                new TreeItem<>("JavaScript Runtime"),
+                new TreeItem<>("JVM Logging"),
+                kotlinItem,
+                new TreeItem<>("Ktor"),
+                new TreeItem<>("Kubernetes"),
+                new TreeItem<>("Lombok"),
+                new TreeItem<>("Markdown"),
+                new TreeItem<>("Micronaut"),
+                new TreeItem<>("OpenAPI Specifications"),
+                protoItem,
+                new TreeItem<>("Quarkus"),
+                schemasItem,
+                new TreeItem<>("Spring"),
+                new TreeItem<>("SQL Dialects"),
+                new TreeItem<>("SQL Resolution Scopes"),
+                styleSheetsItem,
+                new TreeItem<>("Tables"),
+                new TreeItem<>("Template Data Languages"),
+                typeScriptItem,
+                new TreeItem<>("Web Contexts"),
+                new TreeItem<>("XSLT"),
+                new TreeItem<>("XSLT File Associations")
+        );
 
         TreeItem<String> tools = new TreeItem<>("Tools");
         tools.getChildren().addAll(
@@ -6540,7 +6784,7 @@ public class SettingsDialog {
         return tv;
     }
 
-    private static final Set<String> PROJECT_SETTINGS = Set.of(
+    private static final Set<String> PROJECT_SETTINGS = new HashSet<>(Arrays.asList(
             "Version Control", "Changelists", "Commit", "Confirmation",
             "Directory Mappings", "Issue Navigation", "Log", "Shelf",
             "Git", "GitHub", "GitLab", "Mercurial", "Perforce", "Subversion",
@@ -6550,8 +6794,15 @@ public class SettingsDialog {
             "Gradle", "Gant", "BSP", "Cargo", "sbt", "Compiler", "Console",
             "Coverage", "Deployment", "Docker", "Kubernetes", "Remote Jar Repositories",
             "Run Targets", "Debugger", "Async Stack Traces", "Data Views", "Java Type Renderers",
-            "HotSwap", "Stepping", "Options", "Java Profiler", "Filters"
-    );
+            "HotSwap", "Stepping", "Options", "Java Profiler", "Filters",
+            "PHP", "JavaScript", "JavaScript Runtime", "JVM Logging", "Ktor",
+            "Lombok", "Markdown", "Micronaut", "OpenAPI Specifications",
+            "Protocol Buffers", "Quarkus", "Schemas and DTDs", "Spring",
+            "SQL Dialects", "SQL Resolution Scopes", "Style Sheets", "Tables",
+            "Template Data Languages", "TypeScript", "Web Contexts", "XSLT",
+            "XSLT File Associations", "Code Quality Tools", "ESLint", "JSHint",
+            "Libraries", "Prettier", "Styled Components", "Vite", "Webpack"
+    ));
 
     private static boolean isProjectSetting(String name) {
         return name != null && PROJECT_SETTINGS.contains(name);
@@ -6881,6 +7132,21 @@ public class SettingsDialog {
         }
         if (currentRunTargetsPage != null && currentRunTargetsPage.isModified()) {
             currentRunTargetsPage.apply();
+        }
+        if (currentLanguagesPhpPage != null && currentLanguagesPhpPage.isModified()) {
+            currentLanguagesPhpPage.apply();
+        }
+        if (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified()) {
+            currentLanguagesJavaFxPage.apply();
+        }
+        if (currentLanguagesJavaScriptPage != null && currentLanguagesJavaScriptPage.isModified()) {
+            currentLanguagesJavaScriptPage.apply();
+        }
+        if (currentLanguagesJsEsLintPage != null && currentLanguagesJsEsLintPage.isModified()) {
+            currentLanguagesJsEsLintPage.apply();
+        }
+        if (currentLanguagesJsJsHintPage != null && currentLanguagesJsJsHintPage.isModified()) {
+            currentLanguagesJsJsHintPage.apply();
         }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
@@ -7261,6 +7527,11 @@ public class SettingsDialog {
                 || (currentBuildKubernetesPage != null && currentBuildKubernetesPage.isModified())
                 || (currentRemoteJarRepositoriesPage != null && currentRemoteJarRepositoriesPage.isModified())
                 || (currentRunTargetsPage != null && currentRunTargetsPage.isModified())
+                || (currentLanguagesPhpPage != null && currentLanguagesPhpPage.isModified())
+                || (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified())
+                || (currentLanguagesJavaScriptPage != null && currentLanguagesJavaScriptPage.isModified())
+                || (currentLanguagesJsEsLintPage != null && currentLanguagesJsEsLintPage.isModified())
+                || (currentLanguagesJsJsHintPage != null && currentLanguagesJsJsHintPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -7554,6 +7825,21 @@ public class SettingsDialog {
             }
             if (currentRunTargetsPage != null) {
                 currentRunTargetsPage.reset();
+            }
+            if (currentLanguagesPhpPage != null) {
+                currentLanguagesPhpPage.reset();
+            }
+            if (currentLanguagesJavaFxPage != null) {
+                currentLanguagesJavaFxPage.reset();
+            }
+            if (currentLanguagesJavaScriptPage != null) {
+                currentLanguagesJavaScriptPage.reset();
+            }
+            if (currentLanguagesJsEsLintPage != null) {
+                currentLanguagesJsEsLintPage.reset();
+            }
+            if (currentLanguagesJsJsHintPage != null) {
+                currentLanguagesJsJsHintPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();
