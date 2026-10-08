@@ -96,6 +96,24 @@ public class SettingsDialog {
     private SettingsTextMateBundlesPage currentTextMateBundlesPage;
     private SettingsTodoPage currentTodoPage;
     private SettingsPythonDebuggerPage currentPythonDebuggerPage;
+    private SettingsDebuggerPage currentDebuggerPage;
+    private SettingsDebuggerAsyncStackTracesPage currentDebuggerAsyncStackTracesPage;
+    private SettingsDebuggerDataViewsPage currentDebuggerDataViewsPage;
+    private SettingsDebuggerDataViewsJavaPage currentDebuggerDataViewsJavaPage;
+    private SettingsDebuggerDataViewsTypeRenderersPage currentDebuggerDataViewsTypeRenderersPage;
+    private SettingsDebuggerHotSwapPage currentDebuggerHotSwapPage;
+    private SettingsDebuggerSteppingPage currentDebuggerSteppingPage;
+    private SettingsDebuggerDataViewsJavaScriptPage currentDebuggerDataViewsJavaScriptPage;
+    private SettingsDeploymentPage currentDeploymentPage;
+    private SettingsDeploymentOptionsPage currentDeploymentOptionsPage;
+    private SettingsDockerPage currentDockerPage;
+    private SettingsDockerConsolePage currentDockerConsolePage;
+    private SettingsDockerRegistryPage currentDockerRegistryPage;
+    private SettingsJavaProfilerPage currentJavaProfilerPage;
+    private SettingsJavaProfilerFiltersPage currentJavaProfilerFiltersPage;
+    private SettingsBuildKubernetesPage currentBuildKubernetesPage;
+    private SettingsRemoteJarRepositoriesPage currentRemoteJarRepositoriesPage;
+    private SettingsRunTargetsPage currentRunTargetsPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -1686,6 +1704,114 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Async Stack Traces".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDebuggerAsyncStackTracesPage != null) {
+                            currentDebuggerAsyncStackTracesPage.revert();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Java Type Renderers".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDebuggerDataViewsTypeRenderersPage != null) {
+                            currentDebuggerDataViewsTypeRenderersPage.revert();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Docker".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDockerPage != null) {
+                            currentDockerPage.revert();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Docker Registry".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDockerRegistryPage != null) {
+                            currentDockerRegistryPage.revert();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Java Profiler".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentJavaProfilerPage != null) {
+                            currentJavaProfilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Filters".equals(item.getValue()) && isUnderJavaProfiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentJavaProfilerFiltersPage != null) {
+                            currentJavaProfilerFiltersPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Kubernetes".equals(item.getValue()) && isUnderBuild(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentBuildKubernetesPage != null) {
+                            currentBuildKubernetesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Remote Jar Repositories".equals(item.getValue()) && isUnderBuild(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRemoteJarRepositoriesPage != null) {
+                            currentRemoteJarRepositoriesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Run Targets".equals(item.getValue()) && isUnderBuild(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRunTargetsPage != null) {
+                            currentRunTargetsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Application Servers".equals(item.getValue())) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -2177,6 +2303,8 @@ public class SettingsDialog {
         boolean underCopyright = false;
         boolean underFormatting = false;
         boolean underEmmet = false;
+        boolean underDebugger = false;
+        boolean underDataViews = false;
 
         while (ancestor != null) {
             String v = ancestor.getValue();
@@ -2189,6 +2317,8 @@ public class SettingsDialog {
                 if (v.equals("Copyright")) underCopyright = true;
                 if (v.equals("Formatting")) underFormatting = true;
                 if (v.equals("Emmet")) underEmmet = true;
+                if (v.equals("Debugger")) underDebugger = true;
+                if (v.equals("Data Views")) underDataViews = true;
             }
             ancestor = ancestor.getParent();
         }
@@ -3935,6 +4065,22 @@ public class SettingsDialog {
             buildTerminalSettingsPage();
         } else if ("Python Debugger".equals(pageName)) {
             buildPythonDebuggerPage();
+        } else if ("Debugger".equals(pageName) && !underColorScheme) {
+            buildDebuggerPage();
+        } else if ("Async Stack Traces".equals(pageName)) {
+            buildDebuggerAsyncStackTracesPage();
+        } else if ("Data Views".equals(pageName)) {
+            buildDebuggerDataViewsPage();
+        } else if ("Java".equals(pageName) && isUnderDataViews(selected)) {
+            buildDebuggerDataViewsJavaPage();
+        } else if ("Java Type Renderers".equals(pageName)) {
+            buildDebuggerDataViewsTypeRenderersPage();
+        } else if ("JavaScript".equals(pageName) && isUnderDataViews(selected)) {
+            buildDebuggerDataViewsJavaScriptPage();
+        } else if ("HotSwap".equals(pageName) && isUnderDebugger(selected)) {
+            buildDebuggerHotSwapPage();
+        } else if ("Stepping".equals(pageName) && isUnderDebugger(selected)) {
+            buildDebuggerSteppingPage();
         } else if ("Application Servers".equals(pageName)) {
             buildApplicationServersPage();
         } else if ("Build Tools".equals(pageName)) {
@@ -3985,12 +4131,32 @@ public class SettingsDialog {
             buildScalaCompileServerPage();
         } else if ("Validation".equals(pageName) && isUnderCompiler(selected)) {
             buildValidationPage();
+        } else if ("Console".equals(pageName) && isUnderDocker(selected)) {
+            buildDockerConsolePage();
         } else if ("Console".equals(pageName) && isUnderBuild(selected)) {
             buildBuildConsolePage();
         } else if ("Python Console".equals(pageName)) {
             buildPythonConsolePage();
         } else if ("Coverage".equals(pageName) && isUnderBuild(selected)) {
             buildCoveragePage();
+        } else if ("Deployment".equals(pageName) && isUnderBuild(selected)) {
+            buildDeploymentPage();
+        } else if ("Options".equals(pageName) && isUnderDeployment(selected)) {
+            buildDeploymentOptionsPage();
+        } else if ("Docker".equals(pageName) && isUnderBuild(selected)) {
+            buildDockerPage();
+        } else if ("Docker Registry".equals(pageName) && isUnderDocker(selected)) {
+            buildDockerRegistryPage();
+        } else if ("Java Profiler".equals(pageName) && isUnderBuild(selected)) {
+            buildJavaProfilerPage();
+        } else if ("Filters".equals(pageName) && isUnderJavaProfiler(selected)) {
+            buildJavaProfilerFiltersPage();
+        } else if ("Kubernetes".equals(pageName) && isUnderBuild(selected)) {
+            buildKubernetesPage();
+        } else if ("Remote Jar Repositories".equals(pageName) && isUnderBuild(selected)) {
+            buildRemoteJarRepositoriesPage();
+        } else if ("Run Targets".equals(pageName) && isUnderBuild(selected)) {
+            buildRunTargetsPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -4416,6 +4582,306 @@ public class SettingsDialog {
         updateApplyButtonState();
     }
 
+    private void buildDebuggerPage() {
+        if (currentDebuggerPage == null) {
+            currentDebuggerPage = new SettingsDebuggerPage();
+        }
+        currentDebuggerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerAsyncStackTracesPage() {
+        if (currentDebuggerAsyncStackTracesPage == null) {
+            currentDebuggerAsyncStackTracesPage = new SettingsDebuggerAsyncStackTracesPage();
+        }
+        currentDebuggerAsyncStackTracesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDebuggerAsyncStackTracesPage, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(currentDebuggerAsyncStackTracesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerDataViewsPage() {
+        if (currentDebuggerDataViewsPage == null) {
+            currentDebuggerDataViewsPage = new SettingsDebuggerDataViewsPage();
+        }
+        currentDebuggerDataViewsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerDataViewsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerDataViewsJavaPage() {
+        if (currentDebuggerDataViewsJavaPage == null) {
+            currentDebuggerDataViewsJavaPage = new SettingsDebuggerDataViewsJavaPage();
+        }
+        currentDebuggerDataViewsJavaPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerDataViewsJavaPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerDataViewsTypeRenderersPage() {
+        if (currentDebuggerDataViewsTypeRenderersPage == null) {
+            currentDebuggerDataViewsTypeRenderersPage = new SettingsDebuggerDataViewsTypeRenderersPage();
+        }
+        currentDebuggerDataViewsTypeRenderersPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDebuggerDataViewsTypeRenderersPage, Priority.ALWAYS);
+        contentContainer.getChildren().setAll(currentDebuggerDataViewsTypeRenderersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerHotSwapPage() {
+        if (currentDebuggerHotSwapPage == null) {
+            currentDebuggerHotSwapPage = new SettingsDebuggerHotSwapPage();
+        }
+        currentDebuggerHotSwapPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerHotSwapPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerSteppingPage() {
+        if (currentDebuggerSteppingPage == null) {
+            currentDebuggerSteppingPage = new SettingsDebuggerSteppingPage();
+        }
+        currentDebuggerSteppingPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerSteppingPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDebuggerDataViewsJavaScriptPage() {
+        if (currentDebuggerDataViewsJavaScriptPage == null) {
+            currentDebuggerDataViewsJavaScriptPage = new SettingsDebuggerDataViewsJavaScriptPage();
+        }
+        currentDebuggerDataViewsJavaScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDebuggerDataViewsJavaScriptPage);
+        updateApplyButtonState();
+    }
+
+    private boolean isUnderDebugger(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Debugger".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderDataViews(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Data Views".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    public SettingsDebuggerPage getCurrentDebuggerPage() {
+        return currentDebuggerPage;
+    }
+
+    public SettingsDebuggerAsyncStackTracesPage getCurrentDebuggerAsyncStackTracesPage() {
+        return currentDebuggerAsyncStackTracesPage;
+    }
+
+    public SettingsDebuggerDataViewsPage getCurrentDebuggerDataViewsPage() {
+        return currentDebuggerDataViewsPage;
+    }
+
+    public SettingsDebuggerDataViewsJavaPage getCurrentDebuggerDataViewsJavaPage() {
+        return currentDebuggerDataViewsJavaPage;
+    }
+
+    public SettingsDebuggerDataViewsTypeRenderersPage getCurrentDebuggerDataViewsTypeRenderersPage() {
+        return currentDebuggerDataViewsTypeRenderersPage;
+    }
+
+    public SettingsDebuggerHotSwapPage getCurrentDebuggerHotSwapPage() {
+        return currentDebuggerHotSwapPage;
+    }
+
+    public SettingsDebuggerSteppingPage getCurrentDebuggerSteppingPage() {
+        return currentDebuggerSteppingPage;
+    }
+
+    public SettingsDebuggerDataViewsJavaScriptPage getCurrentDebuggerDataViewsJavaScriptPage() {
+        return currentDebuggerDataViewsJavaScriptPage;
+    }
+
+    private boolean isUnderDeployment(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Deployment".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderDocker(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Docker".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private void buildDeploymentPage() {
+        if (currentDeploymentPage == null) {
+            currentDeploymentPage = new SettingsDeploymentPage();
+        }
+        currentDeploymentPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDeploymentPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDeploymentPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDeploymentOptionsPage() {
+        if (currentDeploymentOptionsPage == null) {
+            currentDeploymentOptionsPage = new SettingsDeploymentOptionsPage();
+            currentDeploymentOptionsPage.setNavigationHandler(this::selectCategory);
+        }
+        currentDeploymentOptionsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDeploymentOptionsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDeploymentOptionsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDockerPage() {
+        if (currentDockerPage == null) {
+            currentDockerPage = new SettingsDockerPage();
+        }
+        currentDockerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDockerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDockerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildDockerConsolePage() {
+        if (currentDockerConsolePage == null) {
+            currentDockerConsolePage = new SettingsDockerConsolePage();
+        }
+        currentDockerConsolePage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentDockerConsolePage);
+        updateApplyButtonState();
+    }
+
+    private void buildDockerRegistryPage() {
+        if (currentDockerRegistryPage == null) {
+            currentDockerRegistryPage = new SettingsDockerRegistryPage();
+        }
+        currentDockerRegistryPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDockerRegistryPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDockerRegistryPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDeploymentPage getCurrentDeploymentPage() {
+        return currentDeploymentPage;
+    }
+
+    public SettingsDeploymentOptionsPage getCurrentDeploymentOptionsPage() {
+        return currentDeploymentOptionsPage;
+    }
+
+    public SettingsDockerPage getCurrentDockerPage() {
+        return currentDockerPage;
+    }
+
+    public SettingsDockerConsolePage getCurrentDockerConsolePage() {
+        return currentDockerConsolePage;
+    }
+
+    public SettingsDockerRegistryPage getCurrentDockerRegistryPage() {
+        return currentDockerRegistryPage;
+    }
+
+    private boolean isUnderJavaProfiler(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Java Profiler".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private void buildJavaProfilerPage() {
+        if (currentJavaProfilerPage == null) {
+            currentJavaProfilerPage = new SettingsJavaProfilerPage();
+        }
+        currentJavaProfilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentJavaProfilerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentJavaProfilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildJavaProfilerFiltersPage() {
+        if (currentJavaProfilerFiltersPage == null) {
+            currentJavaProfilerFiltersPage = new SettingsJavaProfilerFiltersPage();
+        }
+        currentJavaProfilerFiltersPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentJavaProfilerFiltersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentJavaProfilerFiltersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildKubernetesPage() {
+        if (currentBuildKubernetesPage == null) {
+            currentBuildKubernetesPage = new SettingsBuildKubernetesPage();
+        }
+        currentBuildKubernetesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentBuildKubernetesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentBuildKubernetesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsJavaProfilerPage getCurrentJavaProfilerPage() {
+        return currentJavaProfilerPage;
+    }
+
+    public SettingsJavaProfilerFiltersPage getCurrentJavaProfilerFiltersPage() {
+        return currentJavaProfilerFiltersPage;
+    }
+
+    public SettingsBuildKubernetesPage getCurrentBuildKubernetesPage() {
+        return currentBuildKubernetesPage;
+    }
+
+    private void buildRemoteJarRepositoriesPage() {
+        if (currentRemoteJarRepositoriesPage == null) {
+            currentRemoteJarRepositoriesPage = new SettingsRemoteJarRepositoriesPage();
+        }
+        currentRemoteJarRepositoriesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentRemoteJarRepositoriesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentRemoteJarRepositoriesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildRunTargetsPage() {
+        if (currentRunTargetsPage == null) {
+            currentRunTargetsPage = new SettingsRunTargetsPage();
+        }
+        currentRunTargetsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentRunTargetsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentRunTargetsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsRemoteJarRepositoriesPage getCurrentRemoteJarRepositoriesPage() {
+        return currentRemoteJarRepositoriesPage;
+    }
+
+    public SettingsRunTargetsPage getCurrentRunTargetsPage() {
+        return currentRunTargetsPage;
+    }
+
     private void buildApplicationServersPage() {
         if (currentApplicationServersPage == null) {
             currentApplicationServersPage = new SettingsApplicationServersPage();
@@ -4736,11 +5202,7 @@ public class SettingsDialog {
             return;
         }
         if ("Debugger".equals(pageName)) {
-            if (currentColorSchemeDebuggerPage == null) {
-                currentColorSchemeDebuggerPage = new SettingsColorSchemeDebuggerPage();
-            }
-            currentColorSchemeDebuggerPage.setOnModifiedListener(this::updateApplyButtonState);
-            wrapInScroll(currentColorSchemeDebuggerPage);
+            buildDebuggerPage();
             return;
         }
         if ("Diff & Merge".equals(pageName)) {
@@ -5958,31 +6420,33 @@ public class SettingsDialog {
         );
 
         TreeItem<String> debugger = new TreeItem<>("Debugger");
+        TreeItem<String> dataViews = new TreeItem<>("Data Views");
+        dataViews.getChildren().addAll(
+                new TreeItem<>("Java"),
+                new TreeItem<>("Java Type Renderers"),
+                new TreeItem<>("JavaScript")
+        );
         debugger.getChildren().addAll(
-                new TreeItem<>("Data Views"),
-                new TreeItem<>("Stepping"),
+                new TreeItem<>("Async Stack Traces"),
+                dataViews,
                 new TreeItem<>("HotSwap"),
-                new TreeItem<>("Async Stack Traces")
+                new TreeItem<>("Stepping")
         );
 
         TreeItem<String> deployment = new TreeItem<>("Deployment");
         deployment.getChildren().addAll(
-                new TreeItem<>("Connection"),
-                new TreeItem<>("Mappings"),
-                new TreeItem<>("Excluded Paths"),
                 new TreeItem<>("Options")
         );
 
         TreeItem<String> docker = new TreeItem<>("Docker");
         docker.getChildren().addAll(
-                new TreeItem<>("Tools"),
-                new TreeItem<>("Registry")
+                new TreeItem<>("Console"),
+                new TreeItem<>("Docker Registry")
         );
 
-        TreeItem<String> profilers = new TreeItem<>("Profilers");
-        profilers.getChildren().addAll(
-                new TreeItem<>("Async Profiler"),
-                new TreeItem<>("Java Flight Recorder")
+        TreeItem<String> javaProfiler = new TreeItem<>("Java Profiler");
+        javaProfiler.getChildren().addAll(
+                new TreeItem<>("Filters")
         );
 
         build.getChildren().addAll(
@@ -5995,8 +6459,8 @@ public class SettingsDialog {
                 debugger,
                 deployment,
                 docker,
+                javaProfiler,
                 new TreeItem<>("Kubernetes"),
-                profilers,
                 new TreeItem<>("Remote Jar Repositories"),
                 new TreeItem<>("Run Targets")
         );
@@ -6085,7 +6549,8 @@ public class SettingsDialog {
             "Ignored Files", "Importing", "Repositories", "Runner", "Running Tests",
             "Gradle", "Gant", "BSP", "Cargo", "sbt", "Compiler", "Console",
             "Coverage", "Deployment", "Docker", "Kubernetes", "Remote Jar Repositories",
-            "Run Targets"
+            "Run Targets", "Debugger", "Async Stack Traces", "Data Views", "Java Type Renderers",
+            "HotSwap", "Stepping", "Options", "Java Profiler", "Filters"
     );
 
     private static boolean isProjectSetting(String name) {
@@ -6106,6 +6571,9 @@ public class SettingsDialog {
     public TreeItem<String> findItem(TreeItem<String> root, String text) {
         if (root == null || text == null) return null;
         if (root.getValue() != null && root.getValue().equals(text)) {
+            return root;
+        }
+        if ("Profilers".equals(text) && "Java Profiler".equals(root.getValue())) {
             return root;
         }
         for (TreeItem<String> child : root.getChildren()) {
@@ -6359,6 +6827,60 @@ public class SettingsDialog {
         }
         if (currentPythonDebuggerPage != null && currentPythonDebuggerPage.isModified()) {
             currentPythonDebuggerPage.apply();
+        }
+        if (currentDebuggerPage != null && currentDebuggerPage.isModified()) {
+            currentDebuggerPage.apply();
+        }
+        if (currentDebuggerAsyncStackTracesPage != null && currentDebuggerAsyncStackTracesPage.isModified()) {
+            currentDebuggerAsyncStackTracesPage.apply();
+        }
+        if (currentDebuggerDataViewsPage != null && currentDebuggerDataViewsPage.isModified()) {
+            currentDebuggerDataViewsPage.apply();
+        }
+        if (currentDebuggerDataViewsJavaPage != null && currentDebuggerDataViewsJavaPage.isModified()) {
+            currentDebuggerDataViewsJavaPage.apply();
+        }
+        if (currentDebuggerDataViewsTypeRenderersPage != null && currentDebuggerDataViewsTypeRenderersPage.isModified()) {
+            currentDebuggerDataViewsTypeRenderersPage.apply();
+        }
+        if (currentDebuggerHotSwapPage != null && currentDebuggerHotSwapPage.isModified()) {
+            currentDebuggerHotSwapPage.apply();
+        }
+        if (currentDebuggerSteppingPage != null && currentDebuggerSteppingPage.isModified()) {
+            currentDebuggerSteppingPage.apply();
+        }
+        if (currentDebuggerDataViewsJavaScriptPage != null && currentDebuggerDataViewsJavaScriptPage.isModified()) {
+            currentDebuggerDataViewsJavaScriptPage.apply();
+        }
+        if (currentDeploymentPage != null && currentDeploymentPage.isModified()) {
+            currentDeploymentPage.apply();
+        }
+        if (currentDeploymentOptionsPage != null && currentDeploymentOptionsPage.isModified()) {
+            currentDeploymentOptionsPage.apply();
+        }
+        if (currentDockerPage != null && currentDockerPage.isModified()) {
+            currentDockerPage.apply();
+        }
+        if (currentDockerConsolePage != null && currentDockerConsolePage.isModified()) {
+            currentDockerConsolePage.apply();
+        }
+        if (currentDockerRegistryPage != null && currentDockerRegistryPage.isModified()) {
+            currentDockerRegistryPage.apply();
+        }
+        if (currentJavaProfilerPage != null && currentJavaProfilerPage.isModified()) {
+            currentJavaProfilerPage.apply();
+        }
+        if (currentJavaProfilerFiltersPage != null && currentJavaProfilerFiltersPage.isModified()) {
+            currentJavaProfilerFiltersPage.apply();
+        }
+        if (currentBuildKubernetesPage != null && currentBuildKubernetesPage.isModified()) {
+            currentBuildKubernetesPage.apply();
+        }
+        if (currentRemoteJarRepositoriesPage != null && currentRemoteJarRepositoriesPage.isModified()) {
+            currentRemoteJarRepositoriesPage.apply();
+        }
+        if (currentRunTargetsPage != null && currentRunTargetsPage.isModified()) {
+            currentRunTargetsPage.apply();
         }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
@@ -6721,6 +7243,24 @@ public class SettingsDialog {
                 || (currentTextMateBundlesPage != null && currentTextMateBundlesPage.isModified())
                 || (currentTodoPage != null && currentTodoPage.isModified())
                 || (currentPythonDebuggerPage != null && currentPythonDebuggerPage.isModified())
+                || (currentDebuggerPage != null && currentDebuggerPage.isModified())
+                || (currentDebuggerAsyncStackTracesPage != null && currentDebuggerAsyncStackTracesPage.isModified())
+                || (currentDebuggerDataViewsPage != null && currentDebuggerDataViewsPage.isModified())
+                || (currentDebuggerDataViewsJavaPage != null && currentDebuggerDataViewsJavaPage.isModified())
+                || (currentDebuggerDataViewsTypeRenderersPage != null && currentDebuggerDataViewsTypeRenderersPage.isModified())
+                || (currentDebuggerHotSwapPage != null && currentDebuggerHotSwapPage.isModified())
+                || (currentDebuggerSteppingPage != null && currentDebuggerSteppingPage.isModified())
+                || (currentDebuggerDataViewsJavaScriptPage != null && currentDebuggerDataViewsJavaScriptPage.isModified())
+                || (currentDeploymentPage != null && currentDeploymentPage.isModified())
+                || (currentDeploymentOptionsPage != null && currentDeploymentOptionsPage.isModified())
+                || (currentDockerPage != null && currentDockerPage.isModified())
+                || (currentDockerConsolePage != null && currentDockerConsolePage.isModified())
+                || (currentDockerRegistryPage != null && currentDockerRegistryPage.isModified())
+                || (currentJavaProfilerPage != null && currentJavaProfilerPage.isModified())
+                || (currentJavaProfilerFiltersPage != null && currentJavaProfilerFiltersPage.isModified())
+                || (currentBuildKubernetesPage != null && currentBuildKubernetesPage.isModified())
+                || (currentRemoteJarRepositoriesPage != null && currentRemoteJarRepositoriesPage.isModified())
+                || (currentRunTargetsPage != null && currentRunTargetsPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -6960,6 +7500,60 @@ public class SettingsDialog {
             }
             if (currentPythonDebuggerPage != null) {
                 currentPythonDebuggerPage.reset();
+            }
+            if (currentDebuggerPage != null) {
+                currentDebuggerPage.reset();
+            }
+            if (currentDebuggerAsyncStackTracesPage != null) {
+                currentDebuggerAsyncStackTracesPage.reset();
+            }
+            if (currentDebuggerDataViewsPage != null) {
+                currentDebuggerDataViewsPage.reset();
+            }
+            if (currentDebuggerDataViewsJavaPage != null) {
+                currentDebuggerDataViewsJavaPage.reset();
+            }
+            if (currentDebuggerDataViewsTypeRenderersPage != null) {
+                currentDebuggerDataViewsTypeRenderersPage.reset();
+            }
+            if (currentDebuggerHotSwapPage != null) {
+                currentDebuggerHotSwapPage.reset();
+            }
+            if (currentDebuggerSteppingPage != null) {
+                currentDebuggerSteppingPage.reset();
+            }
+            if (currentDebuggerDataViewsJavaScriptPage != null) {
+                currentDebuggerDataViewsJavaScriptPage.reset();
+            }
+            if (currentDeploymentPage != null) {
+                currentDeploymentPage.reset();
+            }
+            if (currentDeploymentOptionsPage != null) {
+                currentDeploymentOptionsPage.reset();
+            }
+            if (currentDockerPage != null) {
+                currentDockerPage.reset();
+            }
+            if (currentDockerConsolePage != null) {
+                currentDockerConsolePage.reset();
+            }
+            if (currentDockerRegistryPage != null) {
+                currentDockerRegistryPage.reset();
+            }
+            if (currentJavaProfilerPage != null) {
+                currentJavaProfilerPage.reset();
+            }
+            if (currentJavaProfilerFiltersPage != null) {
+                currentJavaProfilerFiltersPage.reset();
+            }
+            if (currentBuildKubernetesPage != null) {
+                currentBuildKubernetesPage.reset();
+            }
+            if (currentRemoteJarRepositoriesPage != null) {
+                currentRemoteJarRepositoriesPage.reset();
+            }
+            if (currentRunTargetsPage != null) {
+                currentRunTargetsPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();

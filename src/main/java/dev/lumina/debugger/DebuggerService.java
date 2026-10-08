@@ -301,6 +301,7 @@ public class DebuggerService {
     public List<DebugVariable> inspectVariables(StackFrame frame) {
         if (frame == null) return Collections.emptyList();
         List<DebugVariable> result = new ArrayList<>();
+        JavaDataViewsSettings dvSettings = DebuggerSettingsManager.getInstance().getJavaDataViewsSettings();
         try {
             // 1. this reference
             ObjectReference thisObj = frame.thisObject();
@@ -308,10 +309,14 @@ public class DebuggerService {
                 String thisType = thisObj.referenceType().name();
                 int simpleIdx = thisType.lastIndexOf('.');
                 String simple = simpleIdx >= 0 ? thisType.substring(simpleIdx + 1) : thisType;
-                DebugVariable thisVar = new DebugVariable("this", simple + "@" + thisObj.uniqueID(),
-                        "{" + simple + "@" + thisObj.uniqueID() + "}", "this");
+                String thisId = dvSettings.isShowObjectId() ? "@" + thisObj.uniqueID() : "";
+                DebugVariable thisVar = new DebugVariable("this", simple + thisId,
+                        "{" + simple + thisId + "}", "this");
                 for (Field f : thisObj.referenceType().visibleFields()) {
-                    if (f.isStatic()) continue;
+                    if (f.isStatic()) {
+                        if (!dvSettings.isShowStaticFields()) continue;
+                        if (f.isFinal() && !dvSettings.isShowStaticFinalFields()) continue;
+                    }
                     Value fVal = thisObj.getValue(f);
                     thisVar.addChild(new DebugVariable(f.name(), f.typeName(), formatValue(fVal), "field"));
                 }
@@ -325,7 +330,10 @@ public class DebuggerService {
                 DebugVariable v = new DebugVariable(lv.name(), lv.typeName(), formatValue(val), kind);
                 if (val instanceof ObjectReference objVal && !(val instanceof StringReference)) {
                     for (Field f : objVal.referenceType().visibleFields()) {
-                        if (f.isStatic()) continue;
+                        if (f.isStatic()) {
+                            if (!dvSettings.isShowStaticFields()) continue;
+                            if (f.isFinal() && !dvSettings.isShowStaticFinalFields()) continue;
+                        }
                         v.addChild(new DebugVariable(f.name(), f.typeName(), formatValue(objVal.getValue(f)), "field"));
                     }
                 }
@@ -342,17 +350,34 @@ public class DebuggerService {
 
     private String formatValue(Value v) {
         if (v == null) return "null";
+        DebuggerSettingsManager mgr = DebuggerSettingsManager.getInstance();
+        JavaDataViewsSettings dvSettings = mgr.getJavaDataViewsSettings();
+
         if (v instanceof StringReference sr) {
             return "\"" + sr.value() + "\"";
         }
         if (v instanceof PrimitiveValue pv) {
+            if (dvSettings.isShowHexForPrimitives()) {
+                if (pv instanceof IntegerValue iv) return "0x" + Integer.toHexString(iv.value());
+                if (pv instanceof LongValue lv) return "0x" + Long.toHexString(lv.value());
+                if (pv instanceof ShortValue sv) return "0x" + Integer.toHexString(sv.value());
+                if (pv instanceof ByteValue bv) return "0x" + Integer.toHexString(bv.value());
+            }
             return pv.toString();
         }
         if (v instanceof ObjectReference obj) {
             String type = obj.referenceType().name();
+            JavaTypeRenderer renderer = mgr.findRendererForClass(type);
+            if (renderer != null && renderer.getNodeRendererType() == JavaTypeRenderer.NodeRendererType.EXPRESSION
+                    && !renderer.getNodeExpression().isBlank()) {
+                return renderer.getNodeExpression();
+            }
+
             int idx = type.lastIndexOf('.');
             String simple = idx >= 0 ? type.substring(idx + 1) : type;
-            return "{" + simple + "@" + obj.uniqueID() + "}";
+            boolean showId = renderer != null ? renderer.isShowTypeAndObjectId() : dvSettings.isShowObjectId();
+            String idSuffix = showId ? "@" + obj.uniqueID() : "";
+            return "{" + simple + idSuffix + "}";
         }
         return v.toString();
     }
