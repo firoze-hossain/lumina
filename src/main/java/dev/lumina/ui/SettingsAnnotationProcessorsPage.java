@@ -88,11 +88,30 @@ public class SettingsAnnotationProcessorsPage extends VBox {
 
         addProfileBtn.setOnAction(e -> showCreateProfileDialog());
         removeProfileBtn.setOnAction(e -> removeSelectedProfile());
+        moveModuleBtn.setOnAction(e -> showMoveModuleDialog());
 
         leftToolbar.getChildren().addAll(addProfileBtn, removeProfileBtn, moveModuleBtn);
 
-        profileTreeView.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #43454A; -fx-border-radius: 4;");
+        profileTreeView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #43454A; -fx-border-radius: 4; -fx-background-radius: 4;");
         profileTreeView.setShowRoot(false);
+        profileTreeView.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 3 6;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6;");
+                    }
+                }
+            }
+        });
         VBox.setVgrow(profileTreeView, Priority.ALWAYS);
 
         profileTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -258,7 +277,10 @@ public class SettingsAnnotationProcessorsPage extends VBox {
         content.getChildren().addAll(label, nameField);
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22;");
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
+        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
 
         dialog.setResultConverter(btn -> btn == ButtonType.OK ? nameField.getText() : null);
 
@@ -287,6 +309,41 @@ public class SettingsAnnotationProcessorsPage extends VBox {
             selectProfile("Default");
             notifyModified();
         }
+    }
+
+    private void showMoveModuleDialog() {
+        TreeItem<String> sel = profileTreeView.getSelectionModel().getSelectedItem();
+        if (sel == null || sel.getParent() == profileTreeView.getRoot() || sel.getParent() == null) return;
+        String modName = sel.getValue();
+        if (modName.startsWith("📁 ")) {
+            modName = modName.substring(3).trim();
+        }
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>();
+        dialog.setTitle("Move Module");
+        dialog.setHeaderText("Move " + modName + " to profile:");
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
+        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
+        for (AnnotationProcessingProfile p : currentWorkingSettings.getProfiles()) {
+            dialog.getItems().add(p.getName());
+        }
+        if (!dialog.getItems().isEmpty()) {
+            dialog.setSelectedItem(dialog.getItems().getFirst());
+        }
+        final String targetMod = modName;
+        dialog.showAndWait().ifPresent(targetProfileName -> {
+            for (AnnotationProcessingProfile p : currentWorkingSettings.getProfiles()) {
+                p.getModules().remove(targetMod);
+                if (p.getName().equals(targetProfileName)) {
+                    p.getModules().add(targetMod);
+                }
+            }
+            rebuildTree();
+            selectProfile(targetProfileName);
+            notifyModified();
+        });
     }
 
     private void browseProcessorPath() {

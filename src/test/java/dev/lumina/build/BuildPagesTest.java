@@ -1015,7 +1015,8 @@ public class BuildPagesTest {
                 "src/main/java/dev/lumina/ui/SettingsPythonConsolePage.java",
                 "src/main/java/dev/lumina/build/CoverageSettings.java",
                 "src/main/java/dev/lumina/build/CoverageSettingsManager.java",
-                "src/main/java/dev/lumina/ui/SettingsCoveragePage.java"
+                "src/main/java/dev/lumina/ui/SettingsCoveragePage.java",
+                "src/main/java/dev/lumina/ui/ChooseExcludeAnnotationDialog.java"
         );
         for (String f : filesToCheck) {
             File file = new File(f);
