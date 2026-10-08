@@ -189,7 +189,11 @@ public class SettingsCoveragePage extends VBox {
                     setStyle("-fx-background-color: transparent;");
                 } else {
                     setText(item);
-                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8;");
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 3 8;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 8;");
+                    }
                 }
             }
         });
@@ -220,12 +224,7 @@ public class SettingsCoveragePage extends VBox {
     }
 
     private void onAddAnnotation() {
-        TextInputDialog dialog = new TextInputDialog("*Generated*");
-        dialog.setTitle("Exclude Annotation");
-        dialog.setHeaderText("Add Annotation Pattern to Exclude");
-        dialog.setContentText("Pattern:");
-        dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
-
+        ChooseExcludeAnnotationDialog dialog = new ChooseExcludeAnnotationDialog(getScene() != null ? getScene().getWindow() : null);
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(pattern -> {
             String trimmed = pattern.trim();

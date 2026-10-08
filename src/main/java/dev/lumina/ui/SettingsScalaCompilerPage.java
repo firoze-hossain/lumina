@@ -119,7 +119,25 @@ public class SettingsScalaCompilerPage extends VBox {
         moveModuleBtn.setOnAction(e -> showMoveModuleDialog());
 
         profileTree.setShowRoot(false);
-        profileTree.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A; -fx-border-radius: 0 0 4 4; -fx-background-radius: 0 0 4 4;");
+        profileTree.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #43454A; -fx-border-radius: 0 0 4 4; -fx-background-radius: 0 0 4 4;");
+        profileTree.setCellFactory(tv -> new TreeCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 3 6;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-padding: 3 6;");
+                    }
+                }
+            }
+        });
         profileTree.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> onTreeSelectionChanged(newVal));
         VBox.setVgrow(profileTree, Priority.ALWAYS);
 
@@ -271,7 +289,24 @@ public class SettingsScalaCompilerPage extends VBox {
 
         pluginsListView.setPrefHeight(100);
         pluginsListView.setMaxHeight(120);
-        pluginsListView.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A; -fx-border-radius: 0 0 4 4; -fx-background-radius: 0 0 4 4;");
+        pluginsListView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #43454A; -fx-border-radius: 0 0 4 4; -fx-background-radius: 0 0 4 4;");
+        pluginsListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    }
+                }
+            }
+        });
         Label placeholder = new Label("Nothing to show");
         placeholder.setStyle("-fx-text-fill: #707278; -fx-font-size: 12px;");
         pluginsListView.setPlaceholder(placeholder);
@@ -390,7 +425,11 @@ public class SettingsScalaCompilerPage extends VBox {
         TextInputDialog dialog = new TextInputDialog("Profile " + (workingProfiles.size() + 1));
         dialog.setTitle("New Scala Compiler Profile");
         dialog.setHeaderText("Enter profile name:");
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
+        dialog.getEditor().setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4;");
         dialog.showAndWait().ifPresent(name -> {
             if (!name.isBlank()) {
                 ScalaCompilerProfile p = new ScalaCompilerProfile(name.trim());
@@ -430,6 +469,9 @@ public class SettingsScalaCompilerPage extends VBox {
         ChoiceDialog<String> dialog = new ChoiceDialog<>();
         dialog.setTitle("Move Module");
         dialog.setHeaderText("Move " + modName + " to profile:");
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
         for (ScalaCompilerProfile p : workingProfiles) {
             dialog.getItems().add(p.getName());
@@ -453,7 +495,11 @@ public class SettingsScalaCompilerPage extends VBox {
         TextInputDialog dialog = new TextInputDialog("");
         dialog.setTitle("Add Compiler Plugin");
         dialog.setHeaderText("Enter path to compiler plugin JAR:");
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
+        dialog.getEditor().setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4;");
         dialog.showAndWait().ifPresent(path -> {
             if (!path.isBlank() && selectedProfile != null) {
                 pluginsList.add(path.trim());
@@ -466,6 +512,9 @@ public class SettingsScalaCompilerPage extends VBox {
     private void openExpandDialog(String title, TextField targetField) {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle(title);
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
         dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
 
         TextArea area = new TextArea(targetField.getText());
