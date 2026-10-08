@@ -33,7 +33,7 @@ public class SettingsCategoryOverviewPage extends VBox {
         CATEGORY_DESCRIPTIONS.put("Build, Execution, Deployment",
                 "Configure the project Execution settings, set up Deployment options, and customize the Debugger behavior");
         CATEGORY_DESCRIPTIONS.put("Languages & Frameworks",
-                "Configure language support, framework integrations, schemas, and language server protocols.");
+                "Configure the settings related to specific frameworks and technologies used in your project");
         CATEGORY_DESCRIPTIONS.put("Version Control",
                 "Configure the settings related to version control used in your project");
         CATEGORY_DESCRIPTIONS.put("Keymap",
