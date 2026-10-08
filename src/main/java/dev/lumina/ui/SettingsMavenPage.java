@@ -360,7 +360,7 @@ public class SettingsMavenPage extends VBox {
     }
 
     public MavenSettings getCurrentSettings() {
-        MavenSettings s = new MavenSettings();
+        MavenSettings s = (initialSettings != null) ? initialSettings.clone() : new MavenSettings();
         s.setWorkOffline(workOfflineCheck.isSelected());
         s.setExecuteGoalsRecursively(executeRecursivelyCheck.isSelected());
         s.setPrintExceptionStackTraces(printStackTracesCheck.isSelected());

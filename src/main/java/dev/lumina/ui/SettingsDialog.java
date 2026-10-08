@@ -99,6 +99,21 @@ public class SettingsDialog {
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
+    private SettingsMavenArchetypeCatalogsPage currentMavenArchetypeCatalogsPage;
+    private SettingsMavenIgnoredFilesPage currentMavenIgnoredFilesPage;
+    private SettingsMavenImportingPage currentMavenImportingPage;
+    private SettingsMavenRepositoriesPage currentMavenRepositoriesPage;
+    private SettingsMavenRunnerPage currentMavenRunnerPage;
+    private SettingsMavenRunningTestsPage currentMavenRunningTestsPage;
+    private SettingsGradlePage currentGradlePage;
+    private SettingsGantPage currentGantPage;
+    private SettingsBspPage currentBspPage;
+    private SettingsCargoPage currentCargoPage;
+    private SettingsSbtPage currentSbtPage;
+    private SettingsCompilerPage currentCompilerPage;
+    private SettingsAnnotationProcessorsPage currentAnnotationProcessorsPage;
+    private SettingsCompilerExcludesPage currentCompilerExcludesPage;
+    private SettingsGroovyCompilerPage currentGroovyCompilerPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -1693,6 +1708,186 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentMavenPage != null) {
                             currentMavenPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Archetype Catalogs".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenArchetypeCatalogsPage != null) {
+                            currentMavenArchetypeCatalogsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Ignored Files".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenIgnoredFilesPage != null) {
+                            currentMavenIgnoredFilesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Importing".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenImportingPage != null) {
+                            currentMavenImportingPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Repositories".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenRepositoriesPage != null) {
+                            currentMavenRepositoriesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Runner".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenRunnerPage != null) {
+                            currentMavenRunnerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Running Tests".equals(item.getValue()) && isUnderMaven(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenRunningTestsPage != null) {
+                            currentMavenRunningTestsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Gradle".equals(item.getValue()) && isUnderBuildTools(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentGradlePage != null) {
+                            currentGradlePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Gant".equals(item.getValue()) && isUnderBuildTools(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentGantPage != null) {
+                            currentGantPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("BSP".equals(item.getValue()) && isUnderBuildTools(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentBspPage != null) {
+                            currentBspPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Cargo".equals(item.getValue()) && isUnderBuildTools(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCargoPage != null) {
+                            currentCargoPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("sbt".equals(item.getValue()) && isUnderBuildTools(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentSbtPage != null) {
+                            currentSbtPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Compiler".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCompilerPage != null) {
+                            currentCompilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Annotation Processors".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentAnnotationProcessorsPage != null) {
+                            currentAnnotationProcessorsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Excludes".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCompilerExcludesPage != null) {
+                            currentCompilerExcludesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Groovy Compiler".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentGroovyCompilerPage != null) {
+                            currentGroovyCompilerPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3616,6 +3811,36 @@ public class SettingsDialog {
             buildBuildToolsPage();
         } else if ("Maven".equals(pageName)) {
             buildMavenPage();
+        } else if ("Archetype Catalogs".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenArchetypeCatalogsPage();
+        } else if ("Ignored Files".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenIgnoredFilesPage();
+        } else if ("Importing".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenImportingPage();
+        } else if ("Repositories".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenRepositoriesPage();
+        } else if ("Runner".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenRunnerPage();
+        } else if ("Running Tests".equals(pageName) && isUnderMaven(selected)) {
+            buildMavenRunningTestsPage();
+        } else if ("Gradle".equals(pageName) && isUnderBuildTools(selected)) {
+            buildGradlePage();
+        } else if ("Gant".equals(pageName) && isUnderBuildTools(selected)) {
+            buildGantPage();
+        } else if ("BSP".equals(pageName) && isUnderBuildTools(selected)) {
+            buildBspPage();
+        } else if ("Cargo".equals(pageName) && isUnderBuildTools(selected)) {
+            buildCargoPage();
+        } else if ("sbt".equals(pageName) && isUnderBuildTools(selected)) {
+            buildSbtPage();
+        } else if ("Compiler".equals(pageName)) {
+            buildCompilerPage();
+        } else if ("Annotation Processors".equals(pageName) && isUnderCompiler(selected)) {
+            buildAnnotationProcessorsPage();
+        } else if ("Excludes".equals(pageName) && isUnderCompiler(selected)) {
+            buildCompilerExcludesPage();
+        } else if ("Groovy Compiler".equals(pageName) && isUnderCompiler(selected)) {
+            buildGroovyCompilerPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -3791,6 +4016,33 @@ public class SettingsDialog {
         return false;
     }
 
+    private boolean isUnderMaven(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Maven".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderBuildTools(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Build Tools".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderCompiler(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Compiler".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
     private boolean isUnderEmmet(TreeItem<String> item) {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
@@ -3887,6 +4139,66 @@ public class SettingsDialog {
         return currentMavenPage;
     }
 
+    public SettingsMavenArchetypeCatalogsPage getCurrentMavenArchetypeCatalogsPage() {
+        return currentMavenArchetypeCatalogsPage;
+    }
+
+    public SettingsMavenIgnoredFilesPage getCurrentMavenIgnoredFilesPage() {
+        return currentMavenIgnoredFilesPage;
+    }
+
+    public SettingsMavenImportingPage getCurrentMavenImportingPage() {
+        return currentMavenImportingPage;
+    }
+
+    public SettingsMavenRepositoriesPage getCurrentMavenRepositoriesPage() {
+        return currentMavenRepositoriesPage;
+    }
+
+    public SettingsMavenRunnerPage getCurrentMavenRunnerPage() {
+        return currentMavenRunnerPage;
+    }
+
+    public SettingsMavenRunningTestsPage getCurrentMavenRunningTestsPage() {
+        return currentMavenRunningTestsPage;
+    }
+
+    public SettingsGradlePage getCurrentGradlePage() {
+        return currentGradlePage;
+    }
+
+    public SettingsGantPage getCurrentGantPage() {
+        return currentGantPage;
+    }
+
+    public SettingsBspPage getCurrentBspPage() {
+        return currentBspPage;
+    }
+
+    public SettingsCargoPage getCurrentCargoPage() {
+        return currentCargoPage;
+    }
+
+    public SettingsSbtPage getCurrentSbtPage() {
+        return currentSbtPage;
+    }
+
+    public SettingsCompilerPage getCurrentCompilerPage() {
+        return currentCompilerPage;
+    }
+
+    public SettingsAnnotationProcessorsPage getCurrentAnnotationProcessorsPage() {
+        return currentAnnotationProcessorsPage;
+    }
+
+    public SettingsCompilerExcludesPage getCurrentCompilerExcludesPage() {
+        return currentCompilerExcludesPage;
+    }
+
+    public SettingsGroovyCompilerPage getCurrentGroovyCompilerPage() {
+        return currentGroovyCompilerPage;
+    }
+
     private void buildPythonDebuggerPage() {
         if (currentPythonDebuggerPage == null) {
             currentPythonDebuggerPage = new SettingsPythonDebuggerPage();
@@ -3922,6 +4234,146 @@ public class SettingsDialog {
         }
         currentMavenPage.setOnModifiedListener(this::updateApplyButtonState);
         wrapInScroll(currentMavenPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenArchetypeCatalogsPage() {
+        if (currentMavenArchetypeCatalogsPage == null) {
+            currentMavenArchetypeCatalogsPage = new SettingsMavenArchetypeCatalogsPage();
+        }
+        currentMavenArchetypeCatalogsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenArchetypeCatalogsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenIgnoredFilesPage() {
+        if (currentMavenIgnoredFilesPage == null) {
+            currentMavenIgnoredFilesPage = new SettingsMavenIgnoredFilesPage();
+        }
+        currentMavenIgnoredFilesPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenIgnoredFilesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenImportingPage() {
+        if (currentMavenImportingPage == null) {
+            currentMavenImportingPage = new SettingsMavenImportingPage();
+        }
+        currentMavenImportingPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenImportingPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenRepositoriesPage() {
+        if (currentMavenRepositoriesPage == null) {
+            currentMavenRepositoriesPage = new SettingsMavenRepositoriesPage();
+        }
+        currentMavenRepositoriesPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenRepositoriesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenRunnerPage() {
+        if (currentMavenRunnerPage == null) {
+            currentMavenRunnerPage = new SettingsMavenRunnerPage();
+        }
+        currentMavenRunnerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenRunnerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenRunningTestsPage() {
+        if (currentMavenRunningTestsPage == null) {
+            currentMavenRunningTestsPage = new SettingsMavenRunningTestsPage();
+        }
+        currentMavenRunningTestsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenRunningTestsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildGradlePage() {
+        if (currentGradlePage == null) {
+            currentGradlePage = new SettingsGradlePage();
+        }
+        currentGradlePage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentGradlePage);
+        updateApplyButtonState();
+    }
+
+    private void buildGantPage() {
+        if (currentGantPage == null) {
+            currentGantPage = new SettingsGantPage();
+        }
+        currentGantPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentGantPage);
+        updateApplyButtonState();
+    }
+
+    private void buildBspPage() {
+        if (currentBspPage == null) {
+            currentBspPage = new SettingsBspPage();
+        }
+        currentBspPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentBspPage);
+        updateApplyButtonState();
+    }
+
+    private void buildCargoPage() {
+        if (currentCargoPage == null) {
+            currentCargoPage = new SettingsCargoPage();
+        }
+        currentCargoPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentCargoPage);
+        updateApplyButtonState();
+    }
+
+    private void buildSbtPage() {
+        if (currentSbtPage == null) {
+            currentSbtPage = new SettingsSbtPage();
+        }
+        currentSbtPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentSbtPage);
+        updateApplyButtonState();
+    }
+
+    private void buildCompilerPage() {
+        if (currentCompilerPage == null) {
+            currentCompilerPage = new SettingsCompilerPage();
+        }
+        currentCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildAnnotationProcessorsPage() {
+        if (currentAnnotationProcessorsPage == null) {
+            currentAnnotationProcessorsPage = new SettingsAnnotationProcessorsPage();
+        }
+        currentAnnotationProcessorsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentAnnotationProcessorsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentAnnotationProcessorsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildCompilerExcludesPage() {
+        if (currentCompilerExcludesPage == null) {
+            currentCompilerExcludesPage = new SettingsCompilerExcludesPage();
+        }
+        currentCompilerExcludesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentCompilerExcludesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentCompilerExcludesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildGroovyCompilerPage() {
+        if (currentGroovyCompilerPage == null) {
+            currentGroovyCompilerPage = new SettingsGroovyCompilerPage();
+            currentGroovyCompilerPage.setNavigationHandler(this::selectCategory);
+        }
+        currentGroovyCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentGroovyCompilerPage);
         updateApplyButtonState();
     }
 
@@ -5180,10 +5632,15 @@ public class SettingsDialog {
         );
 
         TreeItem<String> compiler = new TreeItem<>("Compiler");
+        TreeItem<String> scalaCompiler = new TreeItem<>("Scala Compiler");
         compiler.getChildren().addAll(
-                new TreeItem<>("Java Compiler"),
-                new TreeItem<>("Resource Patterns"),
                 new TreeItem<>("Annotation Processors"),
+                new TreeItem<>("Excludes"),
+                new TreeItem<>("Groovy Compiler"),
+                new TreeItem<>("Java Compiler"),
+                new TreeItem<>("Kotlin Compiler"),
+                new TreeItem<>("RMI Compiler"),
+                scalaCompiler,
                 new TreeItem<>("Validation")
         );
 
@@ -5595,6 +6052,51 @@ public class SettingsDialog {
         if (currentMavenPage != null && currentMavenPage.isModified()) {
             currentMavenPage.apply();
         }
+        if (currentMavenArchetypeCatalogsPage != null && currentMavenArchetypeCatalogsPage.isModified()) {
+            currentMavenArchetypeCatalogsPage.apply();
+        }
+        if (currentMavenIgnoredFilesPage != null && currentMavenIgnoredFilesPage.isModified()) {
+            currentMavenIgnoredFilesPage.apply();
+        }
+        if (currentMavenImportingPage != null && currentMavenImportingPage.isModified()) {
+            currentMavenImportingPage.apply();
+        }
+        if (currentMavenRepositoriesPage != null && currentMavenRepositoriesPage.isModified()) {
+            currentMavenRepositoriesPage.apply();
+        }
+        if (currentMavenRunnerPage != null && currentMavenRunnerPage.isModified()) {
+            currentMavenRunnerPage.apply();
+        }
+        if (currentMavenRunningTestsPage != null && currentMavenRunningTestsPage.isModified()) {
+            currentMavenRunningTestsPage.apply();
+        }
+        if (currentGradlePage != null && currentGradlePage.isModified()) {
+            currentGradlePage.apply();
+        }
+        if (currentGantPage != null && currentGantPage.isModified()) {
+            currentGantPage.apply();
+        }
+        if (currentBspPage != null && currentBspPage.isModified()) {
+            currentBspPage.apply();
+        }
+        if (currentCargoPage != null && currentCargoPage.isModified()) {
+            currentCargoPage.apply();
+        }
+        if (currentSbtPage != null && currentSbtPage.isModified()) {
+            currentSbtPage.apply();
+        }
+        if (currentCompilerPage != null && currentCompilerPage.isModified()) {
+            currentCompilerPage.apply();
+        }
+        if (currentAnnotationProcessorsPage != null && currentAnnotationProcessorsPage.isModified()) {
+            currentAnnotationProcessorsPage.apply();
+        }
+        if (currentCompilerExcludesPage != null && currentCompilerExcludesPage.isModified()) {
+            currentCompilerExcludesPage.apply();
+        }
+        if (currentGroovyCompilerPage != null && currentGroovyCompilerPage.isModified()) {
+            currentGroovyCompilerPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5875,6 +6377,21 @@ public class SettingsDialog {
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
+                || (currentMavenArchetypeCatalogsPage != null && currentMavenArchetypeCatalogsPage.isModified())
+                || (currentMavenIgnoredFilesPage != null && currentMavenIgnoredFilesPage.isModified())
+                || (currentMavenImportingPage != null && currentMavenImportingPage.isModified())
+                || (currentMavenRepositoriesPage != null && currentMavenRepositoriesPage.isModified())
+                || (currentMavenRunnerPage != null && currentMavenRunnerPage.isModified())
+                || (currentMavenRunningTestsPage != null && currentMavenRunningTestsPage.isModified())
+                || (currentGradlePage != null && currentGradlePage.isModified())
+                || (currentGantPage != null && currentGantPage.isModified())
+                || (currentBspPage != null && currentBspPage.isModified())
+                || (currentCargoPage != null && currentCargoPage.isModified())
+                || (currentSbtPage != null && currentSbtPage.isModified())
+                || (currentCompilerPage != null && currentCompilerPage.isModified())
+                || (currentAnnotationProcessorsPage != null && currentAnnotationProcessorsPage.isModified())
+                || (currentCompilerExcludesPage != null && currentCompilerExcludesPage.isModified())
+                || (currentGroovyCompilerPage != null && currentGroovyCompilerPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -6095,6 +6612,51 @@ public class SettingsDialog {
             }
             if (currentMavenPage != null) {
                 currentMavenPage.reset();
+            }
+            if (currentMavenArchetypeCatalogsPage != null) {
+                currentMavenArchetypeCatalogsPage.reset();
+            }
+            if (currentMavenIgnoredFilesPage != null) {
+                currentMavenIgnoredFilesPage.reset();
+            }
+            if (currentMavenImportingPage != null) {
+                currentMavenImportingPage.reset();
+            }
+            if (currentMavenRepositoriesPage != null) {
+                currentMavenRepositoriesPage.reset();
+            }
+            if (currentMavenRunnerPage != null) {
+                currentMavenRunnerPage.reset();
+            }
+            if (currentMavenRunningTestsPage != null) {
+                currentMavenRunningTestsPage.reset();
+            }
+            if (currentGradlePage != null) {
+                currentGradlePage.reset();
+            }
+            if (currentGantPage != null) {
+                currentGantPage.reset();
+            }
+            if (currentBspPage != null) {
+                currentBspPage.reset();
+            }
+            if (currentCargoPage != null) {
+                currentCargoPage.reset();
+            }
+            if (currentSbtPage != null) {
+                currentSbtPage.reset();
+            }
+            if (currentCompilerPage != null) {
+                currentCompilerPage.reset();
+            }
+            if (currentAnnotationProcessorsPage != null) {
+                currentAnnotationProcessorsPage.reset();
+            }
+            if (currentCompilerExcludesPage != null) {
+                currentCompilerExcludesPage.reset();
+            }
+            if (currentGroovyCompilerPage != null) {
+                currentGroovyCompilerPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
