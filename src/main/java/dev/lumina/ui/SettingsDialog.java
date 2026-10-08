@@ -95,6 +95,10 @@ public class SettingsDialog {
     private SettingsReaderModePage currentReaderModePage;
     private SettingsTextMateBundlesPage currentTextMateBundlesPage;
     private SettingsTodoPage currentTodoPage;
+    private SettingsPythonDebuggerPage currentPythonDebuggerPage;
+    private SettingsApplicationServersPage currentApplicationServersPage;
+    private SettingsBuildToolsPage currentBuildToolsPage;
+    private SettingsMavenPage currentMavenPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -281,8 +285,12 @@ public class SettingsDialog {
         return contentContainer;
     }
 
-    TreeView<String> getTree() {
+    public TreeView<String> getTree() {
         return tree;
+    }
+
+    public TreeItem<String> getTreeRoot() {
+        return tree != null ? tree.getRoot() : null;
     }
 
     // --------------------------------------------------- Header & Navigation
@@ -1637,6 +1645,54 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentTodoPage != null) {
                             currentTodoPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python Debugger".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPythonDebuggerPage != null) {
+                            currentPythonDebuggerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Application Servers".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentApplicationServersPage != null) {
+                            currentApplicationServersPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Build Tools".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentBuildToolsPage != null) {
+                            currentBuildToolsPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Maven".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentMavenPage != null) {
+                            currentMavenPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3552,6 +3608,14 @@ public class SettingsDialog {
             buildVcsSubversionSshPage();
         } else if ("Terminal".equals(pageName)) {
             buildTerminalSettingsPage();
+        } else if ("Python Debugger".equals(pageName)) {
+            buildPythonDebuggerPage();
+        } else if ("Application Servers".equals(pageName)) {
+            buildApplicationServersPage();
+        } else if ("Build Tools".equals(pageName)) {
+            buildBuildToolsPage();
+        } else if ("Maven".equals(pageName)) {
+            buildMavenPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -3805,6 +3869,60 @@ public class SettingsDialog {
 
     public SettingsTodoPage getCurrentTodoPage() {
         return currentTodoPage;
+    }
+
+    public SettingsPythonDebuggerPage getCurrentPythonDebuggerPage() {
+        return currentPythonDebuggerPage;
+    }
+
+    public SettingsApplicationServersPage getCurrentApplicationServersPage() {
+        return currentApplicationServersPage;
+    }
+
+    public SettingsBuildToolsPage getCurrentBuildToolsPage() {
+        return currentBuildToolsPage;
+    }
+
+    public SettingsMavenPage getCurrentMavenPage() {
+        return currentMavenPage;
+    }
+
+    private void buildPythonDebuggerPage() {
+        if (currentPythonDebuggerPage == null) {
+            currentPythonDebuggerPage = new SettingsPythonDebuggerPage();
+        }
+        currentPythonDebuggerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentPythonDebuggerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildApplicationServersPage() {
+        if (currentApplicationServersPage == null) {
+            currentApplicationServersPage = new SettingsApplicationServersPage();
+        }
+        currentApplicationServersPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentApplicationServersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentApplicationServersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildBuildToolsPage() {
+        if (currentBuildToolsPage == null) {
+            currentBuildToolsPage = new SettingsBuildToolsPage();
+        }
+        currentBuildToolsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentBuildToolsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildMavenPage() {
+        if (currentMavenPage == null) {
+            currentMavenPage = new SettingsMavenPage();
+        }
+        currentMavenPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentMavenPage);
+        updateApplyButtonState();
     }
 
     private void buildRequiredPluginsPage() {
@@ -5041,6 +5159,83 @@ public class SettingsDialog {
                 subversion
         );
         TreeItem<String> build = new TreeItem<>("Build, Execution, Deployment");
+
+        TreeItem<String> buildTools = new TreeItem<>("Build Tools");
+        TreeItem<String> maven = new TreeItem<>("Maven");
+        maven.getChildren().addAll(
+                new TreeItem<>("Archetype Catalogs"),
+                new TreeItem<>("Ignored Files"),
+                new TreeItem<>("Importing"),
+                new TreeItem<>("Repositories"),
+                new TreeItem<>("Runner"),
+                new TreeItem<>("Running Tests")
+        );
+        buildTools.getChildren().addAll(
+                maven,
+                new TreeItem<>("Gradle"),
+                new TreeItem<>("Gant"),
+                new TreeItem<>("BSP"),
+                new TreeItem<>("Cargo"),
+                new TreeItem<>("sbt")
+        );
+
+        TreeItem<String> compiler = new TreeItem<>("Compiler");
+        compiler.getChildren().addAll(
+                new TreeItem<>("Java Compiler"),
+                new TreeItem<>("Resource Patterns"),
+                new TreeItem<>("Annotation Processors"),
+                new TreeItem<>("Validation")
+        );
+
+        TreeItem<String> console = new TreeItem<>("Console");
+        console.getChildren().addAll(
+                new TreeItem<>("Gant"),
+                new TreeItem<>("Groovy Console")
+        );
+
+        TreeItem<String> debugger = new TreeItem<>("Debugger");
+        debugger.getChildren().addAll(
+                new TreeItem<>("Data Views"),
+                new TreeItem<>("Stepping"),
+                new TreeItem<>("HotSwap"),
+                new TreeItem<>("Async Stack Traces")
+        );
+
+        TreeItem<String> deployment = new TreeItem<>("Deployment");
+        deployment.getChildren().addAll(
+                new TreeItem<>("Connection"),
+                new TreeItem<>("Mappings"),
+                new TreeItem<>("Excluded Paths"),
+                new TreeItem<>("Options")
+        );
+
+        TreeItem<String> docker = new TreeItem<>("Docker");
+        docker.getChildren().addAll(
+                new TreeItem<>("Tools"),
+                new TreeItem<>("Registry")
+        );
+
+        TreeItem<String> profilers = new TreeItem<>("Profilers");
+        profilers.getChildren().addAll(
+                new TreeItem<>("Async Profiler"),
+                new TreeItem<>("Java Flight Recorder")
+        );
+
+        build.getChildren().addAll(
+                new TreeItem<>("Python Debugger"),
+                new TreeItem<>("Application Servers"),
+                buildTools,
+                compiler,
+                console,
+                new TreeItem<>("Coverage"),
+                debugger,
+                deployment,
+                docker,
+                new TreeItem<>("Kubernetes"),
+                profilers,
+                new TreeItem<>("Remote Jar Repositories"),
+                new TreeItem<>("Run Targets")
+        );
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
 
         TreeItem<String> tools = new TreeItem<>("Tools");
@@ -5121,7 +5316,12 @@ public class SettingsDialog {
             "Version Control", "Changelists", "Commit", "Confirmation",
             "Directory Mappings", "Issue Navigation", "Log", "Shelf",
             "Git", "GitHub", "GitLab", "Mercurial", "Perforce", "Subversion",
-            "Perforce MCP", "Network", "Presentation", "SSH"
+            "Perforce MCP", "Network", "Presentation", "SSH",
+            "Python Debugger", "Build Tools", "Maven", "Archetype Catalogs",
+            "Ignored Files", "Importing", "Repositories", "Runner", "Running Tests",
+            "Gradle", "Gant", "BSP", "Cargo", "sbt", "Compiler", "Console",
+            "Coverage", "Deployment", "Docker", "Kubernetes", "Remote Jar Repositories",
+            "Run Targets"
     );
 
     private static boolean isProjectSetting(String name) {
@@ -5382,6 +5582,18 @@ public class SettingsDialog {
         }
         if (currentTodoPage != null && currentTodoPage.isModified()) {
             currentTodoPage.apply();
+        }
+        if (currentPythonDebuggerPage != null && currentPythonDebuggerPage.isModified()) {
+            currentPythonDebuggerPage.apply();
+        }
+        if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
+            currentApplicationServersPage.apply();
+        }
+        if (currentBuildToolsPage != null && currentBuildToolsPage.isModified()) {
+            currentBuildToolsPage.apply();
+        }
+        if (currentMavenPage != null && currentMavenPage.isModified()) {
+            currentMavenPage.apply();
         }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
@@ -5659,6 +5871,10 @@ public class SettingsDialog {
                 || (currentReaderModePage != null && currentReaderModePage.isModified())
                 || (currentTextMateBundlesPage != null && currentTextMateBundlesPage.isModified())
                 || (currentTodoPage != null && currentTodoPage.isModified())
+                || (currentPythonDebuggerPage != null && currentPythonDebuggerPage.isModified())
+                || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
+                || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
+                || (currentMavenPage != null && currentMavenPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5867,6 +6083,18 @@ public class SettingsDialog {
             }
             if (currentTodoPage != null) {
                 currentTodoPage.reset();
+            }
+            if (currentPythonDebuggerPage != null) {
+                currentPythonDebuggerPage.reset();
+            }
+            if (currentApplicationServersPage != null) {
+                currentApplicationServersPage.reset();
+            }
+            if (currentBuildToolsPage != null) {
+                currentBuildToolsPage.reset();
+            }
+            if (currentMavenPage != null) {
+                currentMavenPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();

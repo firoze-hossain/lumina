@@ -31,7 +31,7 @@ public class SettingsCategoryOverviewPage extends VBox {
         CATEGORY_DESCRIPTIONS.put("Tools",
                 "Configure external tools, terminal, database connectivity, AI assistant, and developer integrations.");
         CATEGORY_DESCRIPTIONS.put("Build, Execution, Deployment",
-                "Configure build tools, compiler options, deployment servers, and application run configurations.");
+                "Configure the project Execution settings, set up Deployment options, and customize the Debugger behavior");
         CATEGORY_DESCRIPTIONS.put("Languages & Frameworks",
                 "Configure language support, framework integrations, schemas, and language server protocols.");
         CATEGORY_DESCRIPTIONS.put("Version Control",
