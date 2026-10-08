@@ -114,6 +114,16 @@ public class SettingsDialog {
     private SettingsAnnotationProcessorsPage currentAnnotationProcessorsPage;
     private SettingsCompilerExcludesPage currentCompilerExcludesPage;
     private SettingsGroovyCompilerPage currentGroovyCompilerPage;
+    private SettingsJavaCompilerPage currentJavaCompilerPage;
+    private SettingsKotlinCompilerPage currentKotlinCompilerPage;
+    private SettingsRmiCompilerPage currentRmiCompilerPage;
+    private SettingsScalaCompilerPage currentScalaCompilerPage;
+    private SettingsScalaBytecodeIndicesPage currentScalaBytecodeIndicesPage;
+    private SettingsScalaCompileServerPage currentScalaCompileServerPage;
+    private SettingsValidationPage currentValidationPage;
+    private SettingsBuildConsolePage currentBuildConsolePage;
+    private SettingsPythonConsolePage currentPythonConsolePage;
+    private SettingsCoveragePage currentCoveragePage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -1892,6 +1902,126 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Java Compiler".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentJavaCompilerPage != null) {
+                            currentJavaCompilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Kotlin Compiler".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentKotlinCompilerPage != null) {
+                            currentKotlinCompilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("RMI Compiler".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRmiCompilerPage != null) {
+                            currentRmiCompilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Scala Compiler".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentScalaCompilerPage != null) {
+                            currentScalaCompilerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Bytecode Indices".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentScalaBytecodeIndicesPage != null) {
+                            currentScalaBytecodeIndicesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Scala Compile Server".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentScalaCompileServerPage != null) {
+                            currentScalaCompileServerPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Validation".equals(item.getValue()) && isUnderCompiler(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentValidationPage != null) {
+                            currentValidationPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Console".equals(item.getValue()) && isUnderBuild(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentBuildConsolePage != null) {
+                            currentBuildConsolePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python Console".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPythonConsolePage != null) {
+                            currentPythonConsolePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Coverage".equals(item.getValue()) && isUnderBuild(item)) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentCoveragePage != null) {
+                            currentCoveragePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Inlay Hints".equals(item.getValue())) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -3149,7 +3279,7 @@ public class SettingsDialog {
         }
 
         // 5. Editor and subpages
-        if (underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) {
+        if ((underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) && !isUnderBuild(selected)) {
             if ("General".equals(pageName)) {
                 if (currentEditorGeneralPage == null) {
                     currentEditorGeneralPage = new SettingsEditorGeneralPage();
@@ -3841,6 +3971,26 @@ public class SettingsDialog {
             buildCompilerExcludesPage();
         } else if ("Groovy Compiler".equals(pageName) && isUnderCompiler(selected)) {
             buildGroovyCompilerPage();
+        } else if ("Java Compiler".equals(pageName) && isUnderCompiler(selected)) {
+            buildJavaCompilerPage();
+        } else if ("Kotlin Compiler".equals(pageName) && isUnderCompiler(selected)) {
+            buildKotlinCompilerPage();
+        } else if ("RMI Compiler".equals(pageName) && isUnderCompiler(selected)) {
+            buildRmiCompilerPage();
+        } else if ("Scala Compiler".equals(pageName) && isUnderCompiler(selected)) {
+            buildScalaCompilerPage();
+        } else if ("Bytecode Indices".equals(pageName) && isUnderCompiler(selected)) {
+            buildScalaBytecodeIndicesPage();
+        } else if ("Scala Compile Server".equals(pageName) && isUnderCompiler(selected)) {
+            buildScalaCompileServerPage();
+        } else if ("Validation".equals(pageName) && isUnderCompiler(selected)) {
+            buildValidationPage();
+        } else if ("Console".equals(pageName) && isUnderBuild(selected)) {
+            buildBuildConsolePage();
+        } else if ("Python Console".equals(pageName)) {
+            buildPythonConsolePage();
+        } else if ("Coverage".equals(pageName) && isUnderBuild(selected)) {
+            buildCoveragePage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -4043,6 +4193,24 @@ public class SettingsDialog {
         return false;
     }
 
+    private boolean isUnderBuild(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Build, Execution, Deployment".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderConsole(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Console".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
     private boolean isUnderEmmet(TreeItem<String> item) {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
@@ -4197,6 +4365,46 @@ public class SettingsDialog {
 
     public SettingsGroovyCompilerPage getCurrentGroovyCompilerPage() {
         return currentGroovyCompilerPage;
+    }
+
+    public SettingsJavaCompilerPage getCurrentJavaCompilerPage() {
+        return currentJavaCompilerPage;
+    }
+
+    public SettingsKotlinCompilerPage getCurrentKotlinCompilerPage() {
+        return currentKotlinCompilerPage;
+    }
+
+    public SettingsRmiCompilerPage getCurrentRmiCompilerPage() {
+        return currentRmiCompilerPage;
+    }
+
+    public SettingsScalaCompilerPage getCurrentScalaCompilerPage() {
+        return currentScalaCompilerPage;
+    }
+
+    public SettingsScalaBytecodeIndicesPage getCurrentScalaBytecodeIndicesPage() {
+        return currentScalaBytecodeIndicesPage;
+    }
+
+    public SettingsScalaCompileServerPage getCurrentScalaCompileServerPage() {
+        return currentScalaCompileServerPage;
+    }
+
+    public SettingsValidationPage getCurrentValidationPage() {
+        return currentValidationPage;
+    }
+
+    public SettingsBuildConsolePage getCurrentBuildConsolePage() {
+        return currentBuildConsolePage;
+    }
+
+    public SettingsPythonConsolePage getCurrentPythonConsolePage() {
+        return currentPythonConsolePage;
+    }
+
+    public SettingsCoveragePage getCurrentCoveragePage() {
+        return currentCoveragePage;
     }
 
     private void buildPythonDebuggerPage() {
@@ -4374,6 +4582,100 @@ public class SettingsDialog {
         }
         currentGroovyCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
         wrapInScroll(currentGroovyCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildJavaCompilerPage() {
+        if (currentJavaCompilerPage == null) {
+            currentJavaCompilerPage = new SettingsJavaCompilerPage();
+        }
+        currentJavaCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentJavaCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildKotlinCompilerPage() {
+        if (currentKotlinCompilerPage == null) {
+            currentKotlinCompilerPage = new SettingsKotlinCompilerPage();
+        }
+        currentKotlinCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentKotlinCompilerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentKotlinCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildRmiCompilerPage() {
+        if (currentRmiCompilerPage == null) {
+            currentRmiCompilerPage = new SettingsRmiCompilerPage();
+        }
+        currentRmiCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentRmiCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildScalaCompilerPage() {
+        if (currentScalaCompilerPage == null) {
+            currentScalaCompilerPage = new SettingsScalaCompilerPage();
+        }
+        currentScalaCompilerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentScalaCompilerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentScalaCompilerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildScalaBytecodeIndicesPage() {
+        if (currentScalaBytecodeIndicesPage == null) {
+            currentScalaBytecodeIndicesPage = new SettingsScalaBytecodeIndicesPage();
+        }
+        currentScalaBytecodeIndicesPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentScalaBytecodeIndicesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildScalaCompileServerPage() {
+        if (currentScalaCompileServerPage == null) {
+            currentScalaCompileServerPage = new SettingsScalaCompileServerPage();
+        }
+        currentScalaCompileServerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentScalaCompileServerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildValidationPage() {
+        if (currentValidationPage == null) {
+            currentValidationPage = new SettingsValidationPage();
+        }
+        currentValidationPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentValidationPage);
+        updateApplyButtonState();
+    }
+
+    private void buildBuildConsolePage() {
+        if (currentBuildConsolePage == null) {
+            currentBuildConsolePage = new SettingsBuildConsolePage();
+        }
+        currentBuildConsolePage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentBuildConsolePage);
+        updateApplyButtonState();
+    }
+
+    private void buildPythonConsolePage() {
+        if (currentPythonConsolePage == null) {
+            currentPythonConsolePage = new SettingsPythonConsolePage();
+        }
+        currentPythonConsolePage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentPythonConsolePage);
+        updateApplyButtonState();
+    }
+
+    private void buildCoveragePage() {
+        if (currentCoveragePage == null) {
+            currentCoveragePage = new SettingsCoveragePage();
+        }
+        currentCoveragePage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentCoveragePage);
         updateApplyButtonState();
     }
 
@@ -5633,6 +5935,10 @@ public class SettingsDialog {
 
         TreeItem<String> compiler = new TreeItem<>("Compiler");
         TreeItem<String> scalaCompiler = new TreeItem<>("Scala Compiler");
+        scalaCompiler.getChildren().addAll(
+                new TreeItem<>("Bytecode Indices"),
+                new TreeItem<>("Scala Compile Server")
+        );
         compiler.getChildren().addAll(
                 new TreeItem<>("Annotation Processors"),
                 new TreeItem<>("Excludes"),
@@ -5647,7 +5953,8 @@ public class SettingsDialog {
         TreeItem<String> console = new TreeItem<>("Console");
         console.getChildren().addAll(
                 new TreeItem<>("Gant"),
-                new TreeItem<>("Groovy Console")
+                new TreeItem<>("Groovy Console"),
+                new TreeItem<>("Python Console")
         );
 
         TreeItem<String> debugger = new TreeItem<>("Debugger");
@@ -5817,6 +6124,7 @@ public class SettingsDialog {
             boolean underCS = false;
             boolean underCodeStyle = false;
             boolean underSmartKeys = false;
+            boolean underBuild = false;
             while (p != null) {
                 if ("Color Scheme".equals(p.getValue())) {
                     underCS = true;
@@ -5828,6 +6136,10 @@ public class SettingsDialog {
                 }
                 if ("Smart Keys".equals(p.getValue())) {
                     underSmartKeys = true;
+                    break;
+                }
+                if ("Build, Execution, Deployment".equals(p.getValue())) {
+                    underBuild = true;
                     break;
                 }
                 p = p.getParent();
@@ -5846,6 +6158,11 @@ public class SettingsDialog {
                 TreeItem<String> skRoot = findItem(tree.getRoot(), "Smart Keys");
                 if (skRoot != null) {
                     item = findItem(skRoot, categoryName);
+                }
+            } else if (underBuild) {
+                TreeItem<String> bRoot = findItem(tree.getRoot(), "Build, Execution, Deployment");
+                if (bRoot != null) {
+                    item = findItem(bRoot, categoryName);
                 }
             }
         }
@@ -6096,6 +6413,36 @@ public class SettingsDialog {
         }
         if (currentGroovyCompilerPage != null && currentGroovyCompilerPage.isModified()) {
             currentGroovyCompilerPage.apply();
+        }
+        if (currentJavaCompilerPage != null && currentJavaCompilerPage.isModified()) {
+            currentJavaCompilerPage.apply();
+        }
+        if (currentKotlinCompilerPage != null && currentKotlinCompilerPage.isModified()) {
+            currentKotlinCompilerPage.apply();
+        }
+        if (currentRmiCompilerPage != null && currentRmiCompilerPage.isModified()) {
+            currentRmiCompilerPage.apply();
+        }
+        if (currentScalaCompilerPage != null && currentScalaCompilerPage.isModified()) {
+            currentScalaCompilerPage.apply();
+        }
+        if (currentScalaBytecodeIndicesPage != null && currentScalaBytecodeIndicesPage.isModified()) {
+            currentScalaBytecodeIndicesPage.apply();
+        }
+        if (currentScalaCompileServerPage != null && currentScalaCompileServerPage.isModified()) {
+            currentScalaCompileServerPage.apply();
+        }
+        if (currentValidationPage != null && currentValidationPage.isModified()) {
+            currentValidationPage.apply();
+        }
+        if (currentBuildConsolePage != null && currentBuildConsolePage.isModified()) {
+            currentBuildConsolePage.apply();
+        }
+        if (currentPythonConsolePage != null && currentPythonConsolePage.isModified()) {
+            currentPythonConsolePage.apply();
+        }
+        if (currentCoveragePage != null && currentCoveragePage.isModified()) {
+            currentCoveragePage.apply();
         }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
@@ -6392,6 +6739,16 @@ public class SettingsDialog {
                 || (currentAnnotationProcessorsPage != null && currentAnnotationProcessorsPage.isModified())
                 || (currentCompilerExcludesPage != null && currentCompilerExcludesPage.isModified())
                 || (currentGroovyCompilerPage != null && currentGroovyCompilerPage.isModified())
+                || (currentJavaCompilerPage != null && currentJavaCompilerPage.isModified())
+                || (currentKotlinCompilerPage != null && currentKotlinCompilerPage.isModified())
+                || (currentRmiCompilerPage != null && currentRmiCompilerPage.isModified())
+                || (currentScalaCompilerPage != null && currentScalaCompilerPage.isModified())
+                || (currentScalaBytecodeIndicesPage != null && currentScalaBytecodeIndicesPage.isModified())
+                || (currentScalaCompileServerPage != null && currentScalaCompileServerPage.isModified())
+                || (currentValidationPage != null && currentValidationPage.isModified())
+                || (currentBuildConsolePage != null && currentBuildConsolePage.isModified())
+                || (currentPythonConsolePage != null && currentPythonConsolePage.isModified())
+                || (currentCoveragePage != null && currentCoveragePage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -6657,6 +7014,36 @@ public class SettingsDialog {
             }
             if (currentGroovyCompilerPage != null) {
                 currentGroovyCompilerPage.reset();
+            }
+            if (currentJavaCompilerPage != null) {
+                currentJavaCompilerPage.reset();
+            }
+            if (currentKotlinCompilerPage != null) {
+                currentKotlinCompilerPage.reset();
+            }
+            if (currentRmiCompilerPage != null) {
+                currentRmiCompilerPage.reset();
+            }
+            if (currentScalaCompilerPage != null) {
+                currentScalaCompilerPage.reset();
+            }
+            if (currentScalaBytecodeIndicesPage != null) {
+                currentScalaBytecodeIndicesPage.reset();
+            }
+            if (currentScalaCompileServerPage != null) {
+                currentScalaCompileServerPage.reset();
+            }
+            if (currentValidationPage != null) {
+                currentValidationPage.reset();
+            }
+            if (currentBuildConsolePage != null) {
+                currentBuildConsolePage.reset();
+            }
+            if (currentPythonConsolePage != null) {
+                currentPythonConsolePage.reset();
+            }
+            if (currentCoveragePage != null) {
+                currentCoveragePage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
