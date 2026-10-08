@@ -71,6 +71,12 @@ public class AddNewWordDialog {
         root.getChildren().addAll(label, wordField, buttonBar);
 
         Scene scene = new Scene(root);
+        try {
+            var css = getClass().getResource("/css/lumina-dark.css");
+            if (css != null) {
+                scene.getStylesheets().add(css.toExternalForm());
+            }
+        } catch (Exception ignored) {}
         stage.setScene(scene);
     }
 

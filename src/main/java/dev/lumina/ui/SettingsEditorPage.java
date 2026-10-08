@@ -150,9 +150,30 @@ public class SettingsEditorPage extends VBox {
                 pageName.equals("SQL") ||
                 pageName.equals("JavaScript")) {
             showSmartKeysPage();
+        } else if (pageName.equals("Reader Mode")) {
+            showReaderModePage();
+        } else if (pageName.equals("TextMate Bundles")) {
+            showTextMateBundlesPage();
+        } else if (pageName.equals("TODO")) {
+            showTodoPage();
         } else {
             showPlaceholderPage(pageName);
         }
+    }
+
+    private void showReaderModePage() {
+        SettingsReaderModePage page = new SettingsReaderModePage();
+        contentArea.getChildren().add(page);
+    }
+
+    private void showTextMateBundlesPage() {
+        SettingsTextMateBundlesPage page = new SettingsTextMateBundlesPage();
+        contentArea.getChildren().add(page);
+    }
+
+    private void showTodoPage() {
+        SettingsTodoPage page = new SettingsTodoPage();
+        contentArea.getChildren().add(page);
     }
 
     private void showCopyrightProfilesPage() {

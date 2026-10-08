@@ -121,6 +121,12 @@ public class SelectPathDialog {
         root.setBottom(bottomBar);
 
         Scene scene = new Scene(root);
+        try {
+            var css = getClass().getResource("/css/lumina-dark.css");
+            if (css != null) {
+                scene.getStylesheets().add(css.toExternalForm());
+            }
+        } catch (Exception ignored) {}
         stage.setScene(scene);
     }
 

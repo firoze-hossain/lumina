@@ -92,6 +92,9 @@ public class SettingsDialog {
     private SettingsNaturalLanguagesPage currentNaturalLanguagesPage;
     private SettingsGrammarAndStylePage currentGrammarAndStylePage;
     private SettingsSpellingPage currentSpellingPage;
+    private SettingsReaderModePage currentReaderModePage;
+    private SettingsTextMateBundlesPage currentTextMateBundlesPage;
+    private SettingsTodoPage currentTodoPage;
     private SettingsFontPage currentFontPage;
     private SettingsColorSchemePage currentColorSchemePage;
     private SettingsColorSchemeGeneralPage currentColorSchemeGeneralPage;
@@ -1598,6 +1601,42 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentSpellingPage != null) {
                             currentSpellingPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Reader Mode".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentReaderModePage != null) {
+                            currentReaderModePage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TextMate Bundles".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentTextMateBundlesPage != null) {
+                            currentTextMateBundlesPage.reset();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TODO".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentTodoPage != null) {
+                            currentTodoPage.reset();
                             updateApplyButtonState();
                         }
                     });
@@ -3409,6 +3448,39 @@ public class SettingsDialog {
                 updateApplyButtonState();
                 return;
             }
+            if ("Reader Mode".equals(pageName)) {
+                if (currentReaderModePage == null) {
+                    currentReaderModePage = new SettingsReaderModePage();
+                }
+                currentReaderModePage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentReaderModePage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentReaderModePage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("TextMate Bundles".equals(pageName)) {
+                if (currentTextMateBundlesPage == null) {
+                    currentTextMateBundlesPage = new SettingsTextMateBundlesPage();
+                }
+                currentTextMateBundlesPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentTextMateBundlesPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentTextMateBundlesPage);
+                updateApplyButtonState();
+                return;
+            }
+            if ("TODO".equals(pageName)) {
+                if (currentTodoPage == null) {
+                    currentTodoPage = new SettingsTodoPage();
+                }
+                currentTodoPage.setOnModifiedListener(this::updateApplyButtonState);
+                VBox.setVgrow(currentTodoPage, Priority.ALWAYS);
+                contentContainer.setStyle("-fx-background-color: #1E1F22;");
+                contentContainer.getChildren().setAll(currentTodoPage);
+                updateApplyButtonState();
+                return;
+            }
             buildEditorPage(pageName);
             return;
         }
@@ -3721,6 +3793,18 @@ public class SettingsDialog {
 
     public SettingsSpellingPage getCurrentSpellingPage() {
         return currentSpellingPage;
+    }
+
+    public SettingsReaderModePage getCurrentReaderModePage() {
+        return currentReaderModePage;
+    }
+
+    public SettingsTextMateBundlesPage getCurrentTextMateBundlesPage() {
+        return currentTextMateBundlesPage;
+    }
+
+    public SettingsTodoPage getCurrentTodoPage() {
+        return currentTodoPage;
     }
 
     private void buildRequiredPluginsPage() {
@@ -5290,6 +5374,15 @@ public class SettingsDialog {
         if (currentSpellingPage != null && currentSpellingPage.isModified()) {
             currentSpellingPage.apply();
         }
+        if (currentReaderModePage != null && currentReaderModePage.isModified()) {
+            currentReaderModePage.apply();
+        }
+        if (currentTextMateBundlesPage != null && currentTextMateBundlesPage.isModified()) {
+            currentTextMateBundlesPage.apply();
+        }
+        if (currentTodoPage != null && currentTodoPage.isModified()) {
+            currentTodoPage.apply();
+        }
         if (currentFontPage != null && currentFontPage.isModified()) {
             currentFontPage.apply();
         }
@@ -5563,6 +5656,9 @@ public class SettingsDialog {
                 || (currentNaturalLanguagesPage != null && currentNaturalLanguagesPage.isModified())
                 || (currentGrammarAndStylePage != null && currentGrammarAndStylePage.isModified())
                 || (currentSpellingPage != null && currentSpellingPage.isModified())
+                || (currentReaderModePage != null && currentReaderModePage.isModified())
+                || (currentTextMateBundlesPage != null && currentTextMateBundlesPage.isModified())
+                || (currentTodoPage != null && currentTodoPage.isModified())
                 || (currentFontPage != null && currentFontPage.isModified())
                 || (currentColorSchemePage != null && currentColorSchemePage.isModified())
                 || (currentColorSchemeGeneralPage != null && currentColorSchemeGeneralPage.isModified())
@@ -5762,6 +5858,15 @@ public class SettingsDialog {
             }
             if (currentSpellingPage != null) {
                 currentSpellingPage.reset();
+            }
+            if (currentReaderModePage != null) {
+                currentReaderModePage.reset();
+            }
+            if (currentTextMateBundlesPage != null) {
+                currentTextMateBundlesPage.reset();
+            }
+            if (currentTodoPage != null) {
+                currentTodoPage.reset();
             }
             if (currentFontPage != null) {
                 currentFontPage.reset();
