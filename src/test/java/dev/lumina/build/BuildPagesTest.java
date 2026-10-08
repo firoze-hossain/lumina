@@ -47,6 +47,16 @@ public class BuildPagesTest {
         AnnotationProcessingSettingsManager.getInstance().setSettings(new AnnotationProcessingSettings());
         CompilerExcludesSettingsManager.getInstance().setSettings(new CompilerExcludesSettings());
         GroovyCompilerSettingsManager.getInstance().setSettings(new GroovyCompilerSettings());
+        JavaCompilerSettingsManager.getInstance().setSettings(new JavaCompilerSettings());
+        KotlinCompilerSettingsManager.getInstance().setSettings(new KotlinCompilerSettings());
+        RmiCompilerSettingsManager.getInstance().setSettings(new RmiCompilerSettings());
+        ScalaCompilerSettingsManager.getInstance().setSettings(new ScalaCompilerSettings());
+        ScalaBytecodeIndicesSettingsManager.getInstance().setSettings(new ScalaBytecodeIndicesSettings());
+        ScalaCompileServerSettingsManager.getInstance().setSettings(new ScalaCompileServerSettings());
+        ValidationSettingsManager.getInstance().setSettings(new ValidationSettings());
+        BuildConsoleSettingsManager.getInstance().setSettings(new BuildConsoleSettings());
+        PythonConsoleSettingsManager.getInstance().setSettings(new PythonConsoleSettings());
+        CoverageSettingsManager.getInstance().setSettings(new CoverageSettings());
     }
 
     private void runOnFx(Runnable action) {
@@ -599,6 +609,341 @@ public class BuildPagesTest {
 
             dialog.selectCategory("Groovy Compiler");
             assertNotNull(dialog.getCurrentGroovyCompilerPage());
+
+            dialog.selectCategory("Java Compiler");
+            assertNotNull(dialog.getCurrentJavaCompilerPage());
+
+            dialog.selectCategory("Kotlin Compiler");
+            assertNotNull(dialog.getCurrentKotlinCompilerPage());
+
+            dialog.selectCategory("RMI Compiler");
+            assertNotNull(dialog.getCurrentRmiCompilerPage());
+
+            dialog.selectCategory("Scala Compiler");
+            assertNotNull(dialog.getCurrentScalaCompilerPage());
+
+            dialog.selectCategory("Bytecode Indices");
+            assertNotNull(dialog.getCurrentScalaBytecodeIndicesPage());
+
+            dialog.selectCategory("Scala Compile Server");
+            assertNotNull(dialog.getCurrentScalaCompileServerPage());
+
+            dialog.selectCategory("Validation");
+            assertNotNull(dialog.getCurrentValidationPage());
+
+            dialog.selectCategory("Build, Execution, Deployment", "Console");
+            assertNotNull(dialog.getCurrentBuildConsolePage());
+
+            dialog.selectCategory("Python Console");
+            assertNotNull(dialog.getCurrentPythonConsolePage());
+
+            dialog.selectCategory("Coverage");
+            assertNotNull(dialog.getCurrentCoveragePage());
+        });
+    }
+
+    @Test
+    void testJavaCompilerPageLifecycle() {
+        runOnFx(() -> {
+            SettingsJavaCompilerPage page = new SettingsJavaCompilerPage();
+            assertFalse(page.isModified());
+
+            JavaCompilerSettings s = page.getCurrentSettings();
+            assertEquals("Javac", s.getUseCompiler());
+            assertTrue(s.isUseReleaseOption());
+            assertEquals("Same as language level", s.getProjectBytecodeVersion());
+            assertTrue(s.isUseCompilerFromModuleTargetJdk());
+            assertTrue(s.isGenerateDebuggingInfo());
+            assertTrue(s.isReportDeprecated());
+            assertFalse(s.isGenerateNoWarnings());
+            assertFalse(s.getPerModuleBytecodeVersions().isEmpty());
+            assertFalse(s.getPerModuleCompilerParameters().isEmpty());
+
+            page.getUseReleaseOptionCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            JavaCompilerSettings saved = JavaCompilerSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isUseReleaseOption());
+
+            page.getUseReleaseOptionCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+
+            page.reset();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testKotlinCompilerPageLifecycle() {
+        runOnFx(() -> {
+            SettingsKotlinCompilerPage page = new SettingsKotlinCompilerPage();
+            assertFalse(page.isModified());
+
+            KotlinCompilerSettings s = page.getCurrentSettings();
+            assertTrue(s.isReportCompilerWarnings());
+            assertEquals("Bundled (2.1.21-release-317)", s.getKotlinCompilerVersion());
+            assertEquals("2.1", s.getLanguageVersion());
+            assertEquals("2.1", s.getApiVersion());
+            assertTrue(s.isKeepCompilerProcessAlive());
+            assertTrue(s.isJvmEnableIncrementalCompilation());
+            assertEquals("1.8", s.getTargetJvmVersion());
+            assertTrue(s.isJsEnableIncrementalCompilation());
+            assertFalse(s.isGenerateSourceMaps());
+            assertTrue(s.isCopyLibraryRuntimeFiles());
+            assertEquals("lib", s.getDestinationDirectory());
+
+            page.getReportWarningsCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            KotlinCompilerSettings saved = KotlinCompilerSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isReportCompilerWarnings());
+
+            page.getReportWarningsCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testRmiCompilerPageLifecycle() {
+        runOnFx(() -> {
+            SettingsRmiCompilerPage page = new SettingsRmiCompilerPage();
+            assertFalse(page.isModified());
+
+            RmiCompilerSettings s = page.getCurrentSettings();
+            assertFalse(s.isEnableRmiStubsGeneration());
+            assertFalse(s.isGenerateIiopStubs());
+            assertTrue(s.isGenerateDebuggingInfo());
+            assertFalse(s.isGenerateNoWarnings());
+
+            page.getEnableRmiStubsCheck().setSelected(true);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            RmiCompilerSettings saved = RmiCompilerSettingsManager.getInstance().getSettings();
+            assertTrue(saved.isEnableRmiStubsGeneration());
+
+            page.getEnableRmiStubsCheck().setSelected(false);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testScalaCompilerPageLifecycle() {
+        runOnFx(() -> {
+            SettingsScalaCompilerPage page = new SettingsScalaCompilerPage();
+            assertFalse(page.isModified());
+
+            ScalaCompilerSettings s = page.getCurrentSettings();
+            assertEquals("Zinc", s.getIncrementalityType());
+            assertFalse(s.getProfiles().isEmpty());
+
+            ScalaCompilerProfile p = s.getProfiles().getFirst();
+            assertEquals("Default", p.getName());
+            assertEquals("Mixed", p.getCompileOrder());
+            assertTrue(p.isEnableWarnings());
+            assertTrue(p.isEnableSpecialization());
+
+            page.getEnableWarningsCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            ScalaCompilerSettings saved = ScalaCompilerSettingsManager.getInstance().getSettings();
+            assertFalse(saved.getProfiles().getFirst().isEnableWarnings());
+
+            page.getEnableWarningsCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testScalaBytecodeIndicesPageLifecycle() {
+        runOnFx(() -> {
+            SettingsScalaBytecodeIndicesPage page = new SettingsScalaBytecodeIndicesPage();
+            assertFalse(page.isModified());
+
+            ScalaBytecodeIndicesSettings s = page.getCurrentSettings();
+            assertTrue(s.isIndexClassFiles());
+            assertTrue(s.isImplicitDefinitions());
+            assertTrue(s.isApplyUnapplyMethods());
+            assertTrue(s.isSamTypes());
+            assertTrue(s.isForComprehensionMethods());
+
+            page.getIndexClassFilesCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            ScalaBytecodeIndicesSettings saved = ScalaBytecodeIndicesSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isIndexClassFiles());
+
+            page.getIndexClassFilesCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testScalaCompileServerPageLifecycle() {
+        runOnFx(() -> {
+            SettingsScalaCompileServerPage page = new SettingsScalaCompileServerPage();
+            assertFalse(page.isModified());
+
+            ScalaCompileServerSettings s = page.getCurrentSettings();
+            assertTrue(s.isUseCompileServer());
+            assertTrue(s.isCompileIndependentModulesInParallel());
+            assertEquals(4, s.getParallelThreads());
+            assertTrue(s.isStopIfIdle());
+            assertEquals(120, s.getIdleTimeoutMinutes());
+            assertEquals(2048, s.getMaximumHeapSizeMb());
+
+            page.getUseCompileServerCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            ScalaCompileServerSettings saved = ScalaCompileServerSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isUseCompileServer());
+
+            page.getUseCompileServerCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testValidationPageLifecycle() {
+        runOnFx(() -> {
+            SettingsValidationPage page = new SettingsValidationPage();
+            assertFalse(page.isModified());
+
+            ValidationSettings s = page.getCurrentSettings();
+            assertFalse(s.isValidateOnBuild());
+            assertTrue(s.isFreeMarker());
+            assertTrue(s.isHibernate());
+            assertTrue(s.isJpa());
+            assertTrue(s.isJasper());
+            assertTrue(s.isSpringModel());
+            assertTrue(s.isWebXml());
+
+            page.getValidateOnBuildCheck().setSelected(true);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            ValidationSettings saved = ValidationSettingsManager.getInstance().getSettings();
+            assertTrue(saved.isValidateOnBuild());
+
+            page.getValidateOnBuildCheck().setSelected(false);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testBuildConsolePageLifecycle() {
+        runOnFx(() -> {
+            SettingsBuildConsolePage page = new SettingsBuildConsolePage();
+            assertFalse(page.isModified());
+
+            BuildConsoleSettings s = page.getCurrentSettings();
+            assertTrue(s.isAlwaysShowDebugConsole());
+            assertTrue(s.isUseIPythonIfAvailable());
+            assertTrue(s.isShowConsoleVariablesByDefault());
+            assertFalse(s.isUseExistingConsoleForRunWithPythonConsole());
+            assertFalse(s.isCommandQueueForPythonConsole());
+            assertEquals("Static", s.getCodeCompletion());
+
+            page.getAlwaysShowDebugConsoleCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            BuildConsoleSettings saved = BuildConsoleSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isAlwaysShowDebugConsole());
+
+            page.getAlwaysShowDebugConsoleCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testPythonConsolePageLifecycle() {
+        runOnFx(() -> {
+            SettingsPythonConsolePage page = new SettingsPythonConsolePage();
+            assertFalse(page.isModified());
+
+            PythonConsoleSettings s = page.getCurrentSettings();
+            assertTrue(s.isUseSpecifiedInterpreter());
+            assertEquals("<Project Default>", s.getSpecifiedInterpreter());
+            assertTrue(s.isAddContentRootsToPythonPath());
+            assertTrue(s.isAddSourceRootsToPythonPath());
+            assertTrue(s.getStartingScript().contains("import sys;"));
+
+            page.getAddContentRootsCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            PythonConsoleSettings saved = PythonConsoleSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isAddContentRootsToPythonPath());
+
+            page.getAddContentRootsCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
+        });
+    }
+
+    @Test
+    void testCoveragePageLifecycle() {
+        runOnFx(() -> {
+            SettingsCoveragePage page = new SettingsCoveragePage();
+            assertFalse(page.isModified());
+
+            CoverageSettings s = page.getCurrentSettings();
+            assertEquals(CoverageSettings.GatherPolicy.SHOW_OPTIONS, s.getGatherPolicy());
+            assertTrue(s.isActivateCoverageView());
+            assertTrue(s.isShowCoverageInProjectView());
+            assertFalse(s.isPythonUseBundledCoverage());
+            assertFalse(s.isPythonBranchCoverage());
+            assertEquals("Lumina", s.getJavaCoverageRunner());
+            assertTrue(s.isJavaBranchCoverage());
+            assertFalse(s.isJavaTrackPerTestCoverage());
+            assertFalse(s.isJavaCollectInTestFolders());
+            assertTrue(s.isJavaIgnoreDefaultConstructors());
+            assertTrue(s.getExcludeAnnotations().contains("*Generated*"));
+
+            page.getJavaBranchCoverageCheck().setSelected(false);
+            assertTrue(page.isModified());
+
+            page.apply();
+            assertFalse(page.isModified());
+
+            CoverageSettings saved = CoverageSettingsManager.getInstance().getSettings();
+            assertFalse(saved.isJavaBranchCoverage());
+
+            page.getJavaBranchCoverageCheck().setSelected(true);
+            page.apply();
+            assertFalse(page.isModified());
         });
     }
 
@@ -639,7 +984,38 @@ public class BuildPagesTest {
                 "src/main/java/dev/lumina/ui/SettingsCompilerExcludesPage.java",
                 "src/main/java/dev/lumina/build/GroovyCompilerSettings.java",
                 "src/main/java/dev/lumina/build/GroovyCompilerSettingsManager.java",
-                "src/main/java/dev/lumina/ui/SettingsGroovyCompilerPage.java"
+                "src/main/java/dev/lumina/ui/SettingsGroovyCompilerPage.java",
+                "src/main/java/dev/lumina/build/JavaCompilerSettings.java",
+                "src/main/java/dev/lumina/build/JavaCompilerSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsJavaCompilerPage.java",
+                "src/main/java/dev/lumina/build/KotlinCompilerSettings.java",
+                "src/main/java/dev/lumina/build/KotlinCompilerSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsKotlinCompilerPage.java",
+                "src/main/java/dev/lumina/build/RmiCompilerSettings.java",
+                "src/main/java/dev/lumina/build/RmiCompilerSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsRmiCompilerPage.java",
+                "src/main/java/dev/lumina/build/ScalaCompilerProfile.java",
+                "src/main/java/dev/lumina/build/ScalaCompilerSettings.java",
+                "src/main/java/dev/lumina/build/ScalaCompilerSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsScalaCompilerPage.java",
+                "src/main/java/dev/lumina/build/ScalaBytecodeIndicesSettings.java",
+                "src/main/java/dev/lumina/build/ScalaBytecodeIndicesSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsScalaBytecodeIndicesPage.java",
+                "src/main/java/dev/lumina/build/ScalaCompileServerSettings.java",
+                "src/main/java/dev/lumina/build/ScalaCompileServerSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsScalaCompileServerPage.java",
+                "src/main/java/dev/lumina/build/ValidationSettings.java",
+                "src/main/java/dev/lumina/build/ValidationSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsValidationPage.java",
+                "src/main/java/dev/lumina/build/BuildConsoleSettings.java",
+                "src/main/java/dev/lumina/build/BuildConsoleSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsBuildConsolePage.java",
+                "src/main/java/dev/lumina/build/PythonConsoleSettings.java",
+                "src/main/java/dev/lumina/build/PythonConsoleSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsPythonConsolePage.java",
+                "src/main/java/dev/lumina/build/CoverageSettings.java",
+                "src/main/java/dev/lumina/build/CoverageSettingsManager.java",
+                "src/main/java/dev/lumina/ui/SettingsCoveragePage.java"
         );
         for (String f : filesToCheck) {
             File file = new File(f);
