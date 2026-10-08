@@ -64,6 +64,11 @@ public final class Settings {
         }
     }
 
+    public static void set(String key, String value) {
+        put(key, value);
+    }
+
+
     private static Properties load() {
         Properties props = new Properties();
         props.putAll(MEMORY_CACHE);
