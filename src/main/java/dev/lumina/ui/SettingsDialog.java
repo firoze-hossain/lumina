@@ -117,6 +117,12 @@ public class SettingsDialog {
     private SettingsRemoteJarRepositoriesPage currentRemoteJarRepositoriesPage;
     private SettingsRunTargetsPage currentRunTargetsPage;
     private SettingsLanguagesPHPPage currentLanguagesPhpPage;
+    private SettingsLanguagesPhpDebugPage currentLanguagesPhpDebugPage;
+    private SettingsLanguagesPhpDebugTemplatesPage currentLanguagesPhpDebugTemplatesPage;
+    private SettingsLanguagesPhpDebugDbgpProxyPage currentLanguagesPhpDebugDbgpProxyPage;
+    private SettingsLanguagesPhpDebugSkippedPathsPage currentLanguagesPhpDebugSkippedPathsPage;
+    private SettingsLanguagesPhpDebugStepFiltersPage currentLanguagesPhpDebugStepFiltersPage;
+    private SettingsLanguagesPhpDebugXdebugCloudPage currentLanguagesPhpDebugXdebugCloudPage;
     private SettingsLanguagesJavaFXPage currentLanguagesJavaFxPage;
     private SettingsLanguagesJavaScriptPage currentLanguagesJavaScriptPage;
     private SettingsLanguagesJSEsLintPage currentLanguagesJsEsLintPage;
@@ -712,6 +718,42 @@ public class SettingsDialog {
                         });
                         breadcrumbBox.getChildren().add(revertLink);
                     }
+                } else if ("Debug".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpDebugPage != null) {
+                            currentLanguagesPhpDebugPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("DBGp Proxy".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpDebugDbgpProxyPage != null) {
+                            currentLanguagesPhpDebugDbgpProxyPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Skipped Paths".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpDebugSkippedPathsPage != null) {
+                            currentLanguagesPhpDebugSkippedPathsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("Sticky Lines".equals(item.getValue())) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -2400,6 +2442,30 @@ public class SettingsDialog {
         if (underLanguages) {
             if ("PHP".equals(pageName)) {
                 buildLanguagesPhpPage();
+                return;
+            }
+            if ("Debug".equals(pageName)) {
+                buildLanguagesPhpDebugPage();
+                return;
+            }
+            if ("Templates".equals(pageName)) {
+                buildLanguagesPhpDebugTemplatesPage();
+                return;
+            }
+            if ("DBGp Proxy".equals(pageName)) {
+                buildLanguagesPhpDebugDbgpProxyPage();
+                return;
+            }
+            if ("Skipped Paths".equals(pageName)) {
+                buildLanguagesPhpDebugSkippedPathsPage();
+                return;
+            }
+            if ("Step Filters".equals(pageName)) {
+                buildLanguagesPhpDebugStepFiltersPage();
+                return;
+            }
+            if ("Xdebug Cloud".equals(pageName)) {
+                buildLanguagesPhpDebugXdebugCloudPage();
                 return;
             }
             if ("Composer".equals(pageName)) {
@@ -5026,6 +5092,71 @@ public class SettingsDialog {
         return currentLanguagesPhpPage;
     }
 
+    private void buildLanguagesPhpDebugPage() {
+        if (currentLanguagesPhpDebugPage == null) {
+            currentLanguagesPhpDebugPage = new SettingsLanguagesPhpDebugPage();
+        }
+        currentLanguagesPhpDebugPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesPhpDebugPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpDebugTemplatesPage() {
+        if (currentLanguagesPhpDebugTemplatesPage == null) {
+            currentLanguagesPhpDebugTemplatesPage = new SettingsLanguagesPhpDebugTemplatesPage();
+        }
+        wrapInScroll(currentLanguagesPhpDebugTemplatesPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpDebugDbgpProxyPage() {
+        if (currentLanguagesPhpDebugDbgpProxyPage == null) {
+            currentLanguagesPhpDebugDbgpProxyPage = new SettingsLanguagesPhpDebugDbgpProxyPage();
+        }
+        currentLanguagesPhpDebugDbgpProxyPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesPhpDebugDbgpProxyPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpDebugSkippedPathsPage() {
+        if (currentLanguagesPhpDebugSkippedPathsPage == null) {
+            currentLanguagesPhpDebugSkippedPathsPage = new SettingsLanguagesPhpDebugSkippedPathsPage();
+        }
+        currentLanguagesPhpDebugSkippedPathsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesPhpDebugSkippedPathsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesPhpDebugSkippedPathsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpDebugStepFiltersPage() {
+        if (currentLanguagesPhpDebugStepFiltersPage == null) {
+            currentLanguagesPhpDebugStepFiltersPage = new SettingsLanguagesPhpDebugStepFiltersPage();
+        }
+        wrapInScroll(currentLanguagesPhpDebugStepFiltersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpDebugXdebugCloudPage() {
+        if (currentLanguagesPhpDebugXdebugCloudPage == null) {
+            currentLanguagesPhpDebugXdebugCloudPage = new SettingsLanguagesPhpDebugXdebugCloudPage();
+        }
+        wrapInScroll(currentLanguagesPhpDebugXdebugCloudPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesPhpDebugPage getCurrentLanguagesPhpDebugPage() {
+        return currentLanguagesPhpDebugPage;
+    }
+
+    public SettingsLanguagesPhpDebugDbgpProxyPage getCurrentLanguagesPhpDebugDbgpProxyPage() {
+        return currentLanguagesPhpDebugDbgpProxyPage;
+    }
+
+    public SettingsLanguagesPhpDebugSkippedPathsPage getCurrentLanguagesPhpDebugSkippedPathsPage() {
+        return currentLanguagesPhpDebugSkippedPathsPage;
+    }
+
     private void buildLanguagesJavaFxPage() {
         if (currentLanguagesJavaFxPage == null) {
             currentLanguagesJavaFxPage = new SettingsLanguagesJavaFXPage();
@@ -6678,11 +6809,23 @@ public class SettingsDialog {
         );
         TreeItem<String> languages = new TreeItem<>("Languages & Frameworks");
         TreeItem<String> phpItem = new TreeItem<>("PHP");
+        TreeItem<String> debugItem = new TreeItem<>("Debug");
+        debugItem.getChildren().addAll(
+                new TreeItem<>("Templates"),
+                new TreeItem<>("DBGp Proxy"),
+                new TreeItem<>("Skipped Paths"),
+                new TreeItem<>("Step Filters"),
+                new TreeItem<>("Xdebug Cloud")
+        );
+        TreeItem<String> qualityToolsItem = new TreeItem<>("Quality Tools");
         phpItem.getChildren().addAll(
+                debugItem,
+                new TreeItem<>("Servers"),
                 new TreeItem<>("Composer"),
-                new TreeItem<>("Debug"),
-                new TreeItem<>("Quality Tools"),
-                new TreeItem<>("Test Frameworks")
+                new TreeItem<>("Test Frameworks"),
+                qualityToolsItem,
+                new TreeItem<>("Frameworks"),
+                new TreeItem<>("Smarty")
         );
         TreeItem<String> javaScriptItem = new TreeItem<>("JavaScript");
         TreeItem<String> codeQualityToolsItem = new TreeItem<>("Code Quality Tools");
@@ -6837,7 +6980,9 @@ public class SettingsDialog {
             "SQL Dialects", "SQL Resolution Scopes", "Style Sheets", "Tables",
             "Template Data Languages", "TypeScript", "Web Contexts", "XSLT",
             "XSLT File Associations", "Code Quality Tools", "ESLint", "JSHint",
-            "Libraries", "Prettier", "Styled Components", "Vite", "Webpack"
+            "Libraries", "Prettier", "Styled Components", "Vite", "Webpack",
+            "Debug", "Templates", "DBGp Proxy", "Skipped Paths", "Step Filters", "Xdebug Cloud",
+            "Servers", "Composer", "Test Frameworks", "Quality Tools", "Frameworks", "Smarty"
     ));
 
     private static boolean isProjectSetting(String name) {
@@ -7189,6 +7334,15 @@ public class SettingsDialog {
         }
         if (currentLanguagesPhpPage != null && currentLanguagesPhpPage.isModified()) {
             currentLanguagesPhpPage.apply();
+        }
+        if (currentLanguagesPhpDebugPage != null && currentLanguagesPhpDebugPage.isModified()) {
+            currentLanguagesPhpDebugPage.apply();
+        }
+        if (currentLanguagesPhpDebugDbgpProxyPage != null && currentLanguagesPhpDebugDbgpProxyPage.isModified()) {
+            currentLanguagesPhpDebugDbgpProxyPage.apply();
+        }
+        if (currentLanguagesPhpDebugSkippedPathsPage != null && currentLanguagesPhpDebugSkippedPathsPage.isModified()) {
+            currentLanguagesPhpDebugSkippedPathsPage.apply();
         }
         if (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified()) {
             currentLanguagesJavaFxPage.apply();
@@ -7582,6 +7736,9 @@ public class SettingsDialog {
                 || (currentRemoteJarRepositoriesPage != null && currentRemoteJarRepositoriesPage.isModified())
                 || (currentRunTargetsPage != null && currentRunTargetsPage.isModified())
                 || (currentLanguagesPhpPage != null && currentLanguagesPhpPage.isModified())
+                || (currentLanguagesPhpDebugPage != null && currentLanguagesPhpDebugPage.isModified())
+                || (currentLanguagesPhpDebugDbgpProxyPage != null && currentLanguagesPhpDebugDbgpProxyPage.isModified())
+                || (currentLanguagesPhpDebugSkippedPathsPage != null && currentLanguagesPhpDebugSkippedPathsPage.isModified())
                 || (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified())
                 || (currentLanguagesJavaScriptPage != null && currentLanguagesJavaScriptPage.isModified())
                 || (currentLanguagesJsEsLintPage != null && currentLanguagesJsEsLintPage.isModified())
@@ -7882,6 +8039,15 @@ public class SettingsDialog {
             }
             if (currentLanguagesPhpPage != null) {
                 currentLanguagesPhpPage.reset();
+            }
+            if (currentLanguagesPhpDebugPage != null) {
+                currentLanguagesPhpDebugPage.reset();
+            }
+            if (currentLanguagesPhpDebugDbgpProxyPage != null) {
+                currentLanguagesPhpDebugDbgpProxyPage.reset();
+            }
+            if (currentLanguagesPhpDebugSkippedPathsPage != null) {
+                currentLanguagesPhpDebugSkippedPathsPage.reset();
             }
             if (currentLanguagesJavaFxPage != null) {
                 currentLanguagesJavaFxPage.reset();

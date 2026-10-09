@@ -30,6 +30,7 @@ public class PhpSettingsManager {
     public static final String KEY_PHP_ANALYSIS_SETTINGS = "php.analysis.settings";
     public static final String KEY_PHP_COMPOSER_FILES = "php.composer.files.list";
     public static final String KEY_PHP_CUSTOM_STUBS_PATH = "php.runtime.custom.stubs.path";
+    public static final String KEY_PHP_DEBUG_SETTINGS = "php.debug.settings";
 
     private static PhpSettingsManager instance;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -42,6 +43,7 @@ public class PhpSettingsManager {
     private PhpAnalysisSettings analysisSettings = new PhpAnalysisSettings();
     private final List<PhpComposerFileConfig> composerFiles = new ArrayList<>();
     private String customStubsPath = "";
+    private PhpDebugSettings debugSettings = new PhpDebugSettings();
 
     private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
@@ -355,6 +357,7 @@ public class PhpSettingsManager {
         this.analysisSettings = new PhpAnalysisSettings();
         this.composerFiles.clear();
         this.customStubsPath = "";
+        this.debugSettings = new PhpDebugSettings();
         saveSettings();
         notifyListeners();
     }
@@ -368,6 +371,7 @@ public class PhpSettingsManager {
         Settings.put(KEY_PHP_ANALYSIS_SETTINGS, GSON.toJson(analysisSettings));
         Settings.put(KEY_PHP_COMPOSER_FILES, GSON.toJson(composerFiles));
         Settings.put(KEY_PHP_CUSTOM_STUBS_PATH, customStubsPath);
+        Settings.put(KEY_PHP_DEBUG_SETTINGS, GSON.toJson(debugSettings));
     }
 
     public synchronized void loadSettings() {
@@ -461,6 +465,29 @@ public class PhpSettingsManager {
         // 7. Custom Stubs Path
         String stubsVal = Settings.get(KEY_PHP_CUSTOM_STUBS_PATH);
         this.customStubsPath = stubsVal != null ? stubsVal : "";
+
+        // 8. Debug Settings
+        String debugJson = Settings.get(KEY_PHP_DEBUG_SETTINGS);
+        if (debugJson != null && !debugJson.isBlank()) {
+            try {
+                PhpDebugSettings parsed = GSON.fromJson(debugJson, PhpDebugSettings.class);
+                if (parsed != null) {
+                    this.debugSettings = parsed;
+                }
+            } catch (Exception ignored) {}
+        } else {
+            this.debugSettings = new PhpDebugSettings();
+        }
+    }
+
+    public synchronized PhpDebugSettings getDebugSettings() {
+        return new PhpDebugSettings(debugSettings);
+    }
+
+    public synchronized void setDebugSettings(PhpDebugSettings debugSettings) {
+        this.debugSettings = debugSettings != null ? new PhpDebugSettings(debugSettings) : new PhpDebugSettings();
+        saveSettings();
+        notifyListeners();
     }
 
     private void initDefaultInterpreter() {
