@@ -123,6 +123,24 @@ public class SettingsDialog {
     private SettingsLanguagesPhpDebugSkippedPathsPage currentLanguagesPhpDebugSkippedPathsPage;
     private SettingsLanguagesPhpDebugStepFiltersPage currentLanguagesPhpDebugStepFiltersPage;
     private SettingsLanguagesPhpDebugXdebugCloudPage currentLanguagesPhpDebugXdebugCloudPage;
+    private SettingsLanguagesPhpServersPage currentLanguagesPhpServersPage;
+    private SettingsLanguagesPhpComposerPage currentLanguagesPhpComposerPage;
+    private SettingsLanguagesPhpTestFrameworksPage currentLanguagesPhpTestFrameworksPage;
+    private SettingsLanguagesPhpQualityToolsPage currentPhpQualityToolsPage;
+    private SettingsLanguagesPhpQualityToolsCodeSnifferPage currentPhpCodeSnifferPage;
+    private SettingsLanguagesPhpQualityToolsCsFixerPage currentPhpCsFixerPage;
+    private SettingsLanguagesPhpQualityToolsLaravelPintPage currentPhpLaravelPintPage;
+    private SettingsLanguagesPhpQualityToolsMessDetectorPage currentPhpMessDetectorPage;
+    private SettingsLanguagesPhpFrameworksPage currentPhpFrameworksPage;
+    private SettingsLanguagesPhpSmartyPage currentPhpSmartyPage;
+    private SettingsPythonTemplateLanguagesPage currentPythonTemplateLanguagesPage;
+    private SettingsLanguagesGoPage currentLanguagesGoPage;
+    private SettingsLanguagesGoGoRootPage currentLanguagesGoGoRootPage;
+    private SettingsLanguagesGoGoPathPage currentLanguagesGoGoPathPage;
+    private SettingsLanguagesGoModulesPage currentLanguagesGoModulesPage;
+    private SettingsRustPage currentRustPage;
+    private SettingsRustExternalLintersPage currentRustExternalLintersPage;
+    private SettingsRustfmtPage currentRustfmtPage;
     private SettingsLanguagesJavaFXPage currentLanguagesJavaFxPage;
     private SettingsLanguagesJavaScriptPage currentLanguagesJavaScriptPage;
     private SettingsLanguagesJSEsLintPage currentLanguagesJsEsLintPage;
@@ -630,6 +648,66 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python Template Languages".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPythonTemplateLanguagesPage != null) {
+                            currentPythonTemplateLanguagesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Go".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoPage != null) {
+                            currentLanguagesGoPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("GOROOT".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoGoRootPage != null) {
+                            currentLanguagesGoGoRootPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("GOPATH".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoGoPathPage != null) {
+                            currentLanguagesGoGoPathPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Go Modules".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoModulesPage != null) {
+                            currentLanguagesGoModulesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("JavaFX".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -750,6 +828,186 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguagesPhpDebugSkippedPathsPage != null) {
                             currentLanguagesPhpDebugSkippedPathsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Step Filters".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpDebugStepFiltersPage != null) {
+                            currentLanguagesPhpDebugStepFiltersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Xdebug Cloud".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpDebugXdebugCloudPage != null) {
+                            currentLanguagesPhpDebugXdebugCloudPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Servers".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpServersPage != null) {
+                            currentLanguagesPhpServersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Composer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpComposerPage != null) {
+                            currentLanguagesPhpComposerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Test Frameworks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesPhpTestFrameworksPage != null) {
+                            currentLanguagesPhpTestFrameworksPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Quality Tools".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpQualityToolsPage != null) {
+                            currentPhpQualityToolsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("PHP_CodeSniffer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpCodeSnifferPage != null) {
+                            currentPhpCodeSnifferPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("PHP CS Fixer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpCsFixerPage != null) {
+                            currentPhpCsFixerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Laravel Pint".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpLaravelPintPage != null) {
+                            currentPhpLaravelPintPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Mess Detector".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpMessDetectorPage != null) {
+                            currentPhpMessDetectorPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Frameworks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpFrameworksPage != null) {
+                            currentPhpFrameworksPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Smarty".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentPhpSmartyPage != null) {
+                            currentPhpSmartyPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Rust".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRustPage != null) {
+                            currentRustPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("External Linters".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRustExternalLintersPage != null) {
+                            currentRustExternalLintersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Rustfmt".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentRustfmtPage != null) {
+                            currentRustfmtPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -2468,11 +2726,76 @@ public class SettingsDialog {
                 buildLanguagesPhpDebugXdebugCloudPage();
                 return;
             }
+            if ("Servers".equals(pageName)) {
+                buildLanguagesPhpServersPage();
+                return;
+            }
             if ("Composer".equals(pageName)) {
-                buildLanguagesPhpPage();
-                if (currentLanguagesPhpPage != null) {
-                    currentLanguagesPhpPage.selectTab(3);
-                }
+                buildLanguagesPhpComposerPage();
+                return;
+            }
+            if ("Test Frameworks".equals(pageName)) {
+                buildLanguagesPhpTestFrameworksPage();
+                return;
+            }
+            if ("Quality Tools".equals(pageName)) {
+                buildLanguagesPhpQualityToolsPage();
+                return;
+            }
+            if ("PHP_CodeSniffer".equals(pageName)) {
+                buildLanguagesPhpCodeSnifferPage();
+                return;
+            }
+            if ("PHP CS Fixer".equals(pageName)) {
+                buildLanguagesPhpCsFixerPage();
+                return;
+            }
+            if ("Laravel Pint".equals(pageName)) {
+                buildLanguagesPhpLaravelPintPage();
+                return;
+            }
+            if ("Mess Detector".equals(pageName)) {
+                buildLanguagesPhpMessDetectorPage();
+                return;
+            }
+            if ("Frameworks".equals(pageName)) {
+                buildLanguagesPhpFrameworksPage();
+                return;
+            }
+            if ("Smarty".equals(pageName)) {
+                buildLanguagesPhpSmartyPage();
+                return;
+            }
+            if ("Python Template Languages".equals(pageName)) {
+                buildLanguagesPythonTemplateLanguagesPage();
+                return;
+            }
+            if ("Go".equals(pageName)) {
+                buildLanguagesGoPage();
+                return;
+            }
+            if ("GOROOT".equals(pageName)) {
+                buildLanguagesGoGoRootPage();
+                return;
+            }
+            if ("GOPATH".equals(pageName)) {
+                buildLanguagesGoGoPathPage();
+                return;
+            }
+            if ("Go Modules".equals(pageName)) {
+                buildLanguagesGoModulesPage();
+                return;
+            }
+            if ("Rust".equals(pageName)) {
+                buildLanguagesRustPage();
+                return;
+            }
+            if ("External Linters".equals(pageName)) {
+                buildLanguagesRustExternalLintersPage();
+                return;
+            }
+            if ("Rustfmt".equals(pageName)) {
+                buildLanguagesRustfmtPage();
                 return;
             }
             if ("JavaFX".equals(pageName)) {
@@ -4333,6 +4656,36 @@ public class SettingsDialog {
             buildRunTargetsPage();
         } else if ("PHP".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesPhpPage();
+        } else if ("Quality Tools".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpQualityToolsPage();
+        } else if ("PHP_CodeSniffer".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpCodeSnifferPage();
+        } else if ("PHP CS Fixer".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpCsFixerPage();
+        } else if ("Laravel Pint".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpLaravelPintPage();
+        } else if ("Mess Detector".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpMessDetectorPage();
+        } else if ("Frameworks".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpFrameworksPage();
+        } else if ("Smarty".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPhpSmartyPage();
+        } else if ("Python Template Languages".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPythonTemplateLanguagesPage();
+        } else if ("Go".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoPage();
+        } else if ("GOROOT".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoGoRootPage();
+        } else if ("GOPATH".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoGoPathPage();
+        } else if ("Go Modules".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoModulesPage();
+        } else if ("Rust".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesRustPage();
+        } else if ("External Linters".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesRustExternalLintersPage();
+        } else if ("Rustfmt".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesRustfmtPage();
         } else if ("JavaFX".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesJavaFxPage();
         } else if ("JavaScript".equals(pageName) && isUnderLanguages(selected)) {
@@ -5133,7 +5486,10 @@ public class SettingsDialog {
         if (currentLanguagesPhpDebugStepFiltersPage == null) {
             currentLanguagesPhpDebugStepFiltersPage = new SettingsLanguagesPhpDebugStepFiltersPage();
         }
-        wrapInScroll(currentLanguagesPhpDebugStepFiltersPage);
+        currentLanguagesPhpDebugStepFiltersPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesPhpDebugStepFiltersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesPhpDebugStepFiltersPage);
         updateApplyButtonState();
     }
 
@@ -5141,7 +5497,39 @@ public class SettingsDialog {
         if (currentLanguagesPhpDebugXdebugCloudPage == null) {
             currentLanguagesPhpDebugXdebugCloudPage = new SettingsLanguagesPhpDebugXdebugCloudPage();
         }
+        currentLanguagesPhpDebugXdebugCloudPage.setOnModified(this::updateApplyButtonState);
         wrapInScroll(currentLanguagesPhpDebugXdebugCloudPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpServersPage() {
+        if (currentLanguagesPhpServersPage == null) {
+            currentLanguagesPhpServersPage = new SettingsLanguagesPhpServersPage();
+        }
+        currentLanguagesPhpServersPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesPhpServersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesPhpServersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpComposerPage() {
+        if (currentLanguagesPhpComposerPage == null) {
+            currentLanguagesPhpComposerPage = new SettingsLanguagesPhpComposerPage();
+        }
+        currentLanguagesPhpComposerPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesPhpComposerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpTestFrameworksPage() {
+        if (currentLanguagesPhpTestFrameworksPage == null) {
+            currentLanguagesPhpTestFrameworksPage = new SettingsLanguagesPhpTestFrameworksPage();
+        }
+        currentLanguagesPhpTestFrameworksPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesPhpTestFrameworksPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesPhpTestFrameworksPage);
         updateApplyButtonState();
     }
 
@@ -5155,6 +5543,222 @@ public class SettingsDialog {
 
     public SettingsLanguagesPhpDebugSkippedPathsPage getCurrentLanguagesPhpDebugSkippedPathsPage() {
         return currentLanguagesPhpDebugSkippedPathsPage;
+    }
+
+    public SettingsLanguagesPhpDebugStepFiltersPage getCurrentLanguagesPhpDebugStepFiltersPage() {
+        return currentLanguagesPhpDebugStepFiltersPage;
+    }
+
+    public SettingsLanguagesPhpDebugXdebugCloudPage getCurrentLanguagesPhpDebugXdebugCloudPage() {
+        return currentLanguagesPhpDebugXdebugCloudPage;
+    }
+
+    public SettingsLanguagesPhpServersPage getCurrentLanguagesPhpServersPage() {
+        return currentLanguagesPhpServersPage;
+    }
+
+    public SettingsLanguagesPhpComposerPage getCurrentLanguagesPhpComposerPage() {
+        return currentLanguagesPhpComposerPage;
+    }
+
+    public SettingsLanguagesPhpTestFrameworksPage getCurrentLanguagesPhpTestFrameworksPage() {
+        return currentLanguagesPhpTestFrameworksPage;
+    }
+
+    private void buildLanguagesPhpQualityToolsPage() {
+        if (currentPhpQualityToolsPage == null) {
+            currentPhpQualityToolsPage = new SettingsLanguagesPhpQualityToolsPage();
+        }
+        currentPhpQualityToolsPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpQualityToolsPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpCodeSnifferPage() {
+        if (currentPhpCodeSnifferPage == null) {
+            currentPhpCodeSnifferPage = new SettingsLanguagesPhpQualityToolsCodeSnifferPage();
+        }
+        currentPhpCodeSnifferPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpCodeSnifferPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpCsFixerPage() {
+        if (currentPhpCsFixerPage == null) {
+            currentPhpCsFixerPage = new SettingsLanguagesPhpQualityToolsCsFixerPage();
+        }
+        currentPhpCsFixerPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpCsFixerPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpLaravelPintPage() {
+        if (currentPhpLaravelPintPage == null) {
+            currentPhpLaravelPintPage = new SettingsLanguagesPhpQualityToolsLaravelPintPage();
+        }
+        currentPhpLaravelPintPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpLaravelPintPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpMessDetectorPage() {
+        if (currentPhpMessDetectorPage == null) {
+            currentPhpMessDetectorPage = new SettingsLanguagesPhpQualityToolsMessDetectorPage();
+        }
+        currentPhpMessDetectorPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpMessDetectorPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesPhpQualityToolsPage getCurrentPhpQualityToolsPage() {
+        return currentPhpQualityToolsPage;
+    }
+
+    public SettingsLanguagesPhpQualityToolsCodeSnifferPage getCurrentPhpCodeSnifferPage() {
+        return currentPhpCodeSnifferPage;
+    }
+
+    public SettingsLanguagesPhpQualityToolsCsFixerPage getCurrentPhpCsFixerPage() {
+        return currentPhpCsFixerPage;
+    }
+
+    public SettingsLanguagesPhpQualityToolsLaravelPintPage getCurrentPhpLaravelPintPage() {
+        return currentPhpLaravelPintPage;
+    }
+
+    public SettingsLanguagesPhpQualityToolsMessDetectorPage getCurrentPhpMessDetectorPage() {
+        return currentPhpMessDetectorPage;
+    }
+
+    private void buildLanguagesPhpFrameworksPage() {
+        if (currentPhpFrameworksPage == null) {
+            currentPhpFrameworksPage = new SettingsLanguagesPhpFrameworksPage();
+            currentPhpFrameworksPage.setOnNavigateToPlugins(() -> selectCategory("Plugins"));
+        }
+        wrapInScroll(currentPhpFrameworksPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPhpSmartyPage() {
+        if (currentPhpSmartyPage == null) {
+            currentPhpSmartyPage = new SettingsLanguagesPhpSmartyPage();
+        }
+        currentPhpSmartyPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPhpSmartyPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesPythonTemplateLanguagesPage() {
+        if (currentPythonTemplateLanguagesPage == null) {
+            currentPythonTemplateLanguagesPage = new SettingsPythonTemplateLanguagesPage();
+        }
+        currentPythonTemplateLanguagesPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentPythonTemplateLanguagesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsPythonTemplateLanguagesPage getCurrentPythonTemplateLanguagesPage() {
+        return currentPythonTemplateLanguagesPage;
+    }
+
+    private void buildLanguagesGoPage() {
+        if (currentLanguagesGoPage == null) {
+            currentLanguagesGoPage = new SettingsLanguagesGoPage();
+        }
+        currentLanguagesGoPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoPage getCurrentLanguagesGoPage() {
+        return currentLanguagesGoPage;
+    }
+
+    private void buildLanguagesGoGoRootPage() {
+        if (currentLanguagesGoGoRootPage == null) {
+            currentLanguagesGoGoRootPage = new SettingsLanguagesGoGoRootPage();
+        }
+        currentLanguagesGoGoRootPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoGoRootPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoGoRootPage getCurrentLanguagesGoGoRootPage() {
+        return currentLanguagesGoGoRootPage;
+    }
+
+    private void buildLanguagesGoGoPathPage() {
+        if (currentLanguagesGoGoPathPage == null) {
+            currentLanguagesGoGoPathPage = new SettingsLanguagesGoGoPathPage();
+        }
+        currentLanguagesGoGoPathPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoGoPathPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoGoPathPage getCurrentLanguagesGoGoPathPage() {
+        return currentLanguagesGoGoPathPage;
+    }
+
+    private void buildLanguagesGoModulesPage() {
+        if (currentLanguagesGoModulesPage == null) {
+            currentLanguagesGoModulesPage = new SettingsLanguagesGoModulesPage();
+        }
+        currentLanguagesGoModulesPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoModulesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoModulesPage getCurrentLanguagesGoModulesPage() {
+        return currentLanguagesGoModulesPage;
+    }
+
+    private void buildLanguagesRustPage() {
+        if (currentRustPage == null) {
+            currentRustPage = new SettingsRustPage();
+        }
+        currentRustPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentRustPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesRustExternalLintersPage() {
+        if (currentRustExternalLintersPage == null) {
+            currentRustExternalLintersPage = new SettingsRustExternalLintersPage();
+        }
+        currentRustExternalLintersPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentRustExternalLintersPage);
+        updateApplyButtonState();
+    }
+
+    private void buildLanguagesRustfmtPage() {
+        if (currentRustfmtPage == null) {
+            currentRustfmtPage = new SettingsRustfmtPage();
+            currentRustfmtPage.setOnNavigateToActionsOnSave(() -> selectCategory("Actions on Save"));
+        }
+        currentRustfmtPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentRustfmtPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesPhpFrameworksPage getCurrentPhpFrameworksPage() {
+        return currentPhpFrameworksPage;
+    }
+
+    public SettingsLanguagesPhpSmartyPage getCurrentPhpSmartyPage() {
+        return currentPhpSmartyPage;
+    }
+
+    public SettingsRustPage getCurrentRustPage() {
+        return currentRustPage;
+    }
+
+    public SettingsRustExternalLintersPage getCurrentRustExternalLintersPage() {
+        return currentRustExternalLintersPage;
+    }
+
+    public SettingsRustfmtPage getCurrentRustfmtPage() {
+        return currentRustfmtPage;
     }
 
     private void buildLanguagesJavaFxPage() {
@@ -6818,6 +7422,12 @@ public class SettingsDialog {
                 new TreeItem<>("Xdebug Cloud")
         );
         TreeItem<String> qualityToolsItem = new TreeItem<>("Quality Tools");
+        qualityToolsItem.getChildren().addAll(
+                new TreeItem<>("PHP_CodeSniffer"),
+                new TreeItem<>("PHP CS Fixer"),
+                new TreeItem<>("Laravel Pint"),
+                new TreeItem<>("Mess Detector")
+        );
         phpItem.getChildren().addAll(
                 debugItem,
                 new TreeItem<>("Servers"),
@@ -6861,8 +7471,27 @@ public class SettingsDialog {
         TreeItem<String> typeScriptItem = new TreeItem<>("TypeScript");
         typeScriptItem.getChildren().add(new TreeItem<>("Compiler"));
 
+        TreeItem<String> rustItem = new TreeItem<>("Rust");
+        rustItem.getChildren().addAll(
+                new TreeItem<>("External Linters"),
+                new TreeItem<>("Rustfmt")
+        );
+
+        TreeItem<String> goItem = new TreeItem<>("Go");
+        goItem.getChildren().addAll(
+                new TreeItem<>("GOROOT"),
+                new TreeItem<>("GOPATH"),
+                new TreeItem<>("Go Modules"),
+                new TreeItem<>("Build Tags"),
+                new TreeItem<>("Formatting Functions"),
+                new TreeItem<>("Imports")
+        );
+
         languages.getChildren().addAll(
                 phpItem,
+                rustItem,
+                new TreeItem<>("Python Template Languages"),
+                goItem,
                 new TreeItem<>("JavaFX"),
                 javaScriptItem,
                 new TreeItem<>("JavaScript Runtime"),
@@ -6982,7 +7611,10 @@ public class SettingsDialog {
             "XSLT File Associations", "Code Quality Tools", "ESLint", "JSHint",
             "Libraries", "Prettier", "Styled Components", "Vite", "Webpack",
             "Debug", "Templates", "DBGp Proxy", "Skipped Paths", "Step Filters", "Xdebug Cloud",
-            "Servers", "Composer", "Test Frameworks", "Quality Tools", "Frameworks", "Smarty"
+            "Servers", "Composer", "Test Frameworks", "Quality Tools",
+            "PHP_CodeSniffer", "PHP CS Fixer", "Laravel Pint", "Mess Detector",
+            "Frameworks", "Smarty", "Rust", "External Linters", "Rustfmt",
+            "Python Template Languages", "GOROOT", "GOPATH", "Go Modules", "Build Tags", "Formatting Functions", "Imports"
     ));
 
     private static boolean isProjectSetting(String name) {
@@ -7343,6 +7975,66 @@ public class SettingsDialog {
         }
         if (currentLanguagesPhpDebugSkippedPathsPage != null && currentLanguagesPhpDebugSkippedPathsPage.isModified()) {
             currentLanguagesPhpDebugSkippedPathsPage.apply();
+        }
+        if (currentLanguagesPhpDebugStepFiltersPage != null && currentLanguagesPhpDebugStepFiltersPage.isModified()) {
+            currentLanguagesPhpDebugStepFiltersPage.apply();
+        }
+        if (currentLanguagesPhpDebugXdebugCloudPage != null && currentLanguagesPhpDebugXdebugCloudPage.isModified()) {
+            currentLanguagesPhpDebugXdebugCloudPage.apply();
+        }
+        if (currentLanguagesPhpServersPage != null && currentLanguagesPhpServersPage.isModified()) {
+            currentLanguagesPhpServersPage.apply();
+        }
+        if (currentLanguagesPhpComposerPage != null && currentLanguagesPhpComposerPage.isModified()) {
+            currentLanguagesPhpComposerPage.apply();
+        }
+        if (currentLanguagesPhpTestFrameworksPage != null && currentLanguagesPhpTestFrameworksPage.isModified()) {
+            currentLanguagesPhpTestFrameworksPage.apply();
+        }
+        if (currentPhpQualityToolsPage != null && currentPhpQualityToolsPage.isModified()) {
+            currentPhpQualityToolsPage.apply();
+        }
+        if (currentPhpCodeSnifferPage != null && currentPhpCodeSnifferPage.isModified()) {
+            currentPhpCodeSnifferPage.apply();
+        }
+        if (currentPhpCsFixerPage != null && currentPhpCsFixerPage.isModified()) {
+            currentPhpCsFixerPage.apply();
+        }
+        if (currentPhpLaravelPintPage != null && currentPhpLaravelPintPage.isModified()) {
+            currentPhpLaravelPintPage.apply();
+        }
+        if (currentPhpMessDetectorPage != null && currentPhpMessDetectorPage.isModified()) {
+            currentPhpMessDetectorPage.apply();
+        }
+        if (currentPhpFrameworksPage != null && currentPhpFrameworksPage.isModified()) {
+            currentPhpFrameworksPage.apply();
+        }
+        if (currentPhpSmartyPage != null && currentPhpSmartyPage.isModified()) {
+            currentPhpSmartyPage.apply();
+        }
+        if (currentPythonTemplateLanguagesPage != null && currentPythonTemplateLanguagesPage.isModified()) {
+            currentPythonTemplateLanguagesPage.apply();
+        }
+        if (currentLanguagesGoPage != null && currentLanguagesGoPage.isModified()) {
+            currentLanguagesGoPage.apply();
+        }
+        if (currentLanguagesGoGoRootPage != null && currentLanguagesGoGoRootPage.isModified()) {
+            currentLanguagesGoGoRootPage.apply();
+        }
+        if (currentLanguagesGoGoPathPage != null && currentLanguagesGoGoPathPage.isModified()) {
+            currentLanguagesGoGoPathPage.apply();
+        }
+        if (currentLanguagesGoModulesPage != null && currentLanguagesGoModulesPage.isModified()) {
+            currentLanguagesGoModulesPage.apply();
+        }
+        if (currentRustPage != null && currentRustPage.isModified()) {
+            currentRustPage.apply();
+        }
+        if (currentRustExternalLintersPage != null && currentRustExternalLintersPage.isModified()) {
+            currentRustExternalLintersPage.apply();
+        }
+        if (currentRustfmtPage != null && currentRustfmtPage.isModified()) {
+            currentRustfmtPage.apply();
         }
         if (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified()) {
             currentLanguagesJavaFxPage.apply();
@@ -7739,6 +8431,26 @@ public class SettingsDialog {
                 || (currentLanguagesPhpDebugPage != null && currentLanguagesPhpDebugPage.isModified())
                 || (currentLanguagesPhpDebugDbgpProxyPage != null && currentLanguagesPhpDebugDbgpProxyPage.isModified())
                 || (currentLanguagesPhpDebugSkippedPathsPage != null && currentLanguagesPhpDebugSkippedPathsPage.isModified())
+                || (currentLanguagesPhpDebugStepFiltersPage != null && currentLanguagesPhpDebugStepFiltersPage.isModified())
+                || (currentLanguagesPhpDebugXdebugCloudPage != null && currentLanguagesPhpDebugXdebugCloudPage.isModified())
+                || (currentLanguagesPhpServersPage != null && currentLanguagesPhpServersPage.isModified())
+                || (currentLanguagesPhpComposerPage != null && currentLanguagesPhpComposerPage.isModified())
+                || (currentLanguagesPhpTestFrameworksPage != null && currentLanguagesPhpTestFrameworksPage.isModified())
+                || (currentPhpQualityToolsPage != null && currentPhpQualityToolsPage.isModified())
+                || (currentPhpCodeSnifferPage != null && currentPhpCodeSnifferPage.isModified())
+                || (currentPhpCsFixerPage != null && currentPhpCsFixerPage.isModified())
+                || (currentPhpLaravelPintPage != null && currentPhpLaravelPintPage.isModified())
+                || (currentPhpMessDetectorPage != null && currentPhpMessDetectorPage.isModified())
+                || (currentPhpFrameworksPage != null && currentPhpFrameworksPage.isModified())
+                || (currentPhpSmartyPage != null && currentPhpSmartyPage.isModified())
+                || (currentPythonTemplateLanguagesPage != null && currentPythonTemplateLanguagesPage.isModified())
+                || (currentLanguagesGoPage != null && currentLanguagesGoPage.isModified())
+                || (currentLanguagesGoGoRootPage != null && currentLanguagesGoGoRootPage.isModified())
+                || (currentLanguagesGoGoPathPage != null && currentLanguagesGoGoPathPage.isModified())
+                || (currentLanguagesGoModulesPage != null && currentLanguagesGoModulesPage.isModified())
+                || (currentRustPage != null && currentRustPage.isModified())
+                || (currentRustExternalLintersPage != null && currentRustExternalLintersPage.isModified())
+                || (currentRustfmtPage != null && currentRustfmtPage.isModified())
                 || (currentLanguagesJavaFxPage != null && currentLanguagesJavaFxPage.isModified())
                 || (currentLanguagesJavaScriptPage != null && currentLanguagesJavaScriptPage.isModified())
                 || (currentLanguagesJsEsLintPage != null && currentLanguagesJsEsLintPage.isModified())
@@ -8048,6 +8760,66 @@ public class SettingsDialog {
             }
             if (currentLanguagesPhpDebugSkippedPathsPage != null) {
                 currentLanguagesPhpDebugSkippedPathsPage.reset();
+            }
+            if (currentLanguagesPhpDebugStepFiltersPage != null) {
+                currentLanguagesPhpDebugStepFiltersPage.reset();
+            }
+            if (currentLanguagesPhpDebugXdebugCloudPage != null) {
+                currentLanguagesPhpDebugXdebugCloudPage.reset();
+            }
+            if (currentLanguagesPhpServersPage != null) {
+                currentLanguagesPhpServersPage.reset();
+            }
+            if (currentLanguagesPhpComposerPage != null) {
+                currentLanguagesPhpComposerPage.reset();
+            }
+            if (currentLanguagesPhpTestFrameworksPage != null) {
+                currentLanguagesPhpTestFrameworksPage.reset();
+            }
+            if (currentPhpQualityToolsPage != null) {
+                currentPhpQualityToolsPage.reset();
+            }
+            if (currentPhpCodeSnifferPage != null) {
+                currentPhpCodeSnifferPage.reset();
+            }
+            if (currentPhpCsFixerPage != null) {
+                currentPhpCsFixerPage.reset();
+            }
+            if (currentPhpLaravelPintPage != null) {
+                currentPhpLaravelPintPage.reset();
+            }
+            if (currentPhpMessDetectorPage != null) {
+                currentPhpMessDetectorPage.reset();
+            }
+            if (currentPhpFrameworksPage != null) {
+                currentPhpFrameworksPage.reset();
+            }
+            if (currentPhpSmartyPage != null) {
+                currentPhpSmartyPage.reset();
+            }
+            if (currentPythonTemplateLanguagesPage != null) {
+                currentPythonTemplateLanguagesPage.reset();
+            }
+            if (currentLanguagesGoPage != null) {
+                currentLanguagesGoPage.reset();
+            }
+            if (currentLanguagesGoGoRootPage != null) {
+                currentLanguagesGoGoRootPage.reset();
+            }
+            if (currentLanguagesGoGoPathPage != null) {
+                currentLanguagesGoGoPathPage.reset();
+            }
+            if (currentLanguagesGoModulesPage != null) {
+                currentLanguagesGoModulesPage.reset();
+            }
+            if (currentRustPage != null) {
+                currentRustPage.reset();
+            }
+            if (currentRustExternalLintersPage != null) {
+                currentRustExternalLintersPage.reset();
+            }
+            if (currentRustfmtPage != null) {
+                currentRustfmtPage.reset();
             }
             if (currentLanguagesJavaFxPage != null) {
                 currentLanguagesJavaFxPage.reset();

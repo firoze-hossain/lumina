@@ -73,6 +73,10 @@ public class PhpInterpreter {
         return phpVersion;
     }
 
+    public String getVersion() {
+        return phpVersion;
+    }
+
     public void setPhpVersion(String phpVersion) {
         this.phpVersion = phpVersion;
     }

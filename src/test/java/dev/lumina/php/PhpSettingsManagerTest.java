@@ -142,4 +142,54 @@ class PhpSettingsManagerTest {
         assertTrue(manager.getIncludePaths().isEmpty());
         assertEquals("", manager.getCustomStubsPath());
     }
+
+    @Test
+    void testQualityToolsSettingsPersistence() {
+        PhpQualityToolsSettings qs = manager.getQualityToolsSettings();
+        assertNotNull(qs);
+        assertEquals("none", qs.getExternalFormatter());
+        assertFalse(qs.getCodeSniffer().isInspectionEnabled());
+        assertFalse(qs.getCsFixer().isInspectionEnabled());
+        assertFalse(qs.getLaravelPint().isInspectionEnabled());
+        assertFalse(qs.getMessDetector().isInspectionEnabled());
+
+        qs.setExternalFormatter("laravel_pint");
+        qs.getCodeSniffer().setInspectionEnabled(true);
+        qs.getCodeSniffer().setPhpcsPath("/usr/bin/phpcs");
+        qs.getCsFixer().setInspectionEnabled(true);
+        qs.getCsFixer().setRuleset("Symfony");
+        qs.getLaravelPint().setInspectionEnabled(true);
+        qs.getLaravelPint().setPathToPintJson("/app/pint.json");
+        qs.getMessDetector().setInspectionEnabled(true);
+        qs.getMessDetector().setCodeSizeRules(true);
+
+        manager.setQualityToolsSettings(qs);
+
+        manager.loadSettings();
+        PhpQualityToolsSettings loaded = manager.getQualityToolsSettings();
+        assertEquals("laravel_pint", loaded.getExternalFormatter());
+        assertTrue(loaded.getCodeSniffer().isInspectionEnabled());
+        assertEquals("/usr/bin/phpcs", loaded.getCodeSniffer().getPhpcsPath());
+        assertTrue(loaded.getCsFixer().isInspectionEnabled());
+        assertEquals("Symfony", loaded.getCsFixer().getRuleset());
+        assertTrue(loaded.getLaravelPint().isInspectionEnabled());
+        assertEquals("/app/pint.json", loaded.getLaravelPint().getPathToPintJson());
+        assertTrue(loaded.getMessDetector().isInspectionEnabled());
+        assertTrue(loaded.getMessDetector().isCodeSizeRules());
+
+        manager.resetDefaults();
+        PhpQualityToolsSettings reset = manager.getQualityToolsSettings();
+        assertEquals("none", reset.getExternalFormatter());
+        assertFalse(reset.getCodeSniffer().isInspectionEnabled());
+    }
+
+    @Test
+    void testDynamicDetectors() {
+        assertNotNull(manager.detectPhpcsPath());
+        assertNotNull(manager.detectPhpcbfPath());
+        assertNotNull(manager.detectPhpCsFixerPath());
+        assertNotNull(manager.detectLaravelPintPath());
+        assertNotNull(manager.detectPintJsonPath());
+        assertNotNull(manager.detectPhpmdPath());
+    }
 }

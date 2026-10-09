@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Modal dialog for downloading official Go SDK distributions, matching IntelliJ IDEA's "Download Go SDK" dialog.
+ * Modal dialog for downloading official Go SDK distributions in Lumina IDE.
  */
 public class DownloadGoSdkDialog {
 
