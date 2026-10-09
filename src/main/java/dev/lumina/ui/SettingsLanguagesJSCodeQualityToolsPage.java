@@ -1,7 +1,6 @@
 package dev.lumina.ui;
 
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -9,8 +8,8 @@ import javafx.scene.layout.VBox;
 import java.util.function.Consumer;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA Languages & Frameworks > JavaScript > Code Quality Tools overview page.
- * Displays clickable links to ESLint and JSHint matching Screenshot 3.
+ * Languages & Frameworks > JavaScript > Code Quality Tools overview page in Lumina IDE.
+ * Displays clickable links to ESLint and JSHint.
  */
 public class SettingsLanguagesJSCodeQualityToolsPage extends VBox {
 

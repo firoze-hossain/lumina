@@ -5,14 +5,14 @@ import dev.lumina.javascript.JSHintSettings;
 import dev.lumina.javascript.JavaScriptSettingsManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
 import java.util.*;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA Languages & Frameworks > JavaScript > Code Quality Tools > JSHint.
- * Matching Screenshot 5.
+ * Languages & Frameworks > JavaScript > Code Quality Tools > JSHint settings page in Lumina IDE.
  */
 public class SettingsLanguagesJSJsHintPage extends VBox {
 
@@ -23,8 +23,15 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
     private CheckBox useConfigFilesCheck;
     private ComboBox<String> versionCombo;
 
+    private ScrollPane scrollPane;
     private final Map<String, CheckBox> optionCheckBoxes = new LinkedHashMap<>();
+    private final Map<String, Label> paramValueLabels = new LinkedHashMap<>();
+    private final Map<String, String> paramValues = new LinkedHashMap<>();
+
     private Label descriptionLabel;
+    private static final String DEFAULT_DESC_ENFORCING = "When set to true, these options will make JSHint produce more warnings about your code.";
+    private static final String DEFAULT_DESC_RELAXING = "When set to true, these options will make JSHint produce fewer warnings about your code.";
+    private static final String DEFAULT_DESC_ENVIRONMENTS = "These options pre-define global variables that are exposed by popular JavaScript libraries and runtime environments.";
 
     private JSHintSettings initialSettings;
 
@@ -48,7 +55,10 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
         enableCheck = new CheckBox("Enable");
         enableCheck.setSelected(current.isEnabled());
         enableCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
-        enableCheck.selectedProperty().addListener((obs, oldV, newV) -> fireModified());
+        enableCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            updateEnabledState();
+            fireModified();
+        });
 
         Region topSpacer = new Region();
         HBox.setHgrow(topSpacer, Priority.ALWAYS);
@@ -56,7 +66,10 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
         useConfigFilesCheck = new CheckBox("Use config files");
         useConfigFilesCheck.setSelected(current.isUseConfigFiles());
         useConfigFilesCheck.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px; -fx-cursor: hand;");
-        useConfigFilesCheck.selectedProperty().addListener((obs, oldV, newV) -> fireModified());
+        useConfigFilesCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            updateEnabledState();
+            fireModified();
+        });
 
         Label versionLabel = new Label("Version:");
         versionLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px;");
@@ -69,29 +82,28 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
 
         topBar.getChildren().addAll(enableCheck, topSpacer, useConfigFilesCheck, versionLabel, versionCombo);
 
-        // 2. Middle area: Split or two-column box
+        // 2. Main split area: Options list on left, description pane on right
         HBox contentBox = new HBox(16);
         contentBox.setStyle("-fx-border-color: #393B40; -fx-border-width: 1 0 0 0; -fx-padding: 12 0 0 0;");
         VBox.setVgrow(contentBox, Priority.ALWAYS);
 
-        // Left options scroll pane
-        VBox optionsList = new VBox(8);
-        optionsList.setPadding(new Insets(4, 12, 12, 4));
+        VBox optionsContainer = new VBox(10);
+        optionsContainer.setPadding(new Insets(4, 12, 16, 4));
 
-        buildOptionsList(optionsList, current);
+        buildAllSections(optionsContainer, current);
 
-        ScrollPane scrollPane = new ScrollPane(optionsList);
+        scrollPane = new ScrollPane(optionsContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;");
         HBox.setHgrow(scrollPane, Priority.ALWAYS);
 
-        // Right description label
+        // Right description pane
         VBox descPane = new VBox(10);
         descPane.setPrefWidth(280);
         descPane.setMinWidth(220);
-        descPane.setPadding(new Insets(8));
+        descPane.setPadding(new Insets(6, 8, 8, 8));
 
-        descriptionLabel = new Label("When set to true, these options will make JSHint produce more warnings about your code.");
+        descriptionLabel = new Label(DEFAULT_DESC_ENFORCING);
         descriptionLabel.setWrapText(true);
         descriptionLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px; -fx-line-spacing: 2px;");
         descPane.getChildren().add(descriptionLabel);
@@ -99,92 +111,255 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
         contentBox.getChildren().addAll(scrollPane, descPane);
 
         getChildren().addAll(topBar, contentBox);
+
+        updateEnabledState();
     }
 
-    private void buildOptionsList(VBox container, JSHintSettings current) {
-        // Enforcing header
-        Label enforcingHeader = new Label("— Enforcing options");
-        enforcingHeader.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 4 0 4 0;");
-        container.getChildren().add(enforcingHeader);
+    private void updateEnabledState() {
+        boolean enabled = enableCheck.isSelected();
+        boolean useConfigs = useConfigFilesCheck.isSelected();
+        scrollPane.setDisable(!enabled || useConfigs);
+        scrollPane.setOpacity((!enabled || useConfigs) ? 0.65 : 1.0);
+    }
 
-        List<JSHintOption> enforcing = List.of(
-                new JSHintOption("bitwise", "Warn about using bitwise operators", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("camelcase", "Warn about variable naming", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("curly", "Warn when blocks omit {}", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("enforceall", "Warn when code doesn't follow the most strict configuration", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("eqeqeq", "Warn about unsafe comparisons", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("es3", "Warn about incompatibilities with the ES3 specification", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("es5", "Warn about incompatibilities with the ES5 specification", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("forin", "Warn about unsafe for..in", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("freeze", "Warn about overwriting prototypes of native objects", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("immed", "Warn about the use of immediate function invocations without wrapping them in parentheses", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("newcap", "Warn about the use of a uncapitalized constructor", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("noarg", "Warn about arguments.caller and .callee", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("nocomma", "Warn about the use of the comma operator", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("noempty", "Warn about empty blocks", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("nonbsp", "Warn about \"non-breaking whitespace\" characters", JSHintOption.Category.ENFORCING, false),
-                new JSHintOption("nonew", "Warn about new usage for side effects", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("undef", "Warn when variable is undefined", JSHintOption.Category.ENFORCING, true),
-                new JSHintOption("varstmt", "Warn about the use of VariableStatements", JSHintOption.Category.ENFORCING, false)
-        );
+    private void buildAllSections(VBox container, JSHintSettings current) {
+        List<JSHintOption> all = JSHintOption.getAllOptions();
 
-        for (JSHintOption opt : enforcing) {
-            container.getChildren().add(createOptionRow(opt, current));
+        // 1. Enforcing options
+        List<JSHintOption> enforcingList = all.stream()
+                .filter(o -> o.getCategory() == JSHintOption.Category.ENFORCING)
+                .toList();
+        CollapsibleSection enforcingSection = createSection("Enforcing options", DEFAULT_DESC_ENFORCING);
+        for (JSHintOption opt : enforcingList) {
+            enforcingSection.getContentBox().getChildren().add(createOptionRow(opt, current));
+        }
+        container.getChildren().addAll(enforcingSection.getHeader(), enforcingSection.getContentBox());
+
+        // 2. Relaxing options
+        List<JSHintOption> relaxingList = all.stream()
+                .filter(o -> o.getCategory() == JSHintOption.Category.RELAXING)
+                .toList();
+        CollapsibleSection relaxingSection = createSection("Relaxing options", DEFAULT_DESC_RELAXING);
+        for (JSHintOption opt : relaxingList) {
+            relaxingSection.getContentBox().getChildren().add(createOptionRow(opt, current));
+        }
+        container.getChildren().addAll(relaxingSection.getHeader(), relaxingSection.getContentBox());
+
+        // 3. Environments
+        List<JSHintOption> envList = all.stream()
+                .filter(o -> o.getCategory() == JSHintOption.Category.ENVIRONMENT)
+                .toList();
+        CollapsibleSection envSection = createSection("Environments", DEFAULT_DESC_ENVIRONMENTS);
+        for (JSHintOption opt : envList) {
+            envSection.getContentBox().getChildren().add(createOptionRow(opt, current));
+        }
+        container.getChildren().addAll(envSection.getHeader(), envSection.getContentBox());
+
+        // 4. Trailing options
+        List<JSHintOption> trailingList = all.stream()
+                .filter(o -> o.getCategory() == JSHintOption.Category.TRAILING)
+                .toList();
+        VBox trailingBox = new VBox(6);
+        trailingBox.setPadding(new Insets(6, 0, 6, 0));
+        for (JSHintOption opt : trailingList) {
+            trailingBox.getChildren().add(createOptionRow(opt, current));
+        }
+        container.getChildren().add(trailingBox);
+    }
+
+    private static class CollapsibleSection {
+        private final HBox header;
+        private final VBox contentBox;
+
+        public CollapsibleSection(HBox header, VBox contentBox) {
+            this.header = header;
+            this.contentBox = contentBox;
         }
 
-        // Additional Enforcing text options
-        List<String> paramOptions = List.of(
-                "Warn about incompatibilities with the specified ECMAScript version: any Set esversion",
-                "Warn about the use of a variable before it was defined: false Set latedef",
-                "Warn about unused variables: false Set unused",
-                "Indentation: any Set indent",
-                "Quotation marks: false Set quotmark",
-                "Max number of formal parameter in a function: any Set maxparams",
-                "Max depth of your blocks: any Set maxdepth",
-                "Max number of statements in a function: any Set maxstatements",
-                "Max cyclomatic complexity throughout your code: any Set maxcomplexity",
-                "Max length of a line: any Set maxlen"
-        );
-        for (String param : paramOptions) {
-            Label pLabel = new Label(param);
-            pLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px; -fx-padding: 3 0 3 24;");
-            container.getChildren().add(pLabel);
+        public HBox getHeader() {
+            return header;
         }
 
-        // Relaxing header
-        Label relaxingHeader = new Label("— Relaxing options");
-        relaxingHeader.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 0 4 0;");
-        container.getChildren().add(relaxingHeader);
-
-        List<JSHintOption> relaxing = List.of(
-                new JSHintOption("funcscope", "Suppress warnings about variable usage outside of its declared block", JSHintOption.Category.RELAXING, false),
-                new JSHintOption("futurehostile", "Warns about the use of identifiers which are defined in future versions of JavaScript", JSHintOption.Category.RELAXING, false),
-                new JSHintOption("globalstrict", "Suppress warnings about the use of global strict mode", JSHintOption.Category.RELAXING, false),
-                new JSHintOption("iterator", "Suppress warnings about the __iterator__ property", JSHintOption.Category.RELAXING, false),
-                new JSHintOption("notypeof", "Suppress warnings about invalid typeof operator values", JSHintOption.Category.RELAXING, false),
-                new JSHintOption("shadow", "Suppress warnings about variable shadowing", JSHintOption.Category.RELAXING, false)
-        );
-
-        for (JSHintOption opt : relaxing) {
-            container.getChildren().add(createOptionRow(opt, current));
+        public VBox getContentBox() {
+            return contentBox;
         }
     }
 
-    private HBox createOptionRow(JSHintOption opt, JSHintSettings current) {
+    private CollapsibleSection createSection(String title, String sectionDescription) {
+        HBox header = new HBox(8);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setStyle("-fx-background-color: #2B2D30; -fx-padding: 4 8 4 8; -fx-background-radius: 4; -fx-cursor: hand;");
+
+        Label toggleIcon = new Label(" \u2212 "); // minus sign
+        toggleIcon.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        header.getChildren().addAll(toggleIcon, titleLabel);
+
+        VBox contentBox = new VBox(6);
+        contentBox.setPadding(new Insets(4, 0, 8, 4));
+
+        header.setOnMouseClicked(e -> {
+            boolean isVisible = contentBox.isVisible();
+            contentBox.setVisible(!isVisible);
+            contentBox.setManaged(!isVisible);
+            toggleIcon.setText(!isVisible ? " \u2212 " : " + ");
+        });
+
+        header.setOnMouseEntered(e -> {
+            header.setStyle("-fx-background-color: #35373B; -fx-padding: 4 8 4 8; -fx-background-radius: 4; -fx-cursor: hand;");
+            descriptionLabel.setText(sectionDescription);
+        });
+
+        header.setOnMouseExited(e -> {
+            header.setStyle("-fx-background-color: #2B2D30; -fx-padding: 4 8 4 8; -fx-background-radius: 4; -fx-cursor: hand;");
+        });
+
+        return new CollapsibleSection(header, contentBox);
+    }
+
+    private Node createOptionRow(JSHintOption opt, JSHintSettings current) {
+        if (opt.isParametric()) {
+            return createParametricRow(opt, current);
+        }
+        return createCheckboxRow(opt, current);
+    }
+
+    private Node createCheckboxRow(JSHintOption opt, JSHintSettings current) {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(2, 4, 2, 4));
+        row.setStyle("-fx-background-radius: 3; -fx-cursor: hand;");
 
-        CheckBox cb = new CheckBox(opt.getLabel());
+        CheckBox cb = new CheckBox();
         cb.setSelected(current.isOptionEnabled(opt.getKey()));
-        cb.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-cursor: hand;");
+        cb.setStyle("-fx-cursor: hand;");
         cb.selectedProperty().addListener((obs, oldV, newV) -> fireModified());
         optionCheckBoxes.put(opt.getKey(), cb);
+
+        HBox labelBox = new HBox(4);
+        labelBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Format label with code badges if applicable
+        renderLabelWithBadges(labelBox, opt.getLabel(), opt.getCodeBadges());
 
         Label tag = new Label(opt.getKey());
         tag.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px;");
 
-        row.getChildren().addAll(cb, tag);
+        row.getChildren().addAll(cb, labelBox, tag);
+
+        // Hover & click interactions
+        row.setOnMouseClicked(e -> {
+            if (e.getTarget() != cb) {
+                cb.setSelected(!cb.isSelected());
+            }
+        });
+
+        row.setOnMouseEntered(e -> {
+            row.setStyle("-fx-background-color: #26282E; -fx-background-radius: 3; -fx-cursor: hand;");
+            if (!opt.getDescription().isBlank()) {
+                descriptionLabel.setText(opt.getDescription());
+            }
+        });
+
+        row.setOnMouseExited(e -> {
+            row.setStyle("-fx-background-color: transparent; -fx-background-radius: 3; -fx-cursor: hand;");
+        });
+
         return row;
+    }
+
+    private Node createParametricRow(JSHintOption opt, JSHintSettings current) {
+        HBox row = new HBox(8);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(2, 4, 2, 24));
+        row.setStyle("-fx-background-radius: 3; -fx-cursor: hand;");
+
+        Label label = new Label(opt.getLabel());
+        label.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+
+        String val = current.getParamOption(opt.getKey());
+        if (val == null || val.isBlank()) {
+            val = opt.getParamDefaultValue();
+        }
+        paramValues.put(opt.getKey(), val);
+
+        Label valLabel = new Label(val);
+        valLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+        paramValueLabels.put(opt.getKey(), valLabel);
+
+        Hyperlink setLink = new Hyperlink("Set");
+        setLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: false;");
+        setLink.setOnMouseEntered(e -> setLink.setStyle("-fx-text-fill: #70AAFF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: true;"));
+        setLink.setOnMouseExited(e -> setLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: false;"));
+
+        setLink.setOnAction(e -> promptForParamValue(opt, valLabel));
+
+        Label tag = new Label(opt.getKey());
+        tag.setStyle("-fx-text-fill: #6F737A; -fx-font-size: 11px;");
+
+        row.getChildren().addAll(label, valLabel, setLink, tag);
+
+        row.setOnMouseEntered(e -> {
+            row.setStyle("-fx-background-color: #26282E; -fx-background-radius: 3; -fx-cursor: hand;");
+            if (!opt.getDescription().isBlank()) {
+                descriptionLabel.setText(opt.getDescription());
+            }
+        });
+
+        row.setOnMouseExited(e -> {
+            row.setStyle("-fx-background-color: transparent; -fx-background-radius: 3; -fx-cursor: hand;");
+        });
+
+        return row;
+    }
+
+    private void promptForParamValue(JSHintOption opt, Label valLabel) {
+        TextInputDialog dialog = new TextInputDialog(paramValues.getOrDefault(opt.getKey(), ""));
+        dialog.setTitle("Set JSHint Option");
+        dialog.setHeaderText("Set value for " + opt.getKey());
+        dialog.setContentText(opt.getLabel());
+        dialog.showAndWait().ifPresent(newVal -> {
+            paramValues.put(opt.getKey(), newVal);
+            valLabel.setText(newVal);
+            fireModified();
+        });
+    }
+
+    private void renderLabelWithBadges(HBox container, String text, List<String> badges) {
+        if (badges.isEmpty()) {
+            Label l = new Label(text);
+            l.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            container.getChildren().add(l);
+            return;
+        }
+
+        // Split text around badges
+        String remaining = text;
+        for (String badge : badges) {
+            int idx = remaining.indexOf(badge);
+            if (idx >= 0) {
+                String prefix = remaining.substring(0, idx);
+                if (!prefix.isEmpty()) {
+                    Label preLabel = new Label(prefix);
+                    preLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+                    container.getChildren().add(preLabel);
+                }
+
+                Label badgeLabel = new Label(badge);
+                badgeLabel.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #3E4044; -fx-border-radius: 3; -fx-background-radius: 3; -fx-padding: 0 4 0 4; -fx-font-family: monospace; -fx-font-size: 11px;");
+                container.getChildren().add(badgeLabel);
+
+                remaining = remaining.substring(idx + badge.length());
+            }
+        }
+        if (!remaining.isEmpty()) {
+            Label postLabel = new Label(remaining);
+            postLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+            container.getChildren().add(postLabel);
+        }
     }
 
     public void setOnModifiedListener(Runnable listener) {
@@ -206,7 +381,13 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
         for (Map.Entry<String, CheckBox> e : optionCheckBoxes.entrySet()) {
             opts.put(e.getKey(), e.getValue().isSelected());
         }
-        return new JSHintSettings(enableCheck.isSelected(), useConfigFilesCheck.isSelected(), versionCombo.getValue(), opts);
+        return new JSHintSettings(
+                enableCheck.isSelected(),
+                useConfigFilesCheck.isSelected(),
+                versionCombo.getValue(),
+                opts,
+                new HashMap<>(paramValues)
+        );
     }
 
     public boolean isModified() {
@@ -224,9 +405,18 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
             enableCheck.setSelected(initialSettings.isEnabled());
             useConfigFilesCheck.setSelected(initialSettings.isUseConfigFiles());
             versionCombo.setValue(initialSettings.getVersion());
+
             for (Map.Entry<String, CheckBox> e : optionCheckBoxes.entrySet()) {
                 e.getValue().setSelected(initialSettings.isOptionEnabled(e.getKey()));
             }
+
+            paramValues.clear();
+            paramValues.putAll(initialSettings.getParamOptions());
+            for (Map.Entry<String, Label> e : paramValueLabels.entrySet()) {
+                e.getValue().setText(initialSettings.getParamOption(e.getKey()));
+            }
+
+            updateEnabledState();
         }
         fireModified();
     }
@@ -249,5 +439,13 @@ public class SettingsLanguagesJSJsHintPage extends VBox {
 
     public Map<String, CheckBox> getOptionCheckBoxes() {
         return optionCheckBoxes;
+    }
+
+    public Map<String, String> getParamValues() {
+        return paramValues;
+    }
+
+    public Label getDescriptionLabel() {
+        return descriptionLabel;
     }
 }

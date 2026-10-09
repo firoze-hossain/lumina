@@ -6,12 +6,12 @@ import java.util.Objects;
 
 /**
  * Model representing Go configuration in Lumina IDE.
- * Covers Go parent page, GOROOT, GOPATH, and Go Modules.
- * Matches Images 2, 3, 4, and 5.
+ * Covers Go parent page, GOROOT, GOPATH, Go Modules, Build Tags, Formatting Functions, and Imports.
+ * Matches Images 1, 2, 3, 4, and 5.
  */
 public class GoSettings {
 
-    // General Go Options (Image 2)
+    // General Go Options
     private boolean suggestParametersNameInCompletion = true;
     private boolean suggestVariantsRequireAdditionalImports = true;
     private boolean indentOnEnterInRawStrings = false;
@@ -25,21 +25,39 @@ public class GoSettings {
     private String whenJsonPasted = "Show options"; // "Show options", "Convert JSON to a Go type", "Insert JSON as-is"
     private String whenTagRenamed = "Show options"; // "Show options", "Rename a tag", "Do not rename tag"
 
-    // GOROOT (Image 3)
+    // GOROOT
     private String goRootPath = "";
     private String goRootVersion = "";
 
-    // GOPATH (Image 4)
+    // GOPATH
     private List<String> globalGoPaths = new ArrayList<>();
     private List<String> projectGoPaths = new ArrayList<>();
     private boolean useGoPathFromEnv = true;
     private boolean indexEntireGoPath = false;
 
-    // Go Modules (Image 5)
+    // Go Modules
     private boolean enableGoModulesIntegration = true;
     private String environmentVariables = "";
     private boolean enableVendoringSupportAutomatically = true;
     private String downloadGoModuleDependencies = "Enable for all projects"; // "Enable for all projects", "Enable for non-vendored projects only", "Disabled"
+
+    // Build Tags (Image 1)
+    private List<String> buildTagScopes = new ArrayList<>();
+    private String customBuildTags = "";
+    private String osTarget = "any";
+    private String archTarget = "any";
+
+    // Formatting Functions (Image 2)
+    private List<String> excludedFormattingFunctions = new ArrayList<>();
+
+    // Imports (Image 3)
+    private boolean showImportPopup = true;
+    private boolean addUnambiguousImportsOnTheFly = true;
+    private boolean optimizeImportsOnTheFly = true;
+    private List<String> excludedImports = new ArrayList<>(List.of(
+            "github.com/pkg/errors",
+            "golang.org/x/net/context"
+    ));
 
     public GoSettings() {}
 
@@ -66,6 +84,18 @@ public class GoSettings {
         this.environmentVariables = other.environmentVariables;
         this.enableVendoringSupportAutomatically = other.enableVendoringSupportAutomatically;
         this.downloadGoModuleDependencies = other.downloadGoModuleDependencies;
+
+        this.buildTagScopes = new ArrayList<>(other.buildTagScopes);
+        this.customBuildTags = other.customBuildTags;
+        this.osTarget = other.osTarget;
+        this.archTarget = other.archTarget;
+
+        this.excludedFormattingFunctions = new ArrayList<>(other.excludedFormattingFunctions);
+
+        this.showImportPopup = other.showImportPopup;
+        this.addUnambiguousImportsOnTheFly = other.addUnambiguousImportsOnTheFly;
+        this.optimizeImportsOnTheFly = other.optimizeImportsOnTheFly;
+        this.excludedImports = new ArrayList<>(other.excludedImports);
     }
 
     public GoSettings copy() {
@@ -241,6 +271,81 @@ public class GoSettings {
         this.downloadGoModuleDependencies = downloadGoModuleDependencies != null ? downloadGoModuleDependencies : "Enable for all projects";
     }
 
+    // Build Tags
+    public List<String> getBuildTagScopes() {
+        return buildTagScopes;
+    }
+
+    public void setBuildTagScopes(List<String> buildTagScopes) {
+        this.buildTagScopes = buildTagScopes != null ? new ArrayList<>(buildTagScopes) : new ArrayList<>();
+    }
+
+    public String getCustomBuildTags() {
+        return customBuildTags;
+    }
+
+    public void setCustomBuildTags(String customBuildTags) {
+        this.customBuildTags = customBuildTags != null ? customBuildTags : "";
+    }
+
+    public String getOsTarget() {
+        return osTarget;
+    }
+
+    public void setOsTarget(String osTarget) {
+        this.osTarget = osTarget != null ? osTarget : "any";
+    }
+
+    public String getArchTarget() {
+        return archTarget;
+    }
+
+    public void setArchTarget(String archTarget) {
+        this.archTarget = archTarget != null ? archTarget : "any";
+    }
+
+    // Formatting Functions
+    public List<String> getExcludedFormattingFunctions() {
+        return excludedFormattingFunctions;
+    }
+
+    public void setExcludedFormattingFunctions(List<String> excludedFormattingFunctions) {
+        this.excludedFormattingFunctions = excludedFormattingFunctions != null ? new ArrayList<>(excludedFormattingFunctions) : new ArrayList<>();
+    }
+
+    // Imports
+    public boolean isShowImportPopup() {
+        return showImportPopup;
+    }
+
+    public void setShowImportPopup(boolean showImportPopup) {
+        this.showImportPopup = showImportPopup;
+    }
+
+    public boolean isAddUnambiguousImportsOnTheFly() {
+        return addUnambiguousImportsOnTheFly;
+    }
+
+    public void setAddUnambiguousImportsOnTheFly(boolean addUnambiguousImportsOnTheFly) {
+        this.addUnambiguousImportsOnTheFly = addUnambiguousImportsOnTheFly;
+    }
+
+    public boolean isOptimizeImportsOnTheFly() {
+        return optimizeImportsOnTheFly;
+    }
+
+    public void setOptimizeImportsOnTheFly(boolean optimizeImportsOnTheFly) {
+        this.optimizeImportsOnTheFly = optimizeImportsOnTheFly;
+    }
+
+    public List<String> getExcludedImports() {
+        return excludedImports;
+    }
+
+    public void setExcludedImports(List<String> excludedImports) {
+        this.excludedImports = excludedImports != null ? new ArrayList<>(excludedImports) : new ArrayList<>();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -255,6 +360,9 @@ public class GoSettings {
                 indexEntireGoPath == that.indexEntireGoPath &&
                 enableGoModulesIntegration == that.enableGoModulesIntegration &&
                 enableVendoringSupportAutomatically == that.enableVendoringSupportAutomatically &&
+                showImportPopup == that.showImportPopup &&
+                addUnambiguousImportsOnTheFly == that.addUnambiguousImportsOnTheFly &&
+                optimizeImportsOnTheFly == that.optimizeImportsOnTheFly &&
                 Objects.equals(whenDirectoryRenamed, that.whenDirectoryRenamed) &&
                 Objects.equals(whenPackageRenamed, that.whenPackageRenamed) &&
                 Objects.equals(whenFileRenamed, that.whenFileRenamed) &&
@@ -265,7 +373,13 @@ public class GoSettings {
                 Objects.equals(globalGoPaths, that.globalGoPaths) &&
                 Objects.equals(projectGoPaths, that.projectGoPaths) &&
                 Objects.equals(environmentVariables, that.environmentVariables) &&
-                Objects.equals(downloadGoModuleDependencies, that.downloadGoModuleDependencies);
+                Objects.equals(downloadGoModuleDependencies, that.downloadGoModuleDependencies) &&
+                Objects.equals(buildTagScopes, that.buildTagScopes) &&
+                Objects.equals(customBuildTags, that.customBuildTags) &&
+                Objects.equals(osTarget, that.osTarget) &&
+                Objects.equals(archTarget, that.archTarget) &&
+                Objects.equals(excludedFormattingFunctions, that.excludedFormattingFunctions) &&
+                Objects.equals(excludedImports, that.excludedImports);
     }
 
     @Override
@@ -276,6 +390,8 @@ public class GoSettings {
                 whenFileRenamed, whenJsonPasted, whenTagRenamed, goRootPath, goRootVersion,
                 globalGoPaths, projectGoPaths, useGoPathFromEnv, indexEntireGoPath,
                 enableGoModulesIntegration, environmentVariables, enableVendoringSupportAutomatically,
-                downloadGoModuleDependencies);
+                downloadGoModuleDependencies, buildTagScopes, customBuildTags, osTarget, archTarget,
+                excludedFormattingFunctions, showImportPopup, addUnambiguousImportsOnTheFly,
+                optimizeImportsOnTheFly, excludedImports);
     }
 }

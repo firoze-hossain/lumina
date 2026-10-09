@@ -5,15 +5,17 @@ import dev.lumina.javascript.JavaScriptSettingsManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.Objects;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA Languages & Frameworks > JavaScript > Code Quality Tools > ESLint.
- * Matching Screenshot 4.
+ * Languages & Frameworks > JavaScript > Code Quality Tools > ESLint settings page in Lumina IDE.
  */
 public class SettingsLanguagesJSEsLintPage extends VBox {
 
@@ -26,8 +28,21 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
     private RadioButton manualRadio;
     private ToggleGroup modeGroup;
 
+    // Manual configuration panel controls
+    private VBox manualConfigPane;
+    private ComboBox<String> nodeInterpreterCombo;
+    private ComboBox<String> eslintPackageCombo;
+    private RadioButton autoSearchConfigRadio;
+    private RadioButton customConfigFileRadio;
+    private ToggleGroup configSourceGroup;
+    private TextField customConfigFileField;
+    private Button browseCustomConfigFileButton;
+    private TextField extraRulesDirField;
+    private Button browseExtraRulesDirButton;
+
+    // Common fields
     private TextField runForFilesField;
-    private Label globHintLabel;
+    private HBox globHintBox;
     private CheckBox runOnSaveCheck;
     private Hyperlink actionsOnSaveLink;
 
@@ -57,10 +72,10 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
         automaticRadio.setToggleGroup(modeGroup);
         automaticRadio.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
 
-        Label autoHelp = new Label("?");
-        autoHelp.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px; -fx-padding: 0 0 0 4;");
-        autoHelp.setTooltip(new Tooltip("Detects ESLint configuration and dependencies in project"));
-        HBox autoBox = new HBox(4, automaticRadio, autoHelp);
+        Label autoHelp = new Label("\u24D8"); // circled info icon
+        autoHelp.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px; -fx-cursor: hand;");
+        autoHelp.setTooltip(new Tooltip("Detects ESLint package and configuration file automatically based on project structure."));
+        HBox autoBox = new HBox(6, automaticRadio, autoHelp);
         autoBox.setAlignment(Pos.CENTER_LEFT);
 
         manualRadio = new RadioButton("Manual ESLint configuration");
@@ -73,32 +88,48 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
             case MANUAL -> manualRadio.setSelected(true);
         }
 
+        // 2. Manual Configuration Panel (dynamically shown when Manual radio is selected)
+        buildManualConfigPane(current);
+
         modeGroup.selectedToggleProperty().addListener((obs, oldV, newV) -> {
             updateControlStates();
             fireModified();
         });
 
-        // 2. Run for files
+        // 3. Run for files row
         HBox runForFilesRow = new HBox(12);
         runForFilesRow.setAlignment(Pos.CENTER_LEFT);
 
         Label runForFilesLabel = new Label("Run for files:");
         runForFilesLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-        runForFilesLabel.setPrefWidth(90);
+        runForFilesLabel.setPrefWidth(96);
 
         runForFilesField = new TextField(current.getRunForFiles());
         runForFilesField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 8 5 8;");
-        runForFilesField.setMaxWidth(600);
+        runForFilesField.setMaxWidth(620);
         HBox.setHgrow(runForFilesField, Priority.ALWAYS);
         runForFilesField.textProperty().addListener((obs, oldV, newV) -> fireModified());
 
         runForFilesRow.getChildren().addAll(runForFilesLabel, runForFilesField);
 
-        globHintLabel = new Label("Use a glob pattern ↗, for example, **/*.{js,ts}");
-        globHintLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px; -fx-padding: 0 0 0 102;");
+        // Glob hint with link
+        globHintBox = new HBox(2);
+        globHintBox.setAlignment(Pos.CENTER_LEFT);
+        globHintBox.setPadding(new Insets(0, 0, 0, 108));
 
-        // 3. Run eslint --fix on save
-        HBox saveRow = new HBox(8);
+        Hyperlink globLink = new Hyperlink("Use a glob pattern \u2197");
+        globLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: false;");
+        globLink.setOnMouseEntered(e -> globLink.setStyle("-fx-text-fill: #70AAFF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: true;"));
+        globLink.setOnMouseExited(e -> globLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-padding: 0; -fx-underline: false;"));
+        globLink.setTooltip(new Tooltip("Learn about glob syntax patterns for file matching"));
+
+        Label globExampleLabel = new Label(" , for example, **/*.{js,ts}");
+        globExampleLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+
+        globHintBox.getChildren().addAll(globLink, globExampleLabel);
+
+        // 4. Run eslint --fix on save
+        HBox saveRow = new HBox(10);
         saveRow.setAlignment(Pos.CENTER_LEFT);
 
         runOnSaveCheck = new CheckBox("Run eslint --fix on save");
@@ -122,18 +153,151 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
                 disableRadio,
                 autoBox,
                 manualRadio,
+                manualConfigPane,
                 runForFilesRow,
-                globHintLabel,
+                globHintBox,
                 saveRow
         );
 
         updateControlStates();
     }
 
+    private void buildManualConfigPane(ESLintSettings current) {
+        manualConfigPane = new VBox(10);
+        manualConfigPane.setPadding(new Insets(6, 0, 10, 24));
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        // Node interpreter
+        Label nodeLabel = new Label("Node interpreter:");
+        nodeLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+        nodeLabel.setPrefWidth(130);
+
+        nodeInterpreterCombo = new ComboBox<>();
+        nodeInterpreterCombo.setEditable(true);
+        nodeInterpreterCombo.getItems().addAll("Project", "node (/usr/bin/node)", "node (/usr/local/bin/node)");
+        nodeInterpreterCombo.setValue(current.getNodeInterpreter());
+        nodeInterpreterCombo.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px;");
+        nodeInterpreterCombo.setMaxWidth(460);
+        nodeInterpreterCombo.valueProperty().addListener((obs, oldV, newV) -> fireModified());
+
+        grid.add(nodeLabel, 0, 0);
+        grid.add(nodeInterpreterCombo, 1, 0);
+
+        // ESLint package
+        Label packageLabel = new Label("ESLint package:");
+        packageLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        eslintPackageCombo = new ComboBox<>();
+        eslintPackageCombo.setEditable(true);
+        eslintPackageCombo.getItems().addAll(
+                "Detecting...",
+                "node_modules/eslint",
+                "/usr/local/lib/node_modules/eslint"
+        );
+        eslintPackageCombo.setValue(current.getEslintPackage().isBlank() ? "node_modules/eslint" : current.getEslintPackage());
+        eslintPackageCombo.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px;");
+        eslintPackageCombo.setMaxWidth(460);
+        eslintPackageCombo.valueProperty().addListener((obs, oldV, newV) -> fireModified());
+
+        grid.add(packageLabel, 0, 1);
+        grid.add(eslintPackageCombo, 1, 1);
+
+        // Configuration file radio group
+        Label configLabel = new Label("Configuration file:");
+        configLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        configSourceGroup = new ToggleGroup();
+        autoSearchConfigRadio = new RadioButton("Automatic search");
+        autoSearchConfigRadio.setToggleGroup(configSourceGroup);
+        autoSearchConfigRadio.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+
+        customConfigFileRadio = new RadioButton("Configuration file:");
+        customConfigFileRadio.setToggleGroup(configSourceGroup);
+        customConfigFileRadio.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+
+        if (current.isCustomConfigurationFile()) {
+            customConfigFileRadio.setSelected(true);
+        } else {
+            autoSearchConfigRadio.setSelected(true);
+        }
+
+        configSourceGroup.selectedToggleProperty().addListener((obs, oldV, newV) -> {
+            updateManualConfigControls();
+            fireModified();
+        });
+
+        HBox customConfigRow = new HBox(8);
+        customConfigRow.setAlignment(Pos.CENTER_LEFT);
+
+        customConfigFileField = new TextField(current.getConfigurationFile());
+        customConfigFileField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px;");
+        customConfigFileField.setPrefWidth(380);
+        customConfigFileField.textProperty().addListener((obs, oldV, newV) -> fireModified());
+
+        browseCustomConfigFileButton = new Button("...");
+        browseCustomConfigFileButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px; -fx-cursor: hand;");
+        browseCustomConfigFileButton.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Select ESLint Configuration File");
+            File file = chooser.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
+            if (file != null) {
+                customConfigFileField.setText(file.getAbsolutePath());
+                customConfigFileRadio.setSelected(true);
+            }
+        });
+
+        customConfigRow.getChildren().addAll(customConfigFileRadio, customConfigFileField, browseCustomConfigFileButton);
+
+        VBox configSourcesBox = new VBox(6, autoSearchConfigRadio, customConfigRow);
+        grid.add(configLabel, 0, 2);
+        grid.add(configSourcesBox, 1, 2);
+
+        // Extra rules directory
+        Label extraLabel = new Label("Extra rules directory:");
+        extraLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
+
+        HBox extraRow = new HBox(8);
+        extraRow.setAlignment(Pos.CENTER_LEFT);
+
+        extraRulesDirField = new TextField(current.getExtraRulesDirectory());
+        extraRulesDirField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px;");
+        extraRulesDirField.setPrefWidth(420);
+        extraRulesDirField.textProperty().addListener((obs, oldV, newV) -> fireModified());
+
+        browseExtraRulesDirButton = new Button("...");
+        browseExtraRulesDirButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px; -fx-cursor: hand;");
+        extraRow.getChildren().addAll(extraRulesDirField, browseExtraRulesDirButton);
+
+        grid.add(extraLabel, 0, 3);
+        grid.add(extraRow, 1, 3);
+
+        manualConfigPane.getChildren().add(grid);
+    }
+
     private void updateControlStates() {
-        boolean isEnabled = !disableRadio.isSelected();
-        runForFilesField.setDisable(!isEnabled);
-        runOnSaveCheck.setDisable(!isEnabled);
+        boolean isDisabled = disableRadio.isSelected();
+        boolean isManual = manualRadio.isSelected();
+
+        // 1. Run for files & Save actions are dimmed when ESLint is disabled
+        runForFilesField.setDisable(isDisabled);
+        runOnSaveCheck.setDisable(isDisabled);
+        globHintBox.setOpacity(isDisabled ? 0.5 : 1.0);
+        actionsOnSaveLink.setDisable(isDisabled);
+
+        // 2. Manual configuration pane is shown only when Manual mode is active
+        manualConfigPane.setVisible(isManual);
+        manualConfigPane.setManaged(isManual);
+
+        updateManualConfigControls();
+    }
+
+    private void updateManualConfigControls() {
+        boolean customConfig = customConfigFileRadio.isSelected();
+        customConfigFileField.setDisable(!customConfig);
+        browseCustomConfigFileButton.setDisable(!customConfig);
     }
 
     public void setOnNavigateToActionsOnSave(Runnable listener) {
@@ -161,7 +325,14 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
         } else if (manualRadio.isSelected()) {
             mode = ESLintSettings.Mode.MANUAL;
         }
-        return new ESLintSettings(mode, runForFilesField.getText(), runOnSaveCheck.isSelected());
+
+        ESLintSettings s = new ESLintSettings(mode, runForFilesField.getText(), runOnSaveCheck.isSelected());
+        s.setNodeInterpreter(nodeInterpreterCombo.getValue() != null ? nodeInterpreterCombo.getValue() : "Project");
+        s.setEslintPackage(eslintPackageCombo.getValue() != null ? eslintPackageCombo.getValue() : "");
+        s.setCustomConfigurationFile(customConfigFileRadio.isSelected());
+        s.setConfigurationFile(customConfigFileField.getText() != null ? customConfigFileField.getText() : "");
+        s.setExtraRulesDirectory(extraRulesDirField.getText() != null ? extraRulesDirField.getText() : "");
+        return s;
     }
 
     public boolean isModified() {
@@ -183,6 +354,17 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
             }
             runForFilesField.setText(initialSettings.getRunForFiles());
             runOnSaveCheck.setSelected(initialSettings.isRunOnSave());
+
+            nodeInterpreterCombo.setValue(initialSettings.getNodeInterpreter());
+            eslintPackageCombo.setValue(initialSettings.getEslintPackage());
+            if (initialSettings.isCustomConfigurationFile()) {
+                customConfigFileRadio.setSelected(true);
+            } else {
+                autoSearchConfigRadio.setSelected(true);
+            }
+            customConfigFileField.setText(initialSettings.getConfigurationFile());
+            extraRulesDirField.setText(initialSettings.getExtraRulesDirectory());
+
             updateControlStates();
         }
         fireModified();
@@ -210,5 +392,21 @@ public class SettingsLanguagesJSEsLintPage extends VBox {
 
     public CheckBox getRunOnSaveCheck() {
         return runOnSaveCheck;
+    }
+
+    public ComboBox<String> getNodeInterpreterCombo() {
+        return nodeInterpreterCombo;
+    }
+
+    public ComboBox<String> getEslintPackageCombo() {
+        return eslintPackageCombo;
+    }
+
+    public TextField getCustomConfigFileField() {
+        return customConfigFileField;
+    }
+
+    public TextField getExtraRulesDirField() {
+        return extraRulesDirField;
     }
 }

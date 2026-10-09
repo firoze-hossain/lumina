@@ -138,6 +138,9 @@ public class SettingsDialog {
     private SettingsLanguagesGoGoRootPage currentLanguagesGoGoRootPage;
     private SettingsLanguagesGoGoPathPage currentLanguagesGoGoPathPage;
     private SettingsLanguagesGoModulesPage currentLanguagesGoModulesPage;
+    private SettingsLanguagesGoBuildTagsPage currentLanguagesGoBuildTagsPage;
+    private SettingsLanguagesGoFormattingFunctionsPage currentLanguagesGoFormattingFunctionsPage;
+    private SettingsLanguagesGoImportsPage currentLanguagesGoImportsPage;
     private SettingsRustPage currentRustPage;
     private SettingsRustExternalLintersPage currentRustExternalLintersPage;
     private SettingsRustfmtPage currentRustfmtPage;
@@ -145,6 +148,11 @@ public class SettingsDialog {
     private SettingsLanguagesJavaScriptPage currentLanguagesJavaScriptPage;
     private SettingsLanguagesJSEsLintPage currentLanguagesJsEsLintPage;
     private SettingsLanguagesJSJsHintPage currentLanguagesJsJsHintPage;
+    private SettingsLanguagesJSLibrariesPage currentLanguagesJsLibrariesPage;
+    private SettingsLanguagesJSPrettierPage currentLanguagesJsPrettierPage;
+    private SettingsLanguagesJSStyledComponentsPage currentLanguagesJsStyledComponentsPage;
+    private SettingsLanguagesJSVitePage currentLanguagesJsVitePage;
+    private SettingsLanguagesJSWebpackPage currentLanguagesJsWebpackPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -708,6 +716,42 @@ public class SettingsDialog {
                         }
                     });
                     breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Build Tags".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoBuildTagsPage != null) {
+                            currentLanguagesGoBuildTagsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Formatting Functions".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoFormattingFunctionsPage != null) {
+                            currentLanguagesGoFormattingFunctionsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Imports".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesGoImportsPage != null) {
+                            currentLanguagesGoImportsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
                 } else if ("JavaFX".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
                     Hyperlink revertLink = new Hyperlink("Revert changes");
                     revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
@@ -766,6 +810,66 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguagesJsJsHintPage != null) {
                             currentLanguagesJsJsHintPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Libraries".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsLibrariesPage != null) {
+                            currentLanguagesJsLibrariesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Prettier".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsPrettierPage != null) {
+                            currentLanguagesJsPrettierPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Styled Components".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsStyledComponentsPage != null) {
+                            currentLanguagesJsStyledComponentsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Vite".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsVitePage != null) {
+                            currentLanguagesJsVitePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Webpack".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsWebpackPage != null) {
+                            currentLanguagesJsWebpackPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -2786,6 +2890,18 @@ public class SettingsDialog {
                 buildLanguagesGoModulesPage();
                 return;
             }
+            if ("Build Tags".equals(pageName)) {
+                buildLanguagesGoBuildTagsPage();
+                return;
+            }
+            if ("Formatting Functions".equals(pageName)) {
+                buildLanguagesGoFormattingFunctionsPage();
+                return;
+            }
+            if ("Imports".equals(pageName)) {
+                buildLanguagesGoImportsPage();
+                return;
+            }
             if ("Rust".equals(pageName)) {
                 buildLanguagesRustPage();
                 return;
@@ -2816,6 +2932,26 @@ public class SettingsDialog {
             }
             if ("JSHint".equals(pageName)) {
                 buildLanguagesJsHintPage();
+                return;
+            }
+            if ("Libraries".equals(pageName)) {
+                buildLanguagesLibrariesPage();
+                return;
+            }
+            if ("Prettier".equals(pageName)) {
+                buildLanguagesPrettierPage();
+                return;
+            }
+            if ("Styled Components".equals(pageName)) {
+                buildLanguagesStyledComponentsPage();
+                return;
+            }
+            if ("Vite".equals(pageName)) {
+                buildLanguagesVitePage();
+                return;
+            }
+            if ("Webpack".equals(pageName)) {
+                buildLanguagesWebpackPage();
                 return;
             }
         }
@@ -4680,6 +4816,12 @@ public class SettingsDialog {
             buildLanguagesGoGoPathPage();
         } else if ("Go Modules".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesGoModulesPage();
+        } else if ("Build Tags".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoBuildTagsPage();
+        } else if ("Formatting Functions".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoFormattingFunctionsPage();
+        } else if ("Imports".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesGoImportsPage();
         } else if ("Rust".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesRustPage();
         } else if ("External Linters".equals(pageName) && isUnderLanguages(selected)) {
@@ -4696,6 +4838,16 @@ public class SettingsDialog {
             buildLanguagesEsLintPage();
         } else if ("JSHint".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesJsHintPage();
+        } else if ("Libraries".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesLibrariesPage();
+        } else if ("Prettier".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesPrettierPage();
+        } else if ("Styled Components".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesStyledComponentsPage();
+        } else if ("Vite".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesVitePage();
+        } else if ("Webpack".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesWebpackPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -5713,6 +5865,45 @@ public class SettingsDialog {
         return currentLanguagesGoModulesPage;
     }
 
+    private void buildLanguagesGoBuildTagsPage() {
+        if (currentLanguagesGoBuildTagsPage == null) {
+            currentLanguagesGoBuildTagsPage = new SettingsLanguagesGoBuildTagsPage();
+        }
+        currentLanguagesGoBuildTagsPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoBuildTagsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoBuildTagsPage getCurrentLanguagesGoBuildTagsPage() {
+        return currentLanguagesGoBuildTagsPage;
+    }
+
+    private void buildLanguagesGoFormattingFunctionsPage() {
+        if (currentLanguagesGoFormattingFunctionsPage == null) {
+            currentLanguagesGoFormattingFunctionsPage = new SettingsLanguagesGoFormattingFunctionsPage();
+        }
+        currentLanguagesGoFormattingFunctionsPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoFormattingFunctionsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoFormattingFunctionsPage getCurrentLanguagesGoFormattingFunctionsPage() {
+        return currentLanguagesGoFormattingFunctionsPage;
+    }
+
+    private void buildLanguagesGoImportsPage() {
+        if (currentLanguagesGoImportsPage == null) {
+            currentLanguagesGoImportsPage = new SettingsLanguagesGoImportsPage();
+        }
+        currentLanguagesGoImportsPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesGoImportsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesGoImportsPage getCurrentLanguagesGoImportsPage() {
+        return currentLanguagesGoImportsPage;
+    }
+
     private void buildLanguagesRustPage() {
         if (currentRustPage == null) {
             currentRustPage = new SettingsRustPage();
@@ -5828,6 +6019,81 @@ public class SettingsDialog {
 
     public SettingsLanguagesJSJsHintPage getCurrentLanguagesJsJsHintPage() {
         return currentLanguagesJsJsHintPage;
+    }
+
+    private void buildLanguagesLibrariesPage() {
+        if (currentLanguagesJsLibrariesPage == null) {
+            currentLanguagesJsLibrariesPage = new SettingsLanguagesJSLibrariesPage();
+        }
+        currentLanguagesJsLibrariesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsLibrariesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsLibrariesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSLibrariesPage getCurrentLanguagesJsLibrariesPage() {
+        return currentLanguagesJsLibrariesPage;
+    }
+
+    private void buildLanguagesPrettierPage() {
+        if (currentLanguagesJsPrettierPage == null) {
+            currentLanguagesJsPrettierPage = new SettingsLanguagesJSPrettierPage();
+        }
+        currentLanguagesJsPrettierPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsPrettierPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsPrettierPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSPrettierPage getCurrentLanguagesJsPrettierPage() {
+        return currentLanguagesJsPrettierPage;
+    }
+
+    private void buildLanguagesStyledComponentsPage() {
+        if (currentLanguagesJsStyledComponentsPage == null) {
+            currentLanguagesJsStyledComponentsPage = new SettingsLanguagesJSStyledComponentsPage();
+        }
+        currentLanguagesJsStyledComponentsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsStyledComponentsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsStyledComponentsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSStyledComponentsPage getCurrentLanguagesJsStyledComponentsPage() {
+        return currentLanguagesJsStyledComponentsPage;
+    }
+
+    private void buildLanguagesVitePage() {
+        if (currentLanguagesJsVitePage == null) {
+            currentLanguagesJsVitePage = new SettingsLanguagesJSVitePage();
+        }
+        currentLanguagesJsVitePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsVitePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsVitePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSVitePage getCurrentLanguagesJsVitePage() {
+        return currentLanguagesJsVitePage;
+    }
+
+    private void buildLanguagesWebpackPage() {
+        if (currentLanguagesJsWebpackPage == null) {
+            currentLanguagesJsWebpackPage = new SettingsLanguagesJSWebpackPage();
+        }
+        currentLanguagesJsWebpackPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsWebpackPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsWebpackPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJSWebpackPage getCurrentLanguagesJsWebpackPage() {
+        return currentLanguagesJsWebpackPage;
     }
 
     private void buildApplicationServersPage() {
@@ -7503,8 +7769,11 @@ public class SettingsDialog {
                 new TreeItem<>("Markdown"),
                 new TreeItem<>("Micronaut"),
                 new TreeItem<>("OpenAPI Specifications"),
+                new TreeItem<>("Play"),
                 protoItem,
                 new TreeItem<>("Quarkus"),
+                new TreeItem<>("RBS"),
+                new TreeItem<>("Scala"),
                 schemasItem,
                 new TreeItem<>("Spring"),
                 new TreeItem<>("SQL Dialects"),
@@ -7614,7 +7883,8 @@ public class SettingsDialog {
             "Servers", "Composer", "Test Frameworks", "Quality Tools",
             "PHP_CodeSniffer", "PHP CS Fixer", "Laravel Pint", "Mess Detector",
             "Frameworks", "Smarty", "Rust", "External Linters", "Rustfmt",
-            "Python Template Languages", "GOROOT", "GOPATH", "Go Modules", "Build Tags", "Formatting Functions", "Imports"
+            "Python Template Languages", "GOROOT", "GOPATH", "Go Modules", "Build Tags", "Formatting Functions", "Imports",
+            "Play", "RBS", "Scala"
     ));
 
     private static boolean isProjectSetting(String name) {
@@ -8027,6 +8297,15 @@ public class SettingsDialog {
         if (currentLanguagesGoModulesPage != null && currentLanguagesGoModulesPage.isModified()) {
             currentLanguagesGoModulesPage.apply();
         }
+        if (currentLanguagesGoBuildTagsPage != null && currentLanguagesGoBuildTagsPage.isModified()) {
+            currentLanguagesGoBuildTagsPage.apply();
+        }
+        if (currentLanguagesGoFormattingFunctionsPage != null && currentLanguagesGoFormattingFunctionsPage.isModified()) {
+            currentLanguagesGoFormattingFunctionsPage.apply();
+        }
+        if (currentLanguagesGoImportsPage != null && currentLanguagesGoImportsPage.isModified()) {
+            currentLanguagesGoImportsPage.apply();
+        }
         if (currentRustPage != null && currentRustPage.isModified()) {
             currentRustPage.apply();
         }
@@ -8047,6 +8326,21 @@ public class SettingsDialog {
         }
         if (currentLanguagesJsJsHintPage != null && currentLanguagesJsJsHintPage.isModified()) {
             currentLanguagesJsJsHintPage.apply();
+        }
+        if (currentLanguagesJsLibrariesPage != null && currentLanguagesJsLibrariesPage.isModified()) {
+            currentLanguagesJsLibrariesPage.apply();
+        }
+        if (currentLanguagesJsPrettierPage != null && currentLanguagesJsPrettierPage.isModified()) {
+            currentLanguagesJsPrettierPage.apply();
+        }
+        if (currentLanguagesJsStyledComponentsPage != null && currentLanguagesJsStyledComponentsPage.isModified()) {
+            currentLanguagesJsStyledComponentsPage.apply();
+        }
+        if (currentLanguagesJsVitePage != null && currentLanguagesJsVitePage.isModified()) {
+            currentLanguagesJsVitePage.apply();
+        }
+        if (currentLanguagesJsWebpackPage != null && currentLanguagesJsWebpackPage.isModified()) {
+            currentLanguagesJsWebpackPage.apply();
         }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
@@ -8448,6 +8742,9 @@ public class SettingsDialog {
                 || (currentLanguagesGoGoRootPage != null && currentLanguagesGoGoRootPage.isModified())
                 || (currentLanguagesGoGoPathPage != null && currentLanguagesGoGoPathPage.isModified())
                 || (currentLanguagesGoModulesPage != null && currentLanguagesGoModulesPage.isModified())
+                || (currentLanguagesGoBuildTagsPage != null && currentLanguagesGoBuildTagsPage.isModified())
+                || (currentLanguagesGoFormattingFunctionsPage != null && currentLanguagesGoFormattingFunctionsPage.isModified())
+                || (currentLanguagesGoImportsPage != null && currentLanguagesGoImportsPage.isModified())
                 || (currentRustPage != null && currentRustPage.isModified())
                 || (currentRustExternalLintersPage != null && currentRustExternalLintersPage.isModified())
                 || (currentRustfmtPage != null && currentRustfmtPage.isModified())
@@ -8455,6 +8752,11 @@ public class SettingsDialog {
                 || (currentLanguagesJavaScriptPage != null && currentLanguagesJavaScriptPage.isModified())
                 || (currentLanguagesJsEsLintPage != null && currentLanguagesJsEsLintPage.isModified())
                 || (currentLanguagesJsJsHintPage != null && currentLanguagesJsJsHintPage.isModified())
+                || (currentLanguagesJsLibrariesPage != null && currentLanguagesJsLibrariesPage.isModified())
+                || (currentLanguagesJsPrettierPage != null && currentLanguagesJsPrettierPage.isModified())
+                || (currentLanguagesJsStyledComponentsPage != null && currentLanguagesJsStyledComponentsPage.isModified())
+                || (currentLanguagesJsVitePage != null && currentLanguagesJsVitePage.isModified())
+                || (currentLanguagesJsWebpackPage != null && currentLanguagesJsWebpackPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -8812,6 +9114,15 @@ public class SettingsDialog {
             if (currentLanguagesGoModulesPage != null) {
                 currentLanguagesGoModulesPage.reset();
             }
+            if (currentLanguagesGoBuildTagsPage != null) {
+                currentLanguagesGoBuildTagsPage.reset();
+            }
+            if (currentLanguagesGoFormattingFunctionsPage != null) {
+                currentLanguagesGoFormattingFunctionsPage.reset();
+            }
+            if (currentLanguagesGoImportsPage != null) {
+                currentLanguagesGoImportsPage.reset();
+            }
             if (currentRustPage != null) {
                 currentRustPage.reset();
             }
@@ -8832,6 +9143,21 @@ public class SettingsDialog {
             }
             if (currentLanguagesJsJsHintPage != null) {
                 currentLanguagesJsJsHintPage.reset();
+            }
+            if (currentLanguagesJsLibrariesPage != null) {
+                currentLanguagesJsLibrariesPage.reset();
+            }
+            if (currentLanguagesJsPrettierPage != null) {
+                currentLanguagesJsPrettierPage.reset();
+            }
+            if (currentLanguagesJsStyledComponentsPage != null) {
+                currentLanguagesJsStyledComponentsPage.reset();
+            }
+            if (currentLanguagesJsVitePage != null) {
+                currentLanguagesJsVitePage.reset();
+            }
+            if (currentLanguagesJsWebpackPage != null) {
+                currentLanguagesJsWebpackPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();

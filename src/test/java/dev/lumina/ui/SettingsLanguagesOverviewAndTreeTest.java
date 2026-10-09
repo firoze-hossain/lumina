@@ -63,9 +63,12 @@ class SettingsLanguagesOverviewAndTreeTest {
                 }
                 assertNotNull(languagesNode, "Languages & Frameworks node must exist in the root");
 
-                // Verify exact 25 child nodes in exact order matching Screenshot 1
+                // Verify child nodes in exact order matching Screenshot 1
                 List<String> expectedChildren = List.of(
                         "PHP",
+                        "Rust",
+                        "Python Template Languages",
+                        "Go",
                         "JavaFX",
                         "JavaScript",
                         "JavaScript Runtime",
@@ -77,8 +80,11 @@ class SettingsLanguagesOverviewAndTreeTest {
                         "Markdown",
                         "Micronaut",
                         "OpenAPI Specifications",
+                        "Play",
                         "Protocol Buffers",
                         "Quarkus",
+                        "RBS",
+                        "Scala",
                         "Schemas and DTDs",
                         "Spring",
                         "SQL Dialects",
@@ -101,14 +107,14 @@ class SettingsLanguagesOverviewAndTreeTest {
                 // Test Category Overview page generated
                 SettingsCategoryOverviewPage overview = new SettingsCategoryOverviewPage(languagesNode, null);
                 assertNotNull(overview);
-                // Child links match all 25 items
+                // Child links match all items
                 long linkCount = overview.getChildren().stream()
                         .filter(node -> node instanceof javafx.scene.layout.VBox)
                         .map(node -> (javafx.scene.layout.VBox) node)
                         .flatMap(vbox -> vbox.getChildren().stream())
                         .filter(n -> n instanceof Hyperlink)
                         .count();
-                assertEquals(25, linkCount);
+                assertEquals(expectedChildren.size(), linkCount);
 
                 // Test navigation to PHP under Languages & Frameworks
                 TreeItem<String> phpNode = languagesNode.getChildren().get(0);

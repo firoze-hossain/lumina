@@ -3,7 +3,7 @@ package dev.lumina.javascript;
 import java.util.Objects;
 
 /**
- * Model representing ESLint configuration matching IntelliJ IDEA.
+ * Model representing ESLint configuration in Lumina IDE.
  */
 public class ESLintSettings {
 
@@ -18,7 +18,9 @@ public class ESLintSettings {
     private boolean runOnSave = false;
     private String nodeInterpreter = "Project";
     private String eslintPackage = "";
+    private boolean customConfigurationFile = false;
     private String configurationFile = "";
+    private String extraRulesDirectory = "";
 
     public ESLintSettings() {
     }
@@ -33,7 +35,9 @@ public class ESLintSettings {
         ESLintSettings copy = new ESLintSettings(mode, runForFiles, runOnSave);
         copy.setNodeInterpreter(nodeInterpreter);
         copy.setEslintPackage(eslintPackage);
+        copy.setCustomConfigurationFile(customConfigurationFile);
         copy.setConfigurationFile(configurationFile);
+        copy.setExtraRulesDirectory(extraRulesDirectory);
         return copy;
     }
 
@@ -77,6 +81,14 @@ public class ESLintSettings {
         this.eslintPackage = eslintPackage;
     }
 
+    public boolean isCustomConfigurationFile() {
+        return customConfigurationFile;
+    }
+
+    public void setCustomConfigurationFile(boolean customConfigurationFile) {
+        this.customConfigurationFile = customConfigurationFile;
+    }
+
     public String getConfigurationFile() {
         return configurationFile;
     }
@@ -85,20 +97,31 @@ public class ESLintSettings {
         this.configurationFile = configurationFile;
     }
 
+    public String getExtraRulesDirectory() {
+        return extraRulesDirectory;
+    }
+
+    public void setExtraRulesDirectory(String extraRulesDirectory) {
+        this.extraRulesDirectory = extraRulesDirectory;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ESLintSettings that)) return false;
         return runOnSave == that.runOnSave &&
                 mode == that.mode &&
+                customConfigurationFile == that.customConfigurationFile &&
                 Objects.equals(runForFiles, that.runForFiles) &&
                 Objects.equals(nodeInterpreter, that.nodeInterpreter) &&
                 Objects.equals(eslintPackage, that.eslintPackage) &&
-                Objects.equals(configurationFile, that.configurationFile);
+                Objects.equals(configurationFile, that.configurationFile) &&
+                Objects.equals(extraRulesDirectory, that.extraRulesDirectory);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mode, runForFiles, runOnSave, nodeInterpreter, eslintPackage, configurationFile);
+        return Objects.hash(mode, runForFiles, runOnSave, nodeInterpreter, eslintPackage,
+                customConfigurationFile, configurationFile, extraRulesDirectory);
     }
 }
