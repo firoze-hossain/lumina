@@ -247,4 +247,133 @@ class SettingsLanguagesGoAndPythonTemplatesTest {
         });
         assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
+
+    @Test
+    void testSettingsLanguagesGoBuildTagsPageUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsLanguagesGoBuildTagsPage page = new SettingsLanguagesGoBuildTagsPage();
+                assertNotNull(page);
+                assertFalse(page.isModified());
+
+                page.reset();
+                assertFalse(page.isModified());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testSettingsLanguagesGoFormattingFunctionsPageUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsLanguagesGoFormattingFunctionsPage page = new SettingsLanguagesGoFormattingFunctionsPage();
+                assertNotNull(page);
+                assertFalse(page.isModified());
+
+                page.addExcludedFunction("fmt.Printf");
+                assertTrue(page.isModified());
+                assertTrue(page.getExcludedFunctions().contains("fmt.Printf"));
+
+                page.apply();
+                assertFalse(page.isModified());
+
+                page.revertChanges();
+                assertFalse(page.isModified());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testSettingsLanguagesGoImportsPageUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsLanguagesGoImportsPage page = new SettingsLanguagesGoImportsPage();
+                assertNotNull(page);
+                assertFalse(page.isModified());
+
+                assertTrue(page.isShowImportPopup());
+                assertTrue(page.isAddUnambiguousImports());
+                assertTrue(page.isOptimizeImports());
+                assertTrue(page.getExcludedImports().contains("github.com/pkg/errors"));
+                assertTrue(page.getExcludedImports().contains("golang.org/x/net/context"));
+
+                page.apply();
+                assertFalse(page.isModified());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testSettingsLanguagesJavaFXPageUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsLanguagesJavaFXPage page = new SettingsLanguagesJavaFXPage();
+                assertNotNull(page);
+                assertFalse(page.isModified());
+
+                page.getSceneBuilderField().setText("/opt/SceneBuilder/bin/SceneBuilder");
+                assertTrue(page.isModified());
+
+                page.apply();
+                assertFalse(page.isModified());
+
+                page.revertChanges();
+                assertFalse(page.isModified());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    void testSettingsLanguagesJavaScriptPageUI() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsLanguagesJavaScriptPage page = new SettingsLanguagesJavaScriptPage();
+                assertNotNull(page);
+                assertFalse(page.isModified());
+
+                assertEquals("ECMAScript 6+", page.getLanguageVersionCombo().getValue());
+                assertEquals("ECMAScript 2015+, some proposals and JSX", page.getDescriptionLabel().getText());
+
+                page.getLanguageVersionCombo().setValue("ECMAScript 5.1");
+                assertTrue(page.isModified());
+                assertEquals("Standard ECMAScript 5.1", page.getDescriptionLabel().getText());
+
+                page.apply();
+                assertFalse(page.isModified());
+
+                page.revertChanges();
+                assertFalse(page.isModified());
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
 }

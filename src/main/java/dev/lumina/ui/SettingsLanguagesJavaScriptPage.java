@@ -13,7 +13,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA Languages & Frameworks > JavaScript settings page.
+ * Settings page for Languages & Frameworks > JavaScript in Lumina IDE.
  * Displays JavaScript language version, proposals description, and link to code completion.
  */
 public class SettingsLanguagesJavaScriptPage extends VBox {

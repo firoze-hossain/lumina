@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Model representing JSHint configuration matching IntelliJ IDEA.
+ * Model representing JSHint configuration in Lumina IDE.
  */
 public class JSHintSettings {
 
@@ -13,54 +13,43 @@ public class JSHintSettings {
     private boolean useConfigFiles = false;
     private String version = "2.13.6 (bundled)";
     private Map<String, Boolean> options = new HashMap<>();
+    private Map<String, String> paramOptions = new HashMap<>();
 
     public JSHintSettings() {
         initDefaultOptions();
     }
 
     public JSHintSettings(boolean enabled, boolean useConfigFiles, String version, Map<String, Boolean> options) {
+        this(enabled, useConfigFiles, version, options, null);
+    }
+
+    public JSHintSettings(boolean enabled, boolean useConfigFiles, String version,
+                          Map<String, Boolean> options, Map<String, String> paramOptions) {
         this.enabled = enabled;
         this.useConfigFiles = useConfigFiles;
         this.version = version != null ? version : "2.13.6 (bundled)";
         this.options = options != null ? new HashMap<>(options) : new HashMap<>();
-        if (this.options.isEmpty()) {
+        this.paramOptions = paramOptions != null ? new HashMap<>(paramOptions) : new HashMap<>();
+        if (this.options.isEmpty() && this.paramOptions.isEmpty()) {
             initDefaultOptions();
         }
     }
 
     public JSHintSettings copy() {
-        return new JSHintSettings(enabled, useConfigFiles, version, new HashMap<>(options));
+        return new JSHintSettings(enabled, useConfigFiles, version, new HashMap<>(options), new HashMap<>(paramOptions));
     }
 
     public void initDefaultOptions() {
         options.clear();
-        // Defaults matching Screenshot 5
-        options.put("bitwise", true);
-        options.put("camelcase", false);
-        options.put("curly", true);
-        options.put("enforceall", false);
-        options.put("eqeqeq", true);
-        options.put("es3", false);
-        options.put("es5", false);
-        options.put("forin", true);
-        options.put("freeze", false);
-        options.put("immed", false);
-        options.put("newcap", false);
-        options.put("noarg", true);
-        options.put("nocomma", false);
-        options.put("noempty", true);
-        options.put("nonbsp", false);
-        options.put("nonew", true);
-        options.put("undef", true);
-        options.put("varstmt", false);
+        paramOptions.clear();
 
-        // Relaxing defaults
-        options.put("funcscope", false);
-        options.put("futurehostile", false);
-        options.put("globalstrict", false);
-        options.put("iterator", false);
-        options.put("notypeof", false);
-        options.put("shadow", false);
+        for (JSHintOption opt : JSHintOption.getAllOptions()) {
+            if (opt.isParametric()) {
+                paramOptions.put(opt.getKey(), opt.getParamDefaultValue());
+            } else {
+                options.put(opt.getKey(), opt.isDefaultBooleanValue());
+            }
+        }
     }
 
     public boolean isEnabled() {
@@ -95,12 +84,28 @@ public class JSHintSettings {
         this.options = options != null ? new HashMap<>(options) : new HashMap<>();
     }
 
+    public Map<String, String> getParamOptions() {
+        return paramOptions;
+    }
+
+    public void setParamOptions(Map<String, String> paramOptions) {
+        this.paramOptions = paramOptions != null ? new HashMap<>(paramOptions) : new HashMap<>();
+    }
+
     public boolean isOptionEnabled(String key) {
         return Boolean.TRUE.equals(options.get(key));
     }
 
     public void setOptionEnabled(String key, boolean enabled) {
         options.put(key, enabled);
+    }
+
+    public String getParamOption(String key) {
+        return paramOptions.getOrDefault(key, "");
+    }
+
+    public void setParamOption(String key, String value) {
+        paramOptions.put(key, value != null ? value : "");
     }
 
     @Override
@@ -110,11 +115,12 @@ public class JSHintSettings {
         return enabled == that.enabled &&
                 useConfigFiles == that.useConfigFiles &&
                 Objects.equals(version, that.version) &&
-                Objects.equals(options, that.options);
+                Objects.equals(options, that.options) &&
+                Objects.equals(paramOptions, that.paramOptions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(enabled, useConfigFiles, version, options);
+        return Objects.hash(enabled, useConfigFiles, version, options, paramOptions);
     }
 }

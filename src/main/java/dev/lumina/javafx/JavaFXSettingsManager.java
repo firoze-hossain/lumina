@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Settings manager for JavaFX (e.g. SceneBuilder executable path) matching IntelliJ IDEA.
+ * Settings manager for JavaFX (e.g. SceneBuilder executable path) in Lumina IDE.
  */
 public class JavaFXSettingsManager {
 

@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * JavaScript language versions matching IntelliJ IDEA.
+ * JavaScript language versions in Lumina IDE.
  */
 public enum JavaScriptLanguageVersion {
     ECMASCRIPT_5_1("ECMAScript 5.1", "Standard ECMAScript 5.1"),

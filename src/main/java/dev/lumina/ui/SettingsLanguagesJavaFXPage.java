@@ -9,6 +9,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
@@ -18,8 +19,8 @@ import java.io.File;
 import java.util.Objects;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA Languages & Frameworks > JavaFX settings page.
- * Displays Path to SceneBuilder with executable file chooser.
+ * Settings page for Languages & Frameworks > JavaFX in Lumina IDE.
+ * Displays Path to SceneBuilder with integrated executable file chooser matching Image 4.
  */
 public class SettingsLanguagesJavaFXPage extends VBox {
 
@@ -48,10 +49,15 @@ public class SettingsLanguagesJavaFXPage extends VBox {
         label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
         label.setPrefWidth(150);
 
+        StackPane fieldContainer = new StackPane();
+        fieldContainer.setAlignment(Pos.CENTER_RIGHT);
+        fieldContainer.setPrefWidth(380);
+        fieldContainer.setMaxWidth(520);
+
         sceneBuilderField = new TextField(manager.getPathToSceneBuilder());
-        sceneBuilderField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 8 5 8;");
-        sceneBuilderField.setPrefWidth(420);
-        sceneBuilderField.setMaxWidth(600);
+        sceneBuilderField.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 28 4 8;");
+        HBox.setHgrow(sceneBuilderField, Priority.ALWAYS);
+        sceneBuilderField.setMaxWidth(Double.MAX_VALUE);
         sceneBuilderField.textProperty().addListener((obs, oldV, newV) -> fireModified());
 
         browseButton = new Button();
@@ -61,10 +67,9 @@ public class SettingsLanguagesJavaFXPage extends VBox {
         folderSvg.setScaleX(0.85);
         folderSvg.setScaleY(0.85);
         browseButton.setGraphic(folderSvg);
-        browseButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;");
-        browseButton.setOnMouseEntered(e -> browseButton.setStyle("-fx-background-color: #393B40; -fx-text-fill: #FFFFFF; -fx-border-color: #589DF6; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;"));
-        browseButton.setOnMouseExited(e -> browseButton.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;"));
+        browseButton.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 2 6;");
         browseButton.setTooltip(new Tooltip("Select SceneBuilder Executable"));
+        StackPane.setMargin(browseButton, new Insets(0, 4, 0, 0));
 
         browseButton.setOnAction(e -> {
             FileChooser fc = new FileChooser();
@@ -75,7 +80,8 @@ public class SettingsLanguagesJavaFXPage extends VBox {
             }
         });
 
-        row.getChildren().addAll(label, sceneBuilderField, browseButton);
+        fieldContainer.getChildren().addAll(sceneBuilderField, browseButton);
+        row.getChildren().addAll(label, fieldContainer);
         getChildren().add(row);
     }
 
