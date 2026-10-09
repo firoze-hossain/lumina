@@ -148,7 +148,6 @@ class SettingsLanguagesPHPPageTest {
         Platform.runLater(() -> {
             try {
                 SettingsLanguagesPHPPage page = new SettingsLanguagesPHPPage();
-                // Select each tab without exceptions
                 page.selectTabForTest(0); // Include Path
                 page.selectTabForTest(1); // PHP Runtime
                 page.selectTabForTest(2); // Analysis
@@ -160,4 +159,26 @@ class SettingsLanguagesPHPPageTest {
         });
         assertTrue(latch.await(5, TimeUnit.SECONDS));
     }
+
+    @Test
+    void testSettingsDialogNavigatesToPhpPageUnderLanguagesAndFrameworks() throws Exception {
+        if (!javaFxAvailable) return;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                SettingsDialog dialog = new SettingsDialog((javafx.stage.Stage) null);
+                dialog.selectCategory("Languages & Frameworks", "PHP");
+
+                SettingsLanguagesPHPPage page = dialog.getCurrentLanguagesPhpPage();
+                assertNotNull(page, "getCurrentLanguagesPhpPage should not be null when PHP is selected under Languages & Frameworks");
+                assertNotNull(page.getLanguageLevelCombo(), "PHP language level combo should be present");
+                assertNotNull(page.getInterpreterCombo(), "CLI Interpreter combo should be present");
+            } finally {
+                latch.countDown();
+            }
+        });
+        assertTrue(latch.await(5, TimeUnit.SECONDS));
+    }
 }
+

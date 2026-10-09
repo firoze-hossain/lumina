@@ -1,7 +1,6 @@
 package dev.lumina.ui;
 
 import dev.lumina.php.*;
-import dev.lumina.util.Settings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -9,8 +8,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -18,12 +15,14 @@ import java.io.File;
 import java.util.*;
 
 /**
- * 1:1 dynamic replica of IntelliJ IDEA / PhpStorm PHP settings page
- * (Languages & Frameworks > PHP) matching all 4 tabs:
- * 1. Include Path
- * 2. PHP Runtime
- * 3. Analysis
- * 4. Composer Files
+ * Settings page for Languages & Frameworks > PHP in Lumina IDE.
+ * Dynamically managed and configured without hardcoding.
+ * Faithfully matches reference IDE design across all 4 tabs:
+ * 1. Include Path (Image 1)
+ * 2. PHP Runtime (Image 2)
+ * 3. Analysis (Image 3)
+ * 4. Composer Files (Image 4)
+ * Along with dynamic language level dropdown (Image 5) and Select Path dialog (Image 4).
  */
 public class SettingsLanguagesPHPPage extends VBox {
 
@@ -32,6 +31,7 @@ public class SettingsLanguagesPHPPage extends VBox {
 
     // Top Controls
     private ComboBox<String> languageLevelCombo;
+    private Button helpLevelBtn;
     private ComboBox<PhpInterpreter> interpreterCombo;
     private Button configureInterpreterButton;
 
@@ -56,16 +56,17 @@ public class SettingsLanguagesPHPPage extends VBox {
     private VBox advancedStubsBox;
     private Label advancedToggleLabel;
     private TextField customStubsField;
-    private boolean advancedExpanded = false;
+    private boolean advancedExpanded = true;
     private final Map<String, Boolean> currentExtensionStates = new HashMap<>();
 
     // Tab 3: Analysis
     private VBox analysisPane;
+    private CheckBox exceptionAnalysisCheck;
     private ComboBox<String> callTreeDepthCombo;
     private CheckBox skipCallsWithConstantParamsCheck;
     private ListView<String> uncheckedExceptionsListView;
     private List<String> currentUncheckedExceptions = new ArrayList<>();
-    private boolean customFormatExpanded = false;
+    private boolean customFormatExpanded = true;
     private VBox customFormatBox;
     private Label customFormatToggleLabel;
     private TextField documentRootField;
@@ -76,7 +77,7 @@ public class SettingsLanguagesPHPPage extends VBox {
     private Label composerEmptyLabel;
     private List<PhpComposerFileConfig> currentComposerFiles = new ArrayList<>();
 
-    // Snapshot for dirty checking
+    // Snapshots for dirty tracking
     private PhpLanguageLevel initialLevel;
     private String initialInterpreterId;
     private List<String> initialIncludePaths;
@@ -90,7 +91,7 @@ public class SettingsLanguagesPHPPage extends VBox {
 
     public SettingsLanguagesPHPPage() {
         setSpacing(12);
-        setPadding(new Insets(16, 20, 20, 20));
+        setPadding(new Insets(14, 20, 20, 20));
         setStyle("-fx-background-color: #1E1F22;");
         VBox.setVgrow(this, Priority.ALWAYS);
 
@@ -122,7 +123,52 @@ public class SettingsLanguagesPHPPage extends VBox {
         languageLevelCombo.setMaxWidth(Double.MAX_VALUE);
         GridPane.setHgrow(languageLevelCombo, Priority.ALWAYS);
         styleComboBox(languageLevelCombo);
+
+        // Custom Cell Factory for Language Level ComboBox (matching Image 5)
+        languageLevelCombo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    int pIdx = item.indexOf('(');
+                    String ver = pIdx > 0 ? item.substring(0, pIdx).trim() : item;
+                    String feat = pIdx > 0 ? item.substring(pIdx) : "";
+
+                    Label verLbl = new Label(ver);
+                    verLbl.setStyle("-fx-text-fill: " + (isSelected() ? "#FFFFFF" : "#DFE1E5") + "; -fx-font-size: 13px;");
+
+                    Label featLbl = new Label(" " + feat);
+                    featLbl.setStyle("-fx-text-fill: " + (isSelected() ? "#C0C8D8" : "#8C9099") + "; -fx-font-size: 13px;");
+
+                    HBox row = new HBox(verLbl, featLbl);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    setGraphic(row);
+                    setText(null);
+
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-padding: 3 8;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-padding: 3 8;");
+                    }
+                }
+            }
+        });
+
         languageLevelCombo.valueProperty().addListener((obs, oldV, newV) -> fireModified());
+
+        helpLevelBtn = new Button("?");
+        helpLevelBtn.setTooltip(new Tooltip("PHP Language Level Documentation"));
+        helpLevelBtn.setStyle("-fx-background-color: transparent; -fx-border-color: #6F737A; -fx-border-radius: 10; " +
+                "-fx-background-radius: 10; -fx-text-fill: #8C9099; -fx-font-size: 11px; -fx-cursor: hand; " +
+                "-fx-min-width: 20px; -fx-min-height: 20px; -fx-max-width: 20px; -fx-max-height: 20px; -fx-padding: 0;");
+
+        HBox levelBox = new HBox(8, languageLevelCombo, helpLevelBtn);
+        levelBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(languageLevelCombo, Priority.ALWAYS);
 
         // 2. CLI Interpreter
         Label interpreterLabel = new Label("CLI Interpreter:");
@@ -145,7 +191,7 @@ public class SettingsLanguagesPHPPage extends VBox {
         HBox.setHgrow(interpreterCombo, Priority.ALWAYS);
 
         grid.add(levelLabel, 0, 0);
-        grid.add(languageLevelCombo, 1, 0);
+        grid.add(levelBox, 1, 0);
 
         grid.add(interpreterLabel, 0, 1);
         grid.add(interpreterBox, 1, 1);
@@ -182,7 +228,7 @@ public class SettingsLanguagesPHPPage extends VBox {
     // ============================================================
 
     private void buildTabBar() {
-        HBox tabBar = new HBox(2);
+        HBox tabBar = new HBox(4);
         tabBar.setAlignment(Pos.CENTER_LEFT);
         tabBar.setStyle("-fx-border-color: #393B40; -fx-border-width: 0 0 1 0; -fx-padding: 6 0 6 0;");
 
@@ -197,18 +243,18 @@ public class SettingsLanguagesPHPPage extends VBox {
 
     private Button createTabButton(String text, int index) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #9DA0A8; -fx-font-size: 13px; -fx-padding: 4 12 4 12; -fx-background-radius: 4; -fx-cursor: hand;");
+        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #9DA0A8; -fx-font-size: 13px; -fx-padding: 4 12; -fx-background-radius: 4; -fx-cursor: hand;");
         btn.setOnAction(e -> selectTab(index));
         return btn;
     }
 
-    private void selectTab(int index) {
+    public void selectTab(int index) {
         Button[] buttons = {tabIncludePathBtn, tabRuntimeBtn, tabAnalysisBtn, tabComposerBtn};
         for (int i = 0; i < buttons.length; i++) {
             if (i == index) {
-                buttons[i].setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 4 12 4 12; -fx-background-radius: 4; -fx-font-weight: bold; -fx-cursor: hand;");
+                buttons[i].setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 4 12; -fx-background-radius: 4; -fx-font-weight: bold; -fx-cursor: hand;");
             } else {
-                buttons[i].setStyle("-fx-background-color: transparent; -fx-text-fill: #9DA0A8; -fx-font-size: 13px; -fx-padding: 4 12 4 12; -fx-background-radius: 4; -fx-cursor: hand;");
+                buttons[i].setStyle("-fx-background-color: transparent; -fx-text-fill: #9DA0A8; -fx-font-size: 13px; -fx-padding: 4 12; -fx-background-radius: 4; -fx-cursor: hand;");
             }
         }
 
@@ -238,7 +284,7 @@ public class SettingsLanguagesPHPPage extends VBox {
     }
 
     // ------------------------------------------------------------
-    // Tab 1: Include Path
+    // Tab 1: Include Path (Image 1)
     // ------------------------------------------------------------
 
     private void buildIncludePathTab() {
@@ -254,13 +300,11 @@ public class SettingsLanguagesPHPPage extends VBox {
         styleToolbarButton(addBtn);
         addBtn.setTooltip(new Tooltip("Add Include Path"));
         addBtn.setOnAction(e -> {
-            DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Select PHP Include Path");
-            File dir = dc.showDialog(getScene() != null ? getScene().getWindow() : null);
-            if (dir != null) {
-                String path = dir.getAbsolutePath();
-                if (!currentIncludePaths.contains(path)) {
-                    currentIncludePaths.add(path);
+            SelectPathDialog spd = new SelectPathDialog(getScene() != null ? getScene().getWindow() : null, System.getProperty("user.dir", "."));
+            String selectedPath = spd.showAndWait();
+            if (selectedPath != null && !selectedPath.isBlank()) {
+                if (!currentIncludePaths.contains(selectedPath)) {
+                    currentIncludePaths.add(selectedPath);
                     updateIncludePathList();
                     fireModified();
                 }
@@ -295,8 +339,26 @@ public class SettingsLanguagesPHPPage extends VBox {
         // List & Placeholder
         currentIncludePaths = new ArrayList<>(manager.getIncludePaths());
         includePathListView = new ListView<>();
-        includePathListView.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        includePathListView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         VBox.setVgrow(includePathListView, Priority.ALWAYS);
+
+        includePathListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText("📁 " + item);
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    }
+                }
+            }
+        });
 
         includePathEmptyLabel = new Label("Nothing to show");
         includePathEmptyLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px;");
@@ -315,7 +377,7 @@ public class SettingsLanguagesPHPPage extends VBox {
     }
 
     // ------------------------------------------------------------
-    // Tab 2: PHP Runtime
+    // Tab 2: PHP Runtime (Image 2)
     // ------------------------------------------------------------
 
     public static class RuntimeTreeNode {
@@ -357,14 +419,14 @@ public class SettingsLanguagesPHPPage extends VBox {
             currentExtensionStates.put(ext.getName(), ext.isEnabled());
         }
 
-        // TreeView with CheckBoxes
+        // TreeView with CheckBoxes matching Image 2
         TreeItem<RuntimeTreeNode> rootItem = new TreeItem<>(new RuntimeTreeNode("PHP Runtime", false, true));
         rootItem.setExpanded(true);
 
         Map<String, TreeItem<RuntimeTreeNode>> categoryNodes = new LinkedHashMap<>();
         for (String cat : List.of("Core", "Bundled", "External", "PECL", "Others")) {
             TreeItem<RuntimeTreeNode> catItem = new TreeItem<>(new RuntimeTreeNode(cat, true, false));
-            catItem.setExpanded(false);
+            catItem.setExpanded("Core".equals(cat)); // Core expanded by default in Image 2
             categoryNodes.put(cat, catItem);
             rootItem.getChildren().add(catItem);
         }
@@ -380,7 +442,7 @@ public class SettingsLanguagesPHPPage extends VBox {
 
         runtimeTreeView = new TreeView<>(rootItem);
         runtimeTreeView.setShowRoot(true);
-        runtimeTreeView.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        runtimeTreeView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         VBox.setVgrow(runtimeTreeView, Priority.ALWAYS);
 
         runtimeTreeView.setCellFactory(tv -> new TreeCell<>() {
@@ -421,6 +483,7 @@ public class SettingsLanguagesPHPPage extends VBox {
                 if (empty || node == null) {
                     setGraphic(null);
                     setText(null);
+                    setStyle("-fx-background-color: transparent;");
                 } else {
                     label.setText(node.getName());
                     label.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
@@ -466,6 +529,12 @@ public class SettingsLanguagesPHPPage extends VBox {
                         checkBox.setSelected(Boolean.TRUE.equals(currentExtensionStates.get(node.getName())));
                     }
 
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-padding: 2 4;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-padding: 2 4;");
+                    }
+
                     setGraphic(cellBox);
                     setText(null);
                 }
@@ -474,7 +543,8 @@ public class SettingsLanguagesPHPPage extends VBox {
 
         // Sync Extensions button
         syncExtensionsBtn = new Button("Sync Extensions with Interpreter");
-        syncExtensionsBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 12 5 12; -fx-cursor: hand;");
+        syncExtensionsBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; " +
+                "-fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 12; -fx-cursor: hand;");
         syncStatusLabel = new Label("");
         syncStatusLabel.setStyle("-fx-text-fill: #59A869; -fx-font-size: 12px;");
 
@@ -485,24 +555,25 @@ public class SettingsLanguagesPHPPage extends VBox {
                 currentExtensionStates.put(ext.getName(), ext.isEnabled());
             }
             runtimeTreeView.refresh();
-            syncStatusLabel.setText("✓ Extensions synchronized with " + (selectedInterp != null ? selectedInterp.getDisplayLabel() : "interpreter"));
+            syncStatusLabel.setText("✓ " + synced + " extensions synchronized with " +
+                    (selectedInterp != null ? selectedInterp.getDisplayLabel() : "interpreter"));
             fireModified();
         });
 
         HBox syncBox = new HBox(12, syncExtensionsBtn, syncStatusLabel);
         syncBox.setAlignment(Pos.CENTER_LEFT);
 
-        // Advanced settings collapsible
+        // Advanced settings collapsible (expanded by default in Image 2)
         VBox advancedContainer = new VBox(6);
-        advancedToggleLabel = new Label("› Advanced settings");
-        advancedToggleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+        advancedToggleLabel = new Label("⌄ Advanced settings");
+        advancedToggleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand; -fx-font-weight: bold;");
 
         advancedStubsBox = new VBox(8);
-        advancedStubsBox.setVisible(false);
-        advancedStubsBox.setManaged(false);
+        advancedStubsBox.setVisible(true);
+        advancedStubsBox.setManaged(true);
         advancedStubsBox.setPadding(new Insets(6, 0, 6, 12));
 
-        Label stubsLabel = new Label("Custom PHP runtime stubs path:");
+        Label stubsLabel = new Label("Default stubs path:");
         stubsLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
 
         customStubsField = new TextField(manager.getCustomStubsPath());
@@ -510,20 +581,26 @@ public class SettingsLanguagesPHPPage extends VBox {
         HBox.setHgrow(customStubsField, Priority.ALWAYS);
         customStubsField.textProperty().addListener((obs, oldV, newV) -> fireModified());
 
-        Button browseStubsBtn = new Button("...");
+        Button browseStubsBtn = new Button("📁");
         styleIconButton(browseStubsBtn);
+        browseStubsBtn.setTooltip(new Tooltip("Select PHP Runtime Stubs Path"));
         browseStubsBtn.setOnAction(e -> {
-            DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Select PHP Runtime Stubs Directory");
-            File dir = dc.showDialog(getScene() != null ? getScene().getWindow() : null);
-            if (dir != null) {
-                customStubsField.setText(dir.getAbsolutePath());
+            SelectPathDialog spd = new SelectPathDialog(getScene() != null ? getScene().getWindow() : null, customStubsField.getText());
+            String path = spd.showAndWait();
+            if (path != null && !path.isBlank()) {
+                customStubsField.setText(path);
             }
         });
 
         HBox stubsFieldBox = new HBox(6, customStubsField, browseStubsBtn);
         stubsFieldBox.setAlignment(Pos.CENTER_LEFT);
-        advancedStubsBox.getChildren().addAll(stubsLabel, stubsFieldBox);
+        HBox.setHgrow(customStubsField, Priority.ALWAYS);
+
+        HBox stubsRow = new HBox(12, stubsLabel, stubsFieldBox);
+        stubsRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(stubsFieldBox, Priority.ALWAYS);
+
+        advancedStubsBox.getChildren().add(stubsRow);
 
         advancedToggleLabel.setOnMouseClicked(e -> {
             advancedExpanded = !advancedExpanded;
@@ -538,7 +615,7 @@ public class SettingsLanguagesPHPPage extends VBox {
     }
 
     // ------------------------------------------------------------
-    // Tab 3: Analysis
+    // Tab 3: Analysis (Image 3)
     // ------------------------------------------------------------
 
     private void buildAnalysisTab() {
@@ -548,15 +625,18 @@ public class SettingsLanguagesPHPPage extends VBox {
 
         PhpAnalysisSettings initial = manager.getAnalysisSettings();
 
-        // 1. Exception Analysis (collapsible, open by default)
+        // 1. Exception Analysis Section with CheckBox in header (matching Image 3)
         VBox exceptionSection = new VBox(8);
-        Label exceptionHeader = new Label("⌄ Exception Analysis");
-        exceptionHeader.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        exceptionAnalysisCheck = new CheckBox("Exception Analysis");
+        exceptionAnalysisCheck.setSelected(true);
+        exceptionAnalysisCheck.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold; " +
+                "-fx-border-color: #3574F0; -fx-border-radius: 3; -fx-padding: 3 6;");
 
         VBox exceptionContent = new VBox(10);
         exceptionContent.setPadding(new Insets(4, 0, 4, 12));
 
-        // Depth and constant params
+        // Depth and constant params row
         HBox depthRow = new HBox(12);
         depthRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -567,7 +647,7 @@ public class SettingsLanguagesPHPPage extends VBox {
         callTreeDepthCombo.getItems().addAll("1", "2", "3", "4", "5", "Unlimited");
         callTreeDepthCombo.setValue(initial.getCallTreeAnalysisDepth());
         styleComboBox(callTreeDepthCombo);
-        callTreeDepthCombo.setPrefWidth(120);
+        callTreeDepthCombo.setPrefWidth(90);
         callTreeDepthCombo.valueProperty().addListener((obs, oldV, newV) -> fireModified());
 
         Region depthSpacer = new Region();
@@ -595,6 +675,11 @@ public class SettingsLanguagesPHPPage extends VBox {
             dialog.setTitle("Add Unchecked Exception");
             dialog.setHeaderText("Specify fully qualified PHP exception class:");
             dialog.setContentText("Class:");
+            if (getClass().getResource("/css/lumina-dark.css") != null) {
+                dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+            }
+            dialog.getDialogPane().setStyle("-fx-background-color: #1E1F22; -fx-border-color: #43454A;");
+            dialog.getEditor().setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #43454A; -fx-border-radius: 4;");
             dialog.showAndWait().ifPresent(cls -> {
                 String trimmed = cls.trim();
                 if (!trimmed.isBlank() && !currentUncheckedExceptions.contains(trimmed)) {
@@ -622,25 +707,61 @@ public class SettingsLanguagesPHPPage extends VBox {
         currentUncheckedExceptions = new ArrayList<>(initial.getUncheckedExceptions());
         uncheckedExceptionsListView = new ListView<>();
         uncheckedExceptionsListView.getItems().setAll(currentUncheckedExceptions);
-        uncheckedExceptionsListView.setPrefHeight(130);
-        uncheckedExceptionsListView.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        uncheckedExceptionsListView.setPrefHeight(120);
+        uncheckedExceptionsListView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        uncheckedExceptionsListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText(item);
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    }
+                }
+            }
+        });
 
         exceptionContent.getChildren().addAll(depthRow, uncheckedLabel, exceptionsToolbar, uncheckedExceptionsListView);
-        exceptionSection.getChildren().addAll(exceptionHeader, exceptionContent);
+        exceptionSection.getChildren().addAll(exceptionAnalysisCheck, exceptionContent);
 
-        // 2. Custom Format Functions (collapsible, collapsed by default)
+        exceptionAnalysisCheck.selectedProperty().addListener((obs, oldV, enabled) -> {
+            exceptionContent.setDisable(!enabled);
+            fireModified();
+        });
+
+        // 2. Custom Format Functions (collapsible, matching Image 3)
         VBox customFormatSection = new VBox(6);
-        customFormatToggleLabel = new Label("› Custom Format Functions");
-        customFormatToggleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand;");
+        customFormatToggleLabel = new Label("⌄ Custom Format Functions");
+        customFormatToggleLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-cursor: hand; -fx-font-weight: bold;");
 
-        customFormatBox = new VBox(8);
-        customFormatBox.setVisible(false);
-        customFormatBox.setManaged(false);
+        customFormatBox = new VBox(6);
+        customFormatBox.setVisible(true);
+        customFormatBox.setManaged(true);
         customFormatBox.setPadding(new Insets(4, 0, 4, 12));
 
-        Label customFormatDesc = new Label("Configure user-defined functions that accept printf-style formatting.");
-        customFormatDesc.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
-        customFormatBox.getChildren().add(customFormatDesc);
+        HBox customFormatToolbar = new HBox(4);
+        Button addFormatBtn = new Button("+");
+        styleToolbarButton(addFormatBtn);
+        Button removeFormatBtn = new Button("—");
+        styleToolbarButton(removeFormatBtn);
+        Button editFormatBtn = new Button("✏");
+        styleToolbarButton(editFormatBtn);
+        customFormatToolbar.getChildren().addAll(addFormatBtn, removeFormatBtn, editFormatBtn);
+
+        StackPane formatArea = new StackPane();
+        formatArea.setPrefHeight(90);
+        formatArea.setStyle("-fx-background-color: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        Label formatEmpty = new Label("Nothing to show");
+        formatEmpty.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px;");
+        formatArea.getChildren().add(formatEmpty);
+
+        customFormatBox.getChildren().addAll(customFormatToolbar, formatArea);
 
         customFormatToggleLabel.setOnMouseClicked(e -> {
             customFormatExpanded = !customFormatExpanded;
@@ -651,49 +772,49 @@ public class SettingsLanguagesPHPPage extends VBox {
 
         customFormatSection.getChildren().addAll(customFormatToggleLabel, customFormatBox);
 
-        // 3. Include Analysis
+        // 3. Include Analysis with horizontal rule line (matching Image 3)
         VBox includeAnalysisSection = new VBox(8);
+
+        HBox incHeaderBox = new HBox(8);
+        incHeaderBox.setAlignment(Pos.CENTER_LEFT);
         Label includeAnalysisHeader = new Label("Include Analysis");
         includeAnalysisHeader.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+        Separator incSep = new Separator();
+        HBox.setHgrow(incSep, Priority.ALWAYS);
+        incSep.setStyle("-fx-background-color: #393B40;");
+        incHeaderBox.getChildren().addAll(includeAnalysisHeader, incSep);
 
         HBox docRootRow = new HBox(8);
         docRootRow.setAlignment(Pos.CENTER_LEFT);
 
         Label docRootLabel = new Label("$_SERVER['DOCUMENT_ROOT']");
         docRootLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-        docRootLabel.setPrefWidth(220);
+        docRootLabel.setPrefWidth(200);
 
         documentRootField = new TextField(initial.getDocumentRoot());
         styleTextField(documentRootField);
         HBox.setHgrow(documentRootField, Priority.ALWAYS);
         documentRootField.textProperty().addListener((obs, oldV, newV) -> fireModified());
 
-        Button browseDocRootBtn = new Button();
-        SVGPath folderSvg = new SVGPath();
-        folderSvg.setContent("M 2 3 L 6 3 L 7 5 L 14 5 L 14 12 L 2 12 Z");
-        folderSvg.setFill(Color.web("#848BA3"));
-        folderSvg.setScaleX(0.85);
-        folderSvg.setScaleY(0.85);
-        browseDocRootBtn.setGraphic(folderSvg);
-        styleToolbarButton(browseDocRootBtn);
+        Button browseDocRootBtn = new Button("📁");
+        styleIconButton(browseDocRootBtn);
         browseDocRootBtn.setTooltip(new Tooltip("Select Document Root directory"));
         browseDocRootBtn.setOnAction(e -> {
-            DirectoryChooser dc = new DirectoryChooser();
-            dc.setTitle("Select Document Root Directory");
-            File dir = dc.showDialog(getScene() != null ? getScene().getWindow() : null);
-            if (dir != null) {
-                documentRootField.setText(dir.getAbsolutePath());
+            SelectPathDialog spd = new SelectPathDialog(getScene() != null ? getScene().getWindow() : null, documentRootField.getText());
+            String path = spd.showAndWait();
+            if (path != null && !path.isBlank()) {
+                documentRootField.setText(path);
             }
         });
 
         docRootRow.getChildren().addAll(docRootLabel, documentRootField, browseDocRootBtn);
-        includeAnalysisSection.getChildren().addAll(includeAnalysisHeader, docRootRow);
+        includeAnalysisSection.getChildren().addAll(incHeaderBox, docRootRow);
 
         analysisPane.getChildren().addAll(exceptionSection, customFormatSection, includeAnalysisSection);
     }
 
     // ------------------------------------------------------------
-    // Tab 4: Composer Files
+    // Tab 4: Composer Files (Image 4)
     // ------------------------------------------------------------
 
     private void buildComposerTab() {
@@ -709,12 +830,10 @@ public class SettingsLanguagesPHPPage extends VBox {
         styleToolbarButton(addBtn);
         addBtn.setTooltip(new Tooltip("Add Composer File"));
         addBtn.setOnAction(e -> {
-            FileChooser fc = new FileChooser();
-            fc.setTitle("Select composer.json");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Composer JSON", "*.json"));
-            File file = fc.showOpenDialog(getScene() != null ? getScene().getWindow() : null);
-            if (file != null) {
-                PhpComposerFileConfig config = new PhpComposerFileConfig(UUID.randomUUID().toString(), file.getAbsolutePath());
+            SelectPathDialog spd = new SelectPathDialog(getScene() != null ? getScene().getWindow() : null, System.getProperty("user.dir", "."));
+            String selectedPath = spd.showAndWait();
+            if (selectedPath != null && !selectedPath.isBlank()) {
+                PhpComposerFileConfig config = new PhpComposerFileConfig(UUID.randomUUID().toString(), selectedPath);
                 currentComposerFiles.add(config);
                 updateComposerList();
                 fireModified();
@@ -739,15 +858,13 @@ public class SettingsLanguagesPHPPage extends VBox {
         editBtn.setOnAction(e -> {
             PhpComposerFileConfig selected = composerListView.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                TextInputDialog tid = new TextInputDialog(selected.getPath());
-                tid.setTitle("Edit Composer File");
-                tid.setHeaderText("Path to composer.json:");
-                tid.setContentText("Path:");
-                tid.showAndWait().ifPresent(p -> {
-                    selected.setPath(p.trim());
+                SelectPathDialog spd = new SelectPathDialog(getScene() != null ? getScene().getWindow() : null, selected.getPath());
+                String path = spd.showAndWait();
+                if (path != null && !path.isBlank()) {
+                    selected.setPath(path);
                     updateComposerList();
                     fireModified();
-                });
+                }
             }
         });
 
@@ -760,8 +877,26 @@ public class SettingsLanguagesPHPPage extends VBox {
         }
 
         composerListView = new ListView<>();
-        composerListView.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        composerListView.setStyle("-fx-background-color: #1E1F22; -fx-control-inner-background: #1E1F22; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
         VBox.setVgrow(composerListView, Priority.ALWAYS);
+
+        composerListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(PhpComposerFileConfig item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    setText("📄 " + item.getPath());
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-padding: 3 6; -fx-font-size: 13px;");
+                    }
+                }
+            }
+        });
 
         composerEmptyLabel = new Label("Nothing to show");
         composerEmptyLabel.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 13px;");
@@ -791,38 +926,120 @@ public class SettingsLanguagesPHPPage extends VBox {
         }
         stage.setTitle("PHP CLI Interpreters");
 
-        VBox root = new VBox(12);
-        root.setPadding(new Insets(16));
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(14));
         root.setStyle("-fx-background-color: #1E1F22;");
 
-        Label header = new Label("Configured PHP Interpreters:");
-        header.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+        // Top Header
+        Label header = new Label("PHP CLI Interpreters");
+        header.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;");
+        root.setTop(header);
 
-        ListView<PhpInterpreter> list = new ListView<>();
-        list.getItems().setAll(manager.getInterpreters());
-        list.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
-        list.setPrefHeight(150);
+        // Center Split: Left list, Right details
+        HBox centerBox = new HBox(14);
+        VBox.setVgrow(centerBox, Priority.ALWAYS);
+
+        // Left: List and toolbar
+        VBox leftBox = new VBox(6);
+        leftBox.setPrefWidth(220);
 
         HBox toolbar = new HBox(4);
         Button addBtn = new Button("+");
         styleToolbarButton(addBtn);
+        Button removeBtn = new Button("—");
+        styleToolbarButton(removeBtn);
+        Button refreshBtn = new Button("🔄");
+        styleToolbarButton(refreshBtn);
+        toolbar.getChildren().addAll(addBtn, removeBtn, refreshBtn);
+
+        ListView<PhpInterpreter> list = new ListView<>();
+        list.getItems().setAll(manager.getInterpreters());
+        list.setStyle("-fx-background-color: #2B2D30; -fx-control-inner-background: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-background-radius: 4;");
+        VBox.setVgrow(list, Priority.ALWAYS);
+
+        leftBox.getChildren().addAll(toolbar, list);
+
+        // Right: Inspector details
+        VBox rightBox = new VBox(10);
+        rightBox.setStyle("-fx-background-color: #2B2D30; -fx-border-color: #393B40; -fx-border-radius: 4; -fx-padding: 12;");
+        HBox.setHgrow(rightBox, Priority.ALWAYS);
+
+        Label detailsTitle = new Label("Interpreter Details");
+        detailsTitle.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        GridPane detailsGrid = new GridPane();
+        detailsGrid.setHgap(10);
+        detailsGrid.setVgap(8);
+
+        Label pathLbl = new Label("PHP executable:");
+        pathLbl.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+        Label pathVal = new Label();
+        pathVal.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-family: monospace;");
+
+        Label verLbl = new Label("PHP version:");
+        verLbl.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+        Label verVal = new Label();
+        verVal.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        Label debugLbl = new Label("Debugger:");
+        debugLbl.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+        Label debugVal = new Label();
+        debugVal.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px;");
+
+        Label iniLbl = new Label("Configuration file:");
+        iniLbl.setStyle("-fx-text-fill: #8C9099; -fx-font-size: 12px;");
+        Label iniVal = new Label();
+        iniVal.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-font-family: monospace;");
+
+        detailsGrid.add(pathLbl, 0, 0);
+        detailsGrid.add(pathVal, 1, 0);
+        detailsGrid.add(verLbl, 0, 1);
+        detailsGrid.add(verVal, 1, 1);
+        detailsGrid.add(debugLbl, 0, 2);
+        detailsGrid.add(debugVal, 1, 2);
+        detailsGrid.add(iniLbl, 0, 3);
+        detailsGrid.add(iniVal, 1, 3);
+
+        rightBox.getChildren().addAll(detailsTitle, detailsGrid);
+
+        Runnable updateSelection = () -> {
+            PhpInterpreter sel = list.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                pathVal.setText(sel.getPath());
+                verVal.setText(sel.getPhpVersion());
+                debugVal.setText(sel.getDebugger());
+                iniVal.setText(sel.getPhpIniPath());
+            } else {
+                pathVal.setText("-");
+                verVal.setText("-");
+                debugVal.setText("-");
+                iniVal.setText("-");
+            }
+        };
+
+        list.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> updateSelection.run());
+        if (!list.getItems().isEmpty()) {
+            list.getSelectionModel().select(0);
+        }
+
+        // Toolbar actions
         addBtn.setOnAction(e -> {
-            FileChooser fc = new FileChooser();
-            fc.setTitle("Select PHP Binary");
-            File file = fc.showOpenDialog(stage);
-            if (file != null) {
-                String path = file.getAbsolutePath();
-                String name = path + " (PHP)";
-                PhpInterpreter newInterp = new PhpInterpreter(UUID.randomUUID().toString(), name, path, "Detected");
+            SelectPathDialog spd = new SelectPathDialog(stage, "/usr/bin");
+            String path = spd.showAndWait();
+            if (path != null && !path.isBlank()) {
+                String ver = manager.probePhpCliVersion(path);
+                String ini = manager.probePhpIniPath(path);
+                String debug = manager.probePhpDebugger(path);
+                String name = path + " (" + ver + ")";
+                PhpInterpreter newInterp = new PhpInterpreter(UUID.randomUUID().toString(), name, path, ver, debug, ini);
                 manager.addOrUpdateInterpreter(newInterp);
                 list.getItems().setAll(manager.getInterpreters());
+                list.getSelectionModel().select(newInterp);
                 refreshInterpretersList();
                 fireModified();
             }
         });
 
-        Button removeBtn = new Button("—");
-        styleToolbarButton(removeBtn);
         removeBtn.setOnAction(e -> {
             PhpInterpreter selected = list.getSelectionModel().getSelectedItem();
             if (selected != null && list.getItems().size() > 1) {
@@ -830,23 +1047,60 @@ public class SettingsLanguagesPHPPage extends VBox {
                 current.removeIf(i -> i.getId().equals(selected.getId()));
                 manager.setInterpreters(current);
                 list.getItems().setAll(manager.getInterpreters());
+                if (!list.getItems().isEmpty()) {
+                    list.getSelectionModel().select(0);
+                }
                 refreshInterpretersList();
                 fireModified();
             }
         });
 
-        toolbar.getChildren().addAll(addBtn, removeBtn);
+        refreshBtn.setOnAction(e -> {
+            String sysBin = PhpSettingsManager.findSystemPhpBinary();
+            if (sysBin != null) {
+                String ver = manager.probePhpCliVersion(sysBin);
+                String ini = manager.probePhpIniPath(sysBin);
+                String debug = manager.probePhpDebugger(sysBin);
+                String name = sysBin + " (" + ver + ")";
+                PhpInterpreter detected = new PhpInterpreter("system-php", name, sysBin, ver, debug, ini);
+                manager.addOrUpdateInterpreter(detected);
+                list.getItems().setAll(manager.getInterpreters());
+                list.getSelectionModel().select(detected);
+                refreshInterpretersList();
+                fireModified();
+            }
+        });
 
-        HBox buttonBar = new HBox(8);
-        buttonBar.setAlignment(Pos.CENTER_RIGHT);
-        Button closeBtn = new Button("Close");
-        closeBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 5 16 5 16; -fx-background-radius: 4; -fx-cursor: hand;");
-        closeBtn.setOnAction(e -> stage.close());
-        buttonBar.getChildren().add(closeBtn);
+        centerBox.getChildren().addAll(leftBox, rightBox);
+        root.setCenter(centerBox);
 
-        root.getChildren().addAll(header, toolbar, list, buttonBar);
+        // Bottom Bar
+        HBox bottomBar = new HBox(8);
+        bottomBar.setAlignment(Pos.CENTER_RIGHT);
+        bottomBar.setPadding(new Insets(12, 0, 0, 0));
 
-        Scene scene = new Scene(root, 460, 320);
+        Button okBtn = new Button("OK");
+        okBtn.setDefaultButton(true);
+        okBtn.setStyle("-fx-background-color: #3574F0; -fx-text-fill: #FFFFFF; -fx-font-size: 13px; -fx-padding: 5 16; -fx-background-radius: 4; -fx-cursor: hand;");
+        okBtn.setOnAction(e -> {
+            PhpInterpreter sel = list.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                interpreterCombo.setValue(sel);
+            }
+            stage.close();
+        });
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 14; -fx-cursor: hand;");
+        cancelBtn.setOnAction(e -> stage.close());
+
+        bottomBar.getChildren().addAll(okBtn, cancelBtn);
+        root.setBottom(bottomBar);
+
+        Scene scene = new Scene(root, 580, 390);
+        if (getClass().getResource("/css/lumina-dark.css") != null) {
+            scene.getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        }
         stage.setScene(scene);
         stage.showAndWait();
     }
@@ -860,19 +1114,19 @@ public class SettingsLanguagesPHPPage extends VBox {
     }
 
     private void styleTextField(TextField field) {
-        field.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 8 5 8;");
+        field.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 5 8;");
     }
 
     private void styleToolbarButton(Button btn) {
-        btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #FFFFFF; -fx-border-color: #589DF6; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand;"));
+        btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8; -fx-cursor: hand;");
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #FFFFFF; -fx-border-color: #589DF6; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8; -fx-cursor: hand;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 3; -fx-background-radius: 3; -fx-font-size: 12px; -fx-padding: 2 8; -fx-cursor: hand;"));
     }
 
     private void styleIconButton(Button btn) {
-        btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10 4 10; -fx-cursor: hand;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #FFFFFF; -fx-border-color: #589DF6; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10 4 10; -fx-cursor: hand;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10 4 10; -fx-cursor: hand;"));
+        btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10; -fx-cursor: hand;");
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #393B40; -fx-text-fill: #FFFFFF; -fx-border-color: #589DF6; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10; -fx-cursor: hand;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #2B2D30; -fx-text-fill: #DFE1E5; -fx-border-color: #4E5157; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 13px; -fx-padding: 4 10; -fx-cursor: hand;"));
     }
 
     // ============================================================

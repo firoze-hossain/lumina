@@ -3,7 +3,7 @@ package dev.lumina.php;
 import java.util.Objects;
 
 /**
- * Model representing a configured PHP CLI Interpreter matching IntelliJ IDEA.
+ * Model representing a configured PHP CLI Interpreter in Lumina IDE.
  */
 public class PhpInterpreter {
 

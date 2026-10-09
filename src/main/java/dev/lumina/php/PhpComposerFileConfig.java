@@ -3,7 +3,7 @@ package dev.lumina.php;
 import java.util.Objects;
 
 /**
- * Model representing a configured Composer file in a PHP project matching IntelliJ IDEA.
+ * Model representing a configured Composer file in a PHP project in Lumina IDE.
  */
 public class PhpComposerFileConfig {
 

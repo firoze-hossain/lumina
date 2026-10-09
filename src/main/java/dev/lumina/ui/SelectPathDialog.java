@@ -72,7 +72,7 @@ public class SelectPathDialog {
         }
 
         BorderPane root = new BorderPane();
-        root.setStyle("-fx-background-color: #2B2D30;");
+        root.setStyle("-fx-background-color: #1E1F22;");
         root.setPadding(new Insets(10, 14, 12, 14));
 
         // 1. Top Section: Toolbar and Path Input
@@ -231,8 +231,18 @@ public class SelectPathDialog {
                 } else {
                     String icon = item.file().isDirectory() ? "📁 " : "📄 ";
                     setText(icon + item.displayName());
-                    setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 2 4;");
+                    if (isSelected()) {
+                        setStyle("-fx-background-color: #2E436E; -fx-text-fill: #FFFFFF; -fx-font-size: 12px; -fx-padding: 2 4;");
+                    } else {
+                        setStyle("-fx-background-color: transparent; -fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 2 4;");
+                    }
                 }
+            }
+        });
+
+        treeView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2 && e.getButton() == javafx.scene.input.MouseButton.PRIMARY) {
+                handleOk();
             }
         });
 

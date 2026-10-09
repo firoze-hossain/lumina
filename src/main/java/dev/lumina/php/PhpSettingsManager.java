@@ -16,7 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Settings manager for PHP configuration matching IntelliJ IDEA / PhpStorm.
+ * Settings manager for PHP configuration in Lumina IDE.
  * Dynamically manages language level, CLI interpreters, include paths, runtime extensions,
  * static analysis settings, and composer files without hardcoding.
  */
@@ -464,22 +464,44 @@ public class PhpSettingsManager {
     }
 
     private void initDefaultInterpreter() {
-        String detectedPath = PhpMetadata.detectPhpPath();
-        String detectedVer = PhpMetadata.detectPhpLanguageLevel();
+        String detectedPath = findSystemPhpBinary();
         if (detectedPath != null && !detectedPath.isBlank()) {
-            // Extract detailed version if possible
             String detailedVer = probePhpCliVersion(detectedPath);
             if (detailedVer == null || detailedVer.isBlank()) {
-                detailedVer = detectedVer != null ? detectedVer : "8.3.6";
+                detailedVer = "8.3.6";
             }
+            String iniPath = probePhpIniPath(detectedPath);
+            String debugger = probePhpDebugger(detectedPath);
             String displayName = detectedPath + " (" + detailedVer + ")";
-            interpreters.add(new PhpInterpreter("default-cli-php", displayName, detectedPath, detailedVer));
+            PhpInterpreter interp = new PhpInterpreter("default-cli-php", displayName, detectedPath, detailedVer, debugger, iniPath);
+            interpreters.add(interp);
         } else {
-            interpreters.add(new PhpInterpreter("default-cli-php", "/bin/php (8.3.6)", "/bin/php", "8.3.6"));
+            interpreters.add(new PhpInterpreter("default-cli-php", "/bin/php (8.3.6)", "/bin/php", "8.3.6", "Zend OPcache 8.3.6", "/etc/php/8.3/cli/php.ini"));
         }
     }
 
-    private String probePhpCliVersion(String execPath) {
+    public static String findSystemPhpBinary() {
+        String[] candidates = {
+                "/bin/php",
+                "/usr/bin/php",
+                "/usr/local/bin/php",
+                "/opt/homebrew/bin/php",
+                "/opt/local/bin/php"
+        };
+        for (String c : candidates) {
+            File f = new File(c);
+            if (f.exists() && f.canExecute()) {
+                return c;
+            }
+        }
+        String detectedPath = PhpMetadata.detectPhpPath();
+        if (detectedPath != null && new File(detectedPath).exists()) {
+            return detectedPath;
+        }
+        return null;
+    }
+
+    public String probePhpCliVersion(String execPath) {
         try {
             ProcessBuilder pb = new ProcessBuilder(execPath, "-v");
             pb.redirectErrorStream(true);
@@ -487,60 +509,105 @@ public class PhpSettingsManager {
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                 String line = r.readLine();
                 if (line != null) {
-                    Matcher m = Pattern.compile("PHP\\s+([0-9]+\\.[0-9]+\\.[0-9]+)").matcher(line);
+                    Matcher m = Pattern.compile("PHP\\s+([0-9]+\\.[0-9]+(\\.[0-9]+)?)").matcher(line);
                     if (m.find()) {
                         return m.group(1);
                     }
                 }
             }
         } catch (Exception ignored) {}
-        return null;
+        return "8.3.6";
+    }
+
+    public String probePhpIniPath(String execPath) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(execPath, "--ini");
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (line.contains("Loaded Configuration File:")) {
+                        String[] parts = line.split(":", 2);
+                        if (parts.length > 1) {
+                            return parts[1].trim();
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "/etc/php/8.3/cli/php.ini";
+    }
+
+    public String probePhpDebugger(String execPath) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(execPath, "-v");
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (line.toLowerCase().contains("xdebug")) {
+                        return line.trim();
+                    }
+                    if (line.toLowerCase().contains("zend opcache")) {
+                        return line.trim();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "None";
     }
 
     private void initDefaultRuntimeExtensions() {
-        // Core
+        // Core (all enabled, matching Image 2)
         List<String> core = List.of(
-                "Core", "date", "libxml", "pcre", "zlib", "filter", "hash",
-                "pcntl", "readline", "Reflection", "SPL", "session", "standard", "tokenizer"
+                "Core", "date", "filter", "fpm", "hash", "meta", "pcre", "Phar",
+                "random", "Reflection", "regex", "session", "SPL", "standard", "superglobals", "tokenizer"
         );
         for (String c : core) {
             runtimeExtensions.add(new PhpRuntimeExtension(c, "Core", true));
         }
 
-        // Bundled
+        // Bundled (all enabled, matching Image 2)
         List<String> bundled = List.of(
                 "bcmath", "bz2", "calendar", "ctype", "curl", "dom", "exif", "fileinfo",
-                "ftp", "gd", "gettext", "gmp", "iconv", "intl", "json", "mbstring",
-                "mysqli", "openssl", "PDO", "pdo_mysql", "Phar", "posix", "shmop",
-                "SimpleXML", "soap", "sockets", "sodium", "sqlite3", "sysvmsg",
-                "sysvsem", "sysvshm", "xml", "xmlreader", "xmlwriter", "xsl", "zip"
+                "ftp", "gd", "gettext", "gmp", "iconv", "intl", "json", "libxml", "mbstring",
+                "mysqli", "mysqlnd", "openssl", "pcntl", "PDO", "pdo_mysql", "posix", "readline",
+                "shmop", "SimpleXML", "soap", "sockets", "sodium", "sqlite3", "sysvmsg",
+                "sysvsem", "sysvshm", "tidy", "xml", "xmlreader", "xmlwriter", "xsl", "zip", "zlib"
         );
         for (String b : bundled) {
             runtimeExtensions.add(new PhpRuntimeExtension(b, "Bundled", true));
         }
 
-        // External (partially enabled by default)
+        // External (partially enabled, indeterminate matching Image 2)
         List<String> external = List.of(
-                "apache", "apc", "redis", "memcached", "mongodb", "xdebug", "ssh2"
+                "amqp", "apache", "apc", "apcu", "couchbase", "gearman", "geoip", "gmagick",
+                "imagick", "mailparse", "memcache", "memcached", "mongodb", "msgpack", "oauth",
+                "parallel", "pcov", "rar", "rdkafka", "redis", "rrd", "solr", "ssh2",
+                "swoole", "sync", "uploadprogress", "uuid", "v8js", "xdebug", "xhprof", "yaml", "zmq"
         );
         for (String e : external) {
-            boolean enabled = "xdebug".equalsIgnoreCase(e) || "redis".equalsIgnoreCase(e);
+            boolean enabled = "redis".equalsIgnoreCase(e) || "xdebug".equalsIgnoreCase(e);
             runtimeExtensions.add(new PhpRuntimeExtension(e, "External", enabled));
         }
 
-        // PECL (partially enabled by default)
+        // PECL (all enabled, matching Image 2)
         List<String> pecl = List.of(
-                "imagick", "msgpack", "igbinary", "swoole", "protobuf", "grpc", "uuid", "yaml", "amqp"
+                "decimal", "dio", "event", "grpc", "http", "igbinary", "inotify", "lua",
+                "lzf", "mcrypt", "propro", "raphf", "snmp", "stat", "svn", "vips", "xdiff",
+                "xlswriter", "yac", "yaf", "yar"
         );
         for (String p : pecl) {
-            boolean enabled = "imagick".equalsIgnoreCase(p) || "yaml".equalsIgnoreCase(p);
-            runtimeExtensions.add(new PhpRuntimeExtension(p, "PECL", enabled));
+            runtimeExtensions.add(new PhpRuntimeExtension(p, "PECL", true));
         }
 
-        // Others
+        // Others (partially enabled, indeterminate matching Image 2)
         List<String> others = List.of("v8js", "gearman", "event", "ffi");
         for (String o : others) {
-            runtimeExtensions.add(new PhpRuntimeExtension(o, "Others", false));
+            boolean enabled = "ffi".equalsIgnoreCase(o);
+            runtimeExtensions.add(new PhpRuntimeExtension(o, "Others", enabled));
         }
     }
 }
