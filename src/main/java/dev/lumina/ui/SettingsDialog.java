@@ -2376,6 +2376,7 @@ public class SettingsDialog {
         boolean underEmmet = false;
         boolean underDebugger = false;
         boolean underDataViews = false;
+        boolean underLanguages = false;
 
         while (ancestor != null) {
             String v = ancestor.getValue();
@@ -2390,8 +2391,44 @@ public class SettingsDialog {
                 if (v.equals("Emmet")) underEmmet = true;
                 if (v.equals("Debugger")) underDebugger = true;
                 if (v.equals("Data Views")) underDataViews = true;
+                if (v.equals("Languages & Frameworks")) underLanguages = true;
             }
             ancestor = ancestor.getParent();
+        }
+
+        // Languages & Frameworks subpages
+        if (underLanguages) {
+            if ("PHP".equals(pageName)) {
+                buildLanguagesPhpPage();
+                return;
+            }
+            if ("Composer".equals(pageName)) {
+                buildLanguagesPhpPage();
+                if (currentLanguagesPhpPage != null) {
+                    currentLanguagesPhpPage.selectTab(3);
+                }
+                return;
+            }
+            if ("JavaFX".equals(pageName)) {
+                buildLanguagesJavaFxPage();
+                return;
+            }
+            if ("JavaScript".equals(pageName)) {
+                buildLanguagesJavaScriptPage();
+                return;
+            }
+            if ("Code Quality Tools".equals(pageName)) {
+                buildLanguagesCodeQualityToolsPage();
+                return;
+            }
+            if ("ESLint".equals(pageName)) {
+                buildLanguagesEsLintPage();
+                return;
+            }
+            if ("JSHint".equals(pageName)) {
+                buildLanguagesJsHintPage();
+                return;
+            }
         }
 
         // 3. Appearance & Behavior > Appearance
@@ -3480,7 +3517,7 @@ public class SettingsDialog {
         }
 
         // 5. Editor and subpages
-        if ((underEditorGroup || "Editor".equals(pageName) || isEditorSubPage(pageName)) && !isUnderBuild(selected)) {
+        if ((underEditorGroup || "Editor".equals(pageName)) && !isUnderBuild(selected) && !underLanguages) {
             if ("General".equals(pageName)) {
                 if (currentEditorGeneralPage == null) {
                     currentEditorGeneralPage = new SettingsEditorGeneralPage();
@@ -6281,8 +6318,7 @@ public class SettingsDialog {
         return List.of(
                 "General", "Auto Import", "Appearance", "Breadcrumbs", "Code Completion",
                 "Code Folding", "Console", "Editor Tabs", "Gutter Icons", "Inline Completion",
-                "Postfix Completion", "Sticky Lines", "Smart Keys", "YAML", "HTML/CSS", "Python",
-                "JSON", "Rust", "Markdown", "Scala", "SQL", "Ruby", "JavaScript", "PHP",
+                "Postfix Completion", "Sticky Lines", "Smart Keys",
                 "Code Editing", "Font", "Color Scheme",
                 "Code Style", "Inspections", "File and Code Templates", "File Encodings",
                 "Live Templates", "File Types", "Copyright", "Inlay Hints", "Duplicates",
@@ -6844,6 +6880,7 @@ public class SettingsDialog {
             boolean underCodeStyle = false;
             boolean underSmartKeys = false;
             boolean underBuild = false;
+            boolean underLanguages = false;
             while (p != null) {
                 if ("Color Scheme".equals(p.getValue())) {
                     underCS = true;
@@ -6859,6 +6896,10 @@ public class SettingsDialog {
                 }
                 if ("Build, Execution, Deployment".equals(p.getValue())) {
                     underBuild = true;
+                    break;
+                }
+                if ("Languages & Frameworks".equals(p.getValue())) {
+                    underLanguages = true;
                     break;
                 }
                 p = p.getParent();
@@ -6882,6 +6923,19 @@ public class SettingsDialog {
                 TreeItem<String> bRoot = findItem(tree.getRoot(), "Build, Execution, Deployment");
                 if (bRoot != null) {
                     item = findItem(bRoot, categoryName);
+                }
+            } else if (underLanguages) {
+                TreeItem<String> langRoot = findItem(tree.getRoot(), "Languages & Frameworks");
+                if (langRoot != null) {
+                    item = findItem(langRoot, categoryName);
+                }
+            }
+        }
+        if (item == null) {
+            if ("PHP".equals(categoryName)) {
+                TreeItem<String> langRoot = findItem(tree.getRoot(), "Languages & Frameworks");
+                if (langRoot != null) {
+                    item = findItem(langRoot, "PHP");
                 }
             }
         }

@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Settings for PHP static analysis and exception inspection matching IntelliJ IDEA.
+ * Settings for PHP static analysis and exception inspection in Lumina IDE.
  */
 public class PhpAnalysisSettings {
 
