@@ -23,6 +23,7 @@ public class JavaScriptSettingsManager {
     public static final String KEY_JS_STYLED_COMPONENTS_SETTINGS = "javascript.styledcomponents";
     public static final String KEY_JS_VITE_SETTINGS = "javascript.vite";
     public static final String KEY_JS_WEBPACK_SETTINGS = "javascript.webpack";
+    public static final String KEY_JS_RUNTIME_SETTINGS = "javascript.runtime";
 
     private static JavaScriptSettingsManager instance;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -35,6 +36,7 @@ public class JavaScriptSettingsManager {
     private StyledComponentsSettings styledComponentsSettings = new StyledComponentsSettings();
     private ViteSettings viteSettings = new ViteSettings();
     private WebpackSettings webpackSettings = new WebpackSettings();
+    private JavaScriptRuntimeSettings runtimeSettings = new JavaScriptRuntimeSettings();
 
     private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
@@ -178,6 +180,20 @@ public class JavaScriptSettingsManager {
     }
 
     // ============================================================
+    // Runtime Settings
+    // ============================================================
+
+    public synchronized JavaScriptRuntimeSettings getRuntimeSettings() {
+        return runtimeSettings.copy();
+    }
+
+    public synchronized void setRuntimeSettings(JavaScriptRuntimeSettings settings) {
+        this.runtimeSettings = settings != null ? settings.copy() : new JavaScriptRuntimeSettings();
+        saveSettings();
+        notifyListeners();
+    }
+
+    // ============================================================
     // Persistence & Listeners
     // ============================================================
 
@@ -208,6 +224,7 @@ public class JavaScriptSettingsManager {
         this.styledComponentsSettings = new StyledComponentsSettings();
         this.viteSettings = new ViteSettings();
         this.webpackSettings = new WebpackSettings();
+        this.runtimeSettings = new JavaScriptRuntimeSettings();
         saveSettings();
         notifyListeners();
     }
@@ -221,6 +238,7 @@ public class JavaScriptSettingsManager {
         Settings.put(KEY_JS_STYLED_COMPONENTS_SETTINGS, GSON.toJson(styledComponentsSettings));
         Settings.put(KEY_JS_VITE_SETTINGS, GSON.toJson(viteSettings));
         Settings.put(KEY_JS_WEBPACK_SETTINGS, GSON.toJson(webpackSettings));
+        Settings.put(KEY_JS_RUNTIME_SETTINGS, GSON.toJson(runtimeSettings));
     }
 
     public synchronized void loadSettings() {
@@ -320,6 +338,19 @@ public class JavaScriptSettingsManager {
             } catch (Exception ignored) {}
         } else {
             this.webpackSettings = new WebpackSettings();
+        }
+
+        // 9. Runtime Settings
+        String runtimeJson = Settings.get(KEY_JS_RUNTIME_SETTINGS);
+        if (runtimeJson != null && !runtimeJson.isBlank()) {
+            try {
+                JavaScriptRuntimeSettings parsed = GSON.fromJson(runtimeJson, JavaScriptRuntimeSettings.class);
+                if (parsed != null) {
+                    this.runtimeSettings = parsed;
+                }
+            } catch (Exception ignored) {}
+        } else {
+            this.runtimeSettings = new JavaScriptRuntimeSettings();
         }
     }
 }
