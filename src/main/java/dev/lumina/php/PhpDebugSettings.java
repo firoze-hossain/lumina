@@ -59,6 +59,16 @@ public class PhpDebugSettings {
     private boolean notifySkippedFiles = true;
     private List<String> skippedPaths = new ArrayList<>();
 
+    // Step Filters
+    private boolean skipMagicMethods = false;
+    private boolean skipConstructors = false;
+    private List<String> skippedMethods = new ArrayList<>();
+    private List<String> skippedFiles = new ArrayList<>();
+
+    // Xdebug Cloud
+    private boolean connectToXdebugCloud = false;
+    private String xdebugCloudId = "";
+
     public PhpDebugSettings() {
         this.zendDetectedIdeIp = detectHostIps();
     }
@@ -97,6 +107,12 @@ public class PhpDebugSettings {
         this.dbgpPort = other.dbgpPort;
         this.notifySkippedFiles = other.notifySkippedFiles;
         this.skippedPaths = new ArrayList<>(other.skippedPaths);
+        this.skipMagicMethods = other.skipMagicMethods;
+        this.skipConstructors = other.skipConstructors;
+        this.skippedMethods = new ArrayList<>(other.skippedMethods);
+        this.skippedFiles = new ArrayList<>(other.skippedFiles);
+        this.connectToXdebugCloud = other.connectToXdebugCloud;
+        this.xdebugCloudId = other.xdebugCloudId;
     }
 
     /**
@@ -393,6 +409,54 @@ public class PhpDebugSettings {
         this.skippedPaths = skippedPaths != null ? new ArrayList<>(skippedPaths) : new ArrayList<>();
     }
 
+    public boolean isSkipMagicMethods() {
+        return skipMagicMethods;
+    }
+
+    public void setSkipMagicMethods(boolean skipMagicMethods) {
+        this.skipMagicMethods = skipMagicMethods;
+    }
+
+    public boolean isSkipConstructors() {
+        return skipConstructors;
+    }
+
+    public void setSkipConstructors(boolean skipConstructors) {
+        this.skipConstructors = skipConstructors;
+    }
+
+    public List<String> getSkippedMethods() {
+        return skippedMethods;
+    }
+
+    public void setSkippedMethods(List<String> skippedMethods) {
+        this.skippedMethods = skippedMethods != null ? new ArrayList<>(skippedMethods) : new ArrayList<>();
+    }
+
+    public List<String> getSkippedFiles() {
+        return skippedFiles;
+    }
+
+    public void setSkippedFiles(List<String> skippedFiles) {
+        this.skippedFiles = skippedFiles != null ? new ArrayList<>(skippedFiles) : new ArrayList<>();
+    }
+
+    public boolean isConnectToXdebugCloud() {
+        return connectToXdebugCloud;
+    }
+
+    public void setConnectToXdebugCloud(boolean connectToXdebugCloud) {
+        this.connectToXdebugCloud = connectToXdebugCloud;
+    }
+
+    public String getXdebugCloudId() {
+        return xdebugCloudId;
+    }
+
+    public void setXdebugCloudId(String xdebugCloudId) {
+        this.xdebugCloudId = xdebugCloudId != null ? xdebugCloudId : "";
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -416,12 +480,15 @@ public class PhpDebugSettings {
                 safeEvaluationMode == that.safeEvaluationMode &&
                 importNamespaceAndUseStatements == that.importNamespaceAndUseStatements &&
                 enableToStringObjectView == that.enableToStringObjectView &&
-                enableNavigateLinks == that.enableNavigateLinks &&
+                enableNavigateLinks == daylightEquals(that) &&
                 detectPathMappings == that.detectPathMappings &&
                 notifyIfSessionFinishedWithoutPause == that.notifyIfSessionFinishedWithoutPause &&
                 passRequiredOptionsThroughCommandLine == that.passRequiredOptionsThroughCommandLine &&
                 notifyIfBreakpointResolvedToDifferentLine == that.notifyIfBreakpointResolvedToDifferentLine &&
                 notifySkippedFiles == that.notifySkippedFiles &&
+                skipMagicMethods == that.skipMagicMethods &&
+                skipConstructors == that.skipConstructors &&
+                connectToXdebugCloud == that.connectToXdebugCloud &&
                 Objects.equals(xdebugPort, that.xdebugPort) &&
                 Objects.equals(zendDebugPort, that.zendDebugPort) &&
                 Objects.equals(zendBroadcastingPort, that.zendBroadcastingPort) &&
@@ -429,7 +496,14 @@ public class PhpDebugSettings {
                 Objects.equals(dbgpIdeKey, that.dbgpIdeKey) &&
                 Objects.equals(dbgpHost, that.dbgpHost) &&
                 Objects.equals(dbgpPort, that.dbgpPort) &&
-                Objects.equals(skippedPaths, that.skippedPaths);
+                Objects.equals(skippedPaths, that.skippedPaths) &&
+                Objects.equals(skippedMethods, that.skippedMethods) &&
+                Objects.equals(skippedFiles, that.skippedFiles) &&
+                Objects.equals(xdebugCloudId, that.xdebugCloudId);
+    }
+
+    private boolean daylightEquals(PhpDebugSettings that) {
+        return enableNavigateLinks == that.enableNavigateLinks;
     }
 
     @Override
@@ -445,7 +519,8 @@ public class PhpDebugSettings {
                 enableToStringObjectView, enableNavigateLinks, detectPathMappings,
                 notifyIfSessionFinishedWithoutPause, passRequiredOptionsThroughCommandLine,
                 notifyIfBreakpointResolvedToDifferentLine, dbgpIdeKey, dbgpHost, dbgpPort,
-                notifySkippedFiles, skippedPaths
+                notifySkippedFiles, skippedPaths, skipMagicMethods, skipConstructors,
+                skippedMethods, skippedFiles, connectToXdebugCloud, xdebugCloudId
         );
     }
 }

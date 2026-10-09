@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Modal dialog for managing User and System Environment Variables matching IntelliJ IDEA.
+ * Modal dialog for managing User and System Environment Variables in Lumina IDE.
  */
 public class EnvironmentVariablesDialog {
 
@@ -63,7 +63,7 @@ public class EnvironmentVariablesDialog {
     }
 
     /**
-     * Custom TableCell supporting inline editing matching IntelliJ IDEA:
+     * Custom TableCell supporting inline editing in Lumina IDE:
      * - Double-click or single-click when cell is already focused starts editing.
      * - Pressing Enter or F2 starts editing.
      * - Escape cancels edit.
@@ -228,7 +228,7 @@ public class EnvironmentVariablesDialog {
         VBox.setVgrow(userTable, Priority.ALWAYS);
         VBox.setVgrow(userSection, Priority.ALWAYS);
 
-        // 2. System variables section (Clean bold header matching IntelliJ, NO checkbox)
+        // 2. System variables section (Clean bold header in Lumina IDE)
         Label sysLabel = new Label("System environment variables:");
         sysLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-weight: bold; -fx-font-size: 12px;");
 

@@ -31,6 +31,11 @@ public class PhpSettingsManager {
     public static final String KEY_PHP_COMPOSER_FILES = "php.composer.files.list";
     public static final String KEY_PHP_CUSTOM_STUBS_PATH = "php.runtime.custom.stubs.path";
     public static final String KEY_PHP_DEBUG_SETTINGS = "php.debug.settings";
+    public static final String KEY_PHP_SERVERS = "php.servers.list";
+    public static final String KEY_PHP_COMPOSER_SETTINGS = "php.composer.settings";
+    public static final String KEY_PHP_TEST_FRAMEWORKS = "php.test.frameworks.list";
+    public static final String KEY_PHP_QUALITY_TOOLS_SETTINGS = "php.quality.tools.settings";
+    public static final String KEY_PHP_SMARTY_SETTINGS = "php.smarty.settings";
 
     private static PhpSettingsManager instance;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -44,6 +49,11 @@ public class PhpSettingsManager {
     private final List<PhpComposerFileConfig> composerFiles = new ArrayList<>();
     private String customStubsPath = "";
     private PhpDebugSettings debugSettings = new PhpDebugSettings();
+    private final List<PhpServer> servers = new ArrayList<>();
+    private PhpComposerSettings composerSettings = new PhpComposerSettings();
+    private final List<PhpTestFrameworkConfig> testFrameworkConfigs = new ArrayList<>();
+    private PhpQualityToolsSettings qualityToolsSettings = new PhpQualityToolsSettings();
+    private PhpSmartySettings smartySettings = new PhpSmartySettings();
 
     private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
@@ -358,6 +368,15 @@ public class PhpSettingsManager {
         this.composerFiles.clear();
         this.customStubsPath = "";
         this.debugSettings = new PhpDebugSettings();
+        this.servers.clear();
+        initDefaultServers();
+        this.composerSettings = new PhpComposerSettings();
+        initDefaultComposerSettings();
+        this.testFrameworkConfigs.clear();
+        initDefaultTestFrameworks();
+        this.qualityToolsSettings = new PhpQualityToolsSettings();
+        initDefaultQualityTools();
+        this.smartySettings = new PhpSmartySettings();
         saveSettings();
         notifyListeners();
     }
@@ -372,6 +391,11 @@ public class PhpSettingsManager {
         Settings.put(KEY_PHP_COMPOSER_FILES, GSON.toJson(composerFiles));
         Settings.put(KEY_PHP_CUSTOM_STUBS_PATH, customStubsPath);
         Settings.put(KEY_PHP_DEBUG_SETTINGS, GSON.toJson(debugSettings));
+        Settings.put(KEY_PHP_SERVERS, GSON.toJson(servers));
+        Settings.put(KEY_PHP_COMPOSER_SETTINGS, GSON.toJson(composerSettings));
+        Settings.put(KEY_PHP_TEST_FRAMEWORKS, GSON.toJson(testFrameworkConfigs));
+        Settings.put(KEY_PHP_QUALITY_TOOLS_SETTINGS, GSON.toJson(qualityToolsSettings));
+        Settings.put(KEY_PHP_SMARTY_SETTINGS, GSON.toJson(smartySettings));
     }
 
     public synchronized void loadSettings() {
@@ -478,6 +502,87 @@ public class PhpSettingsManager {
         } else {
             this.debugSettings = new PhpDebugSettings();
         }
+
+        // 9. Servers
+        String serversJson = Settings.get(KEY_PHP_SERVERS);
+        servers.clear();
+        if (serversJson != null && !serversJson.isBlank()) {
+            try {
+                Type type = new TypeToken<List<PhpServer>>() {}.getType();
+                List<PhpServer> list = GSON.fromJson(serversJson, type);
+                if (list != null) {
+                    servers.addAll(list);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (servers.isEmpty()) {
+            initDefaultServers();
+        }
+
+        // 10. Composer Settings
+        String compSettingsJson = Settings.get(KEY_PHP_COMPOSER_SETTINGS);
+        if (compSettingsJson != null && !compSettingsJson.isBlank()) {
+            try {
+                PhpComposerSettings parsed = GSON.fromJson(compSettingsJson, PhpComposerSettings.class);
+                if (parsed != null) {
+                    this.composerSettings = parsed;
+                }
+            } catch (Exception ignored) {}
+        } else {
+            initDefaultComposerSettings();
+        }
+
+        // 11. Test Frameworks
+        String tfJson = Settings.get(KEY_PHP_TEST_FRAMEWORKS);
+        testFrameworkConfigs.clear();
+        if (tfJson != null && !tfJson.isBlank()) {
+            try {
+                Type type = new TypeToken<List<PhpTestFrameworkConfig>>() {}.getType();
+                List<PhpTestFrameworkConfig> list = GSON.fromJson(tfJson, type);
+                if (list != null) {
+                    testFrameworkConfigs.addAll(list);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (testFrameworkConfigs.isEmpty()) {
+            initDefaultTestFrameworks();
+        }
+
+        // 12. Quality Tools
+        String qtJson = Settings.get(KEY_PHP_QUALITY_TOOLS_SETTINGS);
+        if (qtJson != null && !qtJson.isBlank()) {
+            try {
+                PhpQualityToolsSettings parsed = GSON.fromJson(qtJson, PhpQualityToolsSettings.class);
+                if (parsed != null) {
+                    this.qualityToolsSettings = parsed;
+                }
+            } catch (Exception ignored) {}
+        } else {
+            initDefaultQualityTools();
+        }
+
+        // 13. Smarty Settings
+        String smartyJson = Settings.get(KEY_PHP_SMARTY_SETTINGS);
+        if (smartyJson != null && !smartyJson.isBlank()) {
+            try {
+                PhpSmartySettings parsed = GSON.fromJson(smartyJson, PhpSmartySettings.class);
+                if (parsed != null) {
+                    this.smartySettings = parsed;
+                }
+            } catch (Exception ignored) {}
+        } else {
+            this.smartySettings = new PhpSmartySettings();
+        }
+    }
+
+    public synchronized PhpSmartySettings getSmartySettings() {
+        return smartySettings != null ? smartySettings.copy() : new PhpSmartySettings();
+    }
+
+    public synchronized void setSmartySettings(PhpSmartySettings settings) {
+        this.smartySettings = settings != null ? settings.copy() : new PhpSmartySettings();
+        saveSettings();
+        notifyListeners();
     }
 
     public synchronized PhpDebugSettings getDebugSettings() {
@@ -488,6 +593,318 @@ public class PhpSettingsManager {
         this.debugSettings = debugSettings != null ? new PhpDebugSettings(debugSettings) : new PhpDebugSettings();
         saveSettings();
         notifyListeners();
+    }
+
+    // ============================================================
+    // Servers (Image 3)
+    // ============================================================
+
+    public synchronized List<PhpServer> getServers() {
+        List<PhpServer> copies = new ArrayList<>();
+        for (PhpServer s : servers) {
+            copies.add(s.copy());
+        }
+        return copies;
+    }
+
+    public synchronized void setServers(List<PhpServer> newServers) {
+        servers.clear();
+        if (newServers != null) {
+            for (PhpServer s : newServers) {
+                servers.add(s.copy());
+            }
+        }
+        if (servers.isEmpty()) {
+            initDefaultServers();
+        }
+        saveSettings();
+        notifyListeners();
+    }
+
+    public synchronized void addOrUpdateServer(PhpServer server) {
+        if (server == null) return;
+        boolean replaced = false;
+        for (int i = 0; i < servers.size(); i++) {
+            if (servers.get(i).getId().equals(server.getId())) {
+                servers.set(i, server.copy());
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            servers.add(server.copy());
+        }
+        saveSettings();
+        notifyListeners();
+    }
+
+    public synchronized void removeServer(String id) {
+        if (servers.removeIf(s -> s.getId().equals(id))) {
+            if (servers.isEmpty()) {
+                initDefaultServers();
+            }
+            saveSettings();
+            notifyListeners();
+        }
+    }
+
+    // ============================================================
+    // Composer Settings (Image 4)
+    // ============================================================
+
+    public synchronized PhpComposerSettings getComposerSettings() {
+        return composerSettings.copy();
+    }
+
+    public synchronized void setComposerSettings(PhpComposerSettings settings) {
+        this.composerSettings = settings != null ? settings.copy() : new PhpComposerSettings();
+        saveSettings();
+        notifyListeners();
+    }
+
+    // ============================================================
+    // Test Frameworks (Image 5)
+    // ============================================================
+
+    public synchronized List<PhpTestFrameworkConfig> getTestFrameworkConfigs() {
+        List<PhpTestFrameworkConfig> copies = new ArrayList<>();
+        for (PhpTestFrameworkConfig c : testFrameworkConfigs) {
+            copies.add(c.copy());
+        }
+        return copies;
+    }
+
+    public synchronized void setTestFrameworkConfigs(List<PhpTestFrameworkConfig> configs) {
+        testFrameworkConfigs.clear();
+        if (configs != null) {
+            for (PhpTestFrameworkConfig c : configs) {
+                testFrameworkConfigs.add(c.copy());
+            }
+        }
+        if (testFrameworkConfigs.isEmpty()) {
+            initDefaultTestFrameworks();
+        }
+        saveSettings();
+        notifyListeners();
+    }
+
+    public synchronized void addOrUpdateTestFrameworkConfig(PhpTestFrameworkConfig config) {
+        if (config == null) return;
+        boolean replaced = false;
+        for (int i = 0; i < testFrameworkConfigs.size(); i++) {
+            if (testFrameworkConfigs.get(i).getId().equals(config.getId())) {
+                testFrameworkConfigs.set(i, config.copy());
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            testFrameworkConfigs.add(config.copy());
+        }
+        saveSettings();
+        notifyListeners();
+    }
+
+    public synchronized void removeTestFrameworkConfig(String id) {
+        if (testFrameworkConfigs.removeIf(c -> c.getId().equals(id))) {
+            if (testFrameworkConfigs.isEmpty()) {
+                initDefaultTestFrameworks();
+            }
+            saveSettings();
+            notifyListeners();
+        }
+    }
+
+    // ============================================================
+    // Quality Tools (Parent & Children)
+    // ============================================================
+
+    public synchronized PhpQualityToolsSettings getQualityToolsSettings() {
+        return qualityToolsSettings.copy();
+    }
+
+    public synchronized void setQualityToolsSettings(PhpQualityToolsSettings settings) {
+        this.qualityToolsSettings = settings != null ? settings.copy() : new PhpQualityToolsSettings();
+        saveSettings();
+        notifyListeners();
+    }
+
+    private void initDefaultQualityTools() {
+        qualityToolsSettings = new PhpQualityToolsSettings();
+        String phpcs = detectPhpcsPath();
+        if (!phpcs.isBlank()) qualityToolsSettings.getCodeSniffer().setPhpcsPath(phpcs);
+        String phpcbf = detectPhpcbfPath();
+        if (!phpcbf.isBlank()) qualityToolsSettings.getCodeSniffer().setPhpcbfPath(phpcbf);
+        String phpCsFixer = detectPhpCsFixerPath();
+        if (!phpCsFixer.isBlank()) qualityToolsSettings.getCsFixer().setPhpCsFixerPath(phpCsFixer);
+        String pint = detectLaravelPintPath();
+        if (!pint.isBlank()) qualityToolsSettings.getLaravelPint().setPintPath(pint);
+        String pintJson = detectPintJsonPath();
+        if (!pintJson.isBlank()) qualityToolsSettings.getLaravelPint().setPathToPintJson(pintJson);
+        String phpmd = detectPhpmdPath();
+        if (!phpmd.isBlank()) qualityToolsSettings.getMessDetector().setPhpmdPath(phpmd);
+    }
+
+    public static String detectPhpcsPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "vendor/bin/phpcs");
+        if (f.exists() && f.canExecute()) return f.getAbsolutePath();
+        String[] candidates = {"/usr/local/bin/phpcs", "/usr/bin/phpcs"};
+        for (String c : candidates) {
+            File cf = new File(c);
+            if (cf.exists() && cf.canExecute()) return cf.getAbsolutePath();
+        }
+        return "";
+    }
+
+    public static String detectPhpcbfPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "vendor/bin/phpcbf");
+        if (f.exists() && f.canExecute()) return f.getAbsolutePath();
+        String[] candidates = {"/usr/local/bin/phpcbf", "/usr/bin/phpcbf"};
+        for (String c : candidates) {
+            File cf = new File(c);
+            if (cf.exists() && cf.canExecute()) return cf.getAbsolutePath();
+        }
+        return "";
+    }
+
+    public static String detectPhpCsFixerPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "vendor/bin/php-cs-fixer");
+        if (f.exists() && f.canExecute()) return f.getAbsolutePath();
+        String[] candidates = {"/usr/local/bin/php-cs-fixer", "/usr/bin/php-cs-fixer"};
+        for (String c : candidates) {
+            File cf = new File(c);
+            if (cf.exists() && cf.canExecute()) return cf.getAbsolutePath();
+        }
+        return "";
+    }
+
+    public static String detectLaravelPintPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "vendor/bin/pint");
+        if (f.exists() && f.canExecute()) return f.getAbsolutePath();
+        String[] candidates = {"/usr/local/bin/pint", "/usr/bin/pint"};
+        for (String c : candidates) {
+            File cf = new File(c);
+            if (cf.exists() && cf.canExecute()) return cf.getAbsolutePath();
+        }
+        return "";
+    }
+
+    public static String detectPintJsonPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "pint.json");
+        if (f.exists()) return f.getAbsolutePath();
+        return "";
+    }
+
+    public static String detectPhpmdPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "vendor/bin/phpmd");
+        if (f.exists() && f.canExecute()) return f.getAbsolutePath();
+        String[] candidates = {"/usr/local/bin/phpmd", "/usr/bin/phpmd"};
+        for (String c : candidates) {
+            File cf = new File(c);
+            if (cf.exists() && cf.canExecute()) return cf.getAbsolutePath();
+        }
+        return "";
+    }
+
+    private void initDefaultServers() {
+        servers.add(new PhpServer("Unnamed", "", 80, "Xdebug"));
+    }
+
+    private void initDefaultComposerSettings() {
+        composerSettings = new PhpComposerSettings();
+        String detected = detectComposerJsonPath();
+        if (detected != null && !detected.isBlank()) {
+            composerSettings.setPathToComposerJson(detected);
+        }
+        String detectedExec = detectComposerExecutable();
+        if (detectedExec != null && !detectedExec.isBlank()) {
+            composerSettings.setComposerExecutablePath(detectedExec);
+        }
+    }
+
+    private void initDefaultTestFrameworks() {
+        String ver = "8.3.6";
+        if (!interpreters.isEmpty() && interpreters.get(0).getPhpVersion() != null) {
+            ver = interpreters.get(0).getPhpVersion();
+        }
+        PhpTestFrameworkConfig config = new PhpTestFrameworkConfig("default-phpunit", "Main Local PHP " + ver, activeInterpreterId);
+        config.setTestRootsDirectory(detectTestRoots());
+        testFrameworkConfigs.add(config);
+    }
+
+    public static String detectComposerJsonPath() {
+        String userDir = System.getProperty("user.dir", ".");
+        File f = new File(userDir, "composer.json");
+        if (f.exists()) {
+            return f.getAbsolutePath();
+        }
+        return "";
+    }
+
+    public static String detectComposerExecutable() {
+        String[] candidates = {
+                "/usr/local/bin/composer",
+                "/usr/bin/composer",
+                "composer"
+        };
+        for (String c : candidates) {
+            File f = new File(c);
+            if (f.exists() && f.canExecute()) {
+                return f.getAbsolutePath();
+            }
+        }
+        return "composer";
+    }
+
+    public static String detectTestRoots() {
+        String userDir = System.getProperty("user.dir", ".");
+        File tests = new File(userDir, "tests");
+        if (tests.exists() && tests.isDirectory()) {
+            return "tests";
+        }
+        File test = new File(userDir, "test");
+        if (test.exists() && test.isDirectory()) {
+            return "test";
+        }
+        return "tests";
+    }
+
+    public static String detectPhpUnitVersion(String scriptPath) {
+        if (scriptPath == null || scriptPath.isBlank()) {
+            return "Not installed";
+        }
+        File f = new File(scriptPath);
+        if (!f.exists()) {
+            return "Not installed";
+        }
+        File dir = f.getParentFile();
+        while (dir != null) {
+            File lock = new File(dir, "composer.lock");
+            if (lock.exists()) {
+                try {
+                    String content = java.nio.file.Files.readString(lock.toPath());
+                    int idx = content.indexOf("\"phpunit/phpunit\"");
+                    if (idx >= 0) {
+                        int verIdx = content.indexOf("\"version\":", idx);
+                        if (verIdx >= 0 && verIdx - idx < 200) {
+                            int startQuote = content.indexOf("\"", verIdx + 10);
+                            int endQuote = content.indexOf("\"", startQuote + 1);
+                            if (startQuote >= 0 && endQuote > startQuote) {
+                                return content.substring(startQuote + 1, endQuote);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+            dir = dir.getParentFile();
+        }
+        return "Not installed";
     }
 
     private void initDefaultInterpreter() {
