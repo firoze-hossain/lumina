@@ -166,6 +166,20 @@ public class SettingsDialog {
     private SettingsLanguagesPlayPage currentLanguagesPlayPage;
     private SettingsLanguagesProtobufPage currentLanguagesProtobufPage;
     private SettingsLanguagesProtobufTextFormatPage currentLanguagesProtobufTextFormatPage;
+    private SettingsLanguagesQuarkusPage currentLanguagesQuarkusPage;
+    private SettingsLanguagesRbsPage currentLanguagesRbsPage;
+    private SettingsLanguagesScalaEditorPage currentLanguagesScalaEditorPage;
+    private SettingsLanguagesScalaXRayPage currentLanguagesScalaXRayPage;
+    private SettingsLanguagesScalaProjectViewPage currentLanguagesScalaProjectViewPage;
+    private SettingsLanguagesScalaPerformancePage currentLanguagesScalaPerformancePage;
+    private SettingsLanguagesScalaWorksheetPage currentLanguagesScalaWorksheetPage;
+    private SettingsLanguagesScalaBasePackagePage currentLanguagesScalaBasePackagePage;
+    private SettingsLanguagesScalaMiscPage currentLanguagesScalaMiscPage;
+    private SettingsLanguagesScalaUpdatesPage currentLanguagesScalaUpdatesPage;
+    private SettingsLanguagesScalaExtensionsPage currentLanguagesScalaExtensionsPage;
+    private SettingsLanguagesSchemasAndDtdsPage currentLanguagesSchemasAndDtdsPage;
+    private SettingsLanguagesDefaultXmlSchemasPage currentLanguagesDefaultXmlSchemasPage;
+    private SettingsLanguagesJsonSchemaMappingsPage currentLanguagesJsonSchemaMappingsPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -1027,6 +1041,174 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguagesProtobufTextFormatPage != null) {
                             currentLanguagesProtobufTextFormatPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Quarkus".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesQuarkusPage != null) {
+                            currentLanguagesQuarkusPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("RBS".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesRbsPage != null) {
+                            currentLanguagesRbsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Editor".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaEditorPage != null) {
+                            currentLanguagesScalaEditorPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("X-Ray Mode".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaXRayPage != null) {
+                            currentLanguagesScalaXRayPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Project View".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaProjectViewPage != null) {
+                            currentLanguagesScalaProjectViewPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Performance".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaPerformancePage != null) {
+                            currentLanguagesScalaPerformancePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Worksheet".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaWorksheetPage != null) {
+                            currentLanguagesScalaWorksheetPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Base Package".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaBasePackagePage != null) {
+                            currentLanguagesScalaBasePackagePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Misc".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaMiscPage != null) {
+                            currentLanguagesScalaMiscPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Updates".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaUpdatesPage != null) {
+                            currentLanguagesScalaUpdatesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Extensions".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Scala".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesScalaExtensionsPage != null) {
+                            currentLanguagesScalaExtensionsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Schemas and DTDs".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesSchemasAndDtdsPage != null) {
+                            currentLanguagesSchemasAndDtdsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Default XML Schemas".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesDefaultXmlSchemasPage != null) {
+                            currentLanguagesDefaultXmlSchemasPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JSON Schema Mappings".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesJsonSchemaMappingsPage != null) {
+                            currentLanguagesJsonSchemaMappingsPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -2858,7 +3040,7 @@ public class SettingsDialog {
                     breadcrumbBox.getChildren().add(projectIcon);
                 }
 
-                if (isProjectSetting(item.getValue())) {
+                if (isProjectSetting(item)) {
                     SVGPath pIcon = new SVGPath();
                     pIcon.setContent("M 1 2 L 11 2 L 11 10 L 1 10 Z M 1 4 L 11 4");
                     pIcon.setFill(Color.TRANSPARENT);
@@ -2959,6 +3141,54 @@ public class SettingsDialog {
 
         // Languages & Frameworks subpages
         if (underLanguages) {
+            if ("Updates".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaUpdatesPage();
+                return;
+            }
+            if ("Extensions".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaExtensionsPage();
+                return;
+            }
+            if ("Editor".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaEditorPage();
+                return;
+            }
+            if ("X-Ray Mode".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaXRayPage();
+                return;
+            }
+            if ("Project View".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaProjectViewPage();
+                return;
+            }
+            if ("Performance".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaPerformancePage();
+                return;
+            }
+            if ("Worksheet".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaWorksheetPage();
+                return;
+            }
+            if ("Base Package".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaBasePackagePage();
+                return;
+            }
+            if ("Misc".equals(pageName) && isUnderScala(selected)) {
+                buildLanguagesScalaMiscPage();
+                return;
+            }
+            if ("Schemas and DTDs".equals(pageName)) {
+                buildLanguagesSchemasAndDtdsPage();
+                return;
+            }
+            if ("Default XML Schemas".equals(pageName)) {
+                buildLanguagesDefaultXmlSchemasPage();
+                return;
+            }
+            if ("JSON Schema Mappings".equals(pageName)) {
+                buildLanguagesJsonSchemaMappingsPage();
+                return;
+            }
             if ("PHP".equals(pageName)) {
                 buildLanguagesPhpPage();
                 return;
@@ -5031,6 +5261,34 @@ public class SettingsDialog {
             buildLanguagesProtobufPage();
         } else if ("Text Format".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesProtobufTextFormatPage();
+        } else if ("Quarkus".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesQuarkusPage();
+        } else if ("RBS".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesRbsPage();
+        } else if ("Editor".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaEditorPage();
+        } else if ("X-Ray Mode".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaXRayPage();
+        } else if ("Project View".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaProjectViewPage();
+        } else if ("Performance".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaPerformancePage();
+        } else if ("Worksheet".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaWorksheetPage();
+        } else if ("Base Package".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaBasePackagePage();
+        } else if ("Misc".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaMiscPage();
+        } else if ("Updates".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaUpdatesPage();
+        } else if ("Extensions".equals(pageName) && isUnderScala(selected)) {
+            buildLanguagesScalaExtensionsPage();
+        } else if ("Schemas and DTDs".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesSchemasAndDtdsPage();
+        } else if ("Default XML Schemas".equals(pageName) && isUnderSchemas(selected)) {
+            buildLanguagesDefaultXmlSchemasPage();
+        } else if ("JSON Schema Mappings".equals(pageName) && isUnderSchemas(selected)) {
+            buildLanguagesJsonSchemaMappingsPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -5246,6 +5504,24 @@ public class SettingsDialog {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("Languages & Frameworks".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderScala(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Scala".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderSchemas(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Schemas and DTDs".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -6472,6 +6748,216 @@ public class SettingsDialog {
 
     public SettingsLanguagesProtobufTextFormatPage getCurrentLanguagesProtobufTextFormatPage() {
         return currentLanguagesProtobufTextFormatPage;
+    }
+
+    private void buildLanguagesQuarkusPage() {
+        if (currentLanguagesQuarkusPage == null) {
+            currentLanguagesQuarkusPage = new SettingsLanguagesQuarkusPage();
+        }
+        currentLanguagesQuarkusPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesQuarkusPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesQuarkusPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesQuarkusPage getCurrentLanguagesQuarkusPage() {
+        return currentLanguagesQuarkusPage;
+    }
+
+    private void buildLanguagesRbsPage() {
+        if (currentLanguagesRbsPage == null) {
+            currentLanguagesRbsPage = new SettingsLanguagesRbsPage();
+        }
+        currentLanguagesRbsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesRbsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesRbsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesRbsPage getCurrentLanguagesRbsPage() {
+        return currentLanguagesRbsPage;
+    }
+
+    private void buildLanguagesScalaEditorPage() {
+        if (currentLanguagesScalaEditorPage == null) {
+            currentLanguagesScalaEditorPage = new SettingsLanguagesScalaEditorPage();
+        }
+        currentLanguagesScalaEditorPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaEditorPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaEditorPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaEditorPage getCurrentLanguagesScalaEditorPage() {
+        return currentLanguagesScalaEditorPage;
+    }
+
+    private void buildLanguagesScalaXRayPage() {
+        if (currentLanguagesScalaXRayPage == null) {
+            currentLanguagesScalaXRayPage = new SettingsLanguagesScalaXRayPage();
+        }
+        currentLanguagesScalaXRayPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaXRayPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaXRayPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaXRayPage getCurrentLanguagesScalaXRayPage() {
+        return currentLanguagesScalaXRayPage;
+    }
+
+    private void buildLanguagesScalaProjectViewPage() {
+        if (currentLanguagesScalaProjectViewPage == null) {
+            currentLanguagesScalaProjectViewPage = new SettingsLanguagesScalaProjectViewPage();
+        }
+        currentLanguagesScalaProjectViewPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaProjectViewPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaProjectViewPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaProjectViewPage getCurrentLanguagesScalaProjectViewPage() {
+        return currentLanguagesScalaProjectViewPage;
+    }
+
+    private void buildLanguagesScalaPerformancePage() {
+        if (currentLanguagesScalaPerformancePage == null) {
+            currentLanguagesScalaPerformancePage = new SettingsLanguagesScalaPerformancePage();
+        }
+        currentLanguagesScalaPerformancePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaPerformancePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaPerformancePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaPerformancePage getCurrentLanguagesScalaPerformancePage() {
+        return currentLanguagesScalaPerformancePage;
+    }
+
+    private void buildLanguagesScalaWorksheetPage() {
+        if (currentLanguagesScalaWorksheetPage == null) {
+            currentLanguagesScalaWorksheetPage = new SettingsLanguagesScalaWorksheetPage();
+        }
+        currentLanguagesScalaWorksheetPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaWorksheetPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaWorksheetPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaWorksheetPage getCurrentLanguagesScalaWorksheetPage() {
+        return currentLanguagesScalaWorksheetPage;
+    }
+
+    private void buildLanguagesScalaBasePackagePage() {
+        if (currentLanguagesScalaBasePackagePage == null) {
+            currentLanguagesScalaBasePackagePage = new SettingsLanguagesScalaBasePackagePage();
+        }
+        currentLanguagesScalaBasePackagePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaBasePackagePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaBasePackagePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaBasePackagePage getCurrentLanguagesScalaBasePackagePage() {
+        return currentLanguagesScalaBasePackagePage;
+    }
+
+    private void buildLanguagesScalaMiscPage() {
+        if (currentLanguagesScalaMiscPage == null) {
+            currentLanguagesScalaMiscPage = new SettingsLanguagesScalaMiscPage();
+        }
+        currentLanguagesScalaMiscPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaMiscPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaMiscPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaMiscPage getCurrentLanguagesScalaMiscPage() {
+        return currentLanguagesScalaMiscPage;
+    }
+
+    private void buildLanguagesScalaUpdatesPage() {
+        if (currentLanguagesScalaUpdatesPage == null) {
+            currentLanguagesScalaUpdatesPage = new SettingsLanguagesScalaUpdatesPage();
+        }
+        currentLanguagesScalaUpdatesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaUpdatesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaUpdatesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaUpdatesPage getCurrentLanguagesScalaUpdatesPage() {
+        return currentLanguagesScalaUpdatesPage;
+    }
+
+    private void buildLanguagesScalaExtensionsPage() {
+        if (currentLanguagesScalaExtensionsPage == null) {
+            currentLanguagesScalaExtensionsPage = new SettingsLanguagesScalaExtensionsPage();
+        }
+        currentLanguagesScalaExtensionsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesScalaExtensionsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesScalaExtensionsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesScalaExtensionsPage getCurrentLanguagesScalaExtensionsPage() {
+        return currentLanguagesScalaExtensionsPage;
+    }
+
+    private void buildLanguagesSchemasAndDtdsPage() {
+        if (currentLanguagesSchemasAndDtdsPage == null) {
+            currentLanguagesSchemasAndDtdsPage = new SettingsLanguagesSchemasAndDtdsPage();
+        }
+        currentLanguagesSchemasAndDtdsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesSchemasAndDtdsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesSchemasAndDtdsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesSchemasAndDtdsPage getCurrentLanguagesSchemasAndDtdsPage() {
+        return currentLanguagesSchemasAndDtdsPage;
+    }
+
+    private void buildLanguagesDefaultXmlSchemasPage() {
+        if (currentLanguagesDefaultXmlSchemasPage == null) {
+            currentLanguagesDefaultXmlSchemasPage = new SettingsLanguagesDefaultXmlSchemasPage();
+        }
+        currentLanguagesDefaultXmlSchemasPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesDefaultXmlSchemasPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesDefaultXmlSchemasPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesDefaultXmlSchemasPage getCurrentLanguagesDefaultXmlSchemasPage() {
+        return currentLanguagesDefaultXmlSchemasPage;
+    }
+
+    private void buildLanguagesJsonSchemaMappingsPage() {
+        if (currentLanguagesJsonSchemaMappingsPage == null) {
+            currentLanguagesJsonSchemaMappingsPage = new SettingsLanguagesJsonSchemaMappingsPage();
+        }
+        currentLanguagesJsonSchemaMappingsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesJsonSchemaMappingsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesJsonSchemaMappingsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesJsonSchemaMappingsPage getCurrentLanguagesJsonSchemaMappingsPage() {
+        return currentLanguagesJsonSchemaMappingsPage;
     }
 
     private void buildApplicationServersPage() {
@@ -8100,10 +8586,25 @@ public class SettingsDialog {
         TreeItem<String> protoItem = new TreeItem<>("Protocol Buffers");
         protoItem.getChildren().add(new TreeItem<>("Text Format"));
 
+        TreeItem<String> scalaItem = new TreeItem<>("Scala");
+        scalaItem.getChildren().addAll(
+                new TreeItem<>("Editor"),
+                new TreeItem<>("X-Ray Mode"),
+                new TreeItem<>("Project View"),
+                new TreeItem<>("Performance"),
+                new TreeItem<>("Worksheet"),
+                new TreeItem<>("Base Package"),
+                new TreeItem<>("Misc"),
+                new TreeItem<>("Updates"),
+                new TreeItem<>("Extensions")
+        );
+
         TreeItem<String> schemasItem = new TreeItem<>("Schemas and DTDs");
         schemasItem.getChildren().addAll(
-                new TreeItem<>("XML Schemas"),
-                new TreeItem<>("Default XML Schemas")
+                new TreeItem<>("Default XML Schemas"),
+                new TreeItem<>("JSON Schema Mappings"),
+                new TreeItem<>("Remote JSON Schemas"),
+                new TreeItem<>("XML Catalog")
         );
 
         TreeItem<String> styleSheetsItem = new TreeItem<>("Style Sheets");
@@ -8148,7 +8649,7 @@ public class SettingsDialog {
                 protoItem,
                 new TreeItem<>("Quarkus"),
                 new TreeItem<>("RBS"),
-                new TreeItem<>("Scala"),
+                scalaItem,
                 schemasItem,
                 new TreeItem<>("Spring"),
                 new TreeItem<>("SQL Dialects"),
@@ -8224,7 +8725,7 @@ public class SettingsDialog {
                         badgeLabel.setText(String.valueOf(dev.lumina.plugin.PluginManager.getInstance().getBadgeCount()));
                         badgeLabel.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-padding: 1 6 1 6; -fx-background-radius: 8;");
                         cellBox.getChildren().add(badgeLabel);
-                    } else if (isProjectSetting(item)) {
+                    } else if (isProjectSetting(getTreeItem())) {
                         cellBox.getChildren().add(projectIcon);
                     }
                     setText(null);
@@ -8264,6 +8765,14 @@ public class SettingsDialog {
 
     private static boolean isProjectSetting(String name) {
         return name != null && PROJECT_SETTINGS.contains(name);
+    }
+
+    private boolean isProjectSetting(TreeItem<String> item) {
+        if (item == null || item.getValue() == null) return false;
+        String val = item.getValue();
+        if ("Languages & Frameworks".equals(val)) return false;
+        if (isUnderLanguages(item)) return true;
+        return isProjectSetting(val);
     }
 
     private TreeItem<String> searchTree(TreeItem<String> root, String query) {
@@ -8753,6 +9262,48 @@ public class SettingsDialog {
         if (currentLanguagesProtobufTextFormatPage != null && currentLanguagesProtobufTextFormatPage.isModified()) {
             currentLanguagesProtobufTextFormatPage.apply();
         }
+        if (currentLanguagesQuarkusPage != null && currentLanguagesQuarkusPage.isModified()) {
+            currentLanguagesQuarkusPage.apply();
+        }
+        if (currentLanguagesRbsPage != null && currentLanguagesRbsPage.isModified()) {
+            currentLanguagesRbsPage.apply();
+        }
+        if (currentLanguagesScalaEditorPage != null && currentLanguagesScalaEditorPage.isModified()) {
+            currentLanguagesScalaEditorPage.apply();
+        }
+        if (currentLanguagesScalaXRayPage != null && currentLanguagesScalaXRayPage.isModified()) {
+            currentLanguagesScalaXRayPage.apply();
+        }
+        if (currentLanguagesScalaProjectViewPage != null && currentLanguagesScalaProjectViewPage.isModified()) {
+            currentLanguagesScalaProjectViewPage.apply();
+        }
+        if (currentLanguagesScalaPerformancePage != null && currentLanguagesScalaPerformancePage.isModified()) {
+            currentLanguagesScalaPerformancePage.apply();
+        }
+        if (currentLanguagesScalaWorksheetPage != null && currentLanguagesScalaWorksheetPage.isModified()) {
+            currentLanguagesScalaWorksheetPage.apply();
+        }
+        if (currentLanguagesScalaBasePackagePage != null && currentLanguagesScalaBasePackagePage.isModified()) {
+            currentLanguagesScalaBasePackagePage.apply();
+        }
+        if (currentLanguagesScalaMiscPage != null && currentLanguagesScalaMiscPage.isModified()) {
+            currentLanguagesScalaMiscPage.apply();
+        }
+        if (currentLanguagesScalaUpdatesPage != null && currentLanguagesScalaUpdatesPage.isModified()) {
+            currentLanguagesScalaUpdatesPage.apply();
+        }
+        if (currentLanguagesScalaExtensionsPage != null && currentLanguagesScalaExtensionsPage.isModified()) {
+            currentLanguagesScalaExtensionsPage.apply();
+        }
+        if (currentLanguagesSchemasAndDtdsPage != null && currentLanguagesSchemasAndDtdsPage.isModified()) {
+            currentLanguagesSchemasAndDtdsPage.apply();
+        }
+        if (currentLanguagesDefaultXmlSchemasPage != null && currentLanguagesDefaultXmlSchemasPage.isModified()) {
+            currentLanguagesDefaultXmlSchemasPage.apply();
+        }
+        if (currentLanguagesJsonSchemaMappingsPage != null && currentLanguagesJsonSchemaMappingsPage.isModified()) {
+            currentLanguagesJsonSchemaMappingsPage.apply();
+        }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
         }
@@ -9180,6 +9731,20 @@ public class SettingsDialog {
                 || (currentLanguagesPlayPage != null && currentLanguagesPlayPage.isModified())
                 || (currentLanguagesProtobufPage != null && currentLanguagesProtobufPage.isModified())
                 || (currentLanguagesProtobufTextFormatPage != null && currentLanguagesProtobufTextFormatPage.isModified())
+                || (currentLanguagesQuarkusPage != null && currentLanguagesQuarkusPage.isModified())
+                || (currentLanguagesRbsPage != null && currentLanguagesRbsPage.isModified())
+                || (currentLanguagesScalaEditorPage != null && currentLanguagesScalaEditorPage.isModified())
+                || (currentLanguagesScalaXRayPage != null && currentLanguagesScalaXRayPage.isModified())
+                || (currentLanguagesScalaProjectViewPage != null && currentLanguagesScalaProjectViewPage.isModified())
+                || (currentLanguagesScalaPerformancePage != null && currentLanguagesScalaPerformancePage.isModified())
+                || (currentLanguagesScalaWorksheetPage != null && currentLanguagesScalaWorksheetPage.isModified())
+                || (currentLanguagesScalaBasePackagePage != null && currentLanguagesScalaBasePackagePage.isModified())
+                || (currentLanguagesScalaMiscPage != null && currentLanguagesScalaMiscPage.isModified())
+                || (currentLanguagesScalaUpdatesPage != null && currentLanguagesScalaUpdatesPage.isModified())
+                || (currentLanguagesScalaExtensionsPage != null && currentLanguagesScalaExtensionsPage.isModified())
+                || (currentLanguagesSchemasAndDtdsPage != null && currentLanguagesSchemasAndDtdsPage.isModified())
+                || (currentLanguagesDefaultXmlSchemasPage != null && currentLanguagesDefaultXmlSchemasPage.isModified())
+                || (currentLanguagesJsonSchemaMappingsPage != null && currentLanguagesJsonSchemaMappingsPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -9617,6 +10182,48 @@ public class SettingsDialog {
             }
             if (currentLanguagesProtobufTextFormatPage != null) {
                 currentLanguagesProtobufTextFormatPage.reset();
+            }
+            if (currentLanguagesQuarkusPage != null) {
+                currentLanguagesQuarkusPage.reset();
+            }
+            if (currentLanguagesRbsPage != null) {
+                currentLanguagesRbsPage.reset();
+            }
+            if (currentLanguagesScalaEditorPage != null) {
+                currentLanguagesScalaEditorPage.reset();
+            }
+            if (currentLanguagesScalaXRayPage != null) {
+                currentLanguagesScalaXRayPage.reset();
+            }
+            if (currentLanguagesScalaProjectViewPage != null) {
+                currentLanguagesScalaProjectViewPage.reset();
+            }
+            if (currentLanguagesScalaPerformancePage != null) {
+                currentLanguagesScalaPerformancePage.reset();
+            }
+            if (currentLanguagesScalaWorksheetPage != null) {
+                currentLanguagesScalaWorksheetPage.reset();
+            }
+            if (currentLanguagesScalaBasePackagePage != null) {
+                currentLanguagesScalaBasePackagePage.reset();
+            }
+            if (currentLanguagesScalaMiscPage != null) {
+                currentLanguagesScalaMiscPage.reset();
+            }
+            if (currentLanguagesScalaUpdatesPage != null) {
+                currentLanguagesScalaUpdatesPage.reset();
+            }
+            if (currentLanguagesScalaExtensionsPage != null) {
+                currentLanguagesScalaExtensionsPage.reset();
+            }
+            if (currentLanguagesSchemasAndDtdsPage != null) {
+                currentLanguagesSchemasAndDtdsPage.reset();
+            }
+            if (currentLanguagesDefaultXmlSchemasPage != null) {
+                currentLanguagesDefaultXmlSchemasPage.reset();
+            }
+            if (currentLanguagesJsonSchemaMappingsPage != null) {
+                currentLanguagesJsonSchemaMappingsPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();
