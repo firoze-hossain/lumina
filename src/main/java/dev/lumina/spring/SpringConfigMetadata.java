@@ -13,7 +13,7 @@ import java.util.zip.ZipFile;
 /**
  * Reads every dependency jar's {@code META-INF/spring-configuration-
  * metadata.json} \u2014 the same file Spring Boot generates for each starter
- * and the same one IntelliJ Ultimate's Spring completion reads from. This
+ * and the standard format that modern IDE Spring completion reads from. This
  * makes application.properties/application.yml completion exact and
  * current for whatever starters the project actually has on its
  * classpath, rather than a guessed or hand-maintained list.

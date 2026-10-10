@@ -180,6 +180,23 @@ public class SettingsDialog {
     private SettingsLanguagesSchemasAndDtdsPage currentLanguagesSchemasAndDtdsPage;
     private SettingsLanguagesDefaultXmlSchemasPage currentLanguagesDefaultXmlSchemasPage;
     private SettingsLanguagesJsonSchemaMappingsPage currentLanguagesJsonSchemaMappingsPage;
+    private SettingsLanguagesRemoteJsonSchemasPage currentLanguagesRemoteJsonSchemasPage;
+    private SettingsLanguagesXmlCatalogPage currentLanguagesXmlCatalogPage;
+    private SettingsLanguagesSpringPage currentLanguagesSpringPage;
+    private SettingsLanguagesSqlDialectsPage currentLanguagesSqlDialectsPage;
+    private SettingsLanguagesSqlResolutionScopesPage currentLanguagesSqlResolutionScopesPage;
+    private SettingsLanguagesStyleSheetsDialectsPage currentLanguagesStyleSheetsDialectsPage;
+    private SettingsLanguagesStyleSheetsStylelintPage currentLanguagesStyleSheetsStylelintPage;
+    private SettingsLanguagesStyleSheetsTailwindPage currentLanguagesStyleSheetsTailwindPage;
+    private SettingsLanguagesTablesPage currentLanguagesTablesPage;
+    private SettingsLanguagesTemplateDataLanguagesPage currentLanguagesTemplateDataLanguagesPage;
+    private SettingsLanguagesTypeScriptPage currentLanguagesTypeScriptPage;
+    private SettingsLanguagesTypeScriptAngularPage currentLanguagesTypeScriptAngularPage;
+    private SettingsLanguagesTypeScriptTsLintPage currentLanguagesTypeScriptTsLintPage;
+    private SettingsLanguagesTypeScriptVuePage currentLanguagesTypeScriptVuePage;
+    private SettingsLanguagesWebContextsPage currentLanguagesWebContextsPage;
+    private SettingsLanguagesXsltPage currentLanguagesXsltPage;
+    private SettingsLanguagesXsltFileAssociationsPage currentLanguagesXsltFileAssociationsPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -1209,6 +1226,210 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguagesJsonSchemaMappingsPage != null) {
                             currentLanguagesJsonSchemaMappingsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Remote JSON Schemas".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesRemoteJsonSchemasPage != null) {
+                            currentLanguagesRemoteJsonSchemasPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XML Catalog".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesXmlCatalogPage != null) {
+                            currentLanguagesXmlCatalogPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Spring".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesSpringPage != null) {
+                            currentLanguagesSpringPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SQL Dialects".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesSqlDialectsPage != null) {
+                            currentLanguagesSqlDialectsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SQL Resolution Scopes".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesSqlResolutionScopesPage != null) {
+                            currentLanguagesSqlResolutionScopesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Dialects".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Style Sheets".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesStyleSheetsDialectsPage != null) {
+                            currentLanguagesStyleSheetsDialectsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Stylelint".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Style Sheets".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesStyleSheetsStylelintPage != null) {
+                            currentLanguagesStyleSheetsStylelintPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Tailwind CSS".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Style Sheets".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesStyleSheetsTailwindPage != null) {
+                            currentLanguagesStyleSheetsTailwindPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Tables".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTablesPage != null) {
+                            currentLanguagesTablesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Template Data Languages".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTemplateDataLanguagesPage != null) {
+                            currentLanguagesTemplateDataLanguagesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TypeScript".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTypeScriptPage != null) {
+                            currentLanguagesTypeScriptPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Angular".equals(item.getValue()) && chain.stream().anyMatch(ci -> "TypeScript".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTypeScriptAngularPage != null) {
+                            currentLanguagesTypeScriptAngularPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("TSLint".equals(item.getValue()) && chain.stream().anyMatch(ci -> "TypeScript".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTypeScriptTsLintPage != null) {
+                            currentLanguagesTypeScriptTsLintPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Vue".equals(item.getValue()) && chain.stream().anyMatch(ci -> "TypeScript".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesTypeScriptVuePage != null) {
+                            currentLanguagesTypeScriptVuePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Web Contexts".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesWebContextsPage != null) {
+                            currentLanguagesWebContextsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XSLT".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesXsltPage != null) {
+                            currentLanguagesXsltPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XSLT File Associations".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Languages & Frameworks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentLanguagesXsltFileAssociationsPage != null) {
+                            currentLanguagesXsltFileAssociationsPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -3187,6 +3408,74 @@ public class SettingsDialog {
             }
             if ("JSON Schema Mappings".equals(pageName)) {
                 buildLanguagesJsonSchemaMappingsPage();
+                return;
+            }
+            if ("Remote JSON Schemas".equals(pageName)) {
+                buildLanguagesRemoteJsonSchemasPage();
+                return;
+            }
+            if ("XML Catalog".equals(pageName)) {
+                buildLanguagesXmlCatalogPage();
+                return;
+            }
+            if ("Spring".equals(pageName)) {
+                buildLanguagesSpringPage();
+                return;
+            }
+            if ("SQL Dialects".equals(pageName)) {
+                buildLanguagesSqlDialectsPage();
+                return;
+            }
+            if ("SQL Resolution Scopes".equals(pageName)) {
+                buildLanguagesSqlResolutionScopesPage();
+                return;
+            }
+            if ("Dialects".equals(pageName) && isUnderStyleSheets(selected)) {
+                buildLanguagesStyleSheetsDialectsPage();
+                return;
+            }
+            if ("Stylelint".equals(pageName) && isUnderStyleSheets(selected)) {
+                buildLanguagesStyleSheetsStylelintPage();
+                return;
+            }
+            if ("Tailwind CSS".equals(pageName) && isUnderStyleSheets(selected)) {
+                buildLanguagesStyleSheetsTailwindPage();
+                return;
+            }
+            if ("Tables".equals(pageName)) {
+                buildLanguagesTablesPage();
+                return;
+            }
+            if ("Template Data Languages".equals(pageName)) {
+                buildLanguagesTemplateDataLanguagesPage();
+                return;
+            }
+            if ("TypeScript".equals(pageName)) {
+                buildLanguagesTypeScriptPage();
+                return;
+            }
+            if ("Angular".equals(pageName) && isUnderTypeScript(selected)) {
+                buildLanguagesTypeScriptAngularPage();
+                return;
+            }
+            if ("TSLint".equals(pageName) && isUnderTypeScript(selected)) {
+                buildLanguagesTypeScriptTsLintPage();
+                return;
+            }
+            if ("Vue".equals(pageName) && isUnderTypeScript(selected)) {
+                buildLanguagesTypeScriptVuePage();
+                return;
+            }
+            if ("Web Contexts".equals(pageName)) {
+                buildLanguagesWebContextsPage();
+                return;
+            }
+            if ("XSLT".equals(pageName)) {
+                buildLanguagesXsltPage();
+                return;
+            }
+            if ("XSLT File Associations".equals(pageName)) {
+                buildLanguagesXsltFileAssociationsPage();
                 return;
             }
             if ("PHP".equals(pageName)) {
@@ -5289,6 +5578,40 @@ public class SettingsDialog {
             buildLanguagesDefaultXmlSchemasPage();
         } else if ("JSON Schema Mappings".equals(pageName) && isUnderSchemas(selected)) {
             buildLanguagesJsonSchemaMappingsPage();
+        } else if ("Remote JSON Schemas".equals(pageName) && isUnderSchemas(selected)) {
+            buildLanguagesRemoteJsonSchemasPage();
+        } else if ("XML Catalog".equals(pageName) && isUnderSchemas(selected)) {
+            buildLanguagesXmlCatalogPage();
+        } else if ("Spring".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesSpringPage();
+        } else if ("SQL Dialects".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesSqlDialectsPage();
+        } else if ("SQL Resolution Scopes".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesSqlResolutionScopesPage();
+        } else if ("Dialects".equals(pageName) && isUnderStyleSheets(selected)) {
+            buildLanguagesStyleSheetsDialectsPage();
+        } else if ("Stylelint".equals(pageName) && isUnderStyleSheets(selected)) {
+            buildLanguagesStyleSheetsStylelintPage();
+        } else if ("Tailwind CSS".equals(pageName) && isUnderStyleSheets(selected)) {
+            buildLanguagesStyleSheetsTailwindPage();
+        } else if ("Tables".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesTablesPage();
+        } else if ("Template Data Languages".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesTemplateDataLanguagesPage();
+        } else if ("TypeScript".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesTypeScriptPage();
+        } else if ("Angular".equals(pageName) && isUnderTypeScript(selected)) {
+            buildLanguagesTypeScriptAngularPage();
+        } else if ("TSLint".equals(pageName) && isUnderTypeScript(selected)) {
+            buildLanguagesTypeScriptTsLintPage();
+        } else if ("Vue".equals(pageName) && isUnderTypeScript(selected)) {
+            buildLanguagesTypeScriptVuePage();
+        } else if ("Web Contexts".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesWebContextsPage();
+        } else if ("XSLT".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesXsltPage();
+        } else if ("XSLT File Associations".equals(pageName) && isUnderLanguages(selected)) {
+            buildLanguagesXsltFileAssociationsPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -5522,6 +5845,24 @@ public class SettingsDialog {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("Schemas and DTDs".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderStyleSheets(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Style Sheets".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderTypeScript(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("TypeScript".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -6958,6 +7299,259 @@ public class SettingsDialog {
 
     public SettingsLanguagesJsonSchemaMappingsPage getCurrentLanguagesJsonSchemaMappingsPage() {
         return currentLanguagesJsonSchemaMappingsPage;
+    }
+
+    private void buildLanguagesRemoteJsonSchemasPage() {
+        if (currentLanguagesRemoteJsonSchemasPage == null) {
+            currentLanguagesRemoteJsonSchemasPage = new SettingsLanguagesRemoteJsonSchemasPage();
+        }
+        currentLanguagesRemoteJsonSchemasPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesRemoteJsonSchemasPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesRemoteJsonSchemasPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesRemoteJsonSchemasPage getCurrentLanguagesRemoteJsonSchemasPage() {
+        return currentLanguagesRemoteJsonSchemasPage;
+    }
+
+    private void buildLanguagesXmlCatalogPage() {
+        if (currentLanguagesXmlCatalogPage == null) {
+            currentLanguagesXmlCatalogPage = new SettingsLanguagesXmlCatalogPage();
+        }
+        currentLanguagesXmlCatalogPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesXmlCatalogPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesXmlCatalogPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesXmlCatalogPage getCurrentLanguagesXmlCatalogPage() {
+        return currentLanguagesXmlCatalogPage;
+    }
+
+    private void buildLanguagesSpringPage() {
+        if (currentLanguagesSpringPage == null) {
+            currentLanguagesSpringPage = new SettingsLanguagesSpringPage();
+        }
+        currentLanguagesSpringPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentLanguagesSpringPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesSpringPage getCurrentLanguagesSpringPage() {
+        return currentLanguagesSpringPage;
+    }
+
+    private void buildLanguagesSqlDialectsPage() {
+        if (currentLanguagesSqlDialectsPage == null) {
+            currentLanguagesSqlDialectsPage = new SettingsLanguagesSqlDialectsPage();
+        }
+        currentLanguagesSqlDialectsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesSqlDialectsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesSqlDialectsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesSqlDialectsPage getCurrentLanguagesSqlDialectsPage() {
+        return currentLanguagesSqlDialectsPage;
+    }
+
+    private void buildLanguagesSqlResolutionScopesPage() {
+        if (currentLanguagesSqlResolutionScopesPage == null) {
+            currentLanguagesSqlResolutionScopesPage = new SettingsLanguagesSqlResolutionScopesPage();
+        }
+        currentLanguagesSqlResolutionScopesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesSqlResolutionScopesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesSqlResolutionScopesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesSqlResolutionScopesPage getCurrentLanguagesSqlResolutionScopesPage() {
+        return currentLanguagesSqlResolutionScopesPage;
+    }
+
+    private void buildLanguagesStyleSheetsDialectsPage() {
+        if (currentLanguagesStyleSheetsDialectsPage == null) {
+            currentLanguagesStyleSheetsDialectsPage = new SettingsLanguagesStyleSheetsDialectsPage();
+        }
+        currentLanguagesStyleSheetsDialectsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesStyleSheetsDialectsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesStyleSheetsDialectsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesStyleSheetsDialectsPage getCurrentLanguagesStyleSheetsDialectsPage() {
+        return currentLanguagesStyleSheetsDialectsPage;
+    }
+
+    private void buildLanguagesStyleSheetsStylelintPage() {
+        if (currentLanguagesStyleSheetsStylelintPage == null) {
+            currentLanguagesStyleSheetsStylelintPage = new SettingsLanguagesStyleSheetsStylelintPage();
+        }
+        currentLanguagesStyleSheetsStylelintPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesStyleSheetsStylelintPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesStyleSheetsStylelintPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesStyleSheetsStylelintPage getCurrentLanguagesStyleSheetsStylelintPage() {
+        return currentLanguagesStyleSheetsStylelintPage;
+    }
+
+    private void buildLanguagesStyleSheetsTailwindPage() {
+        if (currentLanguagesStyleSheetsTailwindPage == null) {
+            currentLanguagesStyleSheetsTailwindPage = new SettingsLanguagesStyleSheetsTailwindPage();
+        }
+        currentLanguagesStyleSheetsTailwindPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesStyleSheetsTailwindPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesStyleSheetsTailwindPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesStyleSheetsTailwindPage getCurrentLanguagesStyleSheetsTailwindPage() {
+        return currentLanguagesStyleSheetsTailwindPage;
+    }
+
+    private void buildLanguagesTablesPage() {
+        if (currentLanguagesTablesPage == null) {
+            currentLanguagesTablesPage = new SettingsLanguagesTablesPage();
+        }
+        currentLanguagesTablesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTablesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTablesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTablesPage getCurrentLanguagesTablesPage() {
+        return currentLanguagesTablesPage;
+    }
+
+    private void buildLanguagesTemplateDataLanguagesPage() {
+        if (currentLanguagesTemplateDataLanguagesPage == null) {
+            currentLanguagesTemplateDataLanguagesPage = new SettingsLanguagesTemplateDataLanguagesPage();
+        }
+        currentLanguagesTemplateDataLanguagesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTemplateDataLanguagesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTemplateDataLanguagesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTemplateDataLanguagesPage getCurrentLanguagesTemplateDataLanguagesPage() {
+        return currentLanguagesTemplateDataLanguagesPage;
+    }
+
+    private void buildLanguagesTypeScriptPage() {
+        if (currentLanguagesTypeScriptPage == null) {
+            currentLanguagesTypeScriptPage = new SettingsLanguagesTypeScriptPage();
+        }
+        currentLanguagesTypeScriptPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTypeScriptPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTypeScriptPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTypeScriptPage getCurrentLanguagesTypeScriptPage() {
+        return currentLanguagesTypeScriptPage;
+    }
+
+    private void buildLanguagesTypeScriptAngularPage() {
+        if (currentLanguagesTypeScriptAngularPage == null) {
+            currentLanguagesTypeScriptAngularPage = new SettingsLanguagesTypeScriptAngularPage();
+        }
+        currentLanguagesTypeScriptAngularPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTypeScriptAngularPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTypeScriptAngularPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTypeScriptAngularPage getCurrentLanguagesTypeScriptAngularPage() {
+        return currentLanguagesTypeScriptAngularPage;
+    }
+
+    private void buildLanguagesTypeScriptTsLintPage() {
+        if (currentLanguagesTypeScriptTsLintPage == null) {
+            currentLanguagesTypeScriptTsLintPage = new SettingsLanguagesTypeScriptTsLintPage();
+        }
+        currentLanguagesTypeScriptTsLintPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTypeScriptTsLintPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTypeScriptTsLintPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTypeScriptTsLintPage getCurrentLanguagesTypeScriptTsLintPage() {
+        return currentLanguagesTypeScriptTsLintPage;
+    }
+
+    private void buildLanguagesTypeScriptVuePage() {
+        if (currentLanguagesTypeScriptVuePage == null) {
+            currentLanguagesTypeScriptVuePage = new SettingsLanguagesTypeScriptVuePage();
+        }
+        currentLanguagesTypeScriptVuePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesTypeScriptVuePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesTypeScriptVuePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesTypeScriptVuePage getCurrentLanguagesTypeScriptVuePage() {
+        return currentLanguagesTypeScriptVuePage;
+    }
+
+    private void buildLanguagesWebContextsPage() {
+        if (currentLanguagesWebContextsPage == null) {
+            currentLanguagesWebContextsPage = new SettingsLanguagesWebContextsPage();
+        }
+        currentLanguagesWebContextsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesWebContextsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesWebContextsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesWebContextsPage getCurrentLanguagesWebContextsPage() {
+        return currentLanguagesWebContextsPage;
+    }
+
+    private void buildLanguagesXsltPage() {
+        if (currentLanguagesXsltPage == null) {
+            currentLanguagesXsltPage = new SettingsLanguagesXsltPage();
+        }
+        currentLanguagesXsltPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesXsltPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesXsltPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesXsltPage getCurrentLanguagesXsltPage() {
+        return currentLanguagesXsltPage;
+    }
+
+    private void buildLanguagesXsltFileAssociationsPage() {
+        if (currentLanguagesXsltFileAssociationsPage == null) {
+            currentLanguagesXsltFileAssociationsPage = new SettingsLanguagesXsltFileAssociationsPage();
+        }
+        currentLanguagesXsltFileAssociationsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentLanguagesXsltFileAssociationsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentLanguagesXsltFileAssociationsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsLanguagesXsltFileAssociationsPage getCurrentLanguagesXsltFileAssociationsPage() {
+        return currentLanguagesXsltFileAssociationsPage;
     }
 
     private void buildApplicationServersPage() {
@@ -8608,10 +9202,18 @@ public class SettingsDialog {
         );
 
         TreeItem<String> styleSheetsItem = new TreeItem<>("Style Sheets");
-        styleSheetsItem.getChildren().add(new TreeItem<>("CSS Specifications"));
+        styleSheetsItem.getChildren().addAll(
+                new TreeItem<>("Dialects"),
+                new TreeItem<>("Stylelint"),
+                new TreeItem<>("Tailwind CSS")
+        );
 
         TreeItem<String> typeScriptItem = new TreeItem<>("TypeScript");
-        typeScriptItem.getChildren().add(new TreeItem<>("Compiler"));
+        typeScriptItem.getChildren().addAll(
+                new TreeItem<>("Angular"),
+                new TreeItem<>("TSLint"),
+                new TreeItem<>("Vue")
+        );
 
         TreeItem<String> rustItem = new TreeItem<>("Rust");
         rustItem.getChildren().addAll(
@@ -8719,13 +9321,22 @@ public class SettingsDialog {
                 } else {
                     titleLabel.setText(item);
                     titleLabel.setStyle("-fx-text-fill: inherit; -fx-font-size: 13px;");
-                    cellBox.getChildren().setAll(titleLabel, spacer);
 
-                    if ("Plugins".equals(item)) {
+                    if ("Angular".equals(item) && isUnderTypeScript(getTreeItem())) {
+                        badgeLabel.setText("Beta");
+                        badgeLabel.setStyle("-fx-background-color: #5E2794; -fx-text-fill: #DFE1E5; -fx-font-size: 9px; -fx-padding: 0 4 0 4; -fx-background-radius: 4; -fx-font-weight: bold;");
+                        HBox titleBadgeBox = new HBox(6, titleLabel, badgeLabel);
+                        titleBadgeBox.setAlignment(Pos.CENTER_LEFT);
+                        cellBox.getChildren().setAll(titleBadgeBox, spacer);
+                    } else if ("Plugins".equals(item)) {
                         badgeLabel.setText(String.valueOf(dev.lumina.plugin.PluginManager.getInstance().getBadgeCount()));
                         badgeLabel.setStyle("-fx-background-color: #393B40; -fx-text-fill: #DFE1E5; -fx-font-size: 10px; -fx-padding: 1 6 1 6; -fx-background-radius: 8;");
-                        cellBox.getChildren().add(badgeLabel);
-                    } else if (isProjectSetting(getTreeItem())) {
+                        cellBox.getChildren().setAll(titleLabel, spacer, badgeLabel);
+                    } else {
+                        cellBox.getChildren().setAll(titleLabel, spacer);
+                    }
+
+                    if (isProjectSetting(getTreeItem())) {
                         cellBox.getChildren().add(projectIcon);
                     }
                     setText(null);
@@ -8751,8 +9362,8 @@ public class SettingsDialog {
             "PHP", "JavaScript", "JavaScript Runtime", "JVM Logging", "Kotlin Scripting", "Ktor",
             "Lombok", "Markdown", "Micronaut", "OpenAPI Specifications",
             "Protocol Buffers", "Text Format", "Quarkus", "Schemas and DTDs", "Spring",
-            "SQL Dialects", "SQL Resolution Scopes", "Style Sheets", "Tables",
-            "Template Data Languages", "TypeScript", "Web Contexts", "XSLT",
+            "SQL Dialects", "SQL Resolution Scopes", "Style Sheets", "Dialects", "Stylelint", "Tailwind CSS", "Tables",
+            "Template Data Languages", "TypeScript", "Angular", "TSLint", "Vue", "Web Contexts", "XSLT",
             "XSLT File Associations", "Code Quality Tools", "ESLint", "JSHint",
             "Libraries", "Prettier", "Styled Components", "Vite", "Webpack",
             "Debug", "Templates", "DBGp Proxy", "Skipped Paths", "Step Filters", "Xdebug Cloud",
@@ -9304,6 +9915,57 @@ public class SettingsDialog {
         if (currentLanguagesJsonSchemaMappingsPage != null && currentLanguagesJsonSchemaMappingsPage.isModified()) {
             currentLanguagesJsonSchemaMappingsPage.apply();
         }
+        if (currentLanguagesRemoteJsonSchemasPage != null && currentLanguagesRemoteJsonSchemasPage.isModified()) {
+            currentLanguagesRemoteJsonSchemasPage.apply();
+        }
+        if (currentLanguagesXmlCatalogPage != null && currentLanguagesXmlCatalogPage.isModified()) {
+            currentLanguagesXmlCatalogPage.apply();
+        }
+        if (currentLanguagesSpringPage != null && currentLanguagesSpringPage.isModified()) {
+            currentLanguagesSpringPage.apply();
+        }
+        if (currentLanguagesSqlDialectsPage != null && currentLanguagesSqlDialectsPage.isModified()) {
+            currentLanguagesSqlDialectsPage.apply();
+        }
+        if (currentLanguagesSqlResolutionScopesPage != null && currentLanguagesSqlResolutionScopesPage.isModified()) {
+            currentLanguagesSqlResolutionScopesPage.apply();
+        }
+        if (currentLanguagesStyleSheetsDialectsPage != null && currentLanguagesStyleSheetsDialectsPage.isModified()) {
+            currentLanguagesStyleSheetsDialectsPage.apply();
+        }
+        if (currentLanguagesStyleSheetsStylelintPage != null && currentLanguagesStyleSheetsStylelintPage.isModified()) {
+            currentLanguagesStyleSheetsStylelintPage.apply();
+        }
+        if (currentLanguagesStyleSheetsTailwindPage != null && currentLanguagesStyleSheetsTailwindPage.isModified()) {
+            currentLanguagesStyleSheetsTailwindPage.apply();
+        }
+        if (currentLanguagesTablesPage != null && currentLanguagesTablesPage.isModified()) {
+            currentLanguagesTablesPage.apply();
+        }
+        if (currentLanguagesTemplateDataLanguagesPage != null && currentLanguagesTemplateDataLanguagesPage.isModified()) {
+            currentLanguagesTemplateDataLanguagesPage.apply();
+        }
+        if (currentLanguagesTypeScriptPage != null && currentLanguagesTypeScriptPage.isModified()) {
+            currentLanguagesTypeScriptPage.apply();
+        }
+        if (currentLanguagesTypeScriptAngularPage != null && currentLanguagesTypeScriptAngularPage.isModified()) {
+            currentLanguagesTypeScriptAngularPage.apply();
+        }
+        if (currentLanguagesTypeScriptTsLintPage != null && currentLanguagesTypeScriptTsLintPage.isModified()) {
+            currentLanguagesTypeScriptTsLintPage.apply();
+        }
+        if (currentLanguagesTypeScriptVuePage != null && currentLanguagesTypeScriptVuePage.isModified()) {
+            currentLanguagesTypeScriptVuePage.apply();
+        }
+        if (currentLanguagesWebContextsPage != null && currentLanguagesWebContextsPage.isModified()) {
+            currentLanguagesWebContextsPage.apply();
+        }
+        if (currentLanguagesXsltPage != null && currentLanguagesXsltPage.isModified()) {
+            currentLanguagesXsltPage.apply();
+        }
+        if (currentLanguagesXsltFileAssociationsPage != null && currentLanguagesXsltFileAssociationsPage.isModified()) {
+            currentLanguagesXsltFileAssociationsPage.apply();
+        }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
         }
@@ -9745,6 +10407,23 @@ public class SettingsDialog {
                 || (currentLanguagesSchemasAndDtdsPage != null && currentLanguagesSchemasAndDtdsPage.isModified())
                 || (currentLanguagesDefaultXmlSchemasPage != null && currentLanguagesDefaultXmlSchemasPage.isModified())
                 || (currentLanguagesJsonSchemaMappingsPage != null && currentLanguagesJsonSchemaMappingsPage.isModified())
+                || (currentLanguagesRemoteJsonSchemasPage != null && currentLanguagesRemoteJsonSchemasPage.isModified())
+                || (currentLanguagesXmlCatalogPage != null && currentLanguagesXmlCatalogPage.isModified())
+                || (currentLanguagesSpringPage != null && currentLanguagesSpringPage.isModified())
+                || (currentLanguagesSqlDialectsPage != null && currentLanguagesSqlDialectsPage.isModified())
+                || (currentLanguagesSqlResolutionScopesPage != null && currentLanguagesSqlResolutionScopesPage.isModified())
+                || (currentLanguagesStyleSheetsDialectsPage != null && currentLanguagesStyleSheetsDialectsPage.isModified())
+                || (currentLanguagesStyleSheetsStylelintPage != null && currentLanguagesStyleSheetsStylelintPage.isModified())
+                || (currentLanguagesStyleSheetsTailwindPage != null && currentLanguagesStyleSheetsTailwindPage.isModified())
+                || (currentLanguagesTablesPage != null && currentLanguagesTablesPage.isModified())
+                || (currentLanguagesTemplateDataLanguagesPage != null && currentLanguagesTemplateDataLanguagesPage.isModified())
+                || (currentLanguagesTypeScriptPage != null && currentLanguagesTypeScriptPage.isModified())
+                || (currentLanguagesTypeScriptAngularPage != null && currentLanguagesTypeScriptAngularPage.isModified())
+                || (currentLanguagesTypeScriptTsLintPage != null && currentLanguagesTypeScriptTsLintPage.isModified())
+                || (currentLanguagesTypeScriptVuePage != null && currentLanguagesTypeScriptVuePage.isModified())
+                || (currentLanguagesWebContextsPage != null && currentLanguagesWebContextsPage.isModified())
+                || (currentLanguagesXsltPage != null && currentLanguagesXsltPage.isModified())
+                || (currentLanguagesXsltFileAssociationsPage != null && currentLanguagesXsltFileAssociationsPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -10224,6 +10903,57 @@ public class SettingsDialog {
             }
             if (currentLanguagesJsonSchemaMappingsPage != null) {
                 currentLanguagesJsonSchemaMappingsPage.reset();
+            }
+            if (currentLanguagesRemoteJsonSchemasPage != null) {
+                currentLanguagesRemoteJsonSchemasPage.reset();
+            }
+            if (currentLanguagesXmlCatalogPage != null) {
+                currentLanguagesXmlCatalogPage.reset();
+            }
+            if (currentLanguagesSpringPage != null) {
+                currentLanguagesSpringPage.reset();
+            }
+            if (currentLanguagesSqlDialectsPage != null) {
+                currentLanguagesSqlDialectsPage.reset();
+            }
+            if (currentLanguagesSqlResolutionScopesPage != null) {
+                currentLanguagesSqlResolutionScopesPage.reset();
+            }
+            if (currentLanguagesStyleSheetsDialectsPage != null) {
+                currentLanguagesStyleSheetsDialectsPage.reset();
+            }
+            if (currentLanguagesStyleSheetsStylelintPage != null) {
+                currentLanguagesStyleSheetsStylelintPage.reset();
+            }
+            if (currentLanguagesStyleSheetsTailwindPage != null) {
+                currentLanguagesStyleSheetsTailwindPage.reset();
+            }
+            if (currentLanguagesTablesPage != null) {
+                currentLanguagesTablesPage.reset();
+            }
+            if (currentLanguagesTemplateDataLanguagesPage != null) {
+                currentLanguagesTemplateDataLanguagesPage.reset();
+            }
+            if (currentLanguagesTypeScriptPage != null) {
+                currentLanguagesTypeScriptPage.reset();
+            }
+            if (currentLanguagesTypeScriptAngularPage != null) {
+                currentLanguagesTypeScriptAngularPage.reset();
+            }
+            if (currentLanguagesTypeScriptTsLintPage != null) {
+                currentLanguagesTypeScriptTsLintPage.reset();
+            }
+            if (currentLanguagesTypeScriptVuePage != null) {
+                currentLanguagesTypeScriptVuePage.reset();
+            }
+            if (currentLanguagesWebContextsPage != null) {
+                currentLanguagesWebContextsPage.reset();
+            }
+            if (currentLanguagesXsltPage != null) {
+                currentLanguagesXsltPage.reset();
+            }
+            if (currentLanguagesXsltFileAssociationsPage != null) {
+                currentLanguagesXsltFileAssociationsPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();
