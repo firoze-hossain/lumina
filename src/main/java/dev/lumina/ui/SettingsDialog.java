@@ -228,6 +228,38 @@ public class SettingsDialog {
     private SettingsToolsGitHubCopilotSandboxPage currentToolsGitHubCopilotSandboxPage;
     private SettingsToolsGitHubCopilotCompletionsPage currentToolsGitHubCopilotCompletionsPage;
     private SettingsToolsGitHubCopilotCustomizationsPage currentToolsGitHubCopilotCustomizationsPage;
+    private SettingsToolsGitHubCopilotKeymapPage currentToolsGitHubCopilotKeymapPage;
+    private SettingsToolsGitHubCopilotMcpPage currentToolsGitHubCopilotMcpPage;
+    private SettingsToolsGitHubCopilotNetworkPage currentToolsGitHubCopilotNetworkPage;
+    private SettingsToolsHttpClientPage currentToolsHttpClientPage;
+    private SettingsToolsJpaEntityDeclarationPage currentToolsJpaEntityDeclarationPage;
+    private SettingsToolsJpaReverseEngineeringPage currentToolsJpaReverseEngineeringPage;
+    private SettingsToolsJupyterOverviewPage currentToolsJupyterOverviewPage;
+    private SettingsToolsJupyterGeneralPage currentToolsJupyterGeneralPage;
+    private SettingsToolsJupyterServersPage currentToolsJupyterServersPage;
+    private SettingsToolsJupyterVcsPage currentToolsJupyterVcsPage;
+    private SettingsToolsKotlinNotebookPage currentToolsKotlinNotebookPage;
+    private SettingsToolsKotlinNotebookNewNotebooksPage currentToolsKotlinNotebookNewNotebooksPage;
+    private SettingsToolsMcpServerPage currentToolsMcpServerPage;
+    private SettingsToolsPythonExternalDocumentationPage currentToolsPythonExternalDocumentationPage;
+    private SettingsToolsPythonIntegratedToolsPage currentToolsPythonIntegratedToolsPage;
+    private SettingsToolsPythonPlotsPage currentToolsPythonPlotsPage;
+    private SettingsToolsQodanaPage currentToolsQodanaPage;
+    private SettingsToolsRemoteSshExternalToolsPage currentToolsRemoteSshExternalToolsPage;
+    private SettingsToolsRsyncPage currentToolsRsyncPage;
+    private SettingsToolsRuboCopPage currentToolsRuboCopPage;
+    private SettingsToolsSharedIndexesPage currentToolsSharedIndexesPage;
+    private SettingsToolsSshConfigurationsPage currentToolsSshConfigurationsPage;
+    private SettingsToolsSshTerminalPage currentToolsSshTerminalPage;
+    private SettingsToolsStartupTasksPage currentToolsStartupTasksPage;
+    private SettingsToolsTasksPage currentToolsTasksPage;
+    private SettingsToolsTaskServersPage currentToolsTaskServersPage;
+    private SettingsToolsTimeTrackingPage currentToolsTimeTrackingPage;
+    private SettingsToolsTerminalPage currentToolsTerminalPage;
+    private SettingsToolsWebBrowsersPage currentToolsWebBrowsersPage;
+    private SettingsToolsXPathViewerPage currentToolsXPathViewerPage;
+    private SettingsBackupAndSyncPage currentBackupAndSyncPage;
+    private SettingsAdvancedPage currentAdvancedSettingsPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -1797,6 +1829,378 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentToolsGitHubCopilotCustomizationsPage != null) {
                             currentToolsGitHubCopilotCustomizationsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Keymap".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotKeymapPage != null) {
+                            currentToolsGitHubCopilotKeymapPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Model Context Protocol (MCP)".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotMcpPage != null) {
+                            currentToolsGitHubCopilotMcpPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Network".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotNetworkPage != null) {
+                            currentToolsGitHubCopilotNetworkPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("HTTP Client".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsHttpClientPage != null) {
+                            currentToolsHttpClientPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JPA Entity Declaration".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsJpaEntityDeclarationPage != null) {
+                            currentToolsJpaEntityDeclarationPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("JPA Reverse Engineering".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsJpaReverseEngineeringPage != null) {
+                            currentToolsJpaReverseEngineeringPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Jupyter General".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Jupyter".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsJupyterGeneralPage != null) {
+                            currentToolsJupyterGeneralPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Jupyter Servers".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Jupyter".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsJupyterServersPage != null) {
+                            currentToolsJupyterServersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Jupyter VCS".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Jupyter".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsJupyterVcsPage != null) {
+                            currentToolsJupyterVcsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Kotlin Notebook".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsKotlinNotebookPage != null) {
+                            currentToolsKotlinNotebookPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Settings for New Notebooks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Kotlin Notebook".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsKotlinNotebookNewNotebooksPage != null) {
+                            currentToolsKotlinNotebookNewNotebooksPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("MCP Server".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsMcpServerPage != null) {
+                            currentToolsMcpServerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python External Documentation".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsPythonExternalDocumentationPage != null) {
+                            currentToolsPythonExternalDocumentationPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python Integrated Tools".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsPythonIntegratedToolsPage != null) {
+                            currentToolsPythonIntegratedToolsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Python Plots".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsPythonPlotsPage != null) {
+                            currentToolsPythonPlotsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Qodana".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsQodanaPage != null) {
+                            currentToolsQodanaPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Remote SSH External Tools".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsRemoteSshExternalToolsPage != null) {
+                            currentToolsRemoteSshExternalToolsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Rsync".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsRsyncPage != null) {
+                            currentToolsRsyncPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("RuboCop".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsRuboCopPage != null) {
+                            currentToolsRuboCopPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Shared Indexes".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsSharedIndexesPage != null) {
+                            currentToolsSharedIndexesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SSH Configurations".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsSshConfigurationsPage != null) {
+                            currentToolsSshConfigurationsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("SSH Terminal".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsSshTerminalPage != null) {
+                            currentToolsSshTerminalPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Startup Tasks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsStartupTasksPage != null) {
+                            currentToolsStartupTasksPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Tasks".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsTasksPage != null) {
+                            currentToolsTasksPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Servers".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tasks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsTaskServersPage != null) {
+                            currentToolsTaskServersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Time Tracking".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tasks".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsTimeTrackingPage != null) {
+                            currentToolsTimeTrackingPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Terminal".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsTerminalPage != null) {
+                            currentToolsTerminalPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Web Browsers and Preview".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsWebBrowsersPage != null) {
+                            currentToolsWebBrowsersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("XPath Viewer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsXPathViewerPage != null) {
+                            currentToolsXPathViewerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Backup and Sync".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentBackupAndSyncPage != null) {
+                            currentBackupAndSyncPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Advanced Settings".equals(item.getValue())) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentAdvancedSettingsPage != null) {
+                            currentAdvancedSettingsPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -3810,6 +4214,136 @@ public class SettingsDialog {
                 buildToolsGitHubCopilotCustomizationsPage();
                 return;
             }
+            if ("Keymap".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotKeymapPage();
+                return;
+            }
+            if ("Model Context Protocol (MCP)".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotMcpPage();
+                return;
+            }
+            if ("Network".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotNetworkPage();
+                return;
+            }
+            if ("HTTP Client".equals(pageName)) {
+                buildToolsHttpClientPage();
+                return;
+            }
+            if ("JPA Entity Declaration".equals(pageName)) {
+                buildToolsJpaEntityDeclarationPage();
+                return;
+            }
+            if ("JPA Reverse Engineering".equals(pageName)) {
+                buildToolsJpaReverseEngineeringPage();
+                return;
+            }
+            if ("Jupyter".equals(pageName)) {
+                buildToolsJupyterOverviewPage();
+                return;
+            }
+            if ("Jupyter General".equals(pageName) && isUnderJupyter(selected)) {
+                buildToolsJupyterGeneralPage();
+                return;
+            }
+            if ("Jupyter Servers".equals(pageName) && isUnderJupyter(selected)) {
+                buildToolsJupyterServersPage();
+                return;
+            }
+            if ("Jupyter VCS".equals(pageName) && isUnderJupyter(selected)) {
+                buildToolsJupyterVcsPage();
+                return;
+            }
+            if ("Kotlin Notebook".equals(pageName)) {
+                buildToolsKotlinNotebookPage();
+                return;
+            }
+            if ("Settings for New Notebooks".equals(pageName) && isUnderKotlinNotebook(selected)) {
+                buildToolsKotlinNotebookNewNotebooksPage();
+                return;
+            }
+            if ("MCP Server".equals(pageName)) {
+                buildToolsMcpServerPage();
+                return;
+            }
+            if ("Python External Documentation".equals(pageName)) {
+                buildToolsPythonExternalDocumentationPage();
+                return;
+            }
+            if ("Python Integrated Tools".equals(pageName)) {
+                buildToolsPythonIntegratedToolsPage();
+                return;
+            }
+            if ("Python Plots".equals(pageName)) {
+                buildToolsPythonPlotsPage();
+                return;
+            }
+            if ("Qodana".equals(pageName)) {
+                buildToolsQodanaPage();
+                return;
+            }
+            if ("Remote SSH External Tools".equals(pageName)) {
+                buildToolsRemoteSshExternalToolsPage();
+                return;
+            }
+            if ("Rsync".equals(pageName)) {
+                buildToolsRsyncPage();
+                return;
+            }
+            if ("RuboCop".equals(pageName)) {
+                buildToolsRuboCopPage();
+                return;
+            }
+            if ("Shared Indexes".equals(pageName)) {
+                buildToolsSharedIndexesPage();
+                return;
+            }
+            if ("SSH Configurations".equals(pageName)) {
+                buildToolsSshConfigurationsPage();
+                return;
+            }
+            if ("SSH Terminal".equals(pageName)) {
+                buildToolsSshTerminalPage();
+                return;
+            }
+            if ("Startup Tasks".equals(pageName)) {
+                buildToolsStartupTasksPage();
+                return;
+            }
+            if ("Tasks".equals(pageName)) {
+                buildToolsTasksPage();
+                return;
+            }
+            if ("Servers".equals(pageName) && isUnderTasks(selected)) {
+                buildToolsTaskServersPage();
+                return;
+            }
+            if ("Time Tracking".equals(pageName) && isUnderTasks(selected)) {
+                buildToolsTimeTrackingPage();
+                return;
+            }
+            if ("Terminal".equals(pageName)) {
+                buildToolsTerminalPage();
+                return;
+            }
+            if ("Web Browsers and Preview".equals(pageName)) {
+                buildToolsWebBrowsersPage();
+                return;
+            }
+            if ("XPath Viewer".equals(pageName)) {
+                buildToolsXPathViewerPage();
+                return;
+            }
+        }
+
+        if ("Backup and Sync".equals(pageName)) {
+            buildBackupAndSyncPage();
+            return;
+        }
+
+        if ("Advanced Settings".equals(pageName)) {
+            buildAdvancedSettingsPage();
+            return;
         }
 
         // 1. If a category node with children is selected (e.g. Appearance & Behavior), show Category Overview
@@ -5990,7 +6524,7 @@ public class SettingsDialog {
         } else if ("SSH".equals(pageName) && isUnderSubversion(selected)) {
             buildVcsSubversionSshPage();
         } else if ("Terminal".equals(pageName)) {
-            buildTerminalSettingsPage();
+            buildToolsTerminalPage();
         } else if ("Python Debugger".equals(pageName)) {
             buildPythonDebuggerPage();
         } else if ("Debugger".equals(pageName) && !underColorScheme) {
@@ -6293,6 +6827,68 @@ public class SettingsDialog {
             buildToolsGitHubCopilotCompletionsPage();
         } else if ("Customizations".equals(pageName) && isUnderGitHubCopilot(selected)) {
             buildToolsGitHubCopilotCustomizationsPage();
+        } else if ("Keymap".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotKeymapPage();
+        } else if ("Model Context Protocol (MCP)".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotMcpPage();
+        } else if ("Network".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotNetworkPage();
+        } else if ("HTTP Client".equals(pageName) && isUnderTools(selected)) {
+            buildToolsHttpClientPage();
+        } else if ("JPA Entity Declaration".equals(pageName) && isUnderTools(selected)) {
+            buildToolsJpaEntityDeclarationPage();
+        } else if ("JPA Reverse Engineering".equals(pageName) && isUnderTools(selected)) {
+            buildToolsJpaReverseEngineeringPage();
+        } else if ("Jupyter".equals(pageName) && isUnderTools(selected)) {
+            buildToolsJupyterOverviewPage();
+        } else if ("Jupyter General".equals(pageName) && isUnderJupyter(selected)) {
+            buildToolsJupyterGeneralPage();
+        } else if ("Jupyter Servers".equals(pageName) && isUnderJupyter(selected)) {
+            buildToolsJupyterServersPage();
+        } else if ("Jupyter VCS".equals(pageName) && isUnderJupyter(selected)) {
+            buildToolsJupyterVcsPage();
+        } else if ("Kotlin Notebook".equals(pageName) && isUnderTools(selected)) {
+            buildToolsKotlinNotebookPage();
+        } else if ("Settings for New Notebooks".equals(pageName) && isUnderKotlinNotebook(selected)) {
+            buildToolsKotlinNotebookNewNotebooksPage();
+        } else if ("MCP Server".equals(pageName) && isUnderTools(selected)) {
+            buildToolsMcpServerPage();
+        } else if ("Python External Documentation".equals(pageName) && isUnderTools(selected)) {
+            buildToolsPythonExternalDocumentationPage();
+        } else if ("Python Integrated Tools".equals(pageName) && isUnderTools(selected)) {
+            buildToolsPythonIntegratedToolsPage();
+        } else if ("Python Plots".equals(pageName) && isUnderTools(selected)) {
+            buildToolsPythonPlotsPage();
+        } else if ("Qodana".equals(pageName) && isUnderTools(selected)) {
+            buildToolsQodanaPage();
+        } else if ("Remote SSH External Tools".equals(pageName) && isUnderTools(selected)) {
+            buildToolsRemoteSshExternalToolsPage();
+        } else if ("Rsync".equals(pageName) && isUnderTools(selected)) {
+            buildToolsRsyncPage();
+        } else if ("RuboCop".equals(pageName) && isUnderTools(selected)) {
+            buildToolsRuboCopPage();
+        } else if ("Shared Indexes".equals(pageName) && isUnderTools(selected)) {
+            buildToolsSharedIndexesPage();
+        } else if ("SSH Configurations".equals(pageName) && isUnderTools(selected)) {
+            buildToolsSshConfigurationsPage();
+        } else if ("SSH Terminal".equals(pageName) && isUnderTools(selected)) {
+            buildToolsSshTerminalPage();
+        } else if ("Startup Tasks".equals(pageName) && isUnderTools(selected)) {
+            buildToolsStartupTasksPage();
+        } else if ("Tasks".equals(pageName) && isUnderTools(selected)) {
+            buildToolsTasksPage();
+        } else if ("Servers".equals(pageName) && isUnderTasks(selected)) {
+            buildToolsTaskServersPage();
+        } else if ("Time Tracking".equals(pageName) && isUnderTasks(selected)) {
+            buildToolsTimeTrackingPage();
+        } else if ("Web Browsers and Preview".equals(pageName) && isUnderTools(selected)) {
+            buildToolsWebBrowsersPage();
+        } else if ("XPath Viewer".equals(pageName) && isUnderTools(selected)) {
+            buildToolsXPathViewerPage();
+        } else if ("Backup and Sync".equals(pageName)) {
+            buildBackupAndSyncPage();
+        } else if ("Advanced Settings".equals(pageName)) {
+            buildAdvancedSettingsPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -6365,8 +6961,7 @@ public class SettingsDialog {
     }
 
     private void buildTerminalSettingsPage() {
-        SettingsTerminalPage page = new SettingsTerminalPage();
-        wrapInScroll(page);
+        buildToolsTerminalPage();
     }
 
     private void buildVcsChangelistsPage() {
@@ -6495,10 +7090,37 @@ public class SettingsDialog {
         return false;
     }
 
+    private boolean isUnderTasks(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Tasks".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
     private boolean isUnderGitHubCopilot(TreeItem<String> item) {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("GitHub Copilot".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderJupyter(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Jupyter".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderKotlinNotebook(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Kotlin Notebook".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -8735,6 +9357,430 @@ public class SettingsDialog {
         return currentToolsGitHubCopilotCustomizationsPage;
     }
 
+    private void buildToolsGitHubCopilotKeymapPage() {
+        if (currentToolsGitHubCopilotKeymapPage == null) {
+            currentToolsGitHubCopilotKeymapPage = new SettingsToolsGitHubCopilotKeymapPage();
+        }
+        currentToolsGitHubCopilotKeymapPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotKeymapPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotKeymapPage getCurrentToolsGitHubCopilotKeymapPage() {
+        return currentToolsGitHubCopilotKeymapPage;
+    }
+
+    private void buildToolsGitHubCopilotMcpPage() {
+        if (currentToolsGitHubCopilotMcpPage == null) {
+            currentToolsGitHubCopilotMcpPage = new SettingsToolsGitHubCopilotMcpPage();
+        }
+        currentToolsGitHubCopilotMcpPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotMcpPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotMcpPage getCurrentToolsGitHubCopilotMcpPage() {
+        return currentToolsGitHubCopilotMcpPage;
+    }
+
+    private void buildToolsGitHubCopilotNetworkPage() {
+        if (currentToolsGitHubCopilotNetworkPage == null) {
+            currentToolsGitHubCopilotNetworkPage = new SettingsToolsGitHubCopilotNetworkPage();
+        }
+        currentToolsGitHubCopilotNetworkPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotNetworkPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotNetworkPage getCurrentToolsGitHubCopilotNetworkPage() {
+        return currentToolsGitHubCopilotNetworkPage;
+    }
+
+    private void buildToolsHttpClientPage() {
+        if (currentToolsHttpClientPage == null) {
+            currentToolsHttpClientPage = new SettingsToolsHttpClientPage();
+        }
+        currentToolsHttpClientPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsHttpClientPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsHttpClientPage getCurrentToolsHttpClientPage() {
+        return currentToolsHttpClientPage;
+    }
+
+    private void buildToolsJpaEntityDeclarationPage() {
+        if (currentToolsJpaEntityDeclarationPage == null) {
+            currentToolsJpaEntityDeclarationPage = new SettingsToolsJpaEntityDeclarationPage();
+        }
+        currentToolsJpaEntityDeclarationPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsJpaEntityDeclarationPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJpaEntityDeclarationPage getCurrentToolsJpaEntityDeclarationPage() {
+        return currentToolsJpaEntityDeclarationPage;
+    }
+
+    private void buildToolsJpaReverseEngineeringPage() {
+        if (currentToolsJpaReverseEngineeringPage == null) {
+            currentToolsJpaReverseEngineeringPage = new SettingsToolsJpaReverseEngineeringPage();
+        }
+        currentToolsJpaReverseEngineeringPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsJpaReverseEngineeringPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJpaReverseEngineeringPage getCurrentToolsJpaReverseEngineeringPage() {
+        return currentToolsJpaReverseEngineeringPage;
+    }
+
+    private void buildToolsJupyterOverviewPage() {
+        if (currentToolsJupyterOverviewPage == null) {
+            currentToolsJupyterOverviewPage = new SettingsToolsJupyterOverviewPage(cat -> selectCategory("Jupyter", cat));
+        }
+        wrapInScroll(currentToolsJupyterOverviewPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJupyterOverviewPage getCurrentToolsJupyterOverviewPage() {
+        return currentToolsJupyterOverviewPage;
+    }
+
+    private void buildToolsJupyterGeneralPage() {
+        if (currentToolsJupyterGeneralPage == null) {
+            currentToolsJupyterGeneralPage = new SettingsToolsJupyterGeneralPage();
+        }
+        currentToolsJupyterGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsJupyterGeneralPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJupyterGeneralPage getCurrentToolsJupyterGeneralPage() {
+        return currentToolsJupyterGeneralPage;
+    }
+
+    private void buildToolsJupyterServersPage() {
+        if (currentToolsJupyterServersPage == null) {
+            currentToolsJupyterServersPage = new SettingsToolsJupyterServersPage();
+        }
+        currentToolsJupyterServersPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsJupyterServersPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJupyterServersPage getCurrentToolsJupyterServersPage() {
+        return currentToolsJupyterServersPage;
+    }
+
+    private void buildToolsJupyterVcsPage() {
+        if (currentToolsJupyterVcsPage == null) {
+            currentToolsJupyterVcsPage = new SettingsToolsJupyterVcsPage();
+        }
+        currentToolsJupyterVcsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsJupyterVcsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsJupyterVcsPage getCurrentToolsJupyterVcsPage() {
+        return currentToolsJupyterVcsPage;
+    }
+
+    private void buildToolsKotlinNotebookPage() {
+        if (currentToolsKotlinNotebookPage == null) {
+            currentToolsKotlinNotebookPage = new SettingsToolsKotlinNotebookPage();
+        }
+        currentToolsKotlinNotebookPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsKotlinNotebookPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsKotlinNotebookPage getCurrentToolsKotlinNotebookPage() {
+        return currentToolsKotlinNotebookPage;
+    }
+
+    private void buildToolsKotlinNotebookNewNotebooksPage() {
+        if (currentToolsKotlinNotebookNewNotebooksPage == null) {
+            currentToolsKotlinNotebookNewNotebooksPage = new SettingsToolsKotlinNotebookNewNotebooksPage();
+        }
+        currentToolsKotlinNotebookNewNotebooksPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsKotlinNotebookNewNotebooksPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsKotlinNotebookNewNotebooksPage getCurrentToolsKotlinNotebookNewNotebooksPage() {
+        return currentToolsKotlinNotebookNewNotebooksPage;
+    }
+
+    private void buildToolsMcpServerPage() {
+        if (currentToolsMcpServerPage == null) {
+            currentToolsMcpServerPage = new SettingsToolsMcpServerPage();
+        }
+        currentToolsMcpServerPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsMcpServerPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsMcpServerPage getCurrentToolsMcpServerPage() {
+        return currentToolsMcpServerPage;
+    }
+
+    private void buildToolsPythonExternalDocumentationPage() {
+        if (currentToolsPythonExternalDocumentationPage == null) {
+            currentToolsPythonExternalDocumentationPage = new SettingsToolsPythonExternalDocumentationPage();
+        }
+        currentToolsPythonExternalDocumentationPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsPythonExternalDocumentationPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsPythonExternalDocumentationPage getCurrentToolsPythonExternalDocumentationPage() {
+        return currentToolsPythonExternalDocumentationPage;
+    }
+
+    private void buildToolsPythonIntegratedToolsPage() {
+        if (currentToolsPythonIntegratedToolsPage == null) {
+            currentToolsPythonIntegratedToolsPage = new SettingsToolsPythonIntegratedToolsPage();
+        }
+        currentToolsPythonIntegratedToolsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsPythonIntegratedToolsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsPythonIntegratedToolsPage getCurrentToolsPythonIntegratedToolsPage() {
+        return currentToolsPythonIntegratedToolsPage;
+    }
+
+    private void buildToolsPythonPlotsPage() {
+        if (currentToolsPythonPlotsPage == null) {
+            currentToolsPythonPlotsPage = new SettingsToolsPythonPlotsPage();
+        }
+        currentToolsPythonPlotsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsPythonPlotsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsPythonPlotsPage getCurrentToolsPythonPlotsPage() {
+        return currentToolsPythonPlotsPage;
+    }
+
+    private void buildToolsQodanaPage() {
+        if (currentToolsQodanaPage == null) {
+            currentToolsQodanaPage = new SettingsToolsQodanaPage();
+        }
+        currentToolsQodanaPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsQodanaPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsQodanaPage getCurrentToolsQodanaPage() {
+        return currentToolsQodanaPage;
+    }
+
+    private void buildToolsRemoteSshExternalToolsPage() {
+        if (currentToolsRemoteSshExternalToolsPage == null) {
+            currentToolsRemoteSshExternalToolsPage = new SettingsToolsRemoteSshExternalToolsPage();
+        }
+        currentToolsRemoteSshExternalToolsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsRemoteSshExternalToolsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsRemoteSshExternalToolsPage getCurrentToolsRemoteSshExternalToolsPage() {
+        return currentToolsRemoteSshExternalToolsPage;
+    }
+
+    private void buildToolsRsyncPage() {
+        if (currentToolsRsyncPage == null) {
+            currentToolsRsyncPage = new SettingsToolsRsyncPage();
+        }
+        currentToolsRsyncPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsRsyncPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsRsyncPage getCurrentToolsRsyncPage() {
+        return currentToolsRsyncPage;
+    }
+
+    private void buildToolsRuboCopPage() {
+        if (currentToolsRuboCopPage == null) {
+            currentToolsRuboCopPage = new SettingsToolsRuboCopPage();
+        }
+        currentToolsRuboCopPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsRuboCopPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsRuboCopPage getCurrentToolsRuboCopPage() {
+        return currentToolsRuboCopPage;
+    }
+
+    private void buildToolsSharedIndexesPage() {
+        if (currentToolsSharedIndexesPage == null) {
+            currentToolsSharedIndexesPage = new SettingsToolsSharedIndexesPage();
+        }
+        currentToolsSharedIndexesPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsSharedIndexesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsSharedIndexesPage getCurrentToolsSharedIndexesPage() {
+        return currentToolsSharedIndexesPage;
+    }
+
+    private void buildToolsSshConfigurationsPage() {
+        if (currentToolsSshConfigurationsPage == null) {
+            currentToolsSshConfigurationsPage = new SettingsToolsSshConfigurationsPage();
+        }
+        currentToolsSshConfigurationsPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsSshConfigurationsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsSshConfigurationsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsSshConfigurationsPage getCurrentToolsSshConfigurationsPage() {
+        return currentToolsSshConfigurationsPage;
+    }
+
+    private void buildToolsSshTerminalPage() {
+        if (currentToolsSshTerminalPage == null) {
+            currentToolsSshTerminalPage = new SettingsToolsSshTerminalPage();
+        }
+        currentToolsSshTerminalPage.setOnModified(this::updateApplyButtonState);
+        currentToolsSshTerminalPage.setOnNavigateToSshConfigurations(() -> {
+            selectCategory("Tools", "SSH Configurations");
+        });
+        wrapInScroll(currentToolsSshTerminalPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsSshTerminalPage getCurrentToolsSshTerminalPage() {
+        return currentToolsSshTerminalPage;
+    }
+
+    private void buildToolsStartupTasksPage() {
+        if (currentToolsStartupTasksPage == null) {
+            currentToolsStartupTasksPage = new SettingsToolsStartupTasksPage();
+        }
+        currentToolsStartupTasksPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsStartupTasksPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsStartupTasksPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsStartupTasksPage getCurrentToolsStartupTasksPage() {
+        return currentToolsStartupTasksPage;
+    }
+
+    private void buildToolsTasksPage() {
+        if (currentToolsTasksPage == null) {
+            currentToolsTasksPage = new SettingsToolsTasksPage();
+        }
+        currentToolsTasksPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsTasksPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsTasksPage getCurrentToolsTasksPage() {
+        return currentToolsTasksPage;
+    }
+
+    private void buildToolsTaskServersPage() {
+        if (currentToolsTaskServersPage == null) {
+            currentToolsTaskServersPage = new SettingsToolsTaskServersPage();
+        }
+        currentToolsTaskServersPage.setOnModified(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsTaskServersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsTaskServersPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsTaskServersPage getCurrentToolsTaskServersPage() {
+        return currentToolsTaskServersPage;
+    }
+
+    private void buildToolsTimeTrackingPage() {
+        if (currentToolsTimeTrackingPage == null) {
+            currentToolsTimeTrackingPage = new SettingsToolsTimeTrackingPage();
+        }
+        currentToolsTimeTrackingPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsTimeTrackingPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsTimeTrackingPage getCurrentToolsTimeTrackingPage() {
+        return currentToolsTimeTrackingPage;
+    }
+
+    private void buildToolsTerminalPage() {
+        if (currentToolsTerminalPage == null) {
+            currentToolsTerminalPage = new SettingsToolsTerminalPage();
+        }
+        currentToolsTerminalPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsTerminalPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsTerminalPage getCurrentToolsTerminalPage() {
+        return currentToolsTerminalPage;
+    }
+
+    private void buildToolsWebBrowsersPage() {
+        if (currentToolsWebBrowsersPage == null) {
+            currentToolsWebBrowsersPage = new SettingsToolsWebBrowsersPage();
+        }
+        currentToolsWebBrowsersPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsWebBrowsersPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsWebBrowsersPage getCurrentToolsWebBrowsersPage() {
+        return currentToolsWebBrowsersPage;
+    }
+
+    private void buildToolsXPathViewerPage() {
+        if (currentToolsXPathViewerPage == null) {
+            currentToolsXPathViewerPage = new SettingsToolsXPathViewerPage();
+        }
+        currentToolsXPathViewerPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentToolsXPathViewerPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsXPathViewerPage getCurrentToolsXPathViewerPage() {
+        return currentToolsXPathViewerPage;
+    }
+
+    private void buildBackupAndSyncPage() {
+        if (currentBackupAndSyncPage == null) {
+            currentBackupAndSyncPage = new SettingsBackupAndSyncPage();
+        }
+        currentBackupAndSyncPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentBackupAndSyncPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsBackupAndSyncPage getCurrentBackupAndSyncPage() {
+        return currentBackupAndSyncPage;
+    }
+
+    private void buildAdvancedSettingsPage() {
+        if (currentAdvancedSettingsPage == null) {
+            currentAdvancedSettingsPage = new SettingsAdvancedPage();
+        }
+        currentAdvancedSettingsPage.setOnModified(this::updateApplyButtonState);
+        wrapInScroll(currentAdvancedSettingsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsAdvancedPage getCurrentAdvancedSettingsPage() {
+        return currentAdvancedSettingsPage;
+    }
+
     private void buildApplicationServersPage() {
         if (currentApplicationServersPage == null) {
             currentApplicationServersPage = new SettingsApplicationServersPage();
@@ -10480,6 +11526,24 @@ public class SettingsDialog {
                 new TreeItem<>("Network")
         );
 
+        TreeItem<String> jupyterItem = new TreeItem<>("Jupyter");
+        jupyterItem.getChildren().addAll(
+                new TreeItem<>("Jupyter General"),
+                new TreeItem<>("Jupyter Servers"),
+                new TreeItem<>("Jupyter VCS")
+        );
+
+        TreeItem<String> kotlinNotebookItem = new TreeItem<>("Kotlin Notebook");
+        kotlinNotebookItem.getChildren().addAll(
+                new TreeItem<>("Settings for New Notebooks")
+        );
+
+        TreeItem<String> tasksItem = new TreeItem<>("Tasks");
+        tasksItem.getChildren().addAll(
+                new TreeItem<>("Servers"),
+                new TreeItem<>("Time Tracking")
+        );
+
         tools.getChildren().addAll(
                 new TreeItem<>("Actions on Save"),
                 new TreeItem<>("Black"),
@@ -10498,8 +11562,8 @@ public class SettingsDialog {
                 new TreeItem<>("HTTP Client"),
                 new TreeItem<>("JPA Entity Declaration"),
                 new TreeItem<>("JPA Reverse Engineering"),
-                new TreeItem<>("Jupyter"),
-                new TreeItem<>("Kotlin Notebook"),
+                jupyterItem,
+                kotlinNotebookItem,
                 new TreeItem<>("MCP Server"),
                 new TreeItem<>("Python External Documentation"),
                 new TreeItem<>("Python Integrated Tools"),
@@ -10512,7 +11576,7 @@ public class SettingsDialog {
                 new TreeItem<>("SSH Configurations"),
                 new TreeItem<>("SSH Terminal"),
                 new TreeItem<>("Startup Tasks"),
-                new TreeItem<>("Tasks"),
+                tasksItem,
                 new TreeItem<>("Terminal"),
                 new TreeItem<>("Web Browsers and Preview"),
                 new TreeItem<>("XPath Viewer")
@@ -11294,6 +12358,99 @@ public class SettingsDialog {
         if (currentToolsGitHubCopilotCustomizationsPage != null && currentToolsGitHubCopilotCustomizationsPage.isModified()) {
             currentToolsGitHubCopilotCustomizationsPage.apply();
         }
+        if (currentToolsGitHubCopilotKeymapPage != null && currentToolsGitHubCopilotKeymapPage.isModified()) {
+            currentToolsGitHubCopilotKeymapPage.apply();
+        }
+        if (currentToolsGitHubCopilotMcpPage != null && currentToolsGitHubCopilotMcpPage.isModified()) {
+            currentToolsGitHubCopilotMcpPage.apply();
+        }
+        if (currentToolsGitHubCopilotNetworkPage != null && currentToolsGitHubCopilotNetworkPage.isModified()) {
+            currentToolsGitHubCopilotNetworkPage.apply();
+        }
+        if (currentToolsHttpClientPage != null && currentToolsHttpClientPage.isModified()) {
+            currentToolsHttpClientPage.apply();
+        }
+        if (currentToolsJpaEntityDeclarationPage != null && currentToolsJpaEntityDeclarationPage.isModified()) {
+            currentToolsJpaEntityDeclarationPage.apply();
+        }
+        if (currentToolsJpaReverseEngineeringPage != null && currentToolsJpaReverseEngineeringPage.isModified()) {
+            currentToolsJpaReverseEngineeringPage.apply();
+        }
+        if (currentToolsJupyterGeneralPage != null && currentToolsJupyterGeneralPage.isModified()) {
+            currentToolsJupyterGeneralPage.apply();
+        }
+        if (currentToolsJupyterServersPage != null && currentToolsJupyterServersPage.isModified()) {
+            currentToolsJupyterServersPage.apply();
+        }
+        if (currentToolsJupyterVcsPage != null && currentToolsJupyterVcsPage.isModified()) {
+            currentToolsJupyterVcsPage.apply();
+        }
+        if (currentToolsKotlinNotebookPage != null && currentToolsKotlinNotebookPage.isModified()) {
+            currentToolsKotlinNotebookPage.apply();
+        }
+        if (currentToolsKotlinNotebookNewNotebooksPage != null && currentToolsKotlinNotebookNewNotebooksPage.isModified()) {
+            currentToolsKotlinNotebookNewNotebooksPage.apply();
+        }
+        if (currentToolsMcpServerPage != null && currentToolsMcpServerPage.isModified()) {
+            currentToolsMcpServerPage.apply();
+        }
+        if (currentToolsPythonExternalDocumentationPage != null && currentToolsPythonExternalDocumentationPage.isModified()) {
+            currentToolsPythonExternalDocumentationPage.apply();
+        }
+        if (currentToolsPythonIntegratedToolsPage != null && currentToolsPythonIntegratedToolsPage.isModified()) {
+            currentToolsPythonIntegratedToolsPage.apply();
+        }
+        if (currentToolsPythonPlotsPage != null && currentToolsPythonPlotsPage.isModified()) {
+            currentToolsPythonPlotsPage.apply();
+        }
+        if (currentToolsQodanaPage != null && currentToolsQodanaPage.isModified()) {
+            currentToolsQodanaPage.apply();
+        }
+        if (currentToolsRemoteSshExternalToolsPage != null && currentToolsRemoteSshExternalToolsPage.isModified()) {
+            currentToolsRemoteSshExternalToolsPage.apply();
+        }
+        if (currentToolsRsyncPage != null && currentToolsRsyncPage.isModified()) {
+            currentToolsRsyncPage.apply();
+        }
+        if (currentToolsRuboCopPage != null && currentToolsRuboCopPage.isModified()) {
+            currentToolsRuboCopPage.apply();
+        }
+        if (currentToolsSharedIndexesPage != null && currentToolsSharedIndexesPage.isModified()) {
+            currentToolsSharedIndexesPage.apply();
+        }
+        if (currentToolsSshConfigurationsPage != null && currentToolsSshConfigurationsPage.isModified()) {
+            currentToolsSshConfigurationsPage.apply();
+        }
+        if (currentToolsSshTerminalPage != null && currentToolsSshTerminalPage.isModified()) {
+            currentToolsSshTerminalPage.apply();
+        }
+        if (currentToolsStartupTasksPage != null && currentToolsStartupTasksPage.isModified()) {
+            currentToolsStartupTasksPage.apply();
+        }
+        if (currentToolsTasksPage != null && currentToolsTasksPage.isModified()) {
+            currentToolsTasksPage.apply();
+        }
+        if (currentToolsTaskServersPage != null && currentToolsTaskServersPage.isModified()) {
+            currentToolsTaskServersPage.apply();
+        }
+        if (currentToolsTimeTrackingPage != null && currentToolsTimeTrackingPage.isModified()) {
+            currentToolsTimeTrackingPage.apply();
+        }
+        if (currentToolsTerminalPage != null && currentToolsTerminalPage.isModified()) {
+            currentToolsTerminalPage.apply();
+        }
+        if (currentToolsWebBrowsersPage != null && currentToolsWebBrowsersPage.isModified()) {
+            currentToolsWebBrowsersPage.apply();
+        }
+        if (currentToolsXPathViewerPage != null && currentToolsXPathViewerPage.isModified()) {
+            currentToolsXPathViewerPage.apply();
+        }
+        if (currentBackupAndSyncPage != null && currentBackupAndSyncPage.isModified()) {
+            currentBackupAndSyncPage.apply();
+        }
+        if (currentAdvancedSettingsPage != null && currentAdvancedSettingsPage.isModified()) {
+            currentAdvancedSettingsPage.apply();
+        }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
         }
@@ -11780,6 +12937,37 @@ public class SettingsDialog {
                 || (currentToolsGitHubCopilotSandboxPage != null && currentToolsGitHubCopilotSandboxPage.isModified())
                 || (currentToolsGitHubCopilotCompletionsPage != null && currentToolsGitHubCopilotCompletionsPage.isModified())
                 || (currentToolsGitHubCopilotCustomizationsPage != null && currentToolsGitHubCopilotCustomizationsPage.isModified())
+                || (currentToolsGitHubCopilotKeymapPage != null && currentToolsGitHubCopilotKeymapPage.isModified())
+                || (currentToolsGitHubCopilotMcpPage != null && currentToolsGitHubCopilotMcpPage.isModified())
+                || (currentToolsGitHubCopilotNetworkPage != null && currentToolsGitHubCopilotNetworkPage.isModified())
+                || (currentToolsHttpClientPage != null && currentToolsHttpClientPage.isModified())
+                || (currentToolsJpaEntityDeclarationPage != null && currentToolsJpaEntityDeclarationPage.isModified())
+                || (currentToolsJpaReverseEngineeringPage != null && currentToolsJpaReverseEngineeringPage.isModified())
+                || (currentToolsJupyterGeneralPage != null && currentToolsJupyterGeneralPage.isModified())
+                || (currentToolsJupyterServersPage != null && currentToolsJupyterServersPage.isModified())
+                || (currentToolsJupyterVcsPage != null && currentToolsJupyterVcsPage.isModified())
+                || (currentToolsKotlinNotebookPage != null && currentToolsKotlinNotebookPage.isModified())
+                || (currentToolsKotlinNotebookNewNotebooksPage != null && currentToolsKotlinNotebookNewNotebooksPage.isModified())
+                || (currentToolsMcpServerPage != null && currentToolsMcpServerPage.isModified())
+                || (currentToolsPythonExternalDocumentationPage != null && currentToolsPythonExternalDocumentationPage.isModified())
+                || (currentToolsPythonIntegratedToolsPage != null && currentToolsPythonIntegratedToolsPage.isModified())
+                || (currentToolsPythonPlotsPage != null && currentToolsPythonPlotsPage.isModified())
+                || (currentToolsQodanaPage != null && currentToolsQodanaPage.isModified())
+                || (currentToolsRemoteSshExternalToolsPage != null && currentToolsRemoteSshExternalToolsPage.isModified())
+                || (currentToolsRsyncPage != null && currentToolsRsyncPage.isModified())
+                || (currentToolsRuboCopPage != null && currentToolsRuboCopPage.isModified())
+                || (currentToolsSharedIndexesPage != null && currentToolsSharedIndexesPage.isModified())
+                || (currentToolsSshConfigurationsPage != null && currentToolsSshConfigurationsPage.isModified())
+                || (currentToolsSshTerminalPage != null && currentToolsSshTerminalPage.isModified())
+                || (currentToolsStartupTasksPage != null && currentToolsStartupTasksPage.isModified())
+                || (currentToolsTasksPage != null && currentToolsTasksPage.isModified())
+                || (currentToolsTaskServersPage != null && currentToolsTaskServersPage.isModified())
+                || (currentToolsTimeTrackingPage != null && currentToolsTimeTrackingPage.isModified())
+                || (currentToolsTerminalPage != null && currentToolsTerminalPage.isModified())
+                || (currentToolsWebBrowsersPage != null && currentToolsWebBrowsersPage.isModified())
+                || (currentToolsXPathViewerPage != null && currentToolsXPathViewerPage.isModified())
+                || (currentBackupAndSyncPage != null && currentBackupAndSyncPage.isModified())
+                || (currentAdvancedSettingsPage != null && currentAdvancedSettingsPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -12394,6 +13582,99 @@ public class SettingsDialog {
             }
             if (currentToolsGitHubCopilotCustomizationsPage != null) {
                 currentToolsGitHubCopilotCustomizationsPage.reset();
+            }
+            if (currentToolsGitHubCopilotKeymapPage != null) {
+                currentToolsGitHubCopilotKeymapPage.reset();
+            }
+            if (currentToolsGitHubCopilotMcpPage != null) {
+                currentToolsGitHubCopilotMcpPage.reset();
+            }
+            if (currentToolsGitHubCopilotNetworkPage != null) {
+                currentToolsGitHubCopilotNetworkPage.reset();
+            }
+            if (currentToolsHttpClientPage != null) {
+                currentToolsHttpClientPage.reset();
+            }
+            if (currentToolsJpaEntityDeclarationPage != null) {
+                currentToolsJpaEntityDeclarationPage.reset();
+            }
+            if (currentToolsJpaReverseEngineeringPage != null) {
+                currentToolsJpaReverseEngineeringPage.reset();
+            }
+            if (currentToolsJupyterGeneralPage != null) {
+                currentToolsJupyterGeneralPage.reset();
+            }
+            if (currentToolsJupyterServersPage != null) {
+                currentToolsJupyterServersPage.reset();
+            }
+            if (currentToolsJupyterVcsPage != null) {
+                currentToolsJupyterVcsPage.reset();
+            }
+            if (currentToolsKotlinNotebookPage != null) {
+                currentToolsKotlinNotebookPage.reset();
+            }
+            if (currentToolsKotlinNotebookNewNotebooksPage != null) {
+                currentToolsKotlinNotebookNewNotebooksPage.reset();
+            }
+            if (currentToolsMcpServerPage != null) {
+                currentToolsMcpServerPage.reset();
+            }
+            if (currentToolsPythonExternalDocumentationPage != null) {
+                currentToolsPythonExternalDocumentationPage.reset();
+            }
+            if (currentToolsPythonIntegratedToolsPage != null) {
+                currentToolsPythonIntegratedToolsPage.reset();
+            }
+            if (currentToolsPythonPlotsPage != null) {
+                currentToolsPythonPlotsPage.reset();
+            }
+            if (currentToolsQodanaPage != null) {
+                currentToolsQodanaPage.reset();
+            }
+            if (currentToolsRemoteSshExternalToolsPage != null) {
+                currentToolsRemoteSshExternalToolsPage.reset();
+            }
+            if (currentToolsRsyncPage != null) {
+                currentToolsRsyncPage.reset();
+            }
+            if (currentToolsRuboCopPage != null) {
+                currentToolsRuboCopPage.reset();
+            }
+            if (currentToolsSharedIndexesPage != null) {
+                currentToolsSharedIndexesPage.reset();
+            }
+            if (currentToolsSshConfigurationsPage != null) {
+                currentToolsSshConfigurationsPage.reset();
+            }
+            if (currentToolsSshTerminalPage != null) {
+                currentToolsSshTerminalPage.reset();
+            }
+            if (currentToolsStartupTasksPage != null) {
+                currentToolsStartupTasksPage.reset();
+            }
+            if (currentToolsTasksPage != null) {
+                currentToolsTasksPage.reset();
+            }
+            if (currentToolsTaskServersPage != null) {
+                currentToolsTaskServersPage.reset();
+            }
+            if (currentToolsTimeTrackingPage != null) {
+                currentToolsTimeTrackingPage.reset();
+            }
+            if (currentToolsTerminalPage != null) {
+                currentToolsTerminalPage.reset();
+            }
+            if (currentToolsWebBrowsersPage != null) {
+                currentToolsWebBrowsersPage.reset();
+            }
+            if (currentToolsXPathViewerPage != null) {
+                currentToolsXPathViewerPage.reset();
+            }
+            if (currentBackupAndSyncPage != null) {
+                currentBackupAndSyncPage.reset();
+            }
+            if (currentAdvancedSettingsPage != null) {
+                currentAdvancedSettingsPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();

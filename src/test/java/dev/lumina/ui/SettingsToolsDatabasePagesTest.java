@@ -89,39 +89,45 @@ public class SettingsToolsDatabasePagesTest {
     void testSettingsToolsCodeWithMePageLifecycle() throws Exception {
         if (!javaFxAvailable) return;
 
-        runOnFx(() -> {
-            AtomicBoolean navigated = new AtomicBoolean(false);
-            SettingsToolsCodeWithMePage page = new SettingsToolsCodeWithMePage(() -> navigated.set(true));
+        CodeWithMeSettings original = CodeWithMeSettingsManager.getInstance().getSettings().clone();
+        try {
+            CodeWithMeSettingsManager.getInstance().setSettings(new CodeWithMeSettings());
+            runOnFx(() -> {
+                AtomicBoolean navigated = new AtomicBoolean(false);
+                SettingsToolsCodeWithMePage page = new SettingsToolsCodeWithMePage(() -> navigated.set(true));
 
-            assertFalse(page.isModified());
+                assertFalse(page.isModified());
 
-            AtomicBoolean modifiedNotified = new AtomicBoolean(false);
-            page.setOnModifiedListener(() -> modifiedNotified.set(true));
+                AtomicBoolean modifiedNotified = new AtomicBoolean(false);
+                page.setOnModifiedListener(() -> modifiedNotified.set(true));
 
-            TextField userField = page.getUserNameField();
-            assertNotNull(userField);
-            userField.setText("ModifiedUser");
+                TextField userField = page.getUserNameField();
+                assertNotNull(userField);
+                userField.setText("ModifiedUser");
 
-            assertTrue(page.isModified());
-            assertTrue(modifiedNotified.get());
+                assertTrue(page.isModified());
+                assertTrue(modifiedNotified.get());
 
-            page.apply();
-            assertFalse(page.isModified());
+                page.apply();
+                assertFalse(page.isModified());
 
-            CodeWithMeSettings current = CodeWithMeSettingsManager.getInstance().getSettings();
-            assertEquals("ModifiedUser", current.getUserName());
+                CodeWithMeSettings current = CodeWithMeSettingsManager.getInstance().getSettings();
+                assertEquals("ModifiedUser", current.getUserName());
 
-            // Revert changes
-            userField.setText("AnotherUser");
-            assertTrue(page.isModified());
-            page.revertChanges();
-            assertFalse(page.isModified());
-            assertEquals("ModifiedUser", userField.getText());
+                // Revert changes
+                userField.setText("AnotherUser");
+                assertTrue(page.isModified());
+                page.revertChanges();
+                assertFalse(page.isModified());
+                assertEquals("ModifiedUser", userField.getText());
 
-            // Use system name button
-            page.getUseSystemNameButton().fire();
-            assertEquals(CodeWithMeSettingsManager.getInstance().getSystemUserName(), userField.getText());
-        });
+                // Use system name button
+                page.getUseSystemNameButton().fire();
+                assertEquals(CodeWithMeSettingsManager.getInstance().getSystemUserName(), userField.getText());
+            });
+        } finally {
+            CodeWithMeSettingsManager.getInstance().setSettings(original);
+        }
     }
 
     @Test
@@ -410,56 +416,65 @@ public class SettingsToolsDatabasePagesTest {
         DatabaseOtherSettingsManager manager = DatabaseOtherSettingsManager.getInstance();
         assertNotNull(manager);
 
-        DatabaseOtherSettings original = manager.getSettings();
-        assertNotNull(original);
-        assertTrue(original.isConfirmCancellationForDialogsModifySchema());
-        assertEquals("Playground", original.getDefaultResolveModeForConsoles());
+        DatabaseOtherSettings original = manager.getSettings().clone();
+        try {
+            manager.setSettings(new DatabaseOtherSettings());
+            DatabaseOtherSettings current = manager.getSettings();
+            assertNotNull(current);
+            assertTrue(current.isConfirmCancellationForDialogsModifySchema());
+            assertEquals("Playground", current.getDefaultResolveModeForConsoles());
 
-        DatabaseOtherSettings custom = original.clone();
-        custom.setDefaultResolveModeForConsoles("Production");
-        custom.setStatementDelimiter(";");
+            DatabaseOtherSettings custom = current.clone();
+            custom.setDefaultResolveModeForConsoles("Production");
+            custom.setStatementDelimiter(";");
 
-        manager.setSettings(custom);
-        DatabaseOtherSettings loaded = manager.getSettings();
-        assertEquals("Production", loaded.getDefaultResolveModeForConsoles());
-        assertEquals(";", loaded.getStatementDelimiter());
-
-        // Restore
-        manager.setSettings(original);
+            manager.setSettings(custom);
+            DatabaseOtherSettings loaded = manager.getSettings();
+            assertEquals("Production", loaded.getDefaultResolveModeForConsoles());
+            assertEquals(";", loaded.getStatementDelimiter());
+        } finally {
+            manager.setSettings(original);
+        }
     }
 
     @Test
     void testSettingsDatabaseOtherPageLifecycle() throws Exception {
         if (!javaFxAvailable) return;
 
-        runOnFx(() -> {
-            SettingsDatabaseOtherPage page = new SettingsDatabaseOtherPage();
-            assertFalse(page.isModified());
+        DatabaseOtherSettings original = DatabaseOtherSettingsManager.getInstance().getSettings().clone();
+        try {
+            DatabaseOtherSettingsManager.getInstance().setSettings(new DatabaseOtherSettings());
+            runOnFx(() -> {
+                SettingsDatabaseOtherPage page = new SettingsDatabaseOtherPage();
+                assertFalse(page.isModified());
 
-            AtomicBoolean modifiedNotified = new AtomicBoolean(false);
-            page.setOnModifiedListener(() -> modifiedNotified.set(true));
+                AtomicBoolean modifiedNotified = new AtomicBoolean(false);
+                page.setOnModifiedListener(() -> modifiedNotified.set(true));
 
-            page.getConfirmCancellationCheck().setSelected(!page.getConfirmCancellationCheck().isSelected());
-            assertTrue(page.isModified());
-            assertTrue(modifiedNotified.get());
+                page.getConfirmCancellationCheck().setSelected(!page.getConfirmCancellationCheck().isSelected());
+                assertTrue(page.isModified());
+                assertTrue(modifiedNotified.get());
 
-            page.apply();
-            assertFalse(page.isModified());
+                page.apply();
+                assertFalse(page.isModified());
 
-            page.getConfirmCancellationCheck().setSelected(!page.getConfirmCancellationCheck().isSelected());
-            assertTrue(page.isModified());
-            page.revertChanges();
-            assertFalse(page.isModified());
+                page.getConfirmCancellationCheck().setSelected(!page.getConfirmCancellationCheck().isSelected());
+                assertTrue(page.isModified());
+                page.revertChanges();
+                assertFalse(page.isModified());
 
-            // Add/Remove VFK
-            int initialCount = page.getVfkTable().getItems().size();
-            page.getAddVfkButton().fire();
-            assertEquals(initialCount + 1, page.getVfkTable().getItems().size());
-            assertTrue(page.isModified());
+                // Add/Remove VFK
+                int initialCount = page.getVfkTable().getItems().size();
+                page.getAddVfkButton().fire();
+                assertEquals(initialCount + 1, page.getVfkTable().getItems().size());
+                assertTrue(page.isModified());
 
-            page.getRemoveVfkButton().fire();
-            assertEquals(initialCount, page.getVfkTable().getItems().size());
-        });
+                page.getRemoveVfkButton().fire();
+                assertEquals(initialCount, page.getVfkTable().getItems().size());
+            });
+        } finally {
+            DatabaseOtherSettingsManager.getInstance().setSettings(original);
+        }
     }
 
     @Test
