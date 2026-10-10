@@ -11,7 +11,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.layout.VBox;
 
 /**
- * Dynamic Overview Page for parent settings categories matching IntelliJ IDEA.
+ * Dynamic Overview Page for parent settings categories in Lumina IDE.
  * Displays category description and dynamically generates clickable links for each child node.
  */
 public class SettingsCategoryOverviewPage extends VBox {
@@ -48,13 +48,15 @@ public class SettingsCategoryOverviewPage extends VBox {
 
         String categoryName = categoryItem.getValue();
 
-        // 1. Description label
-        String descText = CATEGORY_DESCRIPTIONS.getOrDefault(categoryName,
-                "Configure " + categoryName + " preferences and options.");
-        Label descLabel = new Label(descText);
-        descLabel.setWrapText(true);
-        descLabel.setMaxWidth(750);
-        descLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-line-spacing: 3px;");
+        // 1. Description label (only if defined)
+        String descText = CATEGORY_DESCRIPTIONS.get(categoryName);
+        if (descText != null && !descText.isBlank()) {
+            Label descLabel = new Label(descText);
+            descLabel.setWrapText(true);
+            descLabel.setMaxWidth(750);
+            descLabel.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px; -fx-line-spacing: 3px;");
+            getChildren().add(descLabel);
+        }
 
         // 2. Links Container
         VBox linksContainer = new VBox(6);
@@ -74,6 +76,6 @@ public class SettingsCategoryOverviewPage extends VBox {
             linksContainer.getChildren().add(link);
         }
 
-        getChildren().addAll(descLabel, linksContainer);
+        getChildren().add(linksContainer);
     }
 }
