@@ -197,6 +197,37 @@ public class SettingsDialog {
     private SettingsLanguagesWebContextsPage currentLanguagesWebContextsPage;
     private SettingsLanguagesXsltPage currentLanguagesXsltPage;
     private SettingsLanguagesXsltFileAssociationsPage currentLanguagesXsltFileAssociationsPage;
+    private SettingsToolsOverviewPage currentToolsOverviewPage;
+    private SettingsToolsActionsOnSavePage currentToolsActionsOnSavePage;
+    private SettingsToolsBlackPage currentToolsBlackPage;
+    private SettingsToolsBundlerPage currentToolsBundlerPage;
+    private SettingsToolsClaudeCodePage currentToolsClaudeCodePage;
+    private SettingsToolsCodeWithMePage currentToolsCodeWithMePage;
+    private SettingsToolsCsvFormatsPage currentToolsCsvFormatsPage;
+    private SettingsDatabasePage currentDatabaseOverviewPage;
+    private SettingsDatabaseQueryExecutionPage currentDatabaseQueryExecutionPage;
+    private SettingsDatabaseOutputResultsPage currentDatabaseOutputResultsPage;
+    private SettingsDatabaseUserParametersPage currentDatabaseUserParametersPage;
+    private SettingsDatabaseDataEditorViewerPage currentDatabaseDataEditorViewerPage;
+    private SettingsDatabaseOtherPage currentDatabaseOtherPage;
+    private SettingsDatabaseVersioningPage currentDatabaseVersioningPage;
+    private SettingsDatabaseVersioningDiffChangesPage currentDatabaseVersioningDiffChangesPage;
+    private SettingsDatabaseVersioningFlywayPage currentDatabaseVersioningFlywayPage;
+    private SettingsDatabaseVersioningHibernateEnversPage currentDatabaseVersioningHibernateEnversPage;
+    private SettingsDatabaseVersioningLiquibasePage currentDatabaseVersioningLiquibasePage;
+    private SettingsDatabaseVersioningTypeMappingsPage currentDatabaseVersioningTypeMappingsPage;
+    private SettingsToolsDiagramsPage currentToolsDiagramsPage;
+    private SettingsToolsDiffMergePage currentToolsDiffMergePage;
+    private SettingsToolsExternalDiffToolsPage currentToolsExternalDiffToolsPage;
+    private SettingsToolsExternalToolsPage currentToolsExternalToolsPage;
+    private SettingsToolsFeaturesSuggesterPage currentToolsFeaturesSuggesterPage;
+    private SettingsToolsFeaturesTrainerPage currentToolsFeaturesTrainerPage;
+    private SettingsToolsGitHubCopilotOverviewPage currentToolsGitHubCopilotOverviewPage;
+    private SettingsToolsGitHubCopilotGeneralPage currentToolsGitHubCopilotGeneralPage;
+    private SettingsToolsGitHubCopilotChatPage currentToolsGitHubCopilotChatPage;
+    private SettingsToolsGitHubCopilotSandboxPage currentToolsGitHubCopilotSandboxPage;
+    private SettingsToolsGitHubCopilotCompletionsPage currentToolsGitHubCopilotCompletionsPage;
+    private SettingsToolsGitHubCopilotCustomizationsPage currentToolsGitHubCopilotCustomizationsPage;
     private SettingsApplicationServersPage currentApplicationServersPage;
     private SettingsBuildToolsPage currentBuildToolsPage;
     private SettingsMavenPage currentMavenPage;
@@ -1430,6 +1461,342 @@ public class SettingsDialog {
                     revertLink.setOnAction(e -> {
                         if (currentLanguagesXsltFileAssociationsPage != null) {
                             currentLanguagesXsltFileAssociationsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Actions on Save".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsActionsOnSavePage != null) {
+                            currentToolsActionsOnSavePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Black".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsBlackPage != null) {
+                            currentToolsBlackPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Bundler".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsBundlerPage != null) {
+                            currentToolsBundlerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Claude Code [Beta]".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsClaudeCodePage != null) {
+                            currentToolsClaudeCodePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Code With Me".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsCodeWithMePage != null) {
+                            currentToolsCodeWithMePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("CSV Formats".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsCsvFormatsPage != null) {
+                            currentToolsCsvFormatsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Query Execution".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseQueryExecutionPage != null) {
+                            currentDatabaseQueryExecutionPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Output and Results".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseOutputResultsPage != null) {
+                            currentDatabaseOutputResultsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("User Parameters".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseUserParametersPage != null) {
+                            currentDatabaseUserParametersPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Data Editor and Viewer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseDataEditorViewerPage != null) {
+                            currentDatabaseDataEditorViewerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Other".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseOtherPage != null) {
+                            currentDatabaseOtherPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Database Versioning".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningPage != null) {
+                            currentDatabaseVersioningPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Diff Changes".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database Versioning".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningDiffChangesPage != null) {
+                            currentDatabaseVersioningDiffChangesPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Flyway".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database Versioning".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningFlywayPage != null) {
+                            currentDatabaseVersioningFlywayPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Hibernate Envers".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database Versioning".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningHibernateEnversPage != null) {
+                            currentDatabaseVersioningHibernateEnversPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Liquibase".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database Versioning".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningLiquibasePage != null) {
+                            currentDatabaseVersioningLiquibasePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Type Mappings".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Database Versioning".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentDatabaseVersioningTypeMappingsPage != null) {
+                            currentDatabaseVersioningTypeMappingsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Diagrams".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsDiagramsPage != null) {
+                            currentToolsDiagramsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Diff & Merge".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsDiffMergePage != null) {
+                            currentToolsDiffMergePage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("External Diff Tools".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Diff & Merge".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsExternalDiffToolsPage != null) {
+                            currentToolsExternalDiffToolsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("External Tools".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsExternalToolsPage != null) {
+                            currentToolsExternalToolsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Features Suggester".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsFeaturesSuggesterPage != null) {
+                            currentToolsFeaturesSuggesterPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Features Trainer".equals(item.getValue()) && chain.stream().anyMatch(ci -> "Tools".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsFeaturesTrainerPage != null) {
+                            currentToolsFeaturesTrainerPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("General".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotGeneralPage != null) {
+                            currentToolsGitHubCopilotGeneralPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Chat".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotChatPage != null) {
+                            currentToolsGitHubCopilotChatPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Sandbox".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotSandboxPage != null) {
+                            currentToolsGitHubCopilotSandboxPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Completions".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotCompletionsPage != null) {
+                            currentToolsGitHubCopilotCompletionsPage.revertChanges();
+                            updateApplyButtonState();
+                        }
+                    });
+                    breadcrumbBox.getChildren().add(revertLink);
+                } else if ("Customizations".equals(item.getValue()) && chain.stream().anyMatch(ci -> "GitHub Copilot".equals(ci.getValue()))) {
+                    Hyperlink revertLink = new Hyperlink("Revert changes");
+                    revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;");
+                    revertLink.setOnMouseEntered(e -> revertLink.setStyle("-fx-text-fill: #70B0FF; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: true; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnMouseExited(e -> revertLink.setStyle("-fx-text-fill: #589DF6; -fx-font-size: 12px; -fx-border-color: transparent; -fx-underline: false; -fx-padding: 0 0 0 16;"));
+                    revertLink.setOnAction(e -> {
+                        if (currentToolsGitHubCopilotCustomizationsPage != null) {
+                            currentToolsGitHubCopilotCustomizationsPage.revertChanges();
                             updateApplyButtonState();
                         }
                     });
@@ -3317,6 +3684,134 @@ public class SettingsDialog {
 
         String pageName = selected.getValue();
 
+        if ("Tools".equals(pageName)) {
+            buildToolsOverviewPage();
+            return;
+        }
+
+        if (isUnderTools(selected)) {
+            if ("Actions on Save".equals(pageName)) {
+                buildToolsActionsOnSavePage();
+                return;
+            }
+            if ("Black".equals(pageName)) {
+                buildToolsBlackPage();
+                return;
+            }
+            if ("Bundler".equals(pageName)) {
+                buildToolsBundlerPage();
+                return;
+            }
+            if ("Claude Code [Beta]".equals(pageName)) {
+                buildToolsClaudeCodePage();
+                return;
+            }
+            if ("Code With Me".equals(pageName)) {
+                buildToolsCodeWithMePage();
+                return;
+            }
+            if ("CSV Formats".equals(pageName)) {
+                buildToolsCsvFormatsPage();
+                return;
+            }
+            if ("Database".equals(pageName)) {
+                buildDatabaseOverviewPage();
+                return;
+            }
+            if ("Query Execution".equals(pageName)) {
+                buildDatabaseQueryExecutionPage();
+                return;
+            }
+            if ("Output and Results".equals(pageName)) {
+                buildDatabaseOutputResultsPage();
+                return;
+            }
+            if ("User Parameters".equals(pageName)) {
+                buildDatabaseUserParametersPage();
+                return;
+            }
+            if ("Data Editor and Viewer".equals(pageName)) {
+                buildDatabaseDataEditorViewerPage();
+                return;
+            }
+            if ("Other".equals(pageName)) {
+                buildDatabaseOtherPage();
+                return;
+            }
+            if ("Database Versioning".equals(pageName)) {
+                buildDatabaseVersioningPage();
+                return;
+            }
+            if ("Diff Changes".equals(pageName)) {
+                buildDatabaseVersioningDiffChangesPage();
+                return;
+            }
+            if ("Flyway".equals(pageName)) {
+                buildDatabaseVersioningFlywayPage();
+                return;
+            }
+            if ("Hibernate Envers".equals(pageName)) {
+                buildDatabaseVersioningHibernateEnversPage();
+                return;
+            }
+            if ("Liquibase".equals(pageName)) {
+                buildDatabaseVersioningLiquibasePage();
+                return;
+            }
+            if ("Type Mappings".equals(pageName)) {
+                buildDatabaseVersioningTypeMappingsPage();
+                return;
+            }
+            if ("Diagrams".equals(pageName)) {
+                buildToolsDiagramsPage();
+                return;
+            }
+            if ("Diff & Merge".equals(pageName)) {
+                buildToolsDiffMergePage();
+                return;
+            }
+            if ("External Diff Tools".equals(pageName)) {
+                buildToolsExternalDiffToolsPage();
+                return;
+            }
+            if ("External Tools".equals(pageName)) {
+                buildToolsExternalToolsPage();
+                return;
+            }
+            if ("Features Suggester".equals(pageName)) {
+                buildToolsFeaturesSuggesterPage();
+                return;
+            }
+            if ("Features Trainer".equals(pageName)) {
+                buildToolsFeaturesTrainerPage();
+                return;
+            }
+            if ("GitHub Copilot".equals(pageName)) {
+                buildToolsGitHubCopilotOverviewPage();
+                return;
+            }
+            if ("General".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotGeneralPage();
+                return;
+            }
+            if ("Chat".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotChatPage();
+                return;
+            }
+            if ("Sandbox".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotSandboxPage();
+                return;
+            }
+            if ("Completions".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotCompletionsPage();
+                return;
+            }
+            if ("Customizations".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotCustomizationsPage();
+                return;
+            }
+        }
+
         // 1. If a category node with children is selected (e.g. Appearance & Behavior), show Category Overview
         if (!selected.getChildren().isEmpty() &&
                 (selected.getParent() == tree.getRoot() || "Appearance & Behavior".equals(pageName))) {
@@ -3476,6 +3971,130 @@ public class SettingsDialog {
             }
             if ("XSLT File Associations".equals(pageName)) {
                 buildLanguagesXsltFileAssociationsPage();
+                return;
+            }
+            if ("Tools".equals(pageName)) {
+                buildToolsOverviewPage();
+                return;
+            }
+            if ("Actions on Save".equals(pageName) && isUnderTools(selected)) {
+                buildToolsActionsOnSavePage();
+                return;
+            }
+            if ("Black".equals(pageName) && isUnderTools(selected)) {
+                buildToolsBlackPage();
+                return;
+            }
+            if ("Bundler".equals(pageName) && isUnderTools(selected)) {
+                buildToolsBundlerPage();
+                return;
+            }
+            if ("Claude Code [Beta]".equals(pageName) && isUnderTools(selected)) {
+                buildToolsClaudeCodePage();
+                return;
+            }
+            if ("Code With Me".equals(pageName) && isUnderTools(selected)) {
+                buildToolsCodeWithMePage();
+                return;
+            }
+            if ("CSV Formats".equals(pageName) && isUnderTools(selected)) {
+                buildToolsCsvFormatsPage();
+                return;
+            }
+            if ("Database".equals(pageName) && isUnderTools(selected)) {
+                buildDatabaseOverviewPage();
+                return;
+            }
+            if ("Query Execution".equals(pageName) && isUnderDatabase(selected)) {
+                buildDatabaseQueryExecutionPage();
+                return;
+            }
+            if ("Output and Results".equals(pageName) && isUnderDatabase(selected)) {
+                buildDatabaseOutputResultsPage();
+                return;
+            }
+            if ("User Parameters".equals(pageName) && isUnderDatabase(selected)) {
+                buildDatabaseUserParametersPage();
+                return;
+            }
+            if ("Data Editor and Viewer".equals(pageName) && isUnderDatabase(selected)) {
+                buildDatabaseDataEditorViewerPage();
+                return;
+            }
+            if ("Other".equals(pageName) && isUnderDatabase(selected)) {
+                buildDatabaseOtherPage();
+                return;
+            }
+            if ("Database Versioning".equals(pageName) && isUnderTools(selected)) {
+                buildDatabaseVersioningPage();
+                return;
+            }
+            if ("Diff Changes".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+                buildDatabaseVersioningDiffChangesPage();
+                return;
+            }
+            if ("Flyway".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+                buildDatabaseVersioningFlywayPage();
+                return;
+            }
+            if ("Hibernate Envers".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+                buildDatabaseVersioningHibernateEnversPage();
+                return;
+            }
+            if ("Liquibase".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+                buildDatabaseVersioningLiquibasePage();
+                return;
+            }
+            if ("Type Mappings".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+                buildDatabaseVersioningTypeMappingsPage();
+                return;
+            }
+            if ("Diagrams".equals(pageName) && isUnderTools(selected)) {
+                buildToolsDiagramsPage();
+                return;
+            }
+            if ("Diff & Merge".equals(pageName) && isUnderTools(selected)) {
+                buildToolsDiffMergePage();
+                return;
+            }
+            if ("External Diff Tools".equals(pageName) && isUnderDiffMerge(selected)) {
+                buildToolsExternalDiffToolsPage();
+                return;
+            }
+            if ("External Tools".equals(pageName) && isUnderTools(selected)) {
+                buildToolsExternalToolsPage();
+                return;
+            }
+            if ("Features Suggester".equals(pageName) && isUnderTools(selected)) {
+                buildToolsFeaturesSuggesterPage();
+                return;
+            }
+            if ("Features Trainer".equals(pageName) && isUnderTools(selected)) {
+                buildToolsFeaturesTrainerPage();
+                return;
+            }
+            if ("GitHub Copilot".equals(pageName) && isUnderTools(selected)) {
+                buildToolsGitHubCopilotOverviewPage();
+                return;
+            }
+            if ("General".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotGeneralPage();
+                return;
+            }
+            if ("Chat".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotChatPage();
+                return;
+            }
+            if ("Sandbox".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotSandboxPage();
+                return;
+            }
+            if ("Completions".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotCompletionsPage();
+                return;
+            }
+            if ("Customizations".equals(pageName) && isUnderGitHubCopilot(selected)) {
+                buildToolsGitHubCopilotCustomizationsPage();
                 return;
             }
             if ("PHP".equals(pageName)) {
@@ -5318,7 +5937,7 @@ public class SettingsDialog {
             buildScopesPage();
         } else if ("Notifications".equals(pageName)) {
             buildNotificationsPage();
-        } else if ("Data Editor and Viewer".equals(pageName)) {
+        } else if ("Data Editor and Viewer".equals(pageName) && !isUnderDatabase(selected)) {
             buildDataEditorPage();
         } else if ("Quick Lists".equals(pageName)) {
             buildQuickListsPage();
@@ -5612,6 +6231,68 @@ public class SettingsDialog {
             buildLanguagesXsltPage();
         } else if ("XSLT File Associations".equals(pageName) && isUnderLanguages(selected)) {
             buildLanguagesXsltFileAssociationsPage();
+        } else if ("Tools".equals(pageName)) {
+            buildToolsOverviewPage();
+        } else if ("Actions on Save".equals(pageName) && isUnderTools(selected)) {
+            buildToolsActionsOnSavePage();
+        } else if ("Black".equals(pageName) && isUnderTools(selected)) {
+            buildToolsBlackPage();
+        } else if ("Bundler".equals(pageName) && isUnderTools(selected)) {
+            buildToolsBundlerPage();
+        } else if ("Claude Code [Beta]".equals(pageName) && isUnderTools(selected)) {
+            buildToolsClaudeCodePage();
+        } else if ("Code With Me".equals(pageName) && isUnderTools(selected)) {
+            buildToolsCodeWithMePage();
+        } else if ("CSV Formats".equals(pageName) && isUnderTools(selected)) {
+            buildToolsCsvFormatsPage();
+        } else if ("Database".equals(pageName) && isUnderTools(selected)) {
+            buildDatabaseOverviewPage();
+        } else if ("Query Execution".equals(pageName) && isUnderDatabase(selected)) {
+            buildDatabaseQueryExecutionPage();
+        } else if ("Output and Results".equals(pageName) && isUnderDatabase(selected)) {
+            buildDatabaseOutputResultsPage();
+        } else if ("User Parameters".equals(pageName) && isUnderDatabase(selected)) {
+            buildDatabaseUserParametersPage();
+        } else if ("Data Editor and Viewer".equals(pageName) && isUnderDatabase(selected)) {
+            buildDatabaseDataEditorViewerPage();
+        } else if ("Other".equals(pageName) && isUnderDatabase(selected)) {
+            buildDatabaseOtherPage();
+        } else if ("Database Versioning".equals(pageName) && isUnderTools(selected)) {
+            buildDatabaseVersioningPage();
+        } else if ("Diff Changes".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+            buildDatabaseVersioningDiffChangesPage();
+        } else if ("Flyway".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+            buildDatabaseVersioningFlywayPage();
+        } else if ("Hibernate Envers".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+            buildDatabaseVersioningHibernateEnversPage();
+        } else if ("Liquibase".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+            buildDatabaseVersioningLiquibasePage();
+        } else if ("Type Mappings".equals(pageName) && isUnderDatabaseVersioning(selected)) {
+            buildDatabaseVersioningTypeMappingsPage();
+        } else if ("Diagrams".equals(pageName) && isUnderTools(selected)) {
+            buildToolsDiagramsPage();
+        } else if ("Diff & Merge".equals(pageName) && isUnderTools(selected)) {
+            buildToolsDiffMergePage();
+        } else if ("External Diff Tools".equals(pageName) && isUnderDiffMerge(selected)) {
+            buildToolsExternalDiffToolsPage();
+        } else if ("External Tools".equals(pageName) && isUnderTools(selected)) {
+            buildToolsExternalToolsPage();
+        } else if ("Features Suggester".equals(pageName) && isUnderTools(selected)) {
+            buildToolsFeaturesSuggesterPage();
+        } else if ("Features Trainer".equals(pageName) && isUnderTools(selected)) {
+            buildToolsFeaturesTrainerPage();
+        } else if ("GitHub Copilot".equals(pageName) && isUnderTools(selected)) {
+            buildToolsGitHubCopilotOverviewPage();
+        } else if ("General".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotGeneralPage();
+        } else if ("Chat".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotChatPage();
+        } else if ("Sandbox".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotSandboxPage();
+        } else if ("Completions".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotCompletionsPage();
+        } else if ("Customizations".equals(pageName) && isUnderGitHubCopilot(selected)) {
+            buildToolsGitHubCopilotCustomizationsPage();
         } else {
             // If it has children, show category overview
             if (!selected.getChildren().isEmpty()) {
@@ -5800,6 +6481,51 @@ public class SettingsDialog {
         TreeItem<String> p = item != null ? item.getParent() : null;
         while (p != null) {
             if ("Build Tools".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderTools(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Tools".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderGitHubCopilot(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("GitHub Copilot".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderDatabase(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Database".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderDatabaseVersioning(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Database Versioning".equals(p.getValue())) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private boolean isUnderDiffMerge(TreeItem<String> item) {
+        TreeItem<String> p = item != null ? item.getParent() : null;
+        while (p != null) {
+            if ("Diff & Merge".equals(p.getValue())) return true;
             p = p.getParent();
         }
         return false;
@@ -7554,6 +8280,461 @@ public class SettingsDialog {
         return currentLanguagesXsltFileAssociationsPage;
     }
 
+    private void buildToolsOverviewPage() {
+        if (currentToolsOverviewPage == null) {
+            currentToolsOverviewPage = new SettingsToolsOverviewPage(this::selectCategory);
+        }
+        VBox.setVgrow(currentToolsOverviewPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsOverviewPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsOverviewPage getCurrentToolsOverviewPage() {
+        return currentToolsOverviewPage;
+    }
+
+    private void buildToolsActionsOnSavePage() {
+        if (currentToolsActionsOnSavePage == null) {
+            currentToolsActionsOnSavePage = new SettingsToolsActionsOnSavePage(
+                    this::selectCategory,
+                    () -> selectCategory("System Settings")
+            );
+        }
+        currentToolsActionsOnSavePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsActionsOnSavePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsActionsOnSavePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsActionsOnSavePage getCurrentToolsActionsOnSavePage() {
+        return currentToolsActionsOnSavePage;
+    }
+
+    private void buildToolsBlackPage() {
+        if (currentToolsBlackPage == null) {
+            currentToolsBlackPage = new SettingsToolsBlackPage(this::selectCategory);
+        }
+        currentToolsBlackPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsBlackPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsBlackPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsBlackPage getCurrentToolsBlackPage() {
+        return currentToolsBlackPage;
+    }
+
+    private void buildToolsBundlerPage() {
+        if (currentToolsBundlerPage == null) {
+            currentToolsBundlerPage = new SettingsToolsBundlerPage();
+        }
+        currentToolsBundlerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsBundlerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsBundlerPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsBundlerPage getCurrentToolsBundlerPage() {
+        return currentToolsBundlerPage;
+    }
+
+    private void buildToolsClaudeCodePage() {
+        if (currentToolsClaudeCodePage == null) {
+            currentToolsClaudeCodePage = new SettingsToolsClaudeCodePage();
+        }
+        currentToolsClaudeCodePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsClaudeCodePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsClaudeCodePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsClaudeCodePage getCurrentToolsClaudeCodePage() {
+        return currentToolsClaudeCodePage;
+    }
+
+    private void buildToolsCodeWithMePage() {
+        if (currentToolsCodeWithMePage == null) {
+            currentToolsCodeWithMePage = new SettingsToolsCodeWithMePage(
+                    () -> selectCategory("Editor", "Code With Me")
+            );
+        }
+        currentToolsCodeWithMePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsCodeWithMePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsCodeWithMePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsCodeWithMePage getCurrentToolsCodeWithMePage() {
+        return currentToolsCodeWithMePage;
+    }
+
+    private void buildToolsCsvFormatsPage() {
+        if (currentToolsCsvFormatsPage == null) {
+            currentToolsCsvFormatsPage = new SettingsToolsCsvFormatsPage();
+        }
+        currentToolsCsvFormatsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsCsvFormatsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsCsvFormatsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsCsvFormatsPage getCurrentToolsCsvFormatsPage() {
+        return currentToolsCsvFormatsPage;
+    }
+
+    private void buildDatabaseOverviewPage() {
+        if (currentDatabaseOverviewPage == null) {
+            currentDatabaseOverviewPage = new SettingsDatabasePage(sub -> selectCategory("Database", sub));
+        }
+        VBox.setVgrow(currentDatabaseOverviewPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseOverviewPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabasePage getCurrentDatabaseOverviewPage() {
+        return currentDatabaseOverviewPage;
+    }
+
+    private void buildDatabaseQueryExecutionPage() {
+        if (currentDatabaseQueryExecutionPage == null) {
+            currentDatabaseQueryExecutionPage = new SettingsDatabaseQueryExecutionPage();
+        }
+        currentDatabaseQueryExecutionPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseQueryExecutionPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseQueryExecutionPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseQueryExecutionPage getCurrentDatabaseQueryExecutionPage() {
+        return currentDatabaseQueryExecutionPage;
+    }
+
+    private void buildDatabaseOutputResultsPage() {
+        if (currentDatabaseOutputResultsPage == null) {
+            currentDatabaseOutputResultsPage = new SettingsDatabaseOutputResultsPage();
+        }
+        currentDatabaseOutputResultsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseOutputResultsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseOutputResultsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseOutputResultsPage getCurrentDatabaseOutputResultsPage() {
+        return currentDatabaseOutputResultsPage;
+    }
+
+    private void buildDatabaseUserParametersPage() {
+        if (currentDatabaseUserParametersPage == null) {
+            currentDatabaseUserParametersPage = new SettingsDatabaseUserParametersPage();
+        }
+        currentDatabaseUserParametersPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseUserParametersPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseUserParametersPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseUserParametersPage getCurrentDatabaseUserParametersPage() {
+        return currentDatabaseUserParametersPage;
+    }
+
+    private void buildDatabaseDataEditorViewerPage() {
+        if (currentDatabaseDataEditorViewerPage == null) {
+            currentDatabaseDataEditorViewerPage = new SettingsDatabaseDataEditorViewerPage(cat -> selectCategory("Appearance & Behavior", "Data Editor and Viewer"));
+        }
+        currentDatabaseDataEditorViewerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseDataEditorViewerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseDataEditorViewerPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseDataEditorViewerPage getCurrentDatabaseDataEditorViewerPage() {
+        return currentDatabaseDataEditorViewerPage;
+    }
+
+    private void buildDatabaseOtherPage() {
+        if (currentDatabaseOtherPage == null) {
+            currentDatabaseOtherPage = new SettingsDatabaseOtherPage();
+        }
+        currentDatabaseOtherPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseOtherPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseOtherPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseOtherPage getCurrentDatabaseOtherPage() {
+        return currentDatabaseOtherPage;
+    }
+
+    private void buildDatabaseVersioningPage() {
+        if (currentDatabaseVersioningPage == null) {
+            currentDatabaseVersioningPage = new SettingsDatabaseVersioningPage(sub -> selectCategory("Database Versioning", sub));
+        }
+        currentDatabaseVersioningPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningPage getCurrentDatabaseVersioningPage() {
+        return currentDatabaseVersioningPage;
+    }
+
+    private void buildDatabaseVersioningDiffChangesPage() {
+        if (currentDatabaseVersioningDiffChangesPage == null) {
+            currentDatabaseVersioningDiffChangesPage = new SettingsDatabaseVersioningDiffChangesPage();
+        }
+        currentDatabaseVersioningDiffChangesPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningDiffChangesPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningDiffChangesPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningDiffChangesPage getCurrentDatabaseVersioningDiffChangesPage() {
+        return currentDatabaseVersioningDiffChangesPage;
+    }
+
+    private void buildDatabaseVersioningFlywayPage() {
+        if (currentDatabaseVersioningFlywayPage == null) {
+            currentDatabaseVersioningFlywayPage = new SettingsDatabaseVersioningFlywayPage();
+        }
+        currentDatabaseVersioningFlywayPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningFlywayPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningFlywayPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningFlywayPage getCurrentDatabaseVersioningFlywayPage() {
+        return currentDatabaseVersioningFlywayPage;
+    }
+
+    private void buildDatabaseVersioningHibernateEnversPage() {
+        if (currentDatabaseVersioningHibernateEnversPage == null) {
+            currentDatabaseVersioningHibernateEnversPage = new SettingsDatabaseVersioningHibernateEnversPage();
+        }
+        currentDatabaseVersioningHibernateEnversPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningHibernateEnversPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningHibernateEnversPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningHibernateEnversPage getCurrentDatabaseVersioningHibernateEnversPage() {
+        return currentDatabaseVersioningHibernateEnversPage;
+    }
+
+    private void buildDatabaseVersioningLiquibasePage() {
+        if (currentDatabaseVersioningLiquibasePage == null) {
+            currentDatabaseVersioningLiquibasePage = new SettingsDatabaseVersioningLiquibasePage();
+        }
+        currentDatabaseVersioningLiquibasePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningLiquibasePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningLiquibasePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningLiquibasePage getCurrentDatabaseVersioningLiquibasePage() {
+        return currentDatabaseVersioningLiquibasePage;
+    }
+
+    private void buildDatabaseVersioningTypeMappingsPage() {
+        if (currentDatabaseVersioningTypeMappingsPage == null) {
+            currentDatabaseVersioningTypeMappingsPage = new SettingsDatabaseVersioningTypeMappingsPage();
+        }
+        currentDatabaseVersioningTypeMappingsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentDatabaseVersioningTypeMappingsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentDatabaseVersioningTypeMappingsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsDatabaseVersioningTypeMappingsPage getCurrentDatabaseVersioningTypeMappingsPage() {
+        return currentDatabaseVersioningTypeMappingsPage;
+    }
+
+    private void buildToolsDiagramsPage() {
+        if (currentToolsDiagramsPage == null) {
+            currentToolsDiagramsPage = new SettingsToolsDiagramsPage();
+        }
+        currentToolsDiagramsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsDiagramsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsDiagramsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsDiagramsPage getCurrentToolsDiagramsPage() {
+        return currentToolsDiagramsPage;
+    }
+
+    private void buildToolsDiffMergePage() {
+        if (currentToolsDiffMergePage == null) {
+            currentToolsDiffMergePage = new SettingsToolsDiffMergePage();
+        }
+        currentToolsDiffMergePage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsDiffMergePage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsDiffMergePage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsDiffMergePage getCurrentToolsDiffMergePage() {
+        return currentToolsDiffMergePage;
+    }
+
+    private void buildToolsExternalDiffToolsPage() {
+        if (currentToolsExternalDiffToolsPage == null) {
+            currentToolsExternalDiffToolsPage = new SettingsToolsExternalDiffToolsPage();
+        }
+        currentToolsExternalDiffToolsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsExternalDiffToolsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsExternalDiffToolsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsExternalDiffToolsPage getCurrentToolsExternalDiffToolsPage() {
+        return currentToolsExternalDiffToolsPage;
+    }
+
+    private void buildToolsExternalToolsPage() {
+        if (currentToolsExternalToolsPage == null) {
+            currentToolsExternalToolsPage = new SettingsToolsExternalToolsPage();
+        }
+        currentToolsExternalToolsPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsExternalToolsPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsExternalToolsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsExternalToolsPage getCurrentToolsExternalToolsPage() {
+        return currentToolsExternalToolsPage;
+    }
+
+    private void buildToolsFeaturesSuggesterPage() {
+        if (currentToolsFeaturesSuggesterPage == null) {
+            currentToolsFeaturesSuggesterPage = new SettingsToolsFeaturesSuggesterPage();
+        }
+        currentToolsFeaturesSuggesterPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsFeaturesSuggesterPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsFeaturesSuggesterPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsFeaturesSuggesterPage getCurrentToolsFeaturesSuggesterPage() {
+        return currentToolsFeaturesSuggesterPage;
+    }
+
+    private void buildToolsFeaturesTrainerPage() {
+        if (currentToolsFeaturesTrainerPage == null) {
+            currentToolsFeaturesTrainerPage = new SettingsToolsFeaturesTrainerPage();
+        }
+        currentToolsFeaturesTrainerPage.setOnModifiedListener(this::updateApplyButtonState);
+        VBox.setVgrow(currentToolsFeaturesTrainerPage, Priority.ALWAYS);
+        contentContainer.setStyle("-fx-background-color: #1E1F22;");
+        contentContainer.getChildren().setAll(currentToolsFeaturesTrainerPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsFeaturesTrainerPage getCurrentToolsFeaturesTrainerPage() {
+        return currentToolsFeaturesTrainerPage;
+    }
+
+    private void buildToolsGitHubCopilotOverviewPage() {
+        if (currentToolsGitHubCopilotOverviewPage == null) {
+            currentToolsGitHubCopilotOverviewPage = new SettingsToolsGitHubCopilotOverviewPage(cat -> selectCategory("GitHub Copilot", cat));
+        }
+        wrapInScroll(currentToolsGitHubCopilotOverviewPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotOverviewPage getCurrentToolsGitHubCopilotOverviewPage() {
+        return currentToolsGitHubCopilotOverviewPage;
+    }
+
+    private void buildToolsGitHubCopilotGeneralPage() {
+        if (currentToolsGitHubCopilotGeneralPage == null) {
+            currentToolsGitHubCopilotGeneralPage = new SettingsToolsGitHubCopilotGeneralPage();
+        }
+        currentToolsGitHubCopilotGeneralPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotGeneralPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotGeneralPage getCurrentToolsGitHubCopilotGeneralPage() {
+        return currentToolsGitHubCopilotGeneralPage;
+    }
+
+    private void buildToolsGitHubCopilotChatPage() {
+        if (currentToolsGitHubCopilotChatPage == null) {
+            currentToolsGitHubCopilotChatPage = new SettingsToolsGitHubCopilotChatPage();
+        }
+        currentToolsGitHubCopilotChatPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotChatPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotChatPage getCurrentToolsGitHubCopilotChatPage() {
+        return currentToolsGitHubCopilotChatPage;
+    }
+
+    private void buildToolsGitHubCopilotSandboxPage() {
+        if (currentToolsGitHubCopilotSandboxPage == null) {
+            currentToolsGitHubCopilotSandboxPage = new SettingsToolsGitHubCopilotSandboxPage();
+        }
+        currentToolsGitHubCopilotSandboxPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotSandboxPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotSandboxPage getCurrentToolsGitHubCopilotSandboxPage() {
+        return currentToolsGitHubCopilotSandboxPage;
+    }
+
+    private void buildToolsGitHubCopilotCompletionsPage() {
+        if (currentToolsGitHubCopilotCompletionsPage == null) {
+            currentToolsGitHubCopilotCompletionsPage = new SettingsToolsGitHubCopilotCompletionsPage();
+        }
+        currentToolsGitHubCopilotCompletionsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotCompletionsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotCompletionsPage getCurrentToolsGitHubCopilotCompletionsPage() {
+        return currentToolsGitHubCopilotCompletionsPage;
+    }
+
+    private void buildToolsGitHubCopilotCustomizationsPage() {
+        if (currentToolsGitHubCopilotCustomizationsPage == null) {
+            currentToolsGitHubCopilotCustomizationsPage = new SettingsToolsGitHubCopilotCustomizationsPage();
+        }
+        currentToolsGitHubCopilotCustomizationsPage.setOnModifiedListener(this::updateApplyButtonState);
+        wrapInScroll(currentToolsGitHubCopilotCustomizationsPage);
+        updateApplyButtonState();
+    }
+
+    public SettingsToolsGitHubCopilotCustomizationsPage getCurrentToolsGitHubCopilotCustomizationsPage() {
+        return currentToolsGitHubCopilotCustomizationsPage;
+    }
+
     private void buildApplicationServersPage() {
         if (currentApplicationServersPage == null) {
             currentApplicationServersPage = new SettingsApplicationServersPage();
@@ -8788,12 +9969,7 @@ public class SettingsDialog {
     }
 
     private boolean isKeymapPage(String pageName) {
-        return "Keymap".equals(pageName) || List.of(
-                "Editor Actions", "Main Menu", "Tool Windows", "External Tools",
-                "External Build Systems", "Version Control Systems", "Debugger Actions",
-                "Remote External Tools", "Database", "Macros",
-                "Quick Lists", "Other"
-        ).contains(pageName);
+        return "Keymap".equals(pageName);
     }
 
     // --------------------------------------------------- Category Tree
@@ -9266,22 +10442,80 @@ public class SettingsDialog {
         );
 
         TreeItem<String> tools = new TreeItem<>("Tools");
+        TreeItem<String> dbItem = new TreeItem<>("Database");
+        TreeItem<String> qeItem = new TreeItem<>("Query Execution");
+        qeItem.getChildren().addAll(
+                new TreeItem<>("Output and Results"),
+                new TreeItem<>("User Parameters")
+        );
+        dbItem.getChildren().addAll(
+                qeItem,
+                new TreeItem<>("Data Editor and Viewer"),
+                new TreeItem<>("Other")
+        );
+
+        TreeItem<String> dbvItem = new TreeItem<>("Database Versioning");
+        dbvItem.getChildren().addAll(
+                new TreeItem<>("Diff Changes"),
+                new TreeItem<>("Flyway"),
+                new TreeItem<>("Hibernate Envers"),
+                new TreeItem<>("Liquibase"),
+                new TreeItem<>("Type Mappings")
+        );
+
+        TreeItem<String> diffMergeItem = new TreeItem<>("Diff & Merge");
+        diffMergeItem.getChildren().addAll(
+                new TreeItem<>("External Diff Tools")
+        );
+
+        TreeItem<String> copilotItem = new TreeItem<>("GitHub Copilot");
+        copilotItem.getChildren().addAll(
+                new TreeItem<>("General"),
+                new TreeItem<>("Chat"),
+                new TreeItem<>("Sandbox"),
+                new TreeItem<>("Completions"),
+                new TreeItem<>("Customizations"),
+                new TreeItem<>("Keymap"),
+                new TreeItem<>("Model Context Protocol (MCP)"),
+                new TreeItem<>("Network")
+        );
+
         tools.getChildren().addAll(
-                new TreeItem<>("Actions on Save"), new TreeItem<>("AI Assistant"),
-                new TreeItem<>("Code Provenance"), new TreeItem<>("Code With Me"),
-                new TreeItem<>("CSV Formats"), new TreeItem<>("Database"),
-                new TreeItem<>("Database Versioning"), new TreeItem<>("Diagrams"),
-                new TreeItem<>("Diff & Merge"), new TreeItem<>("External Tools"),
-                new TreeItem<>("Features Suggester"), new TreeItem<>("Features Trainer"),
-                new TreeItem<>("HTTP Client"), new TreeItem<>("JPA Entity Declaration"),
-                new TreeItem<>("JPA Reverse Engineering"), new TreeItem<>("Junie"),
-                new TreeItem<>("Jupyter"), new TreeItem<>("Kotlin Notebook"),
-                new TreeItem<>("MCP Server"), new TreeItem<>("Qodana"),
-                new TreeItem<>("Remote SSH External Tools"), new TreeItem<>("Rsync"),
-                new TreeItem<>("Shared Indexes"), new TreeItem<>("SSH Configurations"),
-                new TreeItem<>("SSH Terminal"), new TreeItem<>("Startup Tasks"),
-                new TreeItem<>("Tasks"), new TreeItem<>("Terminal"),
-                new TreeItem<>("Web Browsers and Preview"), new TreeItem<>("XPath Viewer")
+                new TreeItem<>("Actions on Save"),
+                new TreeItem<>("Black"),
+                new TreeItem<>("Bundler"),
+                new TreeItem<>("Claude Code [Beta]"),
+                new TreeItem<>("Code With Me"),
+                new TreeItem<>("CSV Formats"),
+                dbItem,
+                dbvItem,
+                new TreeItem<>("Diagrams"),
+                diffMergeItem,
+                new TreeItem<>("External Tools"),
+                new TreeItem<>("Features Suggester"),
+                new TreeItem<>("Features Trainer"),
+                copilotItem,
+                new TreeItem<>("HTTP Client"),
+                new TreeItem<>("JPA Entity Declaration"),
+                new TreeItem<>("JPA Reverse Engineering"),
+                new TreeItem<>("Jupyter"),
+                new TreeItem<>("Kotlin Notebook"),
+                new TreeItem<>("MCP Server"),
+                new TreeItem<>("Python External Documentation"),
+                new TreeItem<>("Python Integrated Tools"),
+                new TreeItem<>("Python Plots"),
+                new TreeItem<>("Qodana"),
+                new TreeItem<>("Remote SSH External Tools"),
+                new TreeItem<>("Rsync"),
+                new TreeItem<>("RuboCop"),
+                new TreeItem<>("Shared Indexes"),
+                new TreeItem<>("SSH Configurations"),
+                new TreeItem<>("SSH Terminal"),
+                new TreeItem<>("Startup Tasks"),
+                new TreeItem<>("Tasks"),
+                new TreeItem<>("Terminal"),
+                new TreeItem<>("Web Browsers and Preview"),
+                new TreeItem<>("XPath Viewer")
         );
 
         TreeItem<String> backup = new TreeItem<>("Backup and Sync");
@@ -9371,7 +10605,7 @@ public class SettingsDialog {
             "PHP_CodeSniffer", "PHP CS Fixer", "Laravel Pint", "Mess Detector",
             "Frameworks", "Smarty", "Rust", "External Linters", "Rustfmt",
             "Python Template Languages", "GOROOT", "GOPATH", "Go Modules", "Build Tags", "Formatting Functions", "Imports",
-            "Play", "RBS", "Scala"
+            "Play", "RBS", "Scala", "Actions on Save", "Black", "Bundler"
     ));
 
     private static boolean isProjectSetting(String name) {
@@ -9423,6 +10657,7 @@ public class SettingsDialog {
             boolean underSmartKeys = false;
             boolean underBuild = false;
             boolean underLanguages = false;
+            boolean underCopilot = false;
             while (p != null) {
                 if ("Color Scheme".equals(p.getValue())) {
                     underCS = true;
@@ -9442,6 +10677,10 @@ public class SettingsDialog {
                 }
                 if ("Languages & Frameworks".equals(p.getValue())) {
                     underLanguages = true;
+                    break;
+                }
+                if ("GitHub Copilot".equals(p.getValue())) {
+                    underCopilot = true;
                     break;
                 }
                 p = p.getParent();
@@ -9470,6 +10709,11 @@ public class SettingsDialog {
                 TreeItem<String> langRoot = findItem(tree.getRoot(), "Languages & Frameworks");
                 if (langRoot != null) {
                     item = findItem(langRoot, categoryName);
+                }
+            } else if (underCopilot) {
+                TreeItem<String> copilotRoot = findItem(tree.getRoot(), "GitHub Copilot");
+                if (copilotRoot != null) {
+                    item = findItem(copilotRoot, categoryName);
                 }
             }
         }
@@ -9966,6 +11210,90 @@ public class SettingsDialog {
         if (currentLanguagesXsltFileAssociationsPage != null && currentLanguagesXsltFileAssociationsPage.isModified()) {
             currentLanguagesXsltFileAssociationsPage.apply();
         }
+        if (currentToolsActionsOnSavePage != null && currentToolsActionsOnSavePage.isModified()) {
+            currentToolsActionsOnSavePage.apply();
+        }
+        if (currentToolsBlackPage != null && currentToolsBlackPage.isModified()) {
+            currentToolsBlackPage.apply();
+        }
+        if (currentToolsBundlerPage != null && currentToolsBundlerPage.isModified()) {
+            currentToolsBundlerPage.apply();
+        }
+        if (currentToolsClaudeCodePage != null && currentToolsClaudeCodePage.isModified()) {
+            currentToolsClaudeCodePage.apply();
+        }
+        if (currentToolsCodeWithMePage != null && currentToolsCodeWithMePage.isModified()) {
+            currentToolsCodeWithMePage.apply();
+        }
+        if (currentToolsCsvFormatsPage != null && currentToolsCsvFormatsPage.isModified()) {
+            currentToolsCsvFormatsPage.apply();
+        }
+        if (currentDatabaseQueryExecutionPage != null && currentDatabaseQueryExecutionPage.isModified()) {
+            currentDatabaseQueryExecutionPage.apply();
+        }
+        if (currentDatabaseOutputResultsPage != null && currentDatabaseOutputResultsPage.isModified()) {
+            currentDatabaseOutputResultsPage.apply();
+        }
+        if (currentDatabaseUserParametersPage != null && currentDatabaseUserParametersPage.isModified()) {
+            currentDatabaseUserParametersPage.apply();
+        }
+        if (currentDatabaseDataEditorViewerPage != null && currentDatabaseDataEditorViewerPage.isModified()) {
+            currentDatabaseDataEditorViewerPage.apply();
+        }
+        if (currentDatabaseOtherPage != null && currentDatabaseOtherPage.isModified()) {
+            currentDatabaseOtherPage.apply();
+        }
+        if (currentDatabaseVersioningPage != null && currentDatabaseVersioningPage.isModified()) {
+            currentDatabaseVersioningPage.apply();
+        }
+        if (currentDatabaseVersioningDiffChangesPage != null && currentDatabaseVersioningDiffChangesPage.isModified()) {
+            currentDatabaseVersioningDiffChangesPage.apply();
+        }
+        if (currentDatabaseVersioningFlywayPage != null && currentDatabaseVersioningFlywayPage.isModified()) {
+            currentDatabaseVersioningFlywayPage.apply();
+        }
+        if (currentDatabaseVersioningHibernateEnversPage != null && currentDatabaseVersioningHibernateEnversPage.isModified()) {
+            currentDatabaseVersioningHibernateEnversPage.apply();
+        }
+        if (currentDatabaseVersioningLiquibasePage != null && currentDatabaseVersioningLiquibasePage.isModified()) {
+            currentDatabaseVersioningLiquibasePage.apply();
+        }
+        if (currentDatabaseVersioningTypeMappingsPage != null && currentDatabaseVersioningTypeMappingsPage.isModified()) {
+            currentDatabaseVersioningTypeMappingsPage.apply();
+        }
+        if (currentToolsDiagramsPage != null && currentToolsDiagramsPage.isModified()) {
+            currentToolsDiagramsPage.apply();
+        }
+        if (currentToolsDiffMergePage != null && currentToolsDiffMergePage.isModified()) {
+            currentToolsDiffMergePage.apply();
+        }
+        if (currentToolsExternalDiffToolsPage != null && currentToolsExternalDiffToolsPage.isModified()) {
+            currentToolsExternalDiffToolsPage.apply();
+        }
+        if (currentToolsExternalToolsPage != null && currentToolsExternalToolsPage.isModified()) {
+            currentToolsExternalToolsPage.apply();
+        }
+        if (currentToolsFeaturesSuggesterPage != null && currentToolsFeaturesSuggesterPage.isModified()) {
+            currentToolsFeaturesSuggesterPage.apply();
+        }
+        if (currentToolsFeaturesTrainerPage != null && currentToolsFeaturesTrainerPage.isModified()) {
+            currentToolsFeaturesTrainerPage.apply();
+        }
+        if (currentToolsGitHubCopilotGeneralPage != null && currentToolsGitHubCopilotGeneralPage.isModified()) {
+            currentToolsGitHubCopilotGeneralPage.apply();
+        }
+        if (currentToolsGitHubCopilotChatPage != null && currentToolsGitHubCopilotChatPage.isModified()) {
+            currentToolsGitHubCopilotChatPage.apply();
+        }
+        if (currentToolsGitHubCopilotSandboxPage != null && currentToolsGitHubCopilotSandboxPage.isModified()) {
+            currentToolsGitHubCopilotSandboxPage.apply();
+        }
+        if (currentToolsGitHubCopilotCompletionsPage != null && currentToolsGitHubCopilotCompletionsPage.isModified()) {
+            currentToolsGitHubCopilotCompletionsPage.apply();
+        }
+        if (currentToolsGitHubCopilotCustomizationsPage != null && currentToolsGitHubCopilotCustomizationsPage.isModified()) {
+            currentToolsGitHubCopilotCustomizationsPage.apply();
+        }
         if (currentApplicationServersPage != null && currentApplicationServersPage.isModified()) {
             currentApplicationServersPage.apply();
         }
@@ -10424,6 +11752,34 @@ public class SettingsDialog {
                 || (currentLanguagesWebContextsPage != null && currentLanguagesWebContextsPage.isModified())
                 || (currentLanguagesXsltPage != null && currentLanguagesXsltPage.isModified())
                 || (currentLanguagesXsltFileAssociationsPage != null && currentLanguagesXsltFileAssociationsPage.isModified())
+                || (currentToolsActionsOnSavePage != null && currentToolsActionsOnSavePage.isModified())
+                || (currentToolsBlackPage != null && currentToolsBlackPage.isModified())
+                || (currentToolsBundlerPage != null && currentToolsBundlerPage.isModified())
+                || (currentToolsClaudeCodePage != null && currentToolsClaudeCodePage.isModified())
+                || (currentToolsCodeWithMePage != null && currentToolsCodeWithMePage.isModified())
+                || (currentToolsCsvFormatsPage != null && currentToolsCsvFormatsPage.isModified())
+                || (currentDatabaseQueryExecutionPage != null && currentDatabaseQueryExecutionPage.isModified())
+                || (currentDatabaseOutputResultsPage != null && currentDatabaseOutputResultsPage.isModified())
+                || (currentDatabaseUserParametersPage != null && currentDatabaseUserParametersPage.isModified())
+                || (currentDatabaseDataEditorViewerPage != null && currentDatabaseDataEditorViewerPage.isModified())
+                || (currentDatabaseOtherPage != null && currentDatabaseOtherPage.isModified())
+                || (currentDatabaseVersioningPage != null && currentDatabaseVersioningPage.isModified())
+                || (currentDatabaseVersioningDiffChangesPage != null && currentDatabaseVersioningDiffChangesPage.isModified())
+                || (currentDatabaseVersioningFlywayPage != null && currentDatabaseVersioningFlywayPage.isModified())
+                || (currentDatabaseVersioningHibernateEnversPage != null && currentDatabaseVersioningHibernateEnversPage.isModified())
+                || (currentDatabaseVersioningLiquibasePage != null && currentDatabaseVersioningLiquibasePage.isModified())
+                || (currentDatabaseVersioningTypeMappingsPage != null && currentDatabaseVersioningTypeMappingsPage.isModified())
+                || (currentToolsDiagramsPage != null && currentToolsDiagramsPage.isModified())
+                || (currentToolsDiffMergePage != null && currentToolsDiffMergePage.isModified())
+                || (currentToolsExternalDiffToolsPage != null && currentToolsExternalDiffToolsPage.isModified())
+                || (currentToolsExternalToolsPage != null && currentToolsExternalToolsPage.isModified())
+                || (currentToolsFeaturesSuggesterPage != null && currentToolsFeaturesSuggesterPage.isModified())
+                || (currentToolsFeaturesTrainerPage != null && currentToolsFeaturesTrainerPage.isModified())
+                || (currentToolsGitHubCopilotGeneralPage != null && currentToolsGitHubCopilotGeneralPage.isModified())
+                || (currentToolsGitHubCopilotChatPage != null && currentToolsGitHubCopilotChatPage.isModified())
+                || (currentToolsGitHubCopilotSandboxPage != null && currentToolsGitHubCopilotSandboxPage.isModified())
+                || (currentToolsGitHubCopilotCompletionsPage != null && currentToolsGitHubCopilotCompletionsPage.isModified())
+                || (currentToolsGitHubCopilotCustomizationsPage != null && currentToolsGitHubCopilotCustomizationsPage.isModified())
                 || (currentApplicationServersPage != null && currentApplicationServersPage.isModified())
                 || (currentBuildToolsPage != null && currentBuildToolsPage.isModified())
                 || (currentMavenPage != null && currentMavenPage.isModified())
@@ -10954,6 +12310,90 @@ public class SettingsDialog {
             }
             if (currentLanguagesXsltFileAssociationsPage != null) {
                 currentLanguagesXsltFileAssociationsPage.reset();
+            }
+            if (currentToolsActionsOnSavePage != null) {
+                currentToolsActionsOnSavePage.reset();
+            }
+            if (currentToolsBlackPage != null) {
+                currentToolsBlackPage.reset();
+            }
+            if (currentToolsBundlerPage != null) {
+                currentToolsBundlerPage.reset();
+            }
+            if (currentToolsClaudeCodePage != null) {
+                currentToolsClaudeCodePage.reset();
+            }
+            if (currentToolsCodeWithMePage != null) {
+                currentToolsCodeWithMePage.reset();
+            }
+            if (currentToolsCsvFormatsPage != null) {
+                currentToolsCsvFormatsPage.reset();
+            }
+            if (currentDatabaseQueryExecutionPage != null) {
+                currentDatabaseQueryExecutionPage.reset();
+            }
+            if (currentDatabaseOutputResultsPage != null) {
+                currentDatabaseOutputResultsPage.reset();
+            }
+            if (currentDatabaseUserParametersPage != null) {
+                currentDatabaseUserParametersPage.reset();
+            }
+            if (currentDatabaseDataEditorViewerPage != null) {
+                currentDatabaseDataEditorViewerPage.reset();
+            }
+            if (currentDatabaseOtherPage != null) {
+                currentDatabaseOtherPage.reset();
+            }
+            if (currentDatabaseVersioningPage != null) {
+                currentDatabaseVersioningPage.reset();
+            }
+            if (currentDatabaseVersioningDiffChangesPage != null) {
+                currentDatabaseVersioningDiffChangesPage.reset();
+            }
+            if (currentDatabaseVersioningFlywayPage != null) {
+                currentDatabaseVersioningFlywayPage.reset();
+            }
+            if (currentDatabaseVersioningHibernateEnversPage != null) {
+                currentDatabaseVersioningHibernateEnversPage.reset();
+            }
+            if (currentDatabaseVersioningLiquibasePage != null) {
+                currentDatabaseVersioningLiquibasePage.reset();
+            }
+            if (currentDatabaseVersioningTypeMappingsPage != null) {
+                currentDatabaseVersioningTypeMappingsPage.reset();
+            }
+            if (currentToolsDiagramsPage != null) {
+                currentToolsDiagramsPage.reset();
+            }
+            if (currentToolsDiffMergePage != null) {
+                currentToolsDiffMergePage.reset();
+            }
+            if (currentToolsExternalDiffToolsPage != null) {
+                currentToolsExternalDiffToolsPage.reset();
+            }
+            if (currentToolsExternalToolsPage != null) {
+                currentToolsExternalToolsPage.reset();
+            }
+            if (currentToolsFeaturesSuggesterPage != null) {
+                currentToolsFeaturesSuggesterPage.reset();
+            }
+            if (currentToolsFeaturesTrainerPage != null) {
+                currentToolsFeaturesTrainerPage.reset();
+            }
+            if (currentToolsGitHubCopilotGeneralPage != null) {
+                currentToolsGitHubCopilotGeneralPage.reset();
+            }
+            if (currentToolsGitHubCopilotChatPage != null) {
+                currentToolsGitHubCopilotChatPage.reset();
+            }
+            if (currentToolsGitHubCopilotSandboxPage != null) {
+                currentToolsGitHubCopilotSandboxPage.reset();
+            }
+            if (currentToolsGitHubCopilotCompletionsPage != null) {
+                currentToolsGitHubCopilotCompletionsPage.reset();
+            }
+            if (currentToolsGitHubCopilotCustomizationsPage != null) {
+                currentToolsGitHubCopilotCustomizationsPage.reset();
             }
             if (currentApplicationServersPage != null) {
                 currentApplicationServersPage.reset();

@@ -29,7 +29,7 @@ public class SettingsCategoryOverviewPage extends VBox {
                 "Configure system-level preferences including data sharing, date formats, HTTP proxy, " +
                 "passwords, server certificates, and updates.");
         CATEGORY_DESCRIPTIONS.put("Tools",
-                "Configure external tools, terminal, database connectivity, AI assistant, and developer integrations.");
+                "Configure integration with third-party applications, specify the SSH Terminal connection settings, manage server certificates and tasks, configure diagrams layout, etc.");
         CATEGORY_DESCRIPTIONS.put("Build, Execution, Deployment",
                 "Configure the project Execution settings, set up Deployment options, and customize the Debugger behavior");
         CATEGORY_DESCRIPTIONS.put("Languages & Frameworks",
