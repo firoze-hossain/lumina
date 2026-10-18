@@ -379,7 +379,7 @@ public class LuminaApp extends Application {
 
         // Right tool windows, selected from a compact IntelliJ-style vertical rail.
         mavenPanel = new MavenPanel(this::runBuildGoal, this::openFile);
-        dbPanel = new DatabasePanel();
+        dbPanel = new DatabasePanel(this::openQueryConsole, this::openTableData);
         notificationsPanel = new NotificationsToolWindowPanel();
         rightTabs = new TabPane(
                 toolTab("Notifications", notificationsPanel),
@@ -6911,6 +6911,44 @@ public class LuminaApp extends Application {
             }
         }
         DiffViewerTab tab = new DiffViewerTab(title, stashRef, relPath, localPath, curText, stashText);
+        tab.setOnClosed(e -> updateEditorVisibility());
+        activeEditorGroup.getTabs().add(tab);
+        activeEditorGroup.getSelectionModel().select(tab);
+        updateEditorVisibility();
+    }
+
+    public void openQueryConsole(dev.lumina.database.DbConnectionProfile profile) {
+        if (activeEditorGroup == null || !editorGroups.contains(activeEditorGroup)) {
+            activeEditorGroup = editorGroups.isEmpty() ? editorTabs : editorGroups.get(0);
+        }
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof QueryConsoleTab qct && qct.getText().contains(profile.getName())) {
+                groupOf(t).getSelectionModel().select(t);
+                updateEditorVisibility();
+                return;
+            }
+        }
+        QueryConsoleTab tab = new QueryConsoleTab(profile);
+        tab.setOnClosed(e -> updateEditorVisibility());
+        activeEditorGroup.getTabs().add(tab);
+        activeEditorGroup.getSelectionModel().select(tab);
+        updateEditorVisibility();
+    }
+
+    public void openTableData(dev.lumina.database.DbConnectionProfile profile, String[] schemaTable) {
+        if (activeEditorGroup == null || !editorGroups.contains(activeEditorGroup)) {
+            activeEditorGroup = editorGroups.isEmpty() ? editorTabs : editorGroups.get(0);
+        }
+        String schema = schemaTable != null && schemaTable.length > 0 ? schemaTable[0] : null;
+        String tableName = schemaTable != null && schemaTable.length > 1 ? schemaTable[1] : "";
+        for (Tab t : allEditorTabs()) {
+            if (t instanceof TableDataTab tdt && tdt.getText().startsWith(tableName) && tdt.getText().contains(profile.getName())) {
+                groupOf(t).getSelectionModel().select(t);
+                updateEditorVisibility();
+                return;
+            }
+        }
+        TableDataTab tab = new TableDataTab(profile, schema, tableName);
         tab.setOnClosed(e -> updateEditorVisibility());
         activeEditorGroup.getTabs().add(tab);
         activeEditorGroup.getSelectionModel().select(tab);

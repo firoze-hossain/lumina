@@ -1,275 +1,556 @@
 package dev.lumina.ui;
 
-import dev.lumina.util.Settings;
+import dev.lumina.database.*;
 import javafx.application.Platform;
-import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Connection;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
- * Lightweight database client: connect over JDBC (PostgreSQL & MySQL
- * drivers are bundled), browse tables, run SQL, view results in a grid.
+ * Professional Database Tool Window for Lumina, matching DBNavigator.
+ * Supports all 8 database engines, hierarchical schema/table/column exploration,
+ * and opens Query Consoles and Table Data viewers directly in the main editor area.
  */
 public class DatabasePanel extends BorderPane {
 
-    private final TextField urlField = new TextField();
-    private final TextField userField = new TextField();
-    private final PasswordField passField = new PasswordField();
-    private final Label status = new Label("Not connected");
-    private final ListView<String> tables = new ListView<>();
-    private final TextField queryField = new TextField();
-    private final TableView<ObservableList<String>> results = new TableView<>();
+    public enum NodeType {
+        ROOT,
+        DATA_SOURCE,
+        SCHEMA,
+        TABLES_GROUP,
+        VIEWS_GROUP,
+        TABLE,
+        VIEW,
+        COLUMNS_GROUP,
+        COLUMN,
+        LOADING,
+        EMPTY
+    }
 
-    private Connection connection;
+    public static class DbNode {
+        private final NodeType type;
+        private final String name;
+        private final String extra;
+        private final DbConnectionProfile profile;
+        private final String schema;
+        private final String tableName;
+
+        public DbNode(NodeType type, String name, String extra, DbConnectionProfile profile, String schema, String tableName) {
+            this.type = type;
+            this.name = name;
+            this.extra = extra;
+            this.profile = profile;
+            this.schema = schema;
+            this.tableName = tableName;
+        }
+
+        public NodeType getType() { return type; }
+        public String getName() { return name; }
+        public String getExtra() { return extra; }
+        public DbConnectionProfile getProfile() { return profile; }
+        public String getSchema() { return schema; }
+        public String getTableName() { return tableName; }
+
+        @Override
+        public String toString() {
+            if (extra != null && !extra.isBlank()) {
+                return name + " " + extra;
+            }
+            return name;
+        }
+    }
+
+    private final TreeView<DbNode> treeView = new TreeView<>();
+    private final TreeItem<DbNode> rootItem = new TreeItem<>(new DbNode(NodeType.ROOT, "Databases", "", null, null, null));
+    private final TextField searchField = new TextField();
+    private final Label statusLabel = new Label("Ready");
+
+    private Consumer<DbConnectionProfile> onOpenConsole;
+    private BiConsumer<DbConnectionProfile, String[]> onOpenTable; // profile, [schema, tableName]
 
     public DatabasePanel() {
+        this(null, null);
+    }
+
+    public DatabasePanel(Consumer<DbConnectionProfile> onOpenConsole, BiConsumer<DbConnectionProfile, String[]> onOpenTable) {
+        this.onOpenConsole = onOpenConsole;
+        this.onOpenTable = onOpenTable;
+
         getStyleClass().add("side-panel");
 
+        // Header and Toolbar
         Label header = new Label("Database");
         header.getStyleClass().add("panel-header");
-        Button addSource = new Button("+");
-        addSource.getStyleClass().add("db-add-source");
-        addSource.setTooltip(new Tooltip("Add data source"));
-        addSource.setOnAction(e -> showDataSourceDialog());
-        HBox headerRow = new HBox(header, spacer(), addSource);
-        headerRow.setPadding(new Insets(8, 12, 8, 12));
 
-        urlField.setPromptText("jdbc:postgresql://localhost:5432/mydb");
-        userField.setPromptText("user");
-        passField.setPromptText("password");
-        String savedUrl = Settings.get(Settings.DB_URL);
-        if (savedUrl != null) urlField.setText(savedUrl);
-        String savedUser = Settings.get(Settings.DB_USER);
-        if (savedUser != null) userField.setText(savedUser);
+        MenuButton addSourceBtn = new MenuButton("+");
+        addSourceBtn.getStyleClass().add("db-add-source");
+        addSourceBtn.setTooltip(new Tooltip("Add Data Source"));
 
-        Button connect = new Button("Connect");
-        connect.getStyleClass().add("dialog-primary");
-        connect.setOnAction(e -> connect());
+        // Populate all 8 database engine options
+        for (DbEngineType engine : DbEngineType.values()) {
+            MenuItem item = new MenuItem(engine.getDisplayName());
+            item.setOnAction(e -> openNewConnectionDialog(engine));
+            addSourceBtn.getItems().add(item);
+        }
 
-        status.getStyleClass().add("side-subtle");
-        status.setWrapText(true);
+        Button refreshBtn = new Button("\u27F3");
+        refreshBtn.getStyleClass().add("db-add-source");
+        refreshBtn.setTooltip(new Tooltip("Refresh All Data Sources"));
+        refreshBtn.setOnAction(e -> refreshTree());
 
-        VBox form = new VBox(8, urlField, new HBox(8, grow(userField), grow(passField)),
-                new HBox(8, connect, status));
-        form.setPadding(new Insets(0, 12, 10, 12));
+        Button openConsoleBtn = new Button("\uD83D\uDCBB");
+        openConsoleBtn.getStyleClass().add("db-add-source");
+        openConsoleBtn.setTooltip(new Tooltip("Open Query Console"));
+        openConsoleBtn.setOnAction(e -> openConsoleForSelected());
 
-        tables.getStyleClass().add("goal-list");
-        tables.setPlaceholder(placeholder("Connect to list tables"));
-        tables.setOnMouseClicked(e -> {
+        Button editSourceBtn = new Button("\u2699");
+        editSourceBtn.getStyleClass().add("db-add-source");
+        editSourceBtn.setTooltip(new Tooltip("Edit Data Source Properties"));
+        editSourceBtn.setOnAction(e -> editSelectedProfile());
+
+        Button deleteSourceBtn = new Button("\u2715");
+        deleteSourceBtn.getStyleClass().add("db-add-source");
+        deleteSourceBtn.setTooltip(new Tooltip("Remove Data Source"));
+        deleteSourceBtn.setOnAction(e -> deleteSelectedProfile());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox headerRow = new HBox(6, header, spacer, addSourceBtn, refreshBtn, openConsoleBtn, editSourceBtn, deleteSourceBtn);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        headerRow.setPadding(new Insets(8, 10, 6, 10));
+
+        // Filter / Search Bar
+        searchField.setPromptText("Filter schemas and tables\u2026");
+        searchField.setPadding(new Insets(4, 8, 4, 8));
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        HBox searchRow = new HBox(searchField);
+        searchRow.setPadding(new Insets(0, 10, 8, 10));
+
+        VBox topBox = new VBox(headerRow, searchRow);
+        setTop(topBox);
+
+        // TreeView configuration
+        treeView.setRoot(rootItem);
+        treeView.setShowRoot(false);
+        treeView.getStyleClass().add("goal-list");
+        treeView.setCellFactory(tv -> new DbTreeCell());
+
+        treeView.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) {
-                String table = tables.getSelectionModel().getSelectedItem();
-                if (table != null) runQuery("SELECT * FROM " + table);
+                TreeItem<DbNode> selected = treeView.getSelectionModel().getSelectedItem();
+                if (selected != null && selected.getValue() != null) {
+                    DbNode node = selected.getValue();
+                    if (node.getType() == NodeType.TABLE || node.getType() == NodeType.VIEW) {
+                        if (onOpenTable != null) {
+                            onOpenTable.accept(node.getProfile(), new String[]{node.getSchema(), node.getTableName()});
+                        }
+                    } else if (node.getType() == NodeType.DATA_SOURCE) {
+                        if (onOpenConsole != null) {
+                            onOpenConsole.accept(node.getProfile());
+                        }
+                    }
+                }
             }
         });
 
-        queryField.setPromptText("SQL \u2014 press Enter to run");
-        queryField.setOnAction(e -> {
-            String sql = queryField.getText().trim();
-            if (!sql.isEmpty()) runQuery(sql);
-        });
-        HBox queryRow = new HBox(queryField);
-        HBox.setHgrow(queryField, Priority.ALWAYS);
-        queryRow.setPadding(new Insets(6, 8, 6, 8));
+        setCenter(treeView);
 
-        results.getStyleClass().add("db-results");
-        results.setPlaceholder(placeholder("Double-click a table or run SQL"));
-        results.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        // Status bar
+        statusLabel.setStyle("-fx-text-fill: #697089; -fx-font-size: 11px;");
+        HBox statusBar = new HBox(statusLabel);
+        statusBar.setPadding(new Insets(4, 10, 4, 10));
+        statusBar.setStyle("-fx-background-color: #14161E; -fx-border-color: #262A3A transparent transparent transparent;");
+        setBottom(statusBar);
 
-        BorderPane bottom = new BorderPane(results, queryRow, null, null, null);
+        // Listen for profile changes from DbConnectionManager
+        DbConnectionManager.getInstance().addListener(this::refreshTree);
 
-        SplitPane split = new SplitPane(tables, bottom);
-        split.setOrientation(Orientation.VERTICAL);
-        split.setDividerPositions(0.42);
-
-        setTop(new VBox(headerRow, form));
-        setCenter(split);
-        setMinWidth(230);
+        // Initial load
+        refreshTree();
     }
 
-    // -------------------------------------------------------------- connect
-
-    private void connect() {
-        String url = urlField.getText().trim();
-        String user = userField.getText().trim();
-        String pass = passField.getText();
-        if (url.isEmpty()) {
-            status.setText("Enter a JDBC URL");
-            return;
-        }
-        status.setText("Connecting\u2026");
-        Thread t = new Thread(() -> {
-            closeQuiet();
-            try {
-                Connection c = DriverManager.getConnection(url, user, pass);
-                connection = c;
-                List<String> names = new ArrayList<>();
-                DatabaseMetaData md = c.getMetaData();
-                try (ResultSet rs = md.getTables(c.getCatalog(), null, "%",
-                        new String[]{"TABLE", "VIEW"})) {
-                    while (rs.next()) {
-                        String schema = rs.getString("TABLE_SCHEM");
-                        String name = rs.getString("TABLE_NAME");
-                        names.add(schema == null || schema.isBlank()
-                                || "public".equalsIgnoreCase(schema)
-                                ? name : schema + "." + name);
-                    }
-                }
-                String product = md.getDatabaseProductName();
-                Platform.runLater(() -> {
-                    tables.getItems().setAll(names);
-                    status.setText("\u2713 " + product + " \u2014 "
-                            + names.size() + " tables");
-                    Settings.put(Settings.DB_URL, url);
-                    Settings.put(Settings.DB_USER, user);
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> status.setText("\u2717 " + shorten(ex.getMessage())));
-            }
-        }, "lumina-db-connect");
-        t.setDaemon(true);
-        t.start();
+    public void setOnOpenConsole(Consumer<DbConnectionProfile> onOpenConsole) {
+        this.onOpenConsole = onOpenConsole;
     }
 
-    // ---------------------------------------------------------------- query
-
-    private void runQuery(String sql) {
-        if (connection == null) {
-            status.setText("Connect first");
-            return;
-        }
-        status.setText("Running\u2026");
-        Thread t = new Thread(() -> {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.setMaxRows(200);
-                boolean hasResultSet = stmt.execute(sql);
-                if (!hasResultSet) {
-                    int n = stmt.getUpdateCount();
-                    Platform.runLater(() -> {
-                        results.getColumns().clear();
-                        results.getItems().clear();
-                        status.setText("\u2713 " + n + " row(s) affected");
-                    });
-                    return;
-                }
-                try (ResultSet rs = stmt.getResultSet()) {
-                    ResultSetMetaData md = rs.getMetaData();
-                    int cols = md.getColumnCount();
-                    List<String> headers = new ArrayList<>();
-                    for (int i = 1; i <= cols; i++) headers.add(md.getColumnLabel(i));
-
-                    List<ObservableList<String>> rows = new ArrayList<>();
-                    while (rs.next()) {
-                        ObservableList<String> row = FXCollections.observableArrayList();
-                        for (int i = 1; i <= cols; i++) {
-                            Object v = rs.getObject(i);
-                            row.add(v == null ? "NULL" : String.valueOf(v));
-                        }
-                        rows.add(row);
-                    }
-                    Platform.runLater(() -> {
-                        results.getColumns().clear();
-                        for (int i = 0; i < headers.size(); i++) {
-                            final int idx = i;
-                            TableColumn<ObservableList<String>, String> col =
-                                    new TableColumn<>(headers.get(i));
-                            col.setCellValueFactory(data ->
-                                    new ReadOnlyStringWrapper(
-                                            idx < data.getValue().size()
-                                                    ? data.getValue().get(idx) : ""));
-                            col.setPrefWidth(120);
-                            results.getColumns().add(col);
-                        }
-                        results.getItems().setAll(rows);
-                        status.setText("\u2713 " + rows.size() + " row(s)");
-                    });
-                }
-            } catch (SQLException ex) {
-                Platform.runLater(() -> status.setText("\u2717 " + shorten(ex.getMessage())));
-            }
-        }, "lumina-db-query");
-        t.setDaemon(true);
-        t.start();
+    public void setOnOpenTable(BiConsumer<DbConnectionProfile, String[]> onOpenTable) {
+        this.onOpenTable = onOpenTable;
     }
 
     public void shutdown() {
-        closeQuiet();
+        DbConnectionManager.getInstance().shutdown();
     }
 
-    private void showDataSourceDialog() {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Data Sources and Drivers");
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        ComboBox<String> driver = new ComboBox<>(FXCollections.observableArrayList(
-                "PostgreSQL", "MySQL", "MariaDB", "SQLite", "Oracle", "Microsoft SQL Server"));
-        driver.getSelectionModel().selectFirst();
-        TextField host = new TextField("localhost");
-        TextField port = new TextField("5432");
-        TextField database = new TextField("postgres");
-        TextField user = new TextField();
-        PasswordField password = new PasswordField();
-        GridPane fields = new GridPane();
-        fields.setHgap(10); fields.setVgap(10); fields.setPadding(new Insets(14));
-        fields.add(new Label("Driver:"), 0, 0); fields.add(driver, 1, 0);
-        fields.add(new Label("Host:"), 0, 1); fields.add(host, 1, 1);
-        fields.add(new Label("Port:"), 0, 2); fields.add(port, 1, 2);
-        fields.add(new Label("Database:"), 0, 3); fields.add(database, 1, 3);
-        fields.add(new Label("User:"), 0, 4); fields.add(user, 1, 4);
-        fields.add(new Label("Password:"), 0, 5); fields.add(password, 1, 5);
-        dialog.getDialogPane().setContent(fields);
-        dialog.getDialogPane().getStylesheets().add(
-                getClass().getResource("/css/lumina-dark.css").toExternalForm());
-        dialog.showAndWait().filter(ButtonType.OK::equals).ifPresent(result -> {
-            String prefix = "PostgreSQL".equals(driver.getValue()) ? "postgresql" : driver.getValue().toLowerCase();
-            urlField.setText("jdbc:" + prefix + "://" + host.getText().trim() + ":" + port.getText().trim()
-                    + "/" + database.getText().trim());
-            userField.setText(user.getText());
-            passField.setText(password.getText());
-            connect();
+    private void openNewConnectionDialog(DbEngineType engine) {
+        DbConnectionProfile profile = new DbConnectionProfile(engine);
+        DbConnectionDialog dialog = new DbConnectionDialog(profile);
+        dialog.showAndWait().ifPresent(res -> {
+            DbConnectionManager.getInstance().addOrUpdateProfile(res);
+            refreshTree();
         });
     }
 
-    private void closeQuiet() {
-        if (connection != null) {
-            try {
-                connection.close();
-            } catch (SQLException ignored) {
+    private void editSelectedProfile() {
+        TreeItem<DbNode> selected = treeView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getValue() == null) return;
+        DbConnectionProfile p = selected.getValue().getProfile();
+        if (p == null) return;
+
+        DbConnectionDialog dialog = new DbConnectionDialog(p);
+        dialog.showAndWait().ifPresent(res -> {
+            DbConnectionManager.getInstance().addOrUpdateProfile(res);
+            refreshTree();
+        });
+    }
+
+    private void deleteSelectedProfile() {
+        TreeItem<DbNode> selected = treeView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getValue() == null) return;
+        DbConnectionProfile p = selected.getValue().getProfile();
+        if (p == null) return;
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Data Source");
+        alert.setHeaderText("Remove " + p.getName() + "?");
+        alert.setContentText("Are you sure you want to remove this data source configuration?");
+        try {
+            alert.getDialogPane().getStylesheets().add(getClass().getResource("/css/lumina-dark.css").toExternalForm());
+        } catch (Throwable ignored) {}
+
+        alert.showAndWait().filter(ButtonType.OK::equals).ifPresent(btn -> {
+            DbConnectionManager.getInstance().removeProfile(p.getId());
+            refreshTree();
+        });
+    }
+
+    private void openConsoleForSelected() {
+        TreeItem<DbNode> selected = treeView.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getValue() == null) {
+            List<DbConnectionProfile> profiles = DbConnectionManager.getInstance().getProfiles();
+            if (!profiles.isEmpty() && onOpenConsole != null) {
+                onOpenConsole.accept(profiles.get(0));
             }
-            connection = null;
+            return;
+        }
+        DbConnectionProfile p = selected.getValue().getProfile();
+        if (p != null && onOpenConsole != null) {
+            onOpenConsole.accept(p);
         }
     }
 
-    private static String shorten(String s) {
-        if (s == null) return "error";
-        s = s.replace('\n', ' ');
-        return s.length() > 120 ? s.substring(0, 120) + "\u2026" : s;
+    public void refreshTree() {
+        Platform.runLater(() -> {
+            rootItem.getChildren().clear();
+            List<DbConnectionProfile> profiles = DbConnectionManager.getInstance().getProfiles();
+            for (DbConnectionProfile profile : profiles) {
+                TreeItem<DbNode> dsItem = createDataSourceTreeItem(profile);
+                rootItem.getChildren().add(dsItem);
+            }
+            statusLabel.setText(profiles.size() + " data source(s) configured");
+        });
     }
 
-    private Label placeholder(String text) {
-        Label l = new Label(text);
-        l.getStyleClass().add("explorer-empty");
-        return l;
+    private TreeItem<DbNode> createDataSourceTreeItem(DbConnectionProfile profile) {
+        boolean connected = DbConnectionManager.getInstance().isConnected(profile.getId());
+        String statusDot = connected ? "\u25CF " : "\u25CB ";
+        String extra = "(" + profile.getEngine().getDisplayName() + ")";
+
+        TreeItem<DbNode> dsItem = new TreeItem<>(new DbNode(
+                NodeType.DATA_SOURCE,
+                statusDot + profile.getName(),
+                extra,
+                profile,
+                null,
+                null
+        ));
+
+        // Lazy load child schemas on expand
+        dsItem.getChildren().add(new TreeItem<>(new DbNode(NodeType.LOADING, "Expand to connect\u2026", "", profile, null, null)));
+
+        dsItem.expandedProperty().addListener((obs, wasExpanded, isExpanded) -> {
+            if (isExpanded && dsItem.getChildren().size() == 1
+                    && dsItem.getChildren().get(0).getValue().getType() == NodeType.LOADING) {
+                loadDataSourceSchemas(dsItem, profile);
+            }
+        });
+
+        return dsItem;
     }
 
-    private static TextField grow(TextField f) {
-        HBox.setHgrow(f, Priority.ALWAYS);
-        return f;
+    private void loadDataSourceSchemas(TreeItem<DbNode> dsItem, DbConnectionProfile profile) {
+        dsItem.getChildren().setAll(new TreeItem<>(new DbNode(NodeType.LOADING, "Connecting\u2026", "", profile, null, null)));
+
+        Thread t = new Thread(() -> {
+            try {
+                Connection conn = DbConnectionManager.getInstance().getConnection(profile);
+                List<DbMetadataService.SchemaInfo> schemas = DbMetadataService.loadSchemasAndTables(conn, profile.getEngine());
+
+                Platform.runLater(() -> {
+                    dsItem.getChildren().clear();
+                    // Update connection status dot to connected
+                    dsItem.setValue(new DbNode(
+                            NodeType.DATA_SOURCE,
+                            "\u25CF " + profile.getName(),
+                            "(" + profile.getEngine().getDisplayName() + ")",
+                            profile,
+                            null,
+                            null
+                    ));
+
+                    for (DbMetadataService.SchemaInfo s : schemas) {
+                        TreeItem<DbNode> schemaItem = new TreeItem<>(new DbNode(
+                                NodeType.SCHEMA,
+                                s.name(),
+                                "(" + (s.tables().size() + s.views().size()) + ")",
+                                profile,
+                                s.name(),
+                                null
+                        ));
+
+                        // Tables folder
+                        if (!s.tables().isEmpty()) {
+                            TreeItem<DbNode> tablesGroup = new TreeItem<>(new DbNode(
+                                    NodeType.TABLES_GROUP,
+                                    "tables",
+                                    "(" + s.tables().size() + ")",
+                                    profile,
+                                    s.name(),
+                                    null
+                            ));
+
+                            for (DbMetadataService.TableInfo tbl : s.tables()) {
+                                TreeItem<DbNode> tableItem = new TreeItem<>(new DbNode(
+                                        NodeType.TABLE,
+                                        tbl.name(),
+                                        "",
+                                        profile,
+                                        s.name(),
+                                        tbl.name()
+                                ));
+
+                                // Lazy load columns on table expand
+                                tableItem.getChildren().add(new TreeItem<>(new DbNode(NodeType.LOADING, "Loading columns\u2026", "", profile, s.name(), tbl.name())));
+                                tableItem.expandedProperty().addListener((o, wasExp, isExp) -> {
+                                    if (isExp && tableItem.getChildren().size() == 1
+                                            && tableItem.getChildren().get(0).getValue().getType() == NodeType.LOADING) {
+                                        loadTableColumns(tableItem, profile, s.name(), tbl.name());
+                                    }
+                                });
+
+                                tablesGroup.getChildren().add(tableItem);
+                            }
+                            schemaItem.getChildren().add(tablesGroup);
+                        }
+
+                        // Views folder
+                        if (!s.views().isEmpty()) {
+                            TreeItem<DbNode> viewsGroup = new TreeItem<>(new DbNode(
+                                    NodeType.VIEWS_GROUP,
+                                    "views",
+                                    "(" + s.views().size() + ")",
+                                    profile,
+                                    s.name(),
+                                    null
+                            ));
+                            for (DbMetadataService.TableInfo v : s.views()) {
+                                TreeItem<DbNode> viewItem = new TreeItem<>(new DbNode(
+                                        NodeType.VIEW,
+                                        v.name(),
+                                        "",
+                                        profile,
+                                        s.name(),
+                                        v.name()
+                                ));
+                                viewsGroup.getChildren().add(viewItem);
+                            }
+                            schemaItem.getChildren().add(viewsGroup);
+                        }
+
+                        dsItem.getChildren().add(schemaItem);
+                    }
+                    if (dsItem.getChildren().isEmpty()) {
+                        dsItem.getChildren().add(new TreeItem<>(new DbNode(NodeType.EMPTY, "No schemas found", "", profile, null, null)));
+                    }
+                });
+            } catch (Throwable ex) {
+                Platform.runLater(() -> {
+                    dsItem.getChildren().setAll(new TreeItem<>(new DbNode(
+                            NodeType.EMPTY,
+                            "\u2717 " + ex.getMessage(),
+                            "",
+                            profile,
+                            null,
+                            null
+                    )));
+                    statusLabel.setText("\u2717 Connection failed: " + ex.getMessage());
+                });
+            }
+        }, "lumina-db-schema-loader");
+        t.setDaemon(true);
+        t.start();
     }
 
-    private static javafx.scene.layout.Region spacer() {
-        javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        return spacer;
+    private void loadTableColumns(TreeItem<DbNode> tableItem, DbConnectionProfile profile, String schema, String tableName) {
+        Thread t = new Thread(() -> {
+            try {
+                Connection conn = DbConnectionManager.getInstance().getConnection(profile);
+                List<DbMetadataService.ColumnInfo> cols = DbMetadataService.loadColumns(conn, schema, tableName);
+                Platform.runLater(() -> {
+                    tableItem.getChildren().clear();
+                    TreeItem<DbNode> colsGroup = new TreeItem<>(new DbNode(
+                            NodeType.COLUMNS_GROUP,
+                            "columns",
+                            "(" + cols.size() + ")",
+                            profile,
+                            schema,
+                            tableName
+                    ));
+                    for (DbMetadataService.ColumnInfo col : cols) {
+                        String pkBadge = col.primaryKey() ? " [PK]" : "";
+                        String typeStr = col.typeName() + (col.columnSize() > 0 ? "(" + col.columnSize() + ")" : "") + pkBadge;
+                        colsGroup.getChildren().add(new TreeItem<>(new DbNode(
+                                NodeType.COLUMN,
+                                col.name(),
+                                ": " + typeStr,
+                                profile,
+                                schema,
+                                tableName
+                        )));
+                    }
+                    tableItem.getChildren().add(colsGroup);
+                    colsGroup.setExpanded(true);
+                });
+            } catch (Throwable ignored) {}
+        }, "lumina-db-col-loader");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    // Custom TreeCell with icons and context menus
+    private class DbTreeCell extends TreeCell<DbNode> {
+        @Override
+        protected void updateItem(DbNode node, boolean empty) {
+            super.updateItem(node, empty);
+            if (empty || node == null) {
+                setText(null);
+                setGraphic(null);
+                setContextMenu(null);
+                return;
+            }
+
+            setText(node.toString());
+
+            // Styling and icons based on NodeType
+            switch (node.getType()) {
+                case DATA_SOURCE:
+                    setStyle("-fx-font-weight: bold; -fx-text-fill: #E5E9F0;");
+                    setContextMenu(createDataSourceContextMenu(node.getProfile()));
+                    break;
+                case SCHEMA:
+                    setStyle("-fx-text-fill: #88C0D0; -fx-font-weight: bold;");
+                    setContextMenu(createSchemaContextMenu(node.getProfile(), node.getSchema()));
+                    break;
+                case TABLES_GROUP:
+                case VIEWS_GROUP:
+                case COLUMNS_GROUP:
+                    setStyle("-fx-text-fill: #697089; -fx-font-style: italic;");
+                    setContextMenu(null);
+                    break;
+                case TABLE:
+                    setStyle("-fx-text-fill: #D8DEE9;");
+                    setContextMenu(createTableContextMenu(node.getProfile(), node.getSchema(), node.getTableName()));
+                    break;
+                case VIEW:
+                    setStyle("-fx-text-fill: #B48EAD;");
+                    setContextMenu(createTableContextMenu(node.getProfile(), node.getSchema(), node.getTableName()));
+                    break;
+                case COLUMN:
+                    if (node.getExtra().contains("[PK]")) {
+                        setStyle("-fx-text-fill: #EBCB8B; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #A6ADC4;");
+                    }
+                    setContextMenu(null);
+                    break;
+                case LOADING:
+                case EMPTY:
+                    setStyle("-fx-text-fill: #697089; -fx-font-style: italic;");
+                    setContextMenu(null);
+                    break;
+                default:
+                    setStyle("");
+                    setContextMenu(null);
+            }
+        }
+    }
+
+    private ContextMenu createDataSourceContextMenu(DbConnectionProfile profile) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem openConsole = new MenuItem("Open Query Console");
+        openConsole.setOnAction(e -> {
+            if (onOpenConsole != null) onOpenConsole.accept(profile);
+        });
+
+        MenuItem refresh = new MenuItem("Refresh");
+        refresh.setOnAction(e -> refreshTree());
+
+        MenuItem edit = new MenuItem("Properties\u2026");
+        edit.setOnAction(e -> {
+            DbConnectionDialog dialog = new DbConnectionDialog(profile);
+            dialog.showAndWait().ifPresent(res -> {
+                DbConnectionManager.getInstance().addOrUpdateProfile(res);
+                refreshTree();
+            });
+        });
+
+        MenuItem disconnect = new MenuItem("Disconnect");
+        disconnect.setOnAction(e -> {
+            DbConnectionManager.getInstance().disconnect(profile.getId());
+            refreshTree();
+        });
+
+        MenuItem delete = new MenuItem("Remove Data Source");
+        delete.setOnAction(e -> {
+            DbConnectionManager.getInstance().removeProfile(profile.getId());
+            refreshTree();
+        });
+
+        menu.getItems().addAll(openConsole, new SeparatorMenuItem(), refresh, edit, disconnect, new SeparatorMenuItem(), delete);
+        return menu;
+    }
+
+    private ContextMenu createSchemaContextMenu(DbConnectionProfile profile, String schema) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem openConsole = new MenuItem("Open Query Console for " + schema);
+        openConsole.setOnAction(e -> {
+            if (onOpenConsole != null) onOpenConsole.accept(profile);
+        });
+        menu.getItems().add(openConsole);
+        return menu;
+    }
+
+    private ContextMenu createTableContextMenu(DbConnectionProfile profile, String schema, String table) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem viewData = new MenuItem("View Table Data");
+        viewData.setOnAction(e -> {
+            if (onOpenTable != null) onOpenTable.accept(profile, new String[]{schema, table});
+        });
+
+        MenuItem queryConsole = new MenuItem("Select First 100 Rows");
+        queryConsole.setOnAction(e -> {
+            if (onOpenConsole != null) {
+                onOpenConsole.accept(profile);
+            }
+        });
+
+        menu.getItems().addAll(viewData, queryConsole);
+        return menu;
     }
 }
