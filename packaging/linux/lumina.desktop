@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Lumina
+GenericName=Java Integrated Development Environment
+Comment=Luminous, lightweight Java IDE with full tooling and multi-database support
+Exec=/opt/lumina/bin/lumina %U
+Icon=lumina
+Terminal=false
+Type=Application
+Categories=Development;IDE;Java;
+StartupWMClass=dev.lumina.LuminaApp
+MimeType=text/x-java-source;text/plain;application/xml;text/x-sql;
+Keywords=ide;java;development;editor;compiler;database;sql;

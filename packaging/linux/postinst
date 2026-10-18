@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+# Link binary to /usr/local/bin if present
+if [ -x "/opt/lumina/bin/lumina" ]; then
+    ln -sf /opt/lumina/bin/lumina /usr/local/bin/lumina || true
+elif [ -x "/opt/lumina/bin/Lumina" ]; then
+    ln -sf /opt/lumina/bin/Lumina /usr/local/bin/lumina || true
+fi
+
+# Install desktop icon
+if [ -f "/opt/lumina/lib/packaging/lumina.png" ]; then
+    mkdir -p /usr/share/icons/hicolor/512x512/apps/
+    cp -f /opt/lumina/lib/packaging/lumina.png /usr/share/icons/hicolor/512x512/apps/lumina.png || true
+fi
+
+# Update desktop icon caches
+if which update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+fi
+if which gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+fi
+
+exit 0

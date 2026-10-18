@@ -31,4 +31,5 @@ Thumbs.db
 # JavaFX / native packaging outputs
 /out/
 /dist/
+/packaging/input/
 *.jpackage/
