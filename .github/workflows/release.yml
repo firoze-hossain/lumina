@@ -59,10 +59,33 @@ jobs:
         id: version
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            RAW_VER="${GITHUB_REF_NAME#v}"
           else
-            echo "version=0.1.0" >> "$GITHUB_OUTPUT"
+            RAW_VER="1.0.0"
           fi
+          echo "version=${RAW_VER}" >> "$GITHUB_OUTPUT"
+
+          # Clean numeric version (strip tags/pre-release text like -beta, -alpha)
+          BASE_VER="${RAW_VER%%-*}"
+          CLEAN_VER=$(echo "$BASE_VER" | sed -E 's/[^0-9.]+//g' | awk -F. '{if (NF>3) print $1"."$2"."$3; else print $0}')
+          if [[ -z "$CLEAN_VER" ]]; then
+            CLEAN_VER="1.0.0"
+          fi
+          echo "clean_version=${CLEAN_VER}" >> "$GITHUB_OUTPUT"
+
+          # macOS jpackage bundler strictly requires the first number in app-version to be > 0
+          # (1 to 3 integers separated by dots). If major is 0, map 0.X.Y -> 1.X.Y for Apple compatibility.
+          FIRST_NUM=$(echo "$CLEAN_VER" | cut -d. -f1)
+          if [[ "$FIRST_NUM" =~ ^[0-9]+$ ]] && [ "$FIRST_NUM" -eq 0 ]; then
+            MAC_VER="1.${CLEAN_VER#0.}"
+          else
+            MAC_VER="$CLEAN_VER"
+          fi
+          if [[ -z "$MAC_VER" || "$MAC_VER" == "0"* ]]; then
+            MAC_VER="1.0.0"
+          fi
+          echo "mac_version=${MAC_VER}" >> "$GITHUB_OUTPUT"
+          echo "Derived versions: full=${RAW_VER}, clean=${CLEAN_VER}, mac=${MAC_VER}"
 
       - name: Build Lumina JAR and Dependencies with Maven
         run: mvn -B clean package -DskipTests
@@ -88,7 +111,7 @@ jobs:
             --name lumina \
             --main-jar lumina.jar \
             --main-class dev.lumina.Launcher \
-            --app-version "${{ steps.version.outputs.version }}" \
+            --app-version "${{ steps.version.outputs.clean_version }}" \
             --vendor "Roze Ecosystem" \
             --description "Lumina - Modern Java IDE & Multi-Database Administration Tool" \
             --linux-package-name lumina \
@@ -113,7 +136,7 @@ jobs:
             --name Lumina `
             --main-jar lumina.jar `
             --main-class dev.lumina.Launcher `
-            --app-version "${{ steps.version.outputs.version }}" `
+            --app-version "${{ steps.version.outputs.clean_version }}" `
             --vendor "Roze Ecosystem" `
             --icon packaging\windows\Lumina.ico `
             --dest dist\lumina-win-pkg
@@ -136,7 +159,7 @@ jobs:
             --name Lumina `
             --main-jar lumina.jar `
             --main-class dev.lumina.Launcher `
-            --app-version "${{ steps.version.outputs.version }}" `
+            --app-version "${{ steps.version.outputs.clean_version }}" `
             --vendor "Roze Ecosystem" `
             --description "Lumina - Modern Java IDE & Multi-Database Administration Tool" `
             --win-menu `
@@ -159,7 +182,7 @@ jobs:
             --name Lumina \
             --main-jar lumina.jar \
             --main-class dev.lumina.Launcher \
-            --app-version "${{ steps.version.outputs.version }}" \
+            --app-version "${{ steps.version.outputs.mac_version }}" \
             --vendor "Roze Ecosystem" \
             --description "Lumina - Modern Java IDE & Multi-Database Administration Tool" \
             --mac-package-name Lumina \

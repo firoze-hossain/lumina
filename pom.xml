@@ -6,7 +6,7 @@
 
     <groupId>dev.lumina</groupId>
     <artifactId>lumina-ide</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
     <name>Lumina IDE</name>
     <description>A luminous, lightweight Java IDE built with JavaFX</description>
 
