@@ -23,7 +23,8 @@ public final class SqlSyntaxHighlighter {
             "FOREIGN", "REFERENCES", "DEFAULT", "UNIQUE", "CONSTRAINT", "ADD", "COLUMN",
             "TRUNCATE", "BEGIN", "COMMIT", "ROLLBACK", "TRANSACTION", "GRANT", "REVOKE",
             "WITH", "RETURNING", "IF", "REPLACE", "SHOW", "DESCRIBE", "EXPLAIN", "USE",
-            "ASC", "DESC"
+            "ASC", "DESC", "CASCADE", "RESTRICT", "CONSTRAINTS", "PURGE", "CHECK", "TRIGGER",
+            "FUNCTION", "PROCEDURE", "TEMPORARY", "TEMP", "SECURITY", "LABEL", "OWNER"
     };
 
     private static final String[] TYPES = {
