@@ -41,4 +41,6 @@ module dev.lumina {
     opens dev.lumina.copyright to com.google.gson;
     exports dev.lumina.database;
     opens dev.lumina.database to com.google.gson;
+    exports dev.lumina.update;
+    opens dev.lumina.update to com.google.gson;
 }

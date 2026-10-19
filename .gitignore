@@ -9,6 +9,10 @@
 *.iml
 *.ipr
 *.iws
+compiler.xml
+encodings.xml
+jarRepositories.xml
+project.xml
 
 # JVM and local runtime artifacts
 /.classpath

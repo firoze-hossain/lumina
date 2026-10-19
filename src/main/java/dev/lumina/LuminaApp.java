@@ -131,6 +131,10 @@ public class LuminaApp extends Application {
     private Path pendingProjectToOpen;
     private int untitledCounter = 1;
     private long lastShiftPress;
+    private dev.lumina.update.AppUpdate latestAvailableUpdate;
+    private Button settingsBtn;
+    private StackPane settingsBtnWrapper;
+    private javafx.scene.shape.Circle updateBadge;
 
     public Path getProjectRoot() {
         return projectRoot;
@@ -615,24 +619,8 @@ public class LuminaApp extends Application {
 
         stage.setOnCloseRequest(e -> {
             if (SystemSettings.getInstance().isConfirmExit() && ACTIVE_INSTANCES.size() == 1) {
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Exit Lumina");
-                alert.setHeaderText("Confirm Exit");
-                alert.initOwner(stage);
-
-                CheckBox dontAsk = new CheckBox("Do not ask again");
-                dontAsk.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 12px; -fx-padding: 8 0 0 0;");
-                Label msg = new Label("Are you sure you want to exit Lumina?");
-                msg.setStyle("-fx-text-fill: #DFE1E5; -fx-font-size: 13px;");
-                VBox content = new VBox(10, msg, dontAsk);
-                alert.getDialogPane().setContent(content);
-
-                Optional<ButtonType> res = alert.showAndWait();
-                if (res.isPresent() && res.get() == ButtonType.OK) {
-                    if (dontAsk.isSelected()) {
-                        SystemSettings.getInstance().setConfirmExit(false);
-                        SystemSettings.getInstance().save();
-                    }
+                boolean exitConfirmed = dev.lumina.ui.ConfirmExitDialog.showAndWait(stage);
+                if (exitConfirmed) {
                     closeWindow();
                 } else {
                     e.consume();
@@ -649,6 +637,14 @@ public class LuminaApp extends Application {
         });
 
         stage.show();
+
+        // Non-blocking startup update check (runs 3 seconds after launch)
+        Thread.ofVirtual().start(() -> {
+            try {
+                Thread.sleep(3000);
+                checkForUpdates(false);
+            } catch (Exception ignored) {}
+        });
 
         List<String> activated = dev.lumina.plugin.PluginManager.getInstance().getNewlyActivatedPluginNames();
         if (!activated.isEmpty()) {
@@ -1406,12 +1402,22 @@ public class LuminaApp extends Application {
         githubButton.setOnAction(e -> onGitHubButton());
         refreshGitHubButton();
 
-        Button settingsBtn = toolButton("\u2699", "Settings and more");
+        settingsBtn = toolButton("\u2699", "Settings and more");
         settingsBtn.setOnAction(e -> showMainSettingsMenu(settingsBtn));
+
+        updateBadge = new javafx.scene.shape.Circle(4.5, javafx.scene.paint.Color.web("#3574F0"));
+        updateBadge.setStroke(javafx.scene.paint.Color.web("#1E1F22"));
+        updateBadge.setStrokeWidth(1.5);
+        updateBadge.setVisible(false);
+        StackPane.setAlignment(updateBadge, Pos.TOP_RIGHT);
+        StackPane.setMargin(updateBadge, new Insets(2, 2, 0, 0));
+
+        settingsBtnWrapper = new StackPane(settingsBtn, updateBadge);
+        settingsBtnWrapper.setPickOnBounds(false);
 
         HBox bar = new HBox(10, projectChip, branchButton, spacer,
                 runConfigBox, runButton, debugBtn, stopButton,
-                searchBtn, githubButton, settingsBtn);
+                searchBtn, githubButton, settingsBtnWrapper);
         bar.getStyleClass().add("tool-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(5, 12, 5, 12));
@@ -6272,9 +6278,35 @@ public class LuminaApp extends Application {
                 disabled("Zen Mode"),
                 disabled("Presentation Mode"));
 
-        int updateCount = dev.lumina.plugin.PluginManager.getInstance().getUpdatesCount();
         List<MenuItem> items = new ArrayList<>();
 
+        if (latestAvailableUpdate != null && latestAvailableUpdate.available && latestAvailableUpdate.release != null) {
+            String v = latestAvailableUpdate.latestVersion != null ? latestAvailableUpdate.latestVersion : latestAvailableUpdate.release.version;
+
+            HBox updateCard = new HBox(8);
+            updateCard.setAlignment(Pos.CENTER_LEFT);
+            updateCard.setPadding(new Insets(6, 12, 6, 12));
+            updateCard.setStyle("""
+                -fx-background-color: #3574F0;
+                -fx-background-radius: 4;
+                -fx-cursor: hand;
+            """);
+
+            Label dlIcon = new Label("\u2B73");
+            dlIcon.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
+            Label dlText = new Label("Download Lumina " + v);
+            dlText.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+            updateCard.getChildren().addAll(dlIcon, dlText);
+
+            CustomMenuItem dlItem = new CustomMenuItem(updateCard, false);
+            dlItem.setOnAction(e -> dev.lumina.ui.UpdateAvailableDialog.show(stage, latestAvailableUpdate, false));
+
+            items.add(dlItem);
+            items.add(new SeparatorMenuItem());
+        }
+
+        int updateCount = dev.lumina.plugin.PluginManager.getInstance().getUpdatesCount();
         if (updateCount > 0) {
             MenuItem updateItem = item("Update " + updateCount + " Plugins\u2026", null,
                     e -> openPluginsSettings());
@@ -6322,37 +6354,62 @@ public class LuminaApp extends Application {
     }
 
     public void checkForUpdates(boolean userInitiated) {
-        String currentVersion = "0.1.0";
-        Thread.ofVirtual().start(() -> {
-            try {
-                dev.lumina.plugin.RozeHubClient.UpdateInfo info =
-                        dev.lumina.plugin.RozeHubClient.getInstance().checkForUpdates(currentVersion);
-
-                Platform.runLater(() -> {
-                    if (info.available()) {
-                        new dev.lumina.ui.UpdateAvailableDialog(stage, info).show();
-                    } else if (userInitiated) {
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        alert.initOwner(stage);
-                        alert.setTitle("Check for Updates");
-                        alert.setHeaderText("You already have the latest version");
-                        alert.setContentText(String.format("Lumina IDE %s is currently the newest version available on the Stable channel from RozeHub.", currentVersion));
-                        alert.showAndWait();
-                    }
-                });
-            } catch (Exception ex) {
-                Platform.runLater(() -> {
-                    if (userInitiated) {
-                        Alert alert = new Alert(Alert.AlertType.WARNING);
-                        alert.initOwner(stage);
-                        alert.setTitle("Update Check Failed");
-                        alert.setHeaderText("Unable to connect to RozeHub server");
-                        alert.setContentText("Could not reach RozeHub at " + dev.lumina.plugin.RozeHubClient.getInstance().getBaseUrl() + ":\n" + ex.getMessage());
-                        alert.showAndWait();
-                    }
-                });
+        dev.lumina.update.AppUpdateService.checkForUpdate().whenComplete((update, error) -> Platform.runLater(() -> {
+            if (error != null) {
+                if (userInitiated) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.initOwner(stage);
+                    alert.setTitle("Check for Updates");
+                    alert.setHeaderText("Unable to check for updates");
+                    alert.setContentText("Could not reach update servers:\n" + error.getMessage());
+                    alert.showAndWait();
+                }
+                return;
             }
-        });
+
+            if (update != null && update.available) {
+                onUpdateDiscovered(update);
+                if (userInitiated) {
+                    dev.lumina.ui.UpdateAvailableDialog.show(stage, update, false);
+                }
+            } else if (userInitiated) {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.initOwner(stage);
+                alert.setTitle("Check for Updates");
+                alert.setHeaderText("You already have the latest version");
+                alert.setContentText(String.format("Lumina IDE %s is currently the newest version available.", dev.lumina.update.AppUpdateService.currentVersion()));
+                alert.showAndWait();
+            }
+        }));
+    }
+
+    private void onUpdateDiscovered(dev.lumina.update.AppUpdate update) {
+        this.latestAvailableUpdate = update;
+        if (update != null && update.available && update.release != null) {
+            String v = update.latestVersion != null ? update.latestVersion : update.release.version;
+            if (updateBadge != null) {
+                updateBadge.setVisible(true);
+            }
+            if (settingsBtn != null) {
+                settingsBtn.setTooltip(new Tooltip("Lumina IDE " + v + " is available\nClick settings to download"));
+            }
+
+            // Show floating notification balloon toast in bottom-right
+            String sourceDesc = "github".equalsIgnoreCase(update.source) ? "GitHub Releases" : "RozeHub";
+            dev.lumina.notification.Notification n = new dev.lumina.notification.Notification(
+                    "Updates",
+                    "Lumina IDE " + v + " is available",
+                    "A new version is available for download (" + sourceDesc + ").",
+                    dev.lumina.notification.NotificationType.INFORMATION
+            );
+            n.addAction("Download & Install", () -> dev.lumina.ui.UpdateAvailableDialog.show(stage, update, true));
+            n.addAction("What's New", () -> dev.lumina.ui.UpdateAvailableDialog.show(stage, update, false));
+            dev.lumina.notification.NotificationService.getInstance().notify(n);
+        } else {
+            if (updateBadge != null) {
+                updateBadge.setVisible(false);
+            }
+        }
     }
 
     /** Hides the whole bottom Terminal dock \u2014 shared by "closing the last
