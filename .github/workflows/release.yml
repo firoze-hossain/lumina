@@ -88,6 +88,11 @@ jobs:
           echo "mac_version=${MAC_VER}" >> "$GITHUB_OUTPUT"
           echo "Derived versions: full=${RAW_VER}, clean=${CLEAN_VER}, mac=${MAC_VER}"
 
+      - name: Set release version in Maven pom.xml
+        shell: bash
+        run: |
+          mvn -B versions:set -DnewVersion="${{ steps.version.outputs.version }}" -DgenerateBackupPoms=false
+
       - name: Build Lumina JAR and Dependencies with Maven
         run: mvn -B clean package -DskipTests
 
@@ -99,11 +104,27 @@ jobs:
           cp target/dependency/*.jar packaging/input/
 
       # ------------------------------------------------------------------------
-      # Linux: Ubuntu/Debian .deb package
+      # Linux: In-place update package (.tar.gz) and .deb installer
       # ------------------------------------------------------------------------
-      - name: Build Linux .deb Package
+      - name: Build Linux Update Package and .deb Installer
         if: matrix.platform == 'linux'
         run: |
+          # 1. Build app-image for in-place update archive
+          jpackage \
+            --type app-image \
+            --input packaging/input \
+            --name lumina \
+            --main-jar lumina.jar \
+            --main-class dev.lumina.Launcher \
+            --app-version "${{ steps.version.outputs.clean_version }}" \
+            --vendor "Roze Ecosystem" \
+            --icon packaging/linux/lumina.png \
+            --dest dist/app-image
+
+          tar -czf "dist/lumina-${{ steps.version.outputs.version }}-linux-update.tar.gz" -C dist/app-image lumina
+          rm -rf dist/app-image
+
+          # 2. Build .deb package installer
           sudo apt-get update
           sudo apt-get install -y fakeroot
           jpackage \
@@ -124,9 +145,9 @@ jobs:
             --dest dist
 
       # ------------------------------------------------------------------------
-      # Windows: Inno Setup .exe Setup Wizard & WiX .msi
+      # Windows: In-place update package (.zip) and Inno Setup .exe installer wizard
       # ------------------------------------------------------------------------
-      - name: Build Windows .exe Setup Wizard and .msi
+      - name: Build Windows Update Package and .exe Setup Wizard
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
@@ -142,41 +163,60 @@ jobs:
             --icon packaging\windows\Lumina.ico `
             --dest dist\lumina-win-pkg
 
+          # 2. Package Windows in-place update zip (zero SmartScreen / UAC friction for existing users)
+          Compress-Archive -Path "dist\lumina-win-pkg\Lumina\*" -DestinationPath "dist\Lumina-${{ steps.version.outputs.version }}-windows-update.zip" -Force
+
           # Move contents into a clean root structure for Inno Setup
           Move-Item -Path "dist\lumina-win-pkg\Lumina\*" -Destination "dist\lumina-win-pkg\"
           Remove-Item -Path "dist\lumina-win-pkg\Lumina" -Recurse -Force
 
-          # 2. Compile Inno Setup .exe wizard
+          # 3. Compile Inno Setup .exe wizard (for fresh installs and full upgrades)
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="${{ steps.version.outputs.version }}" packaging\windows\setup.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed with exit code $LASTEXITCODE" }
           if (Test-Path "packaging\windows\dist\*.exe") {
             Move-Item -Path "packaging\windows\dist\*.exe" -Destination "dist\" -Force
           }
 
-          # 3. Build Windows .msi with jpackage
-          jpackage `
-            --type msi `
-            --input packaging/input `
-            --name Lumina `
-            --main-jar lumina.jar `
-            --main-class dev.lumina.Launcher `
-            --app-version "${{ steps.version.outputs.clean_version }}" `
-            --vendor "Roze Ecosystem" `
-            --description "Lumina - Modern Java IDE & Multi-Database Administration Tool" `
-            --win-menu `
-            --win-shortcut `
-            --icon packaging\windows\Lumina.ico `
-            --dest dist
-
-          # Clean intermediate app-image so only final installers remain
+          # Clean intermediate app-image folder
           Remove-Item -Path "dist\lumina-win-pkg" -Recurse -Force
 
       # ------------------------------------------------------------------------
-      # macOS: .dmg disk image
+      # macOS: In-place update packages (.tar.gz & .zip), .pkg installer, and .dmg
       # ------------------------------------------------------------------------
-      - name: Build macOS .dmg Disk Image
+      - name: Build macOS Update Packages, .pkg and .dmg Installers
         if: matrix.platform == 'macos'
         run: |
+          # 1. Build app-image for in-place zero-quarantine updates
+          jpackage \
+            --type app-image \
+            --input packaging/input \
+            --name Lumina \
+            --main-jar lumina.jar \
+            --main-class dev.lumina.Launcher \
+            --app-version "${{ steps.version.outputs.mac_version }}" \
+            --vendor "Roze Ecosystem" \
+            --icon packaging/macos/Lumina.icns \
+            --dest dist/app-image
+
+          # Compress update packages
+          tar -czf "dist/Lumina-${{ steps.version.outputs.version }}-macos-update.tar.gz" -C dist/app-image Lumina.app
+          (cd dist/app-image && zip -r -q "../../dist/Lumina-${{ steps.version.outputs.version }}-macos-update.zip" Lumina.app)
+          rm -rf dist/app-image
+
+          # 2. Build Apple .pkg installer package (direct installation to /Applications)
+          jpackage \
+            --type pkg \
+            --input packaging/input \
+            --name Lumina \
+            --main-jar lumina.jar \
+            --main-class dev.lumina.Launcher \
+            --app-version "${{ steps.version.outputs.mac_version }}" \
+            --vendor "Roze Ecosystem" \
+            --mac-package-name Lumina \
+            --icon packaging/macos/Lumina.icns \
+            --dest dist
+
+          # 3. Build macOS .dmg Disk Image
           jpackage \
             --type dmg \
             --input packaging/input \
